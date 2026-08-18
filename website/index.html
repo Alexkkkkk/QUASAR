@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>QUASAR - The Brightest Jetton in the TON Universe</title>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/@tonconnect/ui@latest/dist/tonconnect-ui.min.js"></script>
+    <script type="module" src="tonconnect.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         
@@ -234,10 +236,76 @@
         
         .social-links a:hover { color: #00d4ff; }
         
+        .defi-card {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 20px;
+            padding: 30px;
+            transition: all 0.3s;
+        }
+        .defi-card:hover {
+            border-color: #00d4ff;
+            transform: translateY(-3px);
+            box-shadow: 0 10px 40px rgba(0, 212, 255, 0.1);
+        }
+        .defi-card h3 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 18px;
+            margin-bottom: 15px;
+        }
+        .defi-input {
+            width: 100%;
+            padding: 12px;
+            background: rgba(0,0,0,0.3);
+            border: 1px solid #333;
+            border-radius: 10px;
+            color: #fff;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+        .defi-input:focus {
+            outline: none;
+            border-color: #00d4ff;
+        }
+        .defi-btn {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 10px;
+            color: #fff;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 14px;
+        }
+        .defi-btn:hover { transform: translateY(-2px); }
+        .defi-btn-swap { background: linear-gradient(135deg, #ff006e, #ffaa00); }
+        .defi-btn-lp { background: linear-gradient(135deg, #7b2ff7, #00d4ff); }
+        .defi-btn-stake { background: linear-gradient(135deg, #00d4ff, #00ff88); }
+        .defi-btn-claim { background: rgba(123,47,247,0.2); border: 1px solid #7b2ff7; color: #7b2ff7; }
+        .defi-btn-claim:hover { background: #7b2ff7; color: #fff; }
+        #ton-connect {
+            position: fixed;
+            top: 40px;
+            right: 40px;
+            z-index: 100;
+        }
+        .wallet-info {
+            font-family: monospace;
+            color: #a0a0b0;
+            font-size: 14px;
+        }
+        .balance-display {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 24px;
+            color: #00d4ff;
+            margin: 10px 0;
+        }
         @media (max-width: 768px) {
             .hero h1 { font-size: 42px; }
             .stats { grid-template-columns: repeat(2, 1fr); }
             .feature-grid { grid-template-columns: 1fr; }
+            #ton-connect { top: 20px; right: 20px; }
         }
     </style>
 </head>
@@ -319,6 +387,82 @@
             </div>
         </section>
         
+        <section id="app-section" style="display:none; padding: 60px 0;">
+            <div class="container">
+                <h2 style="font-family: Orbitron; font-size: 42px; margin-bottom: 10px; text-align: center;">DeFi Command Center</h2>
+                <p style="text-align: center; color: #a0a0b0; margin-bottom: 40px;">Connect your wallet to access DEX, staking, and yield farming</p>
+                
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 25px;">
+                    <!-- Wallet Card -->
+                    <div class="defi-card">
+                        <h3 style="color: #00d4ff;">Wallet</h3>
+                        <p class="wallet-info" id="wallet-address">Not connected</p>
+                        <div class="balance-display" id="ton-balance">0 TON</div>
+                        <p style="color: #666; font-size: 12px;">Connected via TON Connect</p>
+                    </div>
+                    
+                    <!-- Swap Card -->
+                    <div class="defi-card">
+                        <h3 style="color: #ff006e;">Swap QSR &harr; TON</h3>
+                        <input type="number" class="defi-input" id="swap-amount" placeholder="QSR Amount">
+                        <input type="number" class="defi-input" id="swap-min-out" placeholder="Min TON Out (slippage)">
+                        <button class="defi-btn defi-btn-swap" onclick="window.swapToTon(document.getElementById('swap-amount').value * 1e9, document.getElementById('swap-min-out').value * 1e9 || 1)">Swap to TON</button>
+                    </div>
+                    
+                    <!-- Liquidity Card -->
+                    <div class="defi-card">
+                        <h3 style="color: #7b2ff7;">Liquidity Pool</h3>
+                        <input type="number" class="defi-input" id="lp-ton" placeholder="TON Amount">
+                        <input type="number" class="defi-input" id="lp-qsr" placeholder="QSR Amount">
+                        <button class="defi-btn defi-btn-lp" onclick="window.addLiquidity(document.getElementById('lp-ton').value * 1e9, document.getElementById('lp-qsr').value * 1e9)" style="margin-bottom: 8px;">Add Liquidity</button>
+                        <button class="defi-btn defi-btn-claim" onclick="window.claimFarmRewards()">Claim Farm Rewards</button>
+                    </div>
+                    
+                    <!-- Staking Card -->
+                    <div class="defi-card">
+                        <h3 style="color: #00ff88;">Staking Vault</h3>
+                        <input type="number" class="defi-input" id="stake-amount" placeholder="QSR to Stake">
+                        <div style="display: flex; gap: 8px;">
+                            <button class="defi-btn defi-btn-stake" onclick="window.stakeQsr(document.getElementById('stake-amount').value * 1e9)" style="flex:1;">Stake</button>
+                            <button class="defi-btn defi-btn-claim" onclick="window.unstakeQsr(document.getElementById('stake-amount').value * 1e9)" style="flex:1;">Unstake</button>
+                        </div>
+                        <p style="color: #666; font-size: 12px; margin-top: 10px;">20% APY | 30-day lock</p>
+                    </div>
+                    
+                    <!-- Farm Card -->
+                    <div class="defi-card">
+                        <h3 style="color: #ffaa00;">Yield Farm</h3>
+                        <p style="color: #a0a0b0; font-size: 14px; margin-bottom: 15px;">Stake LP tokens to earn QSR rewards</p>
+                        <div class="balance-display" style="font-size: 18px;">~0.1 QSR/sec</div>
+                        <p style="color: #666; font-size: 12px;">Auto-compound enabled</p>
+                    </div>
+                    
+                    <!-- Stats Card -->
+                    <div class="defi-card">
+                        <h3 style="color: #00d4ff;">Pool Stats</h3>
+                        <div style="display: flex; justify-content: space-between; margin: 8px 0;">
+                            <span style="color: #a0a0b0;">TON Reserve</span>
+                            <span style="color: #fff; font-family: Orbitron;">--</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; margin: 8px 0;">
+                            <span style="color: #a0a0b0;">QSR Reserve</span>
+                            <span style="color: #fff; font-family: Orbitron;">--</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; margin: 8px 0;">
+                            <span style="color: #a0a0b0;">Total LP</span>
+                            <span style="color: #fff; font-family: Orbitron;">--</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; margin: 8px 0;">
+                            <span style="color: #a0a0b0;">Farm APY</span>
+                            <span style="color: #00ff88; font-family: Orbitron;">~150%</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        <div id="ton-connect"></div>
+        
         <footer>
             <div class="social-links">
                 <a href="https://github.com/Alexkkkkk/QUASAR">GitHub</a>
@@ -341,6 +485,11 @@
             star.style.height = star.style.width;
             star.style.animationDelay = Math.random() * 3 + 's';
             starsContainer.appendChild(star);
+        }
+        
+        // Init TON Connect
+        if (typeof window.initTonConnect === 'function') {
+            window.initTonConnect();
         }
     </script>
 </body>

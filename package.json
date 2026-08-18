@@ -6,6 +6,7 @@
   "scripts": {
     "build": "tact --config tact.config.json",
     "deploy": "ts-node scripts/deploy.ts",
+    "deploy:defi": "ts-node scripts/deploy_defi.ts",
     "test": "jest --passWithNoTests",
     "lint": "tact --config tact.config.json --check"
   },
@@ -25,6 +26,8 @@
     "@ton/core": "^0.62.1",
     "@ton/crypto": "^3.3.0",
     "@ton/ton": "^15.4.0",
+    "@tonconnect/sdk": "^3.0.0",
+    "@tonconnect/ui": "^2.0.0",
     "dotenv": "^16.6.1",
     "husky": "^9.1.7"
   },
