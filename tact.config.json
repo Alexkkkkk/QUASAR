@@ -9,6 +9,16 @@
         "masterchain": false,
         "external": false
       }
+    },
+    {
+      "name": "quasar_defi",
+      "path": "./contracts/quasar_defi.tact",
+      "output": "./build",
+      "options": {
+        "debug": false,
+        "masterchain": false,
+        "external": false
+      }
     }
   ]
 }

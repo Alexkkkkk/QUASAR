@@ -1,14 +1,16 @@
 {
   "name": "quasar-jetton",
-  "version": "2.0.0",
-  "description": "QUASAR - The brightest Jetton in the TON universe (Tact)",
+  "version": "3.0.0",
+  "description": "QUASAR — The brightest Jetton in the TON universe. AI Sovereignty | DeFi DEX | Yield Farming | Web3",
   "main": "index.js",
+  "type": "module",
   "scripts": {
     "build": "tact --config tact.config.json",
-    "deploy": "ts-node scripts/deploy.ts",
-    "deploy:defi": "ts-node scripts/deploy_defi.ts",
+    "deploy": "ts-node --esm scripts/deploy_all.ts",
+    "deploy:defi": "ts-node --esm scripts/deploy_defi.ts",
     "test": "jest --passWithNoTests",
-    "lint": "tact --config tact.config.json --check"
+    "lint": "tact --config tact.config.json --check",
+    "website": "npx serve website"
   },
   "keywords": [
     "ton",
@@ -16,7 +18,12 @@
     "quasar",
     "tact",
     "blockchain",
-    "cryptocurrency"
+    "defi",
+    "dex",
+    "yield-farming",
+    "amm",
+    "web3",
+    "ai-oracle"
   ],
   "author": "QUASAR Team",
   "license": "MIT",
@@ -26,8 +33,6 @@
     "@ton/core": "^0.62.1",
     "@ton/crypto": "^3.3.0",
     "@ton/ton": "^15.4.0",
-    "@tonconnect/sdk": "^3.0.0",
-    "@tonconnect/ui": "^2.0.0",
     "dotenv": "^16.6.1",
     "husky": "^9.1.7"
   },
