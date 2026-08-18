@@ -1,0 +1,31 @@
+{
+  "name": "quasar-jetton",
+  "version": "1.0.0",
+  "description": "QUASAR - The brightest Jetton in the TON universe",
+  "main": "index.js",
+  "scripts": {
+    "build": "func -o build/jetton-minter.fif contracts/jetton-minter.fc && func -o build/jetton-wallet.fif contracts/jetton-wallet.fc",
+    "deploy": "node scripts/deploy.js",
+    "test": "jest",
+    "lint": "func -P contracts/*.fc"
+  },
+  "keywords": [
+    "ton",
+    "jetton",
+    "quasar",
+    "blockchain",
+    "cryptocurrency"
+  ],
+  "author": "QUASAR Team",
+  "license": "MIT",
+  "dependencies": {
+    "@ton/ton": "^13.0.0",
+    "@ton/crypto": "^3.2.0",
+    "@ton/core": "^0.53.0",
+    "dotenv": "^16.3.1"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "@types/node": "^20.8.0"
+  }
+}
