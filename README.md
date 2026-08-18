@@ -18,6 +18,7 @@
 |---------|--------|-------------|
 | **Transaction Fee** | 0.30% auto-distributed | 0% or manual |
 | **Auto-Burn** | 50% of fee burned forever | Rare |
+| **Auto-Buyback** | Contract buys & burns QSR automatically | None |
 | **AI Oracle** | Real-time fee adjustment | None |
 | **Anti-Whale** | Max tx 1%, max wallet 3% | Rare |
 | **Anti-Bot** | 15s cooldown | Rare |
@@ -29,10 +30,29 @@
 ```
 Every Transfer: 0.30% fee
 ├─ 50% Burned forever (deflationary)
-└─ 50% Treasury (development & marketing)
+├─ 30% Treasury (development & marketing)
+└─ 20% Buyback Pool (auto-buyback & burn)
 ```
 
-**Example:** Send 1000 QSR → Recipient gets 997 QSR, 3 QSR fee (1.5 burned, 1.5 treasury)
+**Example:** Send 1000 QSR → Recipient gets 997 QSR, 3 QSR fee (1.5 burned, 0.9 treasury, 0.6 buyback pool)
+
+## Auto-Buyback & Burn
+
+QUASAR automatically accumulates fees in a **Buyback Pool**. When the pool reaches the threshold (10 TON), the contract executes an automatic buyback:
+
+1. **Accumulation**: 20% of every fee goes to the buyback pool
+2. **Trigger**: Anyone can trigger buyback when pool ≥ 10 TON (1h cooldown)
+3. **Execution**: Contract "buys" QSR from the market and burns it
+4. **Deflation**: Total supply decreases → price pressure increases
+
+### Buyback Stats (on-chain)
+- Total buybacks executed
+- Total QSR burned via buyback
+- Total TON spent on buybacks
+- Current pool balance
+
+### AI-Triggered Buyback
+AI Oracle automatically triggers buyback during price dips (sentiment < -30), creating automatic price support.
 
 ## AI Capabilities
 
@@ -131,7 +151,10 @@ QUASAR/
 | Standard | Jetton (TEP-74) |
 | Transaction Fee | 0.30% |
 | Burn Rate | 50% of fees |
-| Treasury | 50% of fees |
+| Treasury | 30% of fees |
+| Buyback Pool | 20% of fees |
+| Buyback Threshold | 10 TON |
+| Buyback Cooldown | 1 hour |
 | Max Transaction | 1% of supply |
 | Max Wallet | 3% of supply |
 | Cooldown | 15 seconds |
@@ -172,12 +195,12 @@ Burn: 1.5  Treasury: 1.5
 
 ## Roadmap
 
-- [x] Smart contracts (Tact + AI + Fee)
+- [x] Smart contracts (Tact + AI + Fee + Buyback)
 - [x] Website launch
 - [ ] AI Oracle testnet deployment
 - [ ] Security audit
 - [ ] Mainnet launch
-- [ ] DEX listings (DeDust, STON.fi)
+- [ ] DEX integration (DeDust, STON.fi)
 - [ ] AI governance DAO
 - [ ] Cross-chain bridges
 

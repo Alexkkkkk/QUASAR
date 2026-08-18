@@ -3,7 +3,7 @@ import "@stdlib/content";
 
 // ═══════════════════════════════════════════════════════════════
 // QUASAR — The Ultimate AI-Powered Jetton
-// 0.30% transaction fee | Auto-burn | Anti-whale | AI Oracle
+// 0.30% fee | Auto-Buyback & Burn | Anti-whale | AI Oracle
 // ═══════════════════════════════════════════════════════════════
 
 // ─── AI Oracle Messages ───
@@ -14,8 +14,8 @@ message AISetOracle {
 
 message AIRebalance {
     queryId: Int as uint64;
-    targetFeeBps: Int as uint16;          // 10-100 (0.10% - 1.00%)
-    targetBurnShare: Int as uint8;        // 0-100%
+    targetFeeBps: Int as uint16;
+    targetBurnShare: Int as uint8;
     recommendation: String;
 }
 
@@ -106,6 +106,19 @@ message ToggleTrading {
     enabled: Bool;
 }
 
+// ─── Buyback Messages ───
+
+message TriggerBuyback {
+    queryId: Int as uint64;
+}
+
+message SetBuybackConfig {
+    enabled: Bool;
+    threshold: Int as coins;        // Min TON to trigger
+    cooldown: Int as uint32;        // Seconds between buybacks
+    burnPercent: Int as uint8;      // % of bought QSR to burn
+}
+
 // ─── Data Structures ───
 
 struct JettonData {
@@ -134,14 +147,26 @@ struct AIState {
 }
 
 struct FeeConfig {
-    feeBps: Int;              // Basis points (30 = 0.30%)
-    burnShare: Int;           // % of fee to burn (0-100)
-    treasuryShare: Int;       // % of fee to treasury (auto)
-    maxTxBps: Int;            // Max tx % of supply
-    maxWalletBps: Int;        // Max wallet % of supply
-    cooldown: Int;            // Seconds between txs
+    feeBps: Int;
+    burnShare: Int;
+    treasuryShare: Int;
+    maxTxBps: Int;
+    maxWalletBps: Int;
+    cooldown: Int;
     totalBurned: Int;
     totalFeesCollected: Int;
+}
+
+struct BuybackState {
+    enabled: Bool;
+    pool: Int;
+    threshold: Int;
+    cooldown: Int;
+    burnPercent: Int;
+    lastBuybackAt: Int;
+    totalBuybacks: Int;
+    totalQsrBurnedViaBuyback: Int;
+    totalTonSpent: Int;
 }
 
 struct AIRecommendation {
@@ -165,15 +190,26 @@ contract QuasarMaster with Deployable {
     walletCode: Cell;
     
     // ─── Fee & Security State ───
-    feeBps: Int as uint16;               // 30 = 0.30%
-    feeBurnShare: Int as uint8;          // 50% of fee burned
+    feeBps: Int as uint16;
+    feeBurnShare: Int as uint8;
     treasury: Address;
     totalBurned: Int as coins;
     totalFeesCollected: Int as coins;
-    maxTxBps: Int as uint16;             // 100 = 1%
-    maxWalletBps: Int as uint16;         // 300 = 3%
-    cooldownSeconds: Int as uint16;      // 15 seconds
+    maxTxBps: Int as uint16;
+    maxWalletBps: Int as uint16;
+    cooldownSeconds: Int as uint16;
     tradingEnabled: Bool;
+    
+    // ─── Buyback State ───
+    buybackEnabled: Bool;
+    buybackPool: Int as coins;
+    buybackThreshold: Int as coins;
+    buybackCooldown: Int as uint32;
+    buybackBurnPercent: Int as uint8;
+    lastBuybackTime: Int;
+    totalBuybacks: Int;
+    totalQsrBurnedViaBuyback: Int as coins;
+    totalTonSpentOnBuyback: Int as coins;
     
     // ─── AI State ───
     aiOracle: Address;
@@ -199,10 +235,21 @@ contract QuasarMaster with Deployable {
         self.treasury = owner;
         self.totalBurned = 0;
         self.totalFeesCollected = 0;
-        self.maxTxBps = 100;       // 1% max tx
-        self.maxWalletBps = 300;   // 3% max wallet
+        self.maxTxBps = 100;
+        self.maxWalletBps = 300;
         self.cooldownSeconds = 15;
         self.tradingEnabled = true;
+        
+        // Buyback defaults
+        self.buybackEnabled = true;
+        self.buybackPool = 0;
+        self.buybackThreshold = ton("10");      // 10 TON minimum
+        self.buybackCooldown = 3600;             // 1 hour
+        self.buybackBurnPercent = 100;           // 100% of bought QSR burned
+        self.lastBuybackTime = 0;
+        self.totalBuybacks = 0;
+        self.totalQsrBurnedViaBuyback = 0;
+        self.totalTonSpentOnBuyback = 0;
         
         // AI defaults
         self.aiOracle = owner;
@@ -224,17 +271,9 @@ contract QuasarMaster with Deployable {
         require(sender() == self.owner, "Not authorized to mint");
         require(self.mintable, "Minting disabled");
         
-        // Anti-whale: check max transaction
         let maxTx: Int = self.totalSupply * self.maxTxBps / 10000;
         if (self.totalSupply > 0) {
             require(msg.amount <= maxTx, "Exceeds max transaction size");
-        }
-        
-        // Anti-whale: check max wallet for receiver
-        let maxWallet: Int = self.totalSupply * self.maxWalletBps / 10000;
-        if (maxWallet > 0) {
-            let walletInit: StateInit = initOf QuasarWallet(msg.receiver, myAddress());
-            // Note: cannot read wallet balance here, enforced at wallet level
         }
         
         self.totalSupply = self.totalSupply + msg.amount;
@@ -280,27 +319,37 @@ contract QuasarMaster with Deployable {
     }
     
     // ═══════════════════════════════════════════════════════════
-    // FEE PROCESSING — The Core Innovation
+    // FEE PROCESSING — 0.30% with Buyback Pool
     // ═══════════════════════════════════════════════════════════
     
     receive(msg: FeeTransfer) {
-        // Verify sender is a valid QUASAR wallet
         let walletInit: StateInit = initOf QuasarWallet(msg.originalSender, myAddress());
         require(sender() == contractAddress(walletInit), "Invalid fee source");
         
         self.totalFeesCollected = self.totalFeesCollected + msg.amount;
         
-        // Distribute fee: burn + treasury
+        // Split fee: burn + treasury + buyback pool
         let burnAmount: Int = msg.amount * self.feeBurnShare / 100;
-        let treasuryAmount: Int = msg.amount - burnAmount;
+        let remainingAfterBurn: Int = msg.amount - burnAmount;
         
-        // Auto-burn: destroy tokens forever
+        // 20% of remaining goes to buyback pool, rest to treasury
+        let buybackAmount: Int = remainingAfterBurn * 20 / 100;
+        let treasuryAmount: Int = remainingAfterBurn - buybackAmount;
+        
+        // Auto-burn
         if (burnAmount > 0) {
             self.totalSupply = self.totalSupply - burnAmount;
             self.totalBurned = self.totalBurned + burnAmount;
         }
         
-        // Send treasury portion to treasury wallet
+        // Add to buyback pool
+        if (buybackAmount > 0 && self.buybackEnabled) {
+            self.buybackPool = self.buybackPool + buybackAmount;
+        } else if (buybackAmount > 0) {
+            treasuryAmount = treasuryAmount + buybackAmount;
+        }
+        
+        // Send treasury portion
         if (treasuryAmount > 0 && self.treasury != newAddress(0, 0)) {
             let treasuryWalletInit: StateInit = initOf QuasarWallet(self.treasury, myAddress());
             send(SendParameters{
@@ -318,6 +367,75 @@ contract QuasarMaster with Deployable {
                 data: treasuryWalletInit.data
             });
         }
+        
+        // Auto-trigger buyback if threshold reached
+        if (self.buybackEnabled && self.buybackPool >= self.buybackThreshold) {
+            if (now() - self.lastBuybackTime >= self.buybackCooldown) {
+                self._executeBuyback(msg.queryId);
+            }
+        }
+    }
+    
+    // ═══════════════════════════════════════════════════════════
+    // AUTOBUYBACK & BURN — The Core Innovation
+    // ═══════════════════════════════════════════════════════════
+    
+    receive(msg: TriggerBuyback) {
+        require(self.buybackEnabled, "Buyback disabled");
+        require(self.buybackPool >= self.buybackThreshold, "Pool below threshold");
+        require(now() - self.lastBuybackTime >= self.buybackCooldown, "Buyback cooldown");
+        
+        // Anyone can trigger (bot-resistant via cooldown + threshold)
+        self._executeBuyback(msg.queryId);
+    }
+    
+    fun _executeBuyback(queryId: Int) {
+        let spendAmount: Int = self.buybackPool;
+        self.buybackPool = 0;
+        
+        // Calculate QSR to burn based on "buyback"
+        // In production: swap TON for QSR on DeDust/STON.fi
+        // Here: burn equivalent QSR from supply (simulating market buy)
+        let qsrToBurn: Int = spendAmount * 1000;  // Simplified rate
+        if (qsrToBurn > self.totalSupply / 100) {
+            qsrToBurn = self.totalSupply / 100;  // Max 1% supply per buyback
+        }
+        
+        // Burn the QSR
+        if (qsrToBurn > 0) {
+            self.totalSupply = self.totalSupply - qsrToBurn;
+            self.totalBurned = self.totalBurned + qsrToBurn;
+            self.totalQsrBurnedViaBuyback = self.totalQsrBurnedViaBuyback + qsrToBurn;
+        }
+        
+        self.totalTonSpentOnBuyback = self.totalTonSpentOnBuyback + spendAmount;
+        self.totalBuybacks = self.totalBuybacks + 1;
+        self.lastBuybackTime = now();
+        
+        // In production: send TON to DeDust Router here
+        // send(SendParameters{ to: DEDUST_ROUTER, value: spendAmount, ... });
+        
+        // Notify owner/AI
+        send(SendParameters{
+            to: self.owner,
+            value: 0,
+            bounce: false,
+            mode: SendRemainingValue,
+            body: beginCell()
+                .storeUint(0x99999999, 32)
+                .store_uint(queryId, 64)
+                .store_coins(spendAmount)
+                .store_coins(qsrToBurn)
+                .end_cell()
+        });
+    }
+    
+    receive(msg: SetBuybackConfig) {
+        require(sender() == self.owner, "Only owner");
+        self.buybackEnabled = msg.enabled;
+        self.buybackThreshold = msg.threshold;
+        self.buybackCooldown = msg.cooldown;
+        self.buybackBurnPercent = msg.burnPercent;
     }
     
     // ═══════════════════════════════════════════════════════════
@@ -387,29 +505,28 @@ contract QuasarMaster with Deployable {
         self.signalCount = self.signalCount + 1;
         self.priceHistory.set(now(), msg.priceTon);
         
-        // AI fee adjustment based on volatility
+        // AI fee adjustment
         if (msg.action == 2 && msg.volatility > 5000) {
-            // High volatility → increase fee to 0.50%
-            if (self.feeBps < 50) {
-                self.feeBps = 50;
-            }
-            // Increase burn share to 70% for deflationary protection
+            if (self.feeBps < 50) { self.feeBps = 50; }
             self.feeBurnShare = 70;
         }
         
         if (msg.action == 3 && msg.sentiment > 80) {
-            // Bull market → lower fee to 0.20% to encourage trading
-            if (self.feeBps > 20) {
-                self.feeBps = 20;
-            }
+            if (self.feeBps > 20) { self.feeBps = 20; }
             self.feeBurnShare = 40;
             self.mintable = true;
         }
         
         if (msg.action == 1 && msg.sentiment < -50) {
-            // Bear market → pause minting, increase burn
             self.mintable = false;
             self.feeBurnShare = 80;
+        }
+        
+        // AI auto-trigger buyback on price dip
+        if (msg.action == 1 && msg.sentiment < -30 && self.buybackEnabled) {
+            if (self.buybackPool >= self.buybackThreshold && now() - self.lastBuybackTime >= self.buybackCooldown) {
+                self._executeBuyback(msg.queryId);
+            }
         }
     }
     
@@ -429,7 +546,6 @@ contract QuasarMaster with Deployable {
             self.emergencyPause = true;
             self.tradingEnabled = false;
             self.mintable = false;
-            // Max fee for protection
             self.feeBps = 100;
             self.feeBurnShare = 90;
         } else if (msg.severity == 2) {
@@ -451,6 +567,8 @@ contract QuasarMaster with Deployable {
             self.feeBurnShare = msg.newValue;
         } else if (msg.proposalType == 3) {
             self.aiOracle = newAddress(0, msg.newValue);
+        } else if (msg.proposalType == 4) {
+            self.buybackThreshold = msg.newValue;
         }
         
         self.anomalyLog.set(self.anomalyIndex, AIRecommendation{
@@ -517,6 +635,20 @@ contract QuasarMaster with Deployable {
         };
     }
     
+    get fun get_buyback_state(): BuybackState {
+        return BuybackState{
+            enabled: self.buybackEnabled,
+            pool: self.buybackPool,
+            threshold: self.buybackThreshold,
+            cooldown: self.buybackCooldown,
+            burnPercent: self.buybackBurnPercent,
+            lastBuybackAt: self.lastBuybackTime,
+            totalBuybacks: self.totalBuybacks,
+            totalQsrBurnedViaBuyback: self.totalQsrBurnedViaBuyback,
+            totalTonSpent: self.totalTonSpentOnBuyback
+        };
+    }
+    
     get fun get_ai_recommendation(index: Int): AIRecommendation? {
         return self.anomalyLog.get(index);
     }
@@ -559,10 +691,6 @@ contract QuasarWallet {
     receive(msg: TokenTransfer) {
         require(sender() == self.owner, "Not wallet owner");
         require(self.balance >= msg.amount, "Insufficient balance");
-        
-        // Cooldown protection (anti-bot)
-        // Note: In production, read cooldown from master via get-method
-        // Here we use a reasonable default enforced at wallet level
         require(now() - self.lastTxTime >= 5, "Transaction cooldown active");
         self.lastTxTime = now();
         
@@ -570,13 +698,11 @@ contract QuasarWallet {
         // FEE DEDUCTION: 0.30% (30 bps)
         // ═══════════════════════════════════════════════════════
         let fee: Int = msg.amount * 30 / 10000;
-        if (fee < 1) { fee = 1; }  // Minimum fee
+        if (fee < 1) { fee = 1; }
         
         let sendAmount: Int = msg.amount - fee;
-        
         self.balance = self.balance - msg.amount;
         
-        // Send main amount to recipient
         let init: StateInit = initOf QuasarWallet(msg.destination, self.master);
         let destinationAddress: Address = contractAddress(init);
         
@@ -595,7 +721,6 @@ contract QuasarWallet {
             data: init.data
         });
         
-        // Send fee to master for auto-burn + treasury distribution
         if (fee > 0) {
             send(SendParameters{
                 to: self.master,
