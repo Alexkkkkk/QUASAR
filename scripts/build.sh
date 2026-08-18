@@ -1,18 +1,19 @@
 #!/bin/bash
 set -e
 
-echo "🌟 Building QUASAR Jetton Contracts..."
+echo "🌟 Building QUASAR Jetton (Tact)..."
 
 mkdir -p build
 
-# Compile minter contract
-if command -v func &> /dev/null; then
-    func -o build/jetton-minter.fif -SPA contracts/jetton-minter.fc
-    func -o build/jetton-wallet.fif -SPA contracts/jetton-wallet.fc
+# Check if tact is installed
+if command -v npx &> /dev/null; then
+    npx tact --config tact.config.json
     echo "✅ Contracts compiled successfully"
 else
-    echo "⚠️  FunC compiler not found. Install from https://github.com/ton-blockchain/ton"
+    echo "⚠️  npx not found. Install Node.js dependencies first:"
+    echo "   npm install"
     exit 1
 fi
 
 echo "🚀 Build complete!"
+echo "📁 Compiled files in ./build/"

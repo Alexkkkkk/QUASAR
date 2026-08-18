@@ -1,0 +1,14 @@
+{
+  "projects": [
+    {
+      "name": "quasar",
+      "path": "./contracts/quasar.tact",
+      "output": "./build",
+      "options": {
+        "debug": false,
+        "masterchain": false,
+        "external": false
+      }
+    }
+  ]
+}

@@ -1,31 +1,36 @@
 {
   "name": "quasar-jetton",
-  "version": "1.0.0",
-  "description": "QUASAR - The brightest Jetton in the TON universe",
+  "version": "2.0.0",
+  "description": "QUASAR - The brightest Jetton in the TON universe (Tact)",
   "main": "index.js",
   "scripts": {
-    "build": "func -o build/jetton-minter.fif contracts/jetton-minter.fc && func -o build/jetton-wallet.fif contracts/jetton-wallet.fc",
-    "deploy": "node scripts/deploy.js",
+    "build": "tact --config tact.config.json",
+    "deploy": "ts-node scripts/deploy.ts",
     "test": "jest",
-    "lint": "func -P contracts/*.fc"
+    "lint": "tact --config tact.config.json --check"
   },
   "keywords": [
     "ton",
     "jetton",
     "quasar",
+    "tact",
     "blockchain",
     "cryptocurrency"
   ],
   "author": "QUASAR Team",
   "license": "MIT",
   "dependencies": {
-    "@ton/ton": "^13.0.0",
-    "@ton/crypto": "^3.2.0",
-    "@ton/core": "^0.53.0",
-    "dotenv": "^16.3.1"
+    "@tact-lang/compiler": "^1.4.0",
+    "@tact-lang/emulator": "^4.2.0",
+    "@ton/ton": "^15.0.0",
+    "@ton/crypto": "^3.3.0",
+    "@ton/core": "^0.56.0",
+    "dotenv": "^16.4.0"
   },
   "devDependencies": {
+    "@types/node": "^20.11.0",
     "jest": "^29.7.0",
-    "@types/node": "^20.8.0"
+    "ts-node": "^10.9.2",
+    "typescript": "^5.3.3"
   }
 }
