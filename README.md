@@ -1,44 +1,47 @@
 # QUASAR
 
-> The brightest Jetton in the TON universe.
+> The brightest AI-powered Jetton in the TON universe.
 
 [![TON](https://img.shields.io/badge/Blockchain-TON-blue)](https://ton.org)
 [![Tact](https://img.shields.io/badge/Language-Tact-purple)](https://tact-lang.org)
+[![AI](https://img.shields.io/badge/AI-Integrated-red)](https://github.com/Alexkkkkk/QUASAR)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 ## Overview
 
-**QUASAR** is a next-generation Jetton (token standard on TON) inspired by the brightest objects in the universe. Built on The Open Network (TON) using **Tact** — a modern, type-safe smart contract language.
+**QUASAR** is the first AI-integrated Jetton on TON. Built with **Tact** and powered by an on-chain AI Oracle, QUASAR autonomously manages tokenomics, responds to market conditions, and protects holders from anomalies.
 
-## Why Tact?
+## Why QUASAR?
 
-- **Type Safety**: Static typing prevents runtime errors
-- **Modern Syntax**: Familiar to TypeScript/JavaScript developers
-- **Built-in Security**: Protected arithmetic, message validation
-- **Developer Experience**: Clear error messages, IDE support
-- **Gas Efficiency**: Optimized compilation to FunC
+- **AI-Driven Tokenomics**: Autonomous burn, rebalance, and supply management
+- **Anomaly Detection**: AI monitors blockchain activity and triggers emergency protocols
+- **Predictive Governance**: AI proposals auto-execute above confidence threshold
+- **Type-Safe**: Built with Tact for maximum security
+- **Lightning Fast**: Sub-second finality on TON
 
-## Features
+## AI Capabilities
 
-- **Cosmic Tokenomics**: Deflationary mechanics with burn protocols
-- **High-Speed Transactions**: Leveraging TON's sub-second finality
-- **Low Fees**: Ultra-low transaction costs on TON
-- **Community Driven**: Decentralized governance ready
-- **Secure**: Type-safe Tact smart contracts
+| Feature | Description |
+|---------|-------------|
+| `AIRebalance` | AI adjusts burn rate and supply cap based on market data |
+| `AIPriceSignal` | Reacts to price volatility, sentiment, and momentum |
+| `AIAnomalyAlert` | Emergency pause on critical threats (whales, dumps, hacks) |
+| `AIGovernanceProposal` | Auto-executes high-confidence AI recommendations |
+| `Price History` | On-chain storage for ML model training |
 
 ## Smart Contracts
 
 | Contract | File | Description |
 |----------|------|-------------|
-| QuasarMaster | `contracts/quasar.tact` | Jetton Minter (token issuance) |
-| QuasarWallet | `contracts/quasar.tact` | Jetton Wallet (token storage) |
+| QuasarMaster | `contracts/quasar.tact` | AI-powered Jetton Minter |
+| QuasarWallet | `contracts/quasar.tact` | Jetton Wallet with AI notifications |
 
 ## Quick Start
 
 ### Prerequisites
 
 - [Node.js](https://nodejs.org/) v18+
-- [npm](https://www.npmjs.com/) or [yarn](https://yarnpkg.com/)
+- [npm](https://www.npmjs.com/)
 
 ### Installation
 
@@ -57,11 +60,20 @@ npm run build
 ### Deploy
 
 ```bash
-# Configure .env file first
 cp .env.example .env
-# Edit .env with your wallet mnemonic
+# Edit .env with your wallet mnemonic and optional AI oracle
 
 npm run deploy
+```
+
+### Setup AI Oracle
+
+```bash
+# Set AI oracle address in .env
+AI_ORACLE_ADDRESS=EQAiOracleAddress...
+
+# Or send manually after deploy
+# Message: AISetOracle { oracleAddress: Address }
 ```
 
 ## Project Structure
@@ -69,16 +81,16 @@ npm run deploy
 ```
 QUASAR/
 ├── contracts/
-│   └── quasar.tact          # Tact smart contracts
+│   └── quasar.tact          # Tact smart contracts with AI logic
 ├── scripts/
 │   ├── build.sh             # Build script
-│   └── deploy.ts            # Deployment script
+│   └── deploy.ts            # Deployment with AI setup
 ├── build/                   # Compiled contracts
-├── website/                 # Landing page
-├── assets/                  # Logo and media
+├── website/                 # Cosmic landing page
+├── assets/
+│   └── logo.png             # 256x256 token logo
 ├── docs/                    # Documentation
 ├── tact.config.json         # Tact compiler config
-├── tsconfig.json            # TypeScript config
 └── package.json             # Dependencies
 ```
 
@@ -91,20 +103,38 @@ QUASAR/
 | Symbol | QSR |
 | Blockchain | TON |
 | Standard | Jetton (TEP-74) |
+| Default Burn | 1% |
+| AI Mode | Configurable |
+
+## AI Architecture
+
+```
+┌─────────────┐     ┌──────────────┐     ┌─────────────┐
+│  AI Agent   │────▶│  AI Oracle   │────▶│   QUASAR    │
+│  (Off-chain)│     │  (Contract)  │     │  (Master)   │
+└─────────────┘     └──────────────┘     └─────────────┘
+                           │                    │
+                           ▼                    ▼
+                    ┌──────────────┐     ┌─────────────┐
+                    │  Price Feeds │     │   Wallets   │
+                    │  Analytics   │     │   Holders   │
+                    └──────────────┘     └─────────────┘
+```
 
 ## Roadmap
 
-- [x] Smart contract development (Tact)
+- [x] Smart contract development (Tact + AI)
 - [x] Website launch
-- [ ] Testnet deployment
+- [ ] AI Oracle testnet deployment
 - [ ] Security audit
 - [ ] Mainnet launch
 - [ ] DEX listings (DeDust, STON.fi)
-- [ ] Community governance
+- [ ] AI governance DAO
+- [ ] Cross-chain bridges
 
 ## Contributing
 
-Contributions are welcome! Please read our [Contributing Guide](docs/CONTRIBUTING.md) first.
+Contributions are welcome! Read our [Contributing Guide](docs/CONTRIBUTING.md).
 
 ## License
 
@@ -119,4 +149,4 @@ Contributions are welcome! Please read our [Contributing Guide](docs/CONTRIBUTIN
 
 ---
 
-*Powered by TON Blockchain & Tact Language*
+*Powered by TON Blockchain, Tact Language, and AI*
