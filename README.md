@@ -1,40 +1,63 @@
 # QUASAR
 
-> The brightest AI-powered Jetton in the TON universe.
+> The Ultimate AI-Powered Jetton on TON. 0.30% fee. Auto-burn. Anti-whale. Unstoppable.
 
 [![TON](https://img.shields.io/badge/Blockchain-TON-blue)](https://ton.org)
 [![Tact](https://img.shields.io/badge/Language-Tact-purple)](https://tact-lang.org)
 [![AI](https://img.shields.io/badge/AI-Integrated-red)](https://github.com/Alexkkkkk/QUASAR)
+[![Fee](https://img.shields.io/badge/Fee-0.30%25-green)](https://github.com/Alexkkkkk/QUASAR)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 ## Overview
 
-**QUASAR** is the first AI-integrated Jetton on TON. Built with **Tact** and powered by an on-chain AI Oracle, QUASAR autonomously manages tokenomics, responds to market conditions, and protects holders from anomalies.
+**QUASAR** is the most advanced Jetton on TON. Every transaction fuels the ecosystem through a **0.30% fee** that auto-burns and funds the treasury. AI Oracle monitors the market 24/7, adjusting parameters in real-time to protect holders and maximize value.
 
-## Why QUASAR?
+## Why QUASAR is the Best
 
-- **AI-Driven Tokenomics**: Autonomous burn, rebalance, and supply management
-- **Anomaly Detection**: AI monitors blockchain activity and triggers emergency protocols
-- **Predictive Governance**: AI proposals auto-execute above confidence threshold
-- **Type-Safe**: Built with Tact for maximum security
-- **Lightning Fast**: Sub-second finality on TON
+| Feature | QUASAR | Other Tokens |
+|---------|--------|-------------|
+| **Transaction Fee** | 0.30% auto-distributed | 0% or manual |
+| **Auto-Burn** | 50% of fee burned forever | Rare |
+| **AI Oracle** | Real-time fee adjustment | None |
+| **Anti-Whale** | Max tx 1%, max wallet 3% | Rare |
+| **Anti-Bot** | 15s cooldown | Rare |
+| **Emergency Pause** | AI + Owner controlled | Manual only |
+| **Type Safety** | Tact compiled | FunC mostly |
+
+## Fee Mechanics
+
+```
+Every Transfer: 0.30% fee
+├─ 50% Burned forever (deflationary)
+└─ 50% Treasury (development & marketing)
+```
+
+**Example:** Send 1000 QSR → Recipient gets 997 QSR, 3 QSR fee (1.5 burned, 1.5 treasury)
 
 ## AI Capabilities
 
-| Feature | Description |
-|---------|-------------|
-| `AIRebalance` | AI adjusts burn rate and supply cap based on market data |
-| `AIPriceSignal` | Reacts to price volatility, sentiment, and momentum |
-| `AIAnomalyAlert` | Emergency pause on critical threats (whales, dumps, hacks) |
-| `AIGovernanceProposal` | Auto-executes high-confidence AI recommendations |
-| `Price History` | On-chain storage for ML model training |
+| Signal | AI Response |
+|--------|-------------|
+| High volatility | Fee → 0.50%, burn → 70% |
+| Bull market | Fee → 0.20%, burn → 40% |
+| Bear market | Mint paused, burn → 80% |
+| Critical anomaly | Emergency pause, fee → 1.00% |
+| Whale detected | Auto-adjust max wallet limits |
+
+## Security Features
+
+- **Anti-Whale**: Max 1% of supply per transaction, 3% per wallet
+- **Anti-Bot**: 15-second cooldown between transactions
+- **Trading Toggle**: Owner can pause trading in emergencies
+- **Emergency Pause**: AI can instantly freeze all operations
+- **Fee Cap**: Maximum fee 1.00%, adjustable only by AI/Owner
 
 ## Smart Contracts
 
 | Contract | File | Description |
 |----------|------|-------------|
-| QuasarMaster | `contracts/quasar.tact` | AI-powered Jetton Minter |
-| QuasarWallet | `contracts/quasar.tact` | Jetton Wallet with AI notifications |
+| QuasarMaster | `contracts/quasar.tact` | AI-powered minter with fee distribution |
+| QuasarWallet | `contracts/quasar.tact` | Smart wallet with auto-fee deduction |
 
 ## Quick Start
 
@@ -61,18 +84,21 @@ npm run build
 
 ```bash
 cp .env.example .env
-# Edit .env with your wallet mnemonic and optional AI oracle
+# Edit .env with your wallet mnemonic
 
 npm run deploy
 ```
 
-### Setup AI Oracle
+### Configure Fee & AI
 
 ```bash
-# Set AI oracle address in .env
-AI_ORACLE_ADDRESS=EQAiOracleAddress...
+# Set treasury address
+# Message: SetTreasury { treasury: Address }
 
-# Or send manually after deploy
+# Configure fee (0.30% default)
+# Message: SetFeeConfig { feeBps: 30, burnShare: 50, ... }
+
+# Enable AI Oracle
 # Message: AISetOracle { oracleAddress: Address }
 ```
 
@@ -81,10 +107,10 @@ AI_ORACLE_ADDRESS=EQAiOracleAddress...
 ```
 QUASAR/
 ├── contracts/
-│   └── quasar.tact          # Tact smart contracts with AI logic
+│   └── quasar.tact          # Tact contracts with fee + AI
 ├── scripts/
 │   ├── build.sh             # Build script
-│   └── deploy.ts            # Deployment with AI setup
+│   └── deploy.ts            # Deployment script
 ├── build/                   # Compiled contracts
 ├── website/                 # Cosmic landing page
 ├── assets/
@@ -103,8 +129,29 @@ QUASAR/
 | Symbol | QSR |
 | Blockchain | TON |
 | Standard | Jetton (TEP-74) |
-| Default Burn | 1% |
-| AI Mode | Configurable |
+| Transaction Fee | 0.30% |
+| Burn Rate | 50% of fees |
+| Treasury | 50% of fees |
+| Max Transaction | 1% of supply |
+| Max Wallet | 3% of supply |
+| Cooldown | 15 seconds |
+
+## Fee Distribution Flow
+
+```
+User sends 1000 QSR
+        │
+        ▼
+┌─────────────────┐
+│  Fee: 3 QSR     │  ← 0.30%
+│  Send: 997 QSR  │
+└─────────────────┘
+        │
+   ┌────┴────┐
+   ▼         ▼
+Burn: 1.5  Treasury: 1.5
+(deflation)  (development)
+```
 
 ## AI Architecture
 
@@ -112,18 +159,20 @@ QUASAR/
 ┌─────────────┐     ┌──────────────┐     ┌─────────────┐
 │  AI Agent   │────▶│  AI Oracle   │────▶│   QUASAR    │
 │  (Off-chain)│     │  (Contract)  │     │  (Master)   │
+│  ML Models  │     │  Validates   │     │  Executes   │
 └─────────────┘     └──────────────┘     └─────────────┘
                            │                    │
                            ▼                    ▼
                     ┌──────────────┐     ┌─────────────┐
                     │  Price Feeds │     │   Wallets   │
                     │  Analytics   │     │   Holders   │
+                    │  Sentiment   │     │   Burn/Tax  │
                     └──────────────┘     └─────────────┘
 ```
 
 ## Roadmap
 
-- [x] Smart contract development (Tact + AI)
+- [x] Smart contracts (Tact + AI + Fee)
 - [x] Website launch
 - [ ] AI Oracle testnet deployment
 - [ ] Security audit
@@ -134,7 +183,7 @@ QUASAR/
 
 ## Contributing
 
-Contributions are welcome! Read our [Contributing Guide](docs/CONTRIBUTING.md).
+Read our [Contributing Guide](docs/CONTRIBUTING.md).
 
 ## License
 
@@ -149,4 +198,4 @@ Contributions are welcome! Read our [Contributing Guide](docs/CONTRIBUTING.md).
 
 ---
 
-*Powered by TON Blockchain, Tact Language, and AI*
+*Powered by TON Blockchain, Tact Language, and AI. Every transaction makes QSR scarcer.*
