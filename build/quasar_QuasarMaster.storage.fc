@@ -1,0 +1,1399 @@
+;;
+;; Type: StateInit
+;; TLB: _ code:^cell data:^cell = StateInit
+;;
+
+((cell, cell)) $StateInit$_not_null(tuple v) inline {
+    throw_if(128, null?(v));
+    var (cell vvv'code, cell vvv'data) = __tact_tuple_destroy_2(v);
+    return (vvv'code, vvv'data);
+}
+
+;;
+;; Type: SendParameters
+;; TLB: _ bounce:bool to:address value:int257 mode:int257 body:Maybe ^cell code:Maybe ^cell data:Maybe ^cell = SendParameters
+;;
+
+((int, slice, int, int, cell, cell, cell)) $SendParameters$_constructor_to_value_bounce_mode_body(slice $to, int $value, int $bounce, int $mode, cell $body) inline {
+    return ($bounce, $to, $value, $mode, $body, null(), null());
+}
+
+((int, slice, int, int, cell, cell, cell)) $SendParameters$_constructor_to_value_bounce_mode_body_code_data(slice $to, int $value, int $bounce, int $mode, cell $body, cell $code, cell $data) inline {
+    return ($bounce, $to, $value, $mode, $body, $code, $data);
+}
+
+((int, slice, int, int, cell, cell, cell)) $SendParameters$_constructor_bounce_to_value_mode_body_code_data(int $bounce, slice $to, int $value, int $mode, cell $body, cell $code, cell $data) inline {
+    return ($bounce, $to, $value, $mode, $body, $code, $data);
+}
+
+;;
+;; Type: Deploy
+;; Header: 0x946a98b6
+;; TLB: deploy#946a98b6 queryId:uint64 = Deploy
+;;
+
+(slice, ((int))) $Deploy$_load(slice sc_0) inline {
+    throw_unless(129, sc_0~load_uint(32) == 2490013878);
+    var v'queryId = sc_0~load_uint(64);
+    return (sc_0, (v'queryId));
+}
+
+;;
+;; Type: DeployOk
+;; Header: 0xaff90f57
+;; TLB: deploy_ok#aff90f57 queryId:uint64 = DeployOk
+;;
+
+builder $DeployOk$_store(builder build_0, (int) v) inline {
+    var (v'queryId) = v;
+    build_0 = store_uint(build_0, 2952335191, 32);
+    build_0 = build_0.store_uint(v'queryId, 64);
+    return build_0;
+}
+
+cell $DeployOk$_store_cell((int) v) inline {
+    return $DeployOk$_store(begin_cell(), v).end_cell();
+}
+
+((int)) $DeployOk$_constructor_queryId(int $queryId) inline {
+    return ($queryId);
+}
+
+;;
+;; Type: AISetOracle
+;; Header: 0x2a297933
+;; TLB: ai_set_oracle#2a297933 oracleAddress:address = AISetOracle
+;;
+
+(slice, ((slice))) $AISetOracle$_load(slice sc_0) inline {
+    throw_unless(129, sc_0~load_uint(32) == 707361075);
+    var v'oracleAddress = sc_0~__tact_load_address();
+    return (sc_0, (v'oracleAddress));
+}
+
+;;
+;; Type: AIGrantFullAutonomy
+;; Header: 0xc61e9667
+;; TLB: ai_grant_full_autonomy#c61e9667 enabled:bool = AIGrantFullAutonomy
+;;
+
+(slice, ((int))) $AIGrantFullAutonomy$_load(slice sc_0) inline {
+    throw_unless(129, sc_0~load_uint(32) == 3323893351);
+    var v'enabled = sc_0~load_int(1);
+    return (sc_0, (v'enabled));
+}
+
+;;
+;; Type: AIHeartbeat
+;; Header: 0x8f9872bd
+;; TLB: ai_heartbeat#8f9872bd queryId:uint64 status:^string = AIHeartbeat
+;;
+
+(slice, ((int, slice))) $AIHeartbeat$_load(slice sc_0) inline {
+    throw_unless(129, sc_0~load_uint(32) == 2409132733);
+    var v'queryId = sc_0~load_uint(64);
+    var v'status = sc_0~load_ref().begin_parse();
+    return (sc_0, (v'queryId, v'status));
+}
+
+;;
+;; Type: AIVetoVote
+;; Header: 0x9d3b8cb1
+;; TLB: ai_veto_vote#9d3b8cb1 actionId:uint64 voter:address stake:coins reason:^string = AIVetoVote
+;;
+
+(slice, ((int, slice, int, slice))) $AIVetoVote$_load(slice sc_0) inline {
+    throw_unless(129, sc_0~load_uint(32) == 2637925553);
+    var v'actionId = sc_0~load_uint(64);
+    var v'voter = sc_0~__tact_load_address();
+    var v'stake = sc_0~load_coins();
+    var v'reason = sc_0~load_ref().begin_parse();
+    return (sc_0, (v'actionId, v'voter, v'stake, v'reason));
+}
+
+;;
+;; Type: OwnerOverride
+;; Header: 0x09d21b11
+;; TLB: owner_override#09d21b11 actionId:uint64 reason:^string = OwnerOverride
+;;
+
+(slice, ((int, slice))) $OwnerOverride$_load(slice sc_0) inline {
+    throw_unless(129, sc_0~load_uint(32) == 164764433);
+    var v'actionId = sc_0~load_uint(64);
+    var v'reason = sc_0~load_ref().begin_parse();
+    return (sc_0, (v'actionId, v'reason));
+}
+
+;;
+;; Type: AIRebalance
+;; Header: 0x2882f1e8
+;; TLB: ai_rebalance#2882f1e8 queryId:uint64 targetFeeBps:uint16 targetBurnShare:uint8 recommendation:^string = AIRebalance
+;;
+
+(slice, ((int, int, int, slice))) $AIRebalance$_load(slice sc_0) inline {
+    throw_unless(129, sc_0~load_uint(32) == 679670248);
+    var v'queryId = sc_0~load_uint(64);
+    var v'targetFeeBps = sc_0~load_uint(16);
+    var v'targetBurnShare = sc_0~load_uint(8);
+    var v'recommendation = sc_0~load_ref().begin_parse();
+    return (sc_0, (v'queryId, v'targetFeeBps, v'targetBurnShare, v'recommendation));
+}
+
+;;
+;; Type: AIPriceSignal
+;; Header: 0x6920939f
+;; TLB: ai_price_signal#6920939f queryId:uint64 priceTon:coins volatility:uint32 sentiment:int8 action:uint8 = AIPriceSignal
+;;
+
+(slice, ((int, int, int, int, int))) $AIPriceSignal$_load(slice sc_0) inline {
+    throw_unless(129, sc_0~load_uint(32) == 1763742623);
+    var v'queryId = sc_0~load_uint(64);
+    var v'priceTon = sc_0~load_coins();
+    var v'volatility = sc_0~load_uint(32);
+    var v'sentiment = sc_0~load_int(8);
+    var v'action = sc_0~load_uint(8);
+    return (sc_0, (v'queryId, v'priceTon, v'volatility, v'sentiment, v'action));
+}
+
+;;
+;; Type: AIAnomalyAlert
+;; Header: 0xdc63850b
+;; TLB: ai_anomaly_alert#dc63850b queryId:uint64 severity:uint8 anomalyType:uint8 affectedWallets:uint32 recommendedAction:^string = AIAnomalyAlert
+;;
+
+(slice, ((int, int, int, int, slice))) $AIAnomalyAlert$_load(slice sc_0) inline {
+    throw_unless(129, sc_0~load_uint(32) == 3697509643);
+    var v'queryId = sc_0~load_uint(64);
+    var v'severity = sc_0~load_uint(8);
+    var v'anomalyType = sc_0~load_uint(8);
+    var v'affectedWallets = sc_0~load_uint(32);
+    var v'recommendedAction = sc_0~load_ref().begin_parse();
+    return (sc_0, (v'queryId, v'severity, v'anomalyType, v'affectedWallets, v'recommendedAction));
+}
+
+;;
+;; Type: AIGovernanceProposal
+;; Header: 0xd890b03f
+;; TLB: ai_governance_proposal#d890b03f queryId:uint64 proposalType:uint8 newValue:int257 description:^string confidence:uint8 = AIGovernanceProposal
+;;
+
+(slice, ((int, int, int, slice, int))) $AIGovernanceProposal$_load(slice sc_0) inline {
+    throw_unless(129, sc_0~load_uint(32) == 3633360959);
+    var v'queryId = sc_0~load_uint(64);
+    var v'proposalType = sc_0~load_uint(8);
+    var v'newValue = sc_0~load_int(257);
+    var v'description = sc_0~load_ref().begin_parse();
+    var v'confidence = sc_0~load_uint(8);
+    return (sc_0, (v'queryId, v'proposalType, v'newValue, v'description, v'confidence));
+}
+
+;;
+;; Type: AISetFee
+;; Header: 0x17df7398
+;; TLB: ai_set_fee#17df7398 queryId:uint64 feeBps:uint16 reason:^string = AISetFee
+;;
+
+(slice, ((int, int, slice))) $AISetFee$_load(slice sc_0) inline {
+    throw_unless(129, sc_0~load_uint(32) == 400520088);
+    var v'queryId = sc_0~load_uint(64);
+    var v'feeBps = sc_0~load_uint(16);
+    var v'reason = sc_0~load_ref().begin_parse();
+    return (sc_0, (v'queryId, v'feeBps, v'reason));
+}
+
+;;
+;; Type: AISetTreasuryDirect
+;; Header: 0x79b9e4c3
+;; TLB: ai_set_treasury_direct#79b9e4c3 queryId:uint64 treasury:address reason:^string = AISetTreasuryDirect
+;;
+
+(slice, ((int, slice, slice))) $AISetTreasuryDirect$_load(slice sc_0) inline {
+    throw_unless(129, sc_0~load_uint(32) == 2042225859);
+    var v'queryId = sc_0~load_uint(64);
+    var v'treasury = sc_0~__tact_load_address();
+    var v'reason = sc_0~load_ref().begin_parse();
+    return (sc_0, (v'queryId, v'treasury, v'reason));
+}
+
+;;
+;; Type: AISetAntiWhale
+;; Header: 0x10f7c0f7
+;; TLB: ai_set_anti_whale#10f7c0f7 queryId:uint64 maxTxBps:uint16 maxWalletBps:uint16 cooldown:uint16 reason:^string = AISetAntiWhale
+;;
+
+(slice, ((int, int, int, int, slice))) $AISetAntiWhale$_load(slice sc_0) inline {
+    throw_unless(129, sc_0~load_uint(32) == 284672247);
+    var v'queryId = sc_0~load_uint(64);
+    var v'maxTxBps = sc_0~load_uint(16);
+    var v'maxWalletBps = sc_0~load_uint(16);
+    var v'cooldown = sc_0~load_uint(16);
+    var v'reason = sc_0~load_ref().begin_parse();
+    return (sc_0, (v'queryId, v'maxTxBps, v'maxWalletBps, v'cooldown, v'reason));
+}
+
+;;
+;; Type: AISetBuybackDirect
+;; Header: 0x0952917d
+;; TLB: ai_set_buyback_direct#0952917d queryId:uint64 enabled:bool threshold:coins cooldown:uint32 burnPercent:uint8 reason:^string = AISetBuybackDirect
+;;
+
+(slice, ((int, int, int, int, int, slice))) $AISetBuybackDirect$_load(slice sc_0) inline_ref {
+    throw_unless(129, sc_0~load_uint(32) == 156406141);
+    var v'queryId = sc_0~load_uint(64);
+    var v'enabled = sc_0~load_int(1);
+    var v'threshold = sc_0~load_coins();
+    var v'cooldown = sc_0~load_uint(32);
+    var v'burnPercent = sc_0~load_uint(8);
+    var v'reason = sc_0~load_ref().begin_parse();
+    return (sc_0, (v'queryId, v'enabled, v'threshold, v'cooldown, v'burnPercent, v'reason));
+}
+
+;;
+;; Type: AIToggleTrading
+;; Header: 0x0490d605
+;; TLB: ai_toggle_trading#0490d605 queryId:uint64 enabled:bool reason:^string = AIToggleTrading
+;;
+
+(slice, ((int, int, slice))) $AIToggleTrading$_load(slice sc_0) inline {
+    throw_unless(129, sc_0~load_uint(32) == 76600837);
+    var v'queryId = sc_0~load_uint(64);
+    var v'enabled = sc_0~load_int(1);
+    var v'reason = sc_0~load_ref().begin_parse();
+    return (sc_0, (v'queryId, v'enabled, v'reason));
+}
+
+;;
+;; Type: AIEmergencyPause
+;; Header: 0xf5708ab5
+;; TLB: ai_emergency_pause#f5708ab5 queryId:uint64 pause:bool severity:uint8 reason:^string = AIEmergencyPause
+;;
+
+(slice, ((int, int, int, slice))) $AIEmergencyPause$_load(slice sc_0) inline {
+    throw_unless(129, sc_0~load_uint(32) == 4117793461);
+    var v'queryId = sc_0~load_uint(64);
+    var v'pause = sc_0~load_int(1);
+    var v'severity = sc_0~load_uint(8);
+    var v'reason = sc_0~load_ref().begin_parse();
+    return (sc_0, (v'queryId, v'pause, v'severity, v'reason));
+}
+
+;;
+;; Type: AIRotateOracle
+;; Header: 0x2fb11c16
+;; TLB: ai_rotate_oracle#2fb11c16 queryId:uint64 newOracle:address reason:^string = AIRotateOracle
+;;
+
+(slice, ((int, slice, slice))) $AIRotateOracle$_load(slice sc_0) inline {
+    throw_unless(129, sc_0~load_uint(32) == 800136214);
+    var v'queryId = sc_0~load_uint(64);
+    var v'newOracle = sc_0~__tact_load_address();
+    var v'reason = sc_0~load_ref().begin_parse();
+    return (sc_0, (v'queryId, v'newOracle, v'reason));
+}
+
+;;
+;; Type: Mint
+;; Header: 0xfc708bd2
+;; TLB: mint#fc708bd2 amount:int257 receiver:address = Mint
+;;
+
+(slice, ((int, slice))) $Mint$_load(slice sc_0) inline {
+    throw_unless(129, sc_0~load_uint(32) == 4235234258);
+    var v'amount = sc_0~load_int(257);
+    var v'receiver = sc_0~__tact_load_address();
+    return (sc_0, (v'amount, v'receiver));
+}
+
+;;
+;; Type: BurnNotification
+;; Header: 0xdb17f0ca
+;; TLB: burn_notification#db17f0ca queryId:uint64 amount:int257 sender:address responseDestination:address = BurnNotification
+;;
+
+(slice, ((int, int, slice, slice))) $BurnNotification$_load(slice sc_0) inline {
+    throw_unless(129, sc_0~load_uint(32) == 3675779274);
+    var v'queryId = sc_0~load_uint(64);
+    var v'amount = sc_0~load_int(257);
+    var v'sender = sc_0~__tact_load_address();
+    var v'responseDestination = sc_0~__tact_load_address();
+    return (sc_0, (v'queryId, v'amount, v'sender, v'responseDestination));
+}
+
+;;
+;; Type: TokenNotification
+;; Header: 0x04ad3783
+;; TLB: token_notification#04ad3783 queryId:uint64 amount:coins from:address forwardPayload:remainder<slice> = TokenNotification
+;;
+
+builder $TokenNotification$_store(builder build_0, (int, int, slice, slice) v) inline {
+    var (v'queryId, v'amount, v'from, v'forwardPayload) = v;
+    build_0 = store_uint(build_0, 78460803, 32);
+    build_0 = build_0.store_uint(v'queryId, 64);
+    build_0 = build_0.store_coins(v'amount);
+    build_0 = __tact_store_address(build_0, v'from);
+    build_0 = build_0.store_slice(v'forwardPayload);
+    return build_0;
+}
+
+cell $TokenNotification$_store_cell((int, int, slice, slice) v) inline {
+    return $TokenNotification$_store(begin_cell(), v).end_cell();
+}
+
+((int, int, slice, slice)) $TokenNotification$_constructor_queryId_amount_from_forwardPayload(int $queryId, int $amount, slice $from, slice $forwardPayload) inline {
+    return ($queryId, $amount, $from, $forwardPayload);
+}
+
+;;
+;; Type: FeeTransfer
+;; Header: 0xeb527edf
+;; TLB: fee_transfer#eb527edf queryId:uint64 amount:coins originalSender:address originalReceiver:address = FeeTransfer
+;;
+
+(slice, ((int, int, slice, slice))) $FeeTransfer$_load(slice sc_0) inline {
+    throw_unless(129, sc_0~load_uint(32) == 3948052191);
+    var v'queryId = sc_0~load_uint(64);
+    var v'amount = sc_0~load_coins();
+    var v'originalSender = sc_0~__tact_load_address();
+    var v'originalReceiver = sc_0~__tact_load_address();
+    return (sc_0, (v'queryId, v'amount, v'originalSender, v'originalReceiver));
+}
+
+;;
+;; Type: SetTreasury
+;; Header: 0xcfc66cbd
+;; TLB: set_treasury#cfc66cbd treasury:address = SetTreasury
+;;
+
+(slice, ((slice))) $SetTreasury$_load(slice sc_0) inline {
+    throw_unless(129, sc_0~load_uint(32) == 3485887677);
+    var v'treasury = sc_0~__tact_load_address();
+    return (sc_0, (v'treasury));
+}
+
+;;
+;; Type: SetFeeConfig
+;; Header: 0x3c134728
+;; TLB: set_fee_config#3c134728 feeBps:uint16 burnShare:uint8 maxTxBps:uint16 maxWalletBps:uint16 cooldown:uint16 = SetFeeConfig
+;;
+
+(slice, ((int, int, int, int, int))) $SetFeeConfig$_load(slice sc_0) inline {
+    throw_unless(129, sc_0~load_uint(32) == 1007896360);
+    var v'feeBps = sc_0~load_uint(16);
+    var v'burnShare = sc_0~load_uint(8);
+    var v'maxTxBps = sc_0~load_uint(16);
+    var v'maxWalletBps = sc_0~load_uint(16);
+    var v'cooldown = sc_0~load_uint(16);
+    return (sc_0, (v'feeBps, v'burnShare, v'maxTxBps, v'maxWalletBps, v'cooldown));
+}
+
+;;
+;; Type: ToggleTrading
+;; Header: 0xf1822da1
+;; TLB: toggle_trading#f1822da1 enabled:bool = ToggleTrading
+;;
+
+(slice, ((int))) $ToggleTrading$_load(slice sc_0) inline {
+    throw_unless(129, sc_0~load_uint(32) == 4051840417);
+    var v'enabled = sc_0~load_int(1);
+    return (sc_0, (v'enabled));
+}
+
+;;
+;; Type: TriggerBuyback
+;; Header: 0xcfe1fd3c
+;; TLB: trigger_buyback#cfe1fd3c queryId:uint64 = TriggerBuyback
+;;
+
+(slice, ((int))) $TriggerBuyback$_load(slice sc_0) inline {
+    throw_unless(129, sc_0~load_uint(32) == 3487694140);
+    var v'queryId = sc_0~load_uint(64);
+    return (sc_0, (v'queryId));
+}
+
+;;
+;; Type: SetBuybackConfig
+;; Header: 0x83b8144a
+;; TLB: set_buyback_config#83b8144a enabled:bool threshold:coins cooldown:uint32 burnPercent:uint8 = SetBuybackConfig
+;;
+
+(slice, ((int, int, int, int))) $SetBuybackConfig$_load(slice sc_0) inline {
+    throw_unless(129, sc_0~load_uint(32) == 2209879114);
+    var v'enabled = sc_0~load_int(1);
+    var v'threshold = sc_0~load_coins();
+    var v'cooldown = sc_0~load_uint(32);
+    var v'burnPercent = sc_0~load_uint(8);
+    return (sc_0, (v'enabled, v'threshold, v'cooldown, v'burnPercent));
+}
+
+;;
+;; Type: Stake
+;; Header: 0xbef0e904
+;; TLB: stake#bef0e904 amount:coins = Stake
+;;
+
+(slice, ((int))) $Stake$_load(slice sc_0) inline {
+    throw_unless(129, sc_0~load_uint(32) == 3203459332);
+    var v'amount = sc_0~load_coins();
+    return (sc_0, (v'amount));
+}
+
+;;
+;; Type: Unstake
+;; Header: 0xff633be1
+;; TLB: unstake#ff633be1 amount:coins = Unstake
+;;
+
+(slice, ((int))) $Unstake$_load(slice sc_0) inline {
+    throw_unless(129, sc_0~load_uint(32) == 4284693473);
+    var v'amount = sc_0~load_coins();
+    return (sc_0, (v'amount));
+}
+
+;;
+;; Type: ClaimRewards
+;; Header: 0x094a1f7c
+;; TLB: claim_rewards#094a1f7c  = ClaimRewards
+;;
+
+(slice, (tuple)) $ClaimRewards$_load(slice sc_0) inline {
+    throw_unless(129, sc_0~load_uint(32) == 155852668);
+    return (sc_0, null());
+}
+
+;;
+;; Type: SetStakingConfig
+;; Header: 0x13bd6b32
+;; TLB: set_staking_config#13bd6b32 enabled:bool apyBps:uint16 minStake:coins lockPeriod:uint32 = SetStakingConfig
+;;
+
+(slice, ((int, int, int, int))) $SetStakingConfig$_load(slice sc_0) inline {
+    throw_unless(129, sc_0~load_uint(32) == 331180850);
+    var v'enabled = sc_0~load_int(1);
+    var v'apyBps = sc_0~load_uint(16);
+    var v'minStake = sc_0~load_coins();
+    var v'lockPeriod = sc_0~load_uint(32);
+    return (sc_0, (v'enabled, v'apyBps, v'minStake, v'lockPeriod));
+}
+
+;;
+;; Type: RegisterReferral
+;; Header: 0xd3b50b23
+;; TLB: register_referral#d3b50b23 referrer:address = RegisterReferral
+;;
+
+(slice, ((slice))) $RegisterReferral$_load(slice sc_0) inline {
+    throw_unless(129, sc_0~load_uint(32) == 3551857443);
+    var v'referrer = sc_0~__tact_load_address();
+    return (sc_0, (v'referrer));
+}
+
+;;
+;; Type: SetReferralConfig
+;; Header: 0x1ab0a142
+;; TLB: set_referral_config#1ab0a142 enabled:bool rewardBps:uint16 = SetReferralConfig
+;;
+
+(slice, ((int, int))) $SetReferralConfig$_load(slice sc_0) inline {
+    throw_unless(129, sc_0~load_uint(32) == 447783234);
+    var v'enabled = sc_0~load_int(1);
+    var v'rewardBps = sc_0~load_uint(16);
+    return (sc_0, (v'enabled, v'rewardBps));
+}
+
+;;
+;; Type: AddVesting
+;; Header: 0xea3f3bdd
+;; TLB: add_vesting#ea3f3bdd beneficiary:address totalAmount:coins cliff:uint32 duration:uint32 = AddVesting
+;;
+
+(slice, ((slice, int, int, int))) $AddVesting$_load(slice sc_0) inline {
+    throw_unless(129, sc_0~load_uint(32) == 3930012637);
+    var v'beneficiary = sc_0~__tact_load_address();
+    var v'totalAmount = sc_0~load_coins();
+    var v'cliff = sc_0~load_uint(32);
+    var v'duration = sc_0~load_uint(32);
+    return (sc_0, (v'beneficiary, v'totalAmount, v'cliff, v'duration));
+}
+
+;;
+;; Type: ClaimVested
+;; Header: 0xf789340a
+;; TLB: claim_vested#f789340a  = ClaimVested
+;;
+
+(slice, (tuple)) $ClaimVested$_load(slice sc_0) inline {
+    throw_unless(129, sc_0~load_uint(32) == 4152964106);
+    return (sc_0, null());
+}
+
+;;
+;; Type: TriggerLottery
+;; Header: 0xab78b3cf
+;; TLB: trigger_lottery#ab78b3cf queryId:uint64 = TriggerLottery
+;;
+
+(slice, ((int))) $TriggerLottery$_load(slice sc_0) inline {
+    throw_unless(129, sc_0~load_uint(32) == 2876814287);
+    var v'queryId = sc_0~load_uint(64);
+    return (sc_0, (v'queryId));
+}
+
+;;
+;; Type: SetLotteryConfig
+;; Header: 0x1ba0fefa
+;; TLB: set_lottery_config#1ba0fefa enabled:bool ticketPrice:coins drawInterval:uint32 jackpotShare:uint8 = SetLotteryConfig
+;;
+
+(slice, ((int, int, int, int))) $SetLotteryConfig$_load(slice sc_0) inline {
+    throw_unless(129, sc_0~load_uint(32) == 463535866);
+    var v'enabled = sc_0~load_int(1);
+    var v'ticketPrice = sc_0~load_coins();
+    var v'drawInterval = sc_0~load_uint(32);
+    var v'jackpotShare = sc_0~load_uint(8);
+    return (sc_0, (v'enabled, v'ticketPrice, v'drawInterval, v'jackpotShare));
+}
+
+;;
+;; Type: JettonData
+;; TLB: _ totalSupply:int257 mintable:bool adminAddress:address jettonContent:^cell jettonWalletCode:^cell = JettonData
+;;
+
+(int, int, slice, cell, cell) $JettonData$_to_external(((int, int, slice, cell, cell)) v) inline {
+    var (v'totalSupply, v'mintable, v'adminAddress, v'jettonContent, v'jettonWalletCode) = v; 
+    return (v'totalSupply, v'mintable, v'adminAddress, v'jettonContent, v'jettonWalletCode);
+}
+
+((int, int, slice, cell, cell)) $JettonData$_constructor_totalSupply_mintable_adminAddress_jettonContent_jettonWalletCode(int $totalSupply, int $mintable, slice $adminAddress, cell $jettonContent, cell $jettonWalletCode) inline {
+    return ($totalSupply, $mintable, $adminAddress, $jettonContent, $jettonWalletCode);
+}
+
+;;
+;; Type: AIState
+;; TLB: _ oracleAddress:address aiModeEnabled:bool fullAutonomy:bool lastRebalanceAt:int257 totalSignalsReceived:int257 currentFeeBps:int257 priceHistoryCount:int257 anomalyCount:int257 lastHeartbeat:int257 isAlive:bool = AIState
+;;
+
+(slice, int, int, int, int, int, int, int, int, int) $AIState$_to_external(((slice, int, int, int, int, int, int, int, int, int)) v) inline {
+    var (v'oracleAddress, v'aiModeEnabled, v'fullAutonomy, v'lastRebalanceAt, v'totalSignalsReceived, v'currentFeeBps, v'priceHistoryCount, v'anomalyCount, v'lastHeartbeat, v'isAlive) = v; 
+    return (v'oracleAddress, v'aiModeEnabled, v'fullAutonomy, v'lastRebalanceAt, v'totalSignalsReceived, v'currentFeeBps, v'priceHistoryCount, v'anomalyCount, v'lastHeartbeat, v'isAlive);
+}
+
+((slice, int, int, int, int, int, int, int, int, int)) $AIState$_constructor_oracleAddress_aiModeEnabled_fullAutonomy_lastRebalanceAt_totalSignalsReceived_currentFeeBps_priceHistoryCount_anomalyCount_lastHeartbeat_isAlive(slice $oracleAddress, int $aiModeEnabled, int $fullAutonomy, int $lastRebalanceAt, int $totalSignalsReceived, int $currentFeeBps, int $priceHistoryCount, int $anomalyCount, int $lastHeartbeat, int $isAlive) inline {
+    return ($oracleAddress, $aiModeEnabled, $fullAutonomy, $lastRebalanceAt, $totalSignalsReceived, $currentFeeBps, $priceHistoryCount, $anomalyCount, $lastHeartbeat, $isAlive);
+}
+
+;;
+;; Type: FeeConfig
+;; TLB: _ feeBps:int257 burnShare:int257 treasuryShare:int257 maxTxBps:int257 maxWalletBps:int257 cooldown:int257 totalBurned:int257 totalFeesCollected:int257 = FeeConfig
+;;
+
+(int, int, int, int, int, int, int, int) $FeeConfig$_to_external(((int, int, int, int, int, int, int, int)) v) inline {
+    var (v'feeBps, v'burnShare, v'treasuryShare, v'maxTxBps, v'maxWalletBps, v'cooldown, v'totalBurned, v'totalFeesCollected) = v; 
+    return (v'feeBps, v'burnShare, v'treasuryShare, v'maxTxBps, v'maxWalletBps, v'cooldown, v'totalBurned, v'totalFeesCollected);
+}
+
+((int, int, int, int, int, int, int, int)) $FeeConfig$_constructor_feeBps_burnShare_treasuryShare_maxTxBps_maxWalletBps_cooldown_totalBurned_totalFeesCollected(int $feeBps, int $burnShare, int $treasuryShare, int $maxTxBps, int $maxWalletBps, int $cooldown, int $totalBurned, int $totalFeesCollected) inline {
+    return ($feeBps, $burnShare, $treasuryShare, $maxTxBps, $maxWalletBps, $cooldown, $totalBurned, $totalFeesCollected);
+}
+
+;;
+;; Type: BuybackState
+;; TLB: _ enabled:bool pool:int257 threshold:int257 cooldown:int257 burnPercent:int257 lastBuybackAt:int257 totalBuybacks:int257 totalQsrBurnedViaBuyback:int257 totalTonSpent:int257 = BuybackState
+;;
+
+(int, int, int, int, int, int, int, int, int) $BuybackState$_to_external(((int, int, int, int, int, int, int, int, int)) v) inline {
+    var (v'enabled, v'pool, v'threshold, v'cooldown, v'burnPercent, v'lastBuybackAt, v'totalBuybacks, v'totalQsrBurnedViaBuyback, v'totalTonSpent) = v; 
+    return (v'enabled, v'pool, v'threshold, v'cooldown, v'burnPercent, v'lastBuybackAt, v'totalBuybacks, v'totalQsrBurnedViaBuyback, v'totalTonSpent);
+}
+
+((int, int, int, int, int, int, int, int, int)) $BuybackState$_constructor_enabled_pool_threshold_cooldown_burnPercent_lastBuybackAt_totalBuybacks_totalQsrBurnedViaBuyback_totalTonSpent(int $enabled, int $pool, int $threshold, int $cooldown, int $burnPercent, int $lastBuybackAt, int $totalBuybacks, int $totalQsrBurnedViaBuyback, int $totalTonSpent) inline {
+    return ($enabled, $pool, $threshold, $cooldown, $burnPercent, $lastBuybackAt, $totalBuybacks, $totalQsrBurnedViaBuyback, $totalTonSpent);
+}
+
+;;
+;; Type: AutonomyState
+;; TLB: _ fullAutonomyEnabled:bool aiActionCooldown:int257 lastAiActionTime:int257 heartbeatTimeout:int257 lastHeartbeat:int257 ownerOverrideWindow:int257 vetoThresholdBps:int257 totalVetoStake:int257 pendingActions:int257 = AutonomyState
+;;
+
+(int, int, int, int, int, int, int, int, int) $AutonomyState$_to_external(((int, int, int, int, int, int, int, int, int)) v) inline {
+    var (v'fullAutonomyEnabled, v'aiActionCooldown, v'lastAiActionTime, v'heartbeatTimeout, v'lastHeartbeat, v'ownerOverrideWindow, v'vetoThresholdBps, v'totalVetoStake, v'pendingActions) = v; 
+    return (v'fullAutonomyEnabled, v'aiActionCooldown, v'lastAiActionTime, v'heartbeatTimeout, v'lastHeartbeat, v'ownerOverrideWindow, v'vetoThresholdBps, v'totalVetoStake, v'pendingActions);
+}
+
+((int, int, int, int, int, int, int, int, int)) $AutonomyState$_constructor_fullAutonomyEnabled_aiActionCooldown_lastAiActionTime_heartbeatTimeout_lastHeartbeat_ownerOverrideWindow_vetoThresholdBps_totalVetoStake_pendingActions(int $fullAutonomyEnabled, int $aiActionCooldown, int $lastAiActionTime, int $heartbeatTimeout, int $lastHeartbeat, int $ownerOverrideWindow, int $vetoThresholdBps, int $totalVetoStake, int $pendingActions) inline {
+    return ($fullAutonomyEnabled, $aiActionCooldown, $lastAiActionTime, $heartbeatTimeout, $lastHeartbeat, $ownerOverrideWindow, $vetoThresholdBps, $totalVetoStake, $pendingActions);
+}
+
+;;
+;; Type: AIActionLog
+;; TLB: _ actionId:int257 timestamp:int257 actionType:^string oldValue:int257 newValue:int257 reason:^string executed:bool vetoed:bool overridden:bool = AIActionLog
+;;
+
+builder $AIActionLog$_store(builder build_0, (int, int, slice, int, int, slice, int, int, int) v) inline_ref {
+    var (v'actionId, v'timestamp, v'actionType, v'oldValue, v'newValue, v'reason, v'executed, v'vetoed, v'overridden) = v;
+    build_0 = build_0.store_int(v'actionId, 257);
+    build_0 = build_0.store_int(v'timestamp, 257);
+    build_0 = build_0.store_ref(begin_cell().store_slice(v'actionType).end_cell());
+    build_0 = build_0.store_int(v'oldValue, 257);
+    var build_1 = begin_cell();
+    build_1 = build_1.store_int(v'newValue, 257);
+    build_1 = build_1.store_ref(begin_cell().store_slice(v'reason).end_cell());
+    build_1 = build_1.store_int(v'executed, 1);
+    build_1 = build_1.store_int(v'vetoed, 1);
+    build_1 = build_1.store_int(v'overridden, 1);
+    build_0 = store_ref(build_0, build_1.end_cell());
+    return build_0;
+}
+
+cell $AIActionLog$_store_cell((int, int, slice, int, int, slice, int, int, int) v) inline {
+    return $AIActionLog$_store(begin_cell(), v).end_cell();
+}
+
+(slice, ((int, int, slice, int, int, slice, int, int, int))) $AIActionLog$_load(slice sc_0) inline_ref {
+    var v'actionId = sc_0~load_int(257);
+    var v'timestamp = sc_0~load_int(257);
+    var v'actionType = sc_0~load_ref().begin_parse();
+    var v'oldValue = sc_0~load_int(257);
+    slice sc_1 = sc_0~load_ref().begin_parse();
+    var v'newValue = sc_1~load_int(257);
+    var v'reason = sc_1~load_ref().begin_parse();
+    var v'executed = sc_1~load_int(1);
+    var v'vetoed = sc_1~load_int(1);
+    var v'overridden = sc_1~load_int(1);
+    return (sc_0, (v'actionId, v'timestamp, v'actionType, v'oldValue, v'newValue, v'reason, v'executed, v'vetoed, v'overridden));
+}
+
+tuple $AIActionLog$_as_optional((int, int, slice, int, int, slice, int, int, int) v) inline {
+    var (v'actionId, v'timestamp, v'actionType, v'oldValue, v'newValue, v'reason, v'executed, v'vetoed, v'overridden) = v;
+    return __tact_tuple_create_9(v'actionId, v'timestamp, v'actionType, v'oldValue, v'newValue, v'reason, v'executed, v'vetoed, v'overridden);
+}
+
+tuple $AIActionLog$_load_opt(cell cl) inline {
+    if (null?(cl)) {
+        return null();
+    }
+    var sc = cl.begin_parse();
+    return $AIActionLog$_as_optional(sc~$AIActionLog$_load());
+}
+
+_ $AIActionLog$_get_vetoed((int, int, slice, int, int, slice, int, int, int) v) inline {
+    var (v'actionId, v'timestamp, v'actionType, v'oldValue, v'newValue, v'reason, v'executed, v'vetoed, v'overridden) = v;
+    return v'vetoed;
+}
+
+_ $AIActionLog$_get_overridden((int, int, slice, int, int, slice, int, int, int) v) inline {
+    var (v'actionId, v'timestamp, v'actionType, v'oldValue, v'newValue, v'reason, v'executed, v'vetoed, v'overridden) = v;
+    return v'overridden;
+}
+
+((int, int, slice, int, int, slice, int, int, int)) $AIActionLog$_not_null(tuple v) inline {
+    throw_if(128, null?(v));
+    var (int vvv'actionId, int vvv'timestamp, slice vvv'actionType, int vvv'oldValue, int vvv'newValue, slice vvv'reason, int vvv'executed, int vvv'vetoed, int vvv'overridden) = __tact_tuple_destroy_9(v);
+    return (vvv'actionId, vvv'timestamp, vvv'actionType, vvv'oldValue, vvv'newValue, vvv'reason, vvv'executed, vvv'vetoed, vvv'overridden);
+}
+
+tuple $AIActionLog$_to_tuple(((int, int, slice, int, int, slice, int, int, int)) v) inline {
+    var (v'actionId, v'timestamp, v'actionType, v'oldValue, v'newValue, v'reason, v'executed, v'vetoed, v'overridden) = v;
+    return __tact_tuple_create_9(v'actionId, v'timestamp, v'actionType, v'oldValue, v'newValue, v'reason, v'executed, v'vetoed, v'overridden);
+}
+
+tuple $AIActionLog$_to_opt_tuple(tuple v) inline {
+    if (null?(v)) { return null(); } 
+    return $AIActionLog$_to_tuple($AIActionLog$_not_null(v)); 
+}
+
+tuple $AIActionLog$_to_opt_external(tuple v) inline {
+    var loaded = $AIActionLog$_to_opt_tuple(v);
+    if (null?(loaded)) {
+        return null();
+    } else {
+        return (loaded);
+    }
+}
+
+((int, int, slice, int, int, slice, int, int, int)) $AIActionLog$_constructor_actionId_timestamp_actionType_oldValue_newValue_reason_executed_vetoed_overridden(int $actionId, int $timestamp, slice $actionType, int $oldValue, int $newValue, slice $reason, int $executed, int $vetoed, int $overridden) inline {
+    return ($actionId, $timestamp, $actionType, $oldValue, $newValue, $reason, $executed, $vetoed, $overridden);
+}
+
+;;
+;; Type: VetoState
+;; TLB: _ actionId:int257 totalStake:int257 vetoCount:int257 threshold:int257 active:bool = VetoState
+;;
+
+builder $VetoState$_store(builder build_0, (int, int, int, int, int) v) inline {
+    var (v'actionId, v'totalStake, v'vetoCount, v'threshold, v'active) = v;
+    build_0 = build_0.store_int(v'actionId, 257);
+    build_0 = build_0.store_int(v'totalStake, 257);
+    build_0 = build_0.store_int(v'vetoCount, 257);
+    var build_1 = begin_cell();
+    build_1 = build_1.store_int(v'threshold, 257);
+    build_1 = build_1.store_int(v'active, 1);
+    build_0 = store_ref(build_0, build_1.end_cell());
+    return build_0;
+}
+
+cell $VetoState$_store_cell((int, int, int, int, int) v) inline {
+    return $VetoState$_store(begin_cell(), v).end_cell();
+}
+
+(slice, ((int, int, int, int, int))) $VetoState$_load(slice sc_0) inline {
+    var v'actionId = sc_0~load_int(257);
+    var v'totalStake = sc_0~load_int(257);
+    var v'vetoCount = sc_0~load_int(257);
+    slice sc_1 = sc_0~load_ref().begin_parse();
+    var v'threshold = sc_1~load_int(257);
+    var v'active = sc_1~load_int(1);
+    return (sc_0, (v'actionId, v'totalStake, v'vetoCount, v'threshold, v'active));
+}
+
+tuple $VetoState$_as_optional((int, int, int, int, int) v) inline {
+    var (v'actionId, v'totalStake, v'vetoCount, v'threshold, v'active) = v;
+    return __tact_tuple_create_5(v'actionId, v'totalStake, v'vetoCount, v'threshold, v'active);
+}
+
+tuple $VetoState$_load_opt(cell cl) inline {
+    if (null?(cl)) {
+        return null();
+    }
+    var sc = cl.begin_parse();
+    return $VetoState$_as_optional(sc~$VetoState$_load());
+}
+
+_ $VetoState$_get_totalStake((int, int, int, int, int) v) inline {
+    var (v'actionId, v'totalStake, v'vetoCount, v'threshold, v'active) = v;
+    return v'totalStake;
+}
+
+_ $VetoState$_get_vetoCount((int, int, int, int, int) v) inline {
+    var (v'actionId, v'totalStake, v'vetoCount, v'threshold, v'active) = v;
+    return v'vetoCount;
+}
+
+((int, int, int, int, int)) $VetoState$_not_null(tuple v) inline {
+    throw_if(128, null?(v));
+    var (int vvv'actionId, int vvv'totalStake, int vvv'vetoCount, int vvv'threshold, int vvv'active) = __tact_tuple_destroy_5(v);
+    return (vvv'actionId, vvv'totalStake, vvv'vetoCount, vvv'threshold, vvv'active);
+}
+
+tuple $VetoState$_to_tuple(((int, int, int, int, int)) v) inline {
+    var (v'actionId, v'totalStake, v'vetoCount, v'threshold, v'active) = v;
+    return __tact_tuple_create_5(v'actionId, v'totalStake, v'vetoCount, v'threshold, v'active);
+}
+
+tuple $VetoState$_to_opt_tuple(tuple v) inline {
+    if (null?(v)) { return null(); } 
+    return $VetoState$_to_tuple($VetoState$_not_null(v)); 
+}
+
+tuple $VetoState$_to_opt_external(tuple v) inline {
+    var loaded = $VetoState$_to_opt_tuple(v);
+    if (null?(loaded)) {
+        return null();
+    } else {
+        return (loaded);
+    }
+}
+
+((int, int, int, int, int)) $VetoState$_constructor_actionId_totalStake_vetoCount_threshold_active(int $actionId, int $totalStake, int $vetoCount, int $threshold, int $active) inline {
+    return ($actionId, $totalStake, $vetoCount, $threshold, $active);
+}
+
+;;
+;; Type: AIRecommendation
+;; TLB: _ timestamp:int257 action:^string confidence:int257 executed:bool = AIRecommendation
+;;
+
+builder $AIRecommendation$_store(builder build_0, (int, slice, int, int) v) inline {
+    var (v'timestamp, v'action, v'confidence, v'executed) = v;
+    build_0 = build_0.store_int(v'timestamp, 257);
+    build_0 = build_0.store_ref(begin_cell().store_slice(v'action).end_cell());
+    build_0 = build_0.store_int(v'confidence, 257);
+    build_0 = build_0.store_int(v'executed, 1);
+    return build_0;
+}
+
+cell $AIRecommendation$_store_cell((int, slice, int, int) v) inline {
+    return $AIRecommendation$_store(begin_cell(), v).end_cell();
+}
+
+(slice, ((int, slice, int, int))) $AIRecommendation$_load(slice sc_0) inline {
+    var v'timestamp = sc_0~load_int(257);
+    var v'action = sc_0~load_ref().begin_parse();
+    var v'confidence = sc_0~load_int(257);
+    var v'executed = sc_0~load_int(1);
+    return (sc_0, (v'timestamp, v'action, v'confidence, v'executed));
+}
+
+tuple $AIRecommendation$_as_optional((int, slice, int, int) v) inline {
+    var (v'timestamp, v'action, v'confidence, v'executed) = v;
+    return __tact_tuple_create_4(v'timestamp, v'action, v'confidence, v'executed);
+}
+
+tuple $AIRecommendation$_load_opt(cell cl) inline {
+    if (null?(cl)) {
+        return null();
+    }
+    var sc = cl.begin_parse();
+    return $AIRecommendation$_as_optional(sc~$AIRecommendation$_load());
+}
+
+((int, slice, int, int)) $AIRecommendation$_not_null(tuple v) inline {
+    throw_if(128, null?(v));
+    var (int vvv'timestamp, slice vvv'action, int vvv'confidence, int vvv'executed) = __tact_tuple_destroy_4(v);
+    return (vvv'timestamp, vvv'action, vvv'confidence, vvv'executed);
+}
+
+tuple $AIRecommendation$_to_tuple(((int, slice, int, int)) v) inline {
+    var (v'timestamp, v'action, v'confidence, v'executed) = v;
+    return __tact_tuple_create_4(v'timestamp, v'action, v'confidence, v'executed);
+}
+
+tuple $AIRecommendation$_to_opt_tuple(tuple v) inline {
+    if (null?(v)) { return null(); } 
+    return $AIRecommendation$_to_tuple($AIRecommendation$_not_null(v)); 
+}
+
+tuple $AIRecommendation$_to_opt_external(tuple v) inline {
+    var loaded = $AIRecommendation$_to_opt_tuple(v);
+    if (null?(loaded)) {
+        return null();
+    } else {
+        return (loaded);
+    }
+}
+
+((int, slice, int, int)) $AIRecommendation$_constructor_timestamp_action_confidence_executed(int $timestamp, slice $action, int $confidence, int $executed) inline {
+    return ($timestamp, $action, $confidence, $executed);
+}
+
+;;
+;; Type: StakeInfo
+;; TLB: _ amount:int257 startTime:int257 lastClaim:int257 lockEnd:int257 = StakeInfo
+;;
+
+builder $StakeInfo$_store(builder build_0, (int, int, int, int) v) inline {
+    var (v'amount, v'startTime, v'lastClaim, v'lockEnd) = v;
+    build_0 = build_0.store_int(v'amount, 257);
+    build_0 = build_0.store_int(v'startTime, 257);
+    build_0 = build_0.store_int(v'lastClaim, 257);
+    var build_1 = begin_cell();
+    build_1 = build_1.store_int(v'lockEnd, 257);
+    build_0 = store_ref(build_0, build_1.end_cell());
+    return build_0;
+}
+
+cell $StakeInfo$_store_cell((int, int, int, int) v) inline {
+    return $StakeInfo$_store(begin_cell(), v).end_cell();
+}
+
+((int, int, int, int)) $StakeInfo$_not_null(tuple v) inline {
+    throw_if(128, null?(v));
+    var (int vvv'amount, int vvv'startTime, int vvv'lastClaim, int vvv'lockEnd) = __tact_tuple_destroy_4(v);
+    return (vvv'amount, vvv'startTime, vvv'lastClaim, vvv'lockEnd);
+}
+
+cell $StakeInfo$_store_opt(tuple v) inline {
+    if (null?(v)) {
+        return null();
+    }
+    return $StakeInfo$_store_cell($StakeInfo$_not_null(v));
+}
+
+(slice, ((int, int, int, int))) $StakeInfo$_load(slice sc_0) inline {
+    var v'amount = sc_0~load_int(257);
+    var v'startTime = sc_0~load_int(257);
+    var v'lastClaim = sc_0~load_int(257);
+    slice sc_1 = sc_0~load_ref().begin_parse();
+    var v'lockEnd = sc_1~load_int(257);
+    return (sc_0, (v'amount, v'startTime, v'lastClaim, v'lockEnd));
+}
+
+tuple $StakeInfo$_as_optional((int, int, int, int) v) inline {
+    var (v'amount, v'startTime, v'lastClaim, v'lockEnd) = v;
+    return __tact_tuple_create_4(v'amount, v'startTime, v'lastClaim, v'lockEnd);
+}
+
+tuple $StakeInfo$_load_opt(cell cl) inline {
+    if (null?(cl)) {
+        return null();
+    }
+    var sc = cl.begin_parse();
+    return $StakeInfo$_as_optional(sc~$StakeInfo$_load());
+}
+
+_ $StakeInfo$_get_amount((int, int, int, int) v) inline {
+    var (v'amount, v'startTime, v'lastClaim, v'lockEnd) = v;
+    return v'amount;
+}
+
+_ $StakeInfo$_get_startTime((int, int, int, int) v) inline {
+    var (v'amount, v'startTime, v'lastClaim, v'lockEnd) = v;
+    return v'startTime;
+}
+
+_ $StakeInfo$_get_lastClaim((int, int, int, int) v) inline {
+    var (v'amount, v'startTime, v'lastClaim, v'lockEnd) = v;
+    return v'lastClaim;
+}
+
+_ $StakeInfo$_get_lockEnd((int, int, int, int) v) inline {
+    var (v'amount, v'startTime, v'lastClaim, v'lockEnd) = v;
+    return v'lockEnd;
+}
+
+tuple $StakeInfo$_to_tuple(((int, int, int, int)) v) inline {
+    var (v'amount, v'startTime, v'lastClaim, v'lockEnd) = v;
+    return __tact_tuple_create_4(v'amount, v'startTime, v'lastClaim, v'lockEnd);
+}
+
+tuple $StakeInfo$_to_opt_tuple(tuple v) inline {
+    if (null?(v)) { return null(); } 
+    return $StakeInfo$_to_tuple($StakeInfo$_not_null(v)); 
+}
+
+tuple $StakeInfo$_to_opt_external(tuple v) inline {
+    var loaded = $StakeInfo$_to_opt_tuple(v);
+    if (null?(loaded)) {
+        return null();
+    } else {
+        return (loaded);
+    }
+}
+
+((int, int, int, int)) $StakeInfo$_constructor_amount_startTime_lastClaim_lockEnd(int $amount, int $startTime, int $lastClaim, int $lockEnd) inline {
+    return ($amount, $startTime, $lastClaim, $lockEnd);
+}
+
+;;
+;; Type: StakingConfig
+;; TLB: _ enabled:bool apyBps:int257 minStake:int257 lockPeriod:int257 totalStaked:int257 = StakingConfig
+;;
+
+(int, int, int, int, int) $StakingConfig$_to_external(((int, int, int, int, int)) v) inline {
+    var (v'enabled, v'apyBps, v'minStake, v'lockPeriod, v'totalStaked) = v; 
+    return (v'enabled, v'apyBps, v'minStake, v'lockPeriod, v'totalStaked);
+}
+
+((int, int, int, int, int)) $StakingConfig$_constructor_enabled_apyBps_minStake_lockPeriod_totalStaked(int $enabled, int $apyBps, int $minStake, int $lockPeriod, int $totalStaked) inline {
+    return ($enabled, $apyBps, $minStake, $lockPeriod, $totalStaked);
+}
+
+;;
+;; Type: ReferralInfo
+;; TLB: _ referrer:address totalEarned:int257 totalReferrals:int257 = ReferralInfo
+;;
+
+builder $ReferralInfo$_store(builder build_0, (slice, int, int) v) inline {
+    var (v'referrer, v'totalEarned, v'totalReferrals) = v;
+    build_0 = __tact_store_address(build_0, v'referrer);
+    build_0 = build_0.store_int(v'totalEarned, 257);
+    build_0 = build_0.store_int(v'totalReferrals, 257);
+    return build_0;
+}
+
+cell $ReferralInfo$_store_cell((slice, int, int) v) inline {
+    return $ReferralInfo$_store(begin_cell(), v).end_cell();
+}
+
+(slice, ((slice, int, int))) $ReferralInfo$_load(slice sc_0) inline {
+    var v'referrer = sc_0~__tact_load_address();
+    var v'totalEarned = sc_0~load_int(257);
+    var v'totalReferrals = sc_0~load_int(257);
+    return (sc_0, (v'referrer, v'totalEarned, v'totalReferrals));
+}
+
+tuple $ReferralInfo$_as_optional((slice, int, int) v) inline {
+    var (v'referrer, v'totalEarned, v'totalReferrals) = v;
+    return __tact_tuple_create_3(v'referrer, v'totalEarned, v'totalReferrals);
+}
+
+tuple $ReferralInfo$_load_opt(cell cl) inline {
+    if (null?(cl)) {
+        return null();
+    }
+    var sc = cl.begin_parse();
+    return $ReferralInfo$_as_optional(sc~$ReferralInfo$_load());
+}
+
+_ $ReferralInfo$_get_referrer((slice, int, int) v) inline {
+    var (v'referrer, v'totalEarned, v'totalReferrals) = v;
+    return v'referrer;
+}
+
+_ $ReferralInfo$_get_totalEarned((slice, int, int) v) inline {
+    var (v'referrer, v'totalEarned, v'totalReferrals) = v;
+    return v'totalEarned;
+}
+
+_ $ReferralInfo$_get_totalReferrals((slice, int, int) v) inline {
+    var (v'referrer, v'totalEarned, v'totalReferrals) = v;
+    return v'totalReferrals;
+}
+
+((slice, int, int)) $ReferralInfo$_not_null(tuple v) inline {
+    throw_if(128, null?(v));
+    var (slice vvv'referrer, int vvv'totalEarned, int vvv'totalReferrals) = __tact_tuple_destroy_3(v);
+    return (vvv'referrer, vvv'totalEarned, vvv'totalReferrals);
+}
+
+tuple $ReferralInfo$_to_tuple(((slice, int, int)) v) inline {
+    var (v'referrer, v'totalEarned, v'totalReferrals) = v;
+    return __tact_tuple_create_3(v'referrer, v'totalEarned, v'totalReferrals);
+}
+
+tuple $ReferralInfo$_to_opt_tuple(tuple v) inline {
+    if (null?(v)) { return null(); } 
+    return $ReferralInfo$_to_tuple($ReferralInfo$_not_null(v)); 
+}
+
+tuple $ReferralInfo$_to_opt_external(tuple v) inline {
+    var loaded = $ReferralInfo$_to_opt_tuple(v);
+    if (null?(loaded)) {
+        return null();
+    } else {
+        return (loaded);
+    }
+}
+
+((slice, int, int)) $ReferralInfo$_constructor_referrer_totalEarned_totalReferrals(slice $referrer, int $totalEarned, int $totalReferrals) inline {
+    return ($referrer, $totalEarned, $totalReferrals);
+}
+
+;;
+;; Type: VestingInfo
+;; TLB: _ totalAmount:int257 claimed:int257 startTime:int257 cliff:int257 duration:int257 = VestingInfo
+;;
+
+builder $VestingInfo$_store(builder build_0, (int, int, int, int, int) v) inline {
+    var (v'totalAmount, v'claimed, v'startTime, v'cliff, v'duration) = v;
+    build_0 = build_0.store_int(v'totalAmount, 257);
+    build_0 = build_0.store_int(v'claimed, 257);
+    build_0 = build_0.store_int(v'startTime, 257);
+    var build_1 = begin_cell();
+    build_1 = build_1.store_int(v'cliff, 257);
+    build_1 = build_1.store_int(v'duration, 257);
+    build_0 = store_ref(build_0, build_1.end_cell());
+    return build_0;
+}
+
+cell $VestingInfo$_store_cell((int, int, int, int, int) v) inline {
+    return $VestingInfo$_store(begin_cell(), v).end_cell();
+}
+
+(slice, ((int, int, int, int, int))) $VestingInfo$_load(slice sc_0) inline {
+    var v'totalAmount = sc_0~load_int(257);
+    var v'claimed = sc_0~load_int(257);
+    var v'startTime = sc_0~load_int(257);
+    slice sc_1 = sc_0~load_ref().begin_parse();
+    var v'cliff = sc_1~load_int(257);
+    var v'duration = sc_1~load_int(257);
+    return (sc_0, (v'totalAmount, v'claimed, v'startTime, v'cliff, v'duration));
+}
+
+tuple $VestingInfo$_as_optional((int, int, int, int, int) v) inline {
+    var (v'totalAmount, v'claimed, v'startTime, v'cliff, v'duration) = v;
+    return __tact_tuple_create_5(v'totalAmount, v'claimed, v'startTime, v'cliff, v'duration);
+}
+
+tuple $VestingInfo$_load_opt(cell cl) inline {
+    if (null?(cl)) {
+        return null();
+    }
+    var sc = cl.begin_parse();
+    return $VestingInfo$_as_optional(sc~$VestingInfo$_load());
+}
+
+_ $VestingInfo$_get_totalAmount((int, int, int, int, int) v) inline {
+    var (v'totalAmount, v'claimed, v'startTime, v'cliff, v'duration) = v;
+    return v'totalAmount;
+}
+
+_ $VestingInfo$_get_claimed((int, int, int, int, int) v) inline {
+    var (v'totalAmount, v'claimed, v'startTime, v'cliff, v'duration) = v;
+    return v'claimed;
+}
+
+_ $VestingInfo$_get_startTime((int, int, int, int, int) v) inline {
+    var (v'totalAmount, v'claimed, v'startTime, v'cliff, v'duration) = v;
+    return v'startTime;
+}
+
+_ $VestingInfo$_get_cliff((int, int, int, int, int) v) inline {
+    var (v'totalAmount, v'claimed, v'startTime, v'cliff, v'duration) = v;
+    return v'cliff;
+}
+
+_ $VestingInfo$_get_duration((int, int, int, int, int) v) inline {
+    var (v'totalAmount, v'claimed, v'startTime, v'cliff, v'duration) = v;
+    return v'duration;
+}
+
+((int, int, int, int, int)) $VestingInfo$_not_null(tuple v) inline {
+    throw_if(128, null?(v));
+    var (int vvv'totalAmount, int vvv'claimed, int vvv'startTime, int vvv'cliff, int vvv'duration) = __tact_tuple_destroy_5(v);
+    return (vvv'totalAmount, vvv'claimed, vvv'startTime, vvv'cliff, vvv'duration);
+}
+
+tuple $VestingInfo$_to_tuple(((int, int, int, int, int)) v) inline {
+    var (v'totalAmount, v'claimed, v'startTime, v'cliff, v'duration) = v;
+    return __tact_tuple_create_5(v'totalAmount, v'claimed, v'startTime, v'cliff, v'duration);
+}
+
+tuple $VestingInfo$_to_opt_tuple(tuple v) inline {
+    if (null?(v)) { return null(); } 
+    return $VestingInfo$_to_tuple($VestingInfo$_not_null(v)); 
+}
+
+tuple $VestingInfo$_to_opt_external(tuple v) inline {
+    var loaded = $VestingInfo$_to_opt_tuple(v);
+    if (null?(loaded)) {
+        return null();
+    } else {
+        return (loaded);
+    }
+}
+
+((int, int, int, int, int)) $VestingInfo$_constructor_totalAmount_claimed_startTime_cliff_duration(int $totalAmount, int $claimed, int $startTime, int $cliff, int $duration) inline {
+    return ($totalAmount, $claimed, $startTime, $cliff, $duration);
+}
+
+;;
+;; Type: LotteryConfig
+;; TLB: _ enabled:bool ticketPrice:int257 drawInterval:int257 jackpotShare:int257 currentRound:int257 lastDraw:int257 totalJackpot:int257 = LotteryConfig
+;;
+
+(int, int, int, int, int, int, int) $LotteryConfig$_to_external(((int, int, int, int, int, int, int)) v) inline {
+    var (v'enabled, v'ticketPrice, v'drawInterval, v'jackpotShare, v'currentRound, v'lastDraw, v'totalJackpot) = v; 
+    return (v'enabled, v'ticketPrice, v'drawInterval, v'jackpotShare, v'currentRound, v'lastDraw, v'totalJackpot);
+}
+
+((int, int, int, int, int, int, int)) $LotteryConfig$_constructor_enabled_ticketPrice_drawInterval_jackpotShare_currentRound_lastDraw_totalJackpot(int $enabled, int $ticketPrice, int $drawInterval, int $jackpotShare, int $currentRound, int $lastDraw, int $totalJackpot) inline {
+    return ($enabled, $ticketPrice, $drawInterval, $jackpotShare, $currentRound, $lastDraw, $totalJackpot);
+}
+
+;;
+;; Type: QuasarMaster
+;;
+
+builder $QuasarMaster$_store(builder build_0, (int, int, slice, cell, cell, int, int, slice, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, slice, int, int, int, int, cell, cell, int, int, int, int, int, int, int, int, int, cell, int, cell, cell, int, int, int, int, int, cell, int, int, int, int, cell, int, int, int, cell, int, int, int, int, int, int, int, cell, int, cell) v) inline {
+    var (v'totalSupply, v'mintable, v'owner, v'content, v'walletCode, v'feeBps, v'feeBurnShare, v'treasury, v'totalBurned, v'totalFeesCollected, v'maxTxBps, v'maxWalletBps, v'cooldownSeconds, v'tradingEnabled, v'buybackEnabled, v'buybackPool, v'buybackThreshold, v'buybackCooldown, v'buybackBurnPercent, v'lastBuybackTime, v'totalBuybacks, v'totalQsrBurnedViaBuyback, v'totalTonSpentOnBuyback, v'aiOracle, v'aiEnabled, v'aiFullAutonomy, v'lastRebalanceTime, v'signalCount, v'priceHistory, v'anomalyLog, v'anomalyIndex, v'minConfidence, v'emergencyPause, v'aiActionCooldown, v'lastAiActionTime, v'heartbeatTimeout, v'lastHeartbeat, v'ownerOverrideWindow, v'vetoThresholdBps, v'aiActionLog, v'aiActionIndex, v'pendingAiActions, v'vetoLog, v'totalVetoStake, v'stakingEnabled, v'stakingApyBps, v'stakingMinStake, v'stakingLockPeriod, v'stakers, v'totalStaked, v'stakingRewardsPool, v'referralEnabled, v'referralRewardBps, v'referrals, v'vestingEnabled, v'teamAllocation, v'teamClaimed, v'vestingSchedules, v'lotteryEnabled, v'lotteryTicketPrice, v'lotteryDrawInterval, v'lotteryJackpotShare, v'lotteryRound, v'lotteryLastDraw, v'lotteryJackpot, v'lotteryTickets, v'lotteryTicketCount, v'lotteryWinners) = v;
+    build_0 = build_0.store_coins(v'totalSupply);
+    build_0 = build_0.store_int(v'mintable, 1);
+    build_0 = __tact_store_address(build_0, v'owner);
+    build_0 = build_0.store_ref(v'content);
+    var build_1 = begin_cell();
+    build_1 = build_1.store_ref(v'walletCode);
+    build_1 = build_1.store_uint(v'feeBps, 16);
+    build_1 = build_1.store_uint(v'feeBurnShare, 8);
+    build_1 = __tact_store_address(build_1, v'treasury);
+    build_1 = build_1.store_coins(v'totalBurned);
+    build_1 = build_1.store_coins(v'totalFeesCollected);
+    build_1 = build_1.store_uint(v'maxTxBps, 16);
+    build_1 = build_1.store_uint(v'maxWalletBps, 16);
+    build_1 = build_1.store_uint(v'cooldownSeconds, 16);
+    build_1 = build_1.store_int(v'tradingEnabled, 1);
+    build_1 = build_1.store_int(v'buybackEnabled, 1);
+    build_1 = build_1.store_coins(v'buybackPool);
+    build_1 = build_1.store_coins(v'buybackThreshold);
+    build_1 = build_1.store_uint(v'buybackCooldown, 32);
+    build_1 = build_1.store_uint(v'buybackBurnPercent, 8);
+    var build_2 = begin_cell();
+    build_2 = build_2.store_int(v'lastBuybackTime, 257);
+    build_2 = build_2.store_int(v'totalBuybacks, 257);
+    build_2 = build_2.store_coins(v'totalQsrBurnedViaBuyback);
+    build_2 = build_2.store_coins(v'totalTonSpentOnBuyback);
+    var build_3 = begin_cell();
+    build_3 = __tact_store_address(build_3, v'aiOracle);
+    build_3 = build_3.store_int(v'aiEnabled, 1);
+    build_3 = build_3.store_int(v'aiFullAutonomy, 1);
+    build_3 = build_3.store_int(v'lastRebalanceTime, 257);
+    build_3 = build_3.store_int(v'signalCount, 257);
+    build_3 = build_3.store_dict(v'priceHistory);
+    build_3 = build_3.store_dict(v'anomalyLog);
+    var build_4 = begin_cell();
+    build_4 = build_4.store_int(v'anomalyIndex, 257);
+    build_4 = build_4.store_uint(v'minConfidence, 8);
+    build_4 = build_4.store_int(v'emergencyPause, 1);
+    build_4 = build_4.store_uint(v'aiActionCooldown, 32);
+    build_4 = build_4.store_int(v'lastAiActionTime, 257);
+    build_4 = build_4.store_uint(v'heartbeatTimeout, 32);
+    build_4 = build_4.store_int(v'lastHeartbeat, 257);
+    build_4 = build_4.store_uint(v'ownerOverrideWindow, 32);
+    build_4 = build_4.store_uint(v'vetoThresholdBps, 16);
+    build_4 = build_4.store_dict(v'aiActionLog);
+    var build_5 = begin_cell();
+    build_5 = build_5.store_int(v'aiActionIndex, 257);
+    build_5 = build_5.store_dict(v'pendingAiActions);
+    build_5 = build_5.store_dict(v'vetoLog);
+    build_5 = build_5.store_coins(v'totalVetoStake);
+    build_5 = build_5.store_int(v'stakingEnabled, 1);
+    build_5 = build_5.store_uint(v'stakingApyBps, 16);
+    build_5 = build_5.store_coins(v'stakingMinStake);
+    build_5 = build_5.store_uint(v'stakingLockPeriod, 32);
+    build_5 = build_5.store_dict(v'stakers);
+    build_5 = build_5.store_coins(v'totalStaked);
+    build_5 = build_5.store_coins(v'stakingRewardsPool);
+    build_5 = build_5.store_int(v'referralEnabled, 1);
+    build_5 = build_5.store_uint(v'referralRewardBps, 16);
+    var build_6 = begin_cell();
+    build_6 = build_6.store_dict(v'referrals);
+    build_6 = build_6.store_int(v'vestingEnabled, 1);
+    build_6 = build_6.store_coins(v'teamAllocation);
+    build_6 = build_6.store_coins(v'teamClaimed);
+    build_6 = build_6.store_dict(v'vestingSchedules);
+    build_6 = build_6.store_int(v'lotteryEnabled, 1);
+    build_6 = build_6.store_coins(v'lotteryTicketPrice);
+    build_6 = build_6.store_uint(v'lotteryDrawInterval, 32);
+    build_6 = build_6.store_uint(v'lotteryJackpotShare, 8);
+    build_6 = build_6.store_int(v'lotteryRound, 257);
+    build_6 = build_6.store_int(v'lotteryLastDraw, 257);
+    var build_7 = begin_cell();
+    build_7 = build_7.store_coins(v'lotteryJackpot);
+    build_7 = build_7.store_dict(v'lotteryTickets);
+    build_7 = build_7.store_int(v'lotteryTicketCount, 257);
+    build_7 = build_7.store_dict(v'lotteryWinners);
+    build_6 = store_ref(build_6, build_7.end_cell());
+    build_5 = store_ref(build_5, build_6.end_cell());
+    build_4 = store_ref(build_4, build_5.end_cell());
+    build_3 = store_ref(build_3, build_4.end_cell());
+    build_2 = store_ref(build_2, build_3.end_cell());
+    build_1 = store_ref(build_1, build_2.end_cell());
+    build_0 = store_ref(build_0, build_1.end_cell());
+    return build_0;
+}
+
+(slice, ((int, int, slice, cell, cell, int, int, slice, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, slice, int, int, int, int, cell, cell, int, int, int, int, int, int, int, int, int, cell, int, cell, cell, int, int, int, int, int, cell, int, int, int, int, cell, int, int, int, cell, int, int, int, int, int, int, int, cell, int, cell))) $QuasarMaster$_load(slice sc_0) inline {
+    var v'totalSupply = sc_0~load_coins();
+    var v'mintable = sc_0~load_int(1);
+    var v'owner = sc_0~__tact_load_address();
+    var v'content = sc_0~load_ref();
+    slice sc_1 = sc_0~load_ref().begin_parse();
+    var v'walletCode = sc_1~load_ref();
+    var v'feeBps = sc_1~load_uint(16);
+    var v'feeBurnShare = sc_1~load_uint(8);
+    var v'treasury = sc_1~__tact_load_address();
+    var v'totalBurned = sc_1~load_coins();
+    var v'totalFeesCollected = sc_1~load_coins();
+    var v'maxTxBps = sc_1~load_uint(16);
+    var v'maxWalletBps = sc_1~load_uint(16);
+    var v'cooldownSeconds = sc_1~load_uint(16);
+    var v'tradingEnabled = sc_1~load_int(1);
+    var v'buybackEnabled = sc_1~load_int(1);
+    var v'buybackPool = sc_1~load_coins();
+    var v'buybackThreshold = sc_1~load_coins();
+    var v'buybackCooldown = sc_1~load_uint(32);
+    var v'buybackBurnPercent = sc_1~load_uint(8);
+    slice sc_2 = sc_1~load_ref().begin_parse();
+    var v'lastBuybackTime = sc_2~load_int(257);
+    var v'totalBuybacks = sc_2~load_int(257);
+    var v'totalQsrBurnedViaBuyback = sc_2~load_coins();
+    var v'totalTonSpentOnBuyback = sc_2~load_coins();
+    slice sc_3 = sc_2~load_ref().begin_parse();
+    var v'aiOracle = sc_3~__tact_load_address();
+    var v'aiEnabled = sc_3~load_int(1);
+    var v'aiFullAutonomy = sc_3~load_int(1);
+    var v'lastRebalanceTime = sc_3~load_int(257);
+    var v'signalCount = sc_3~load_int(257);
+    var v'priceHistory = sc_3~load_dict();
+    var v'anomalyLog = sc_3~load_dict();
+    slice sc_4 = sc_3~load_ref().begin_parse();
+    var v'anomalyIndex = sc_4~load_int(257);
+    var v'minConfidence = sc_4~load_uint(8);
+    var v'emergencyPause = sc_4~load_int(1);
+    var v'aiActionCooldown = sc_4~load_uint(32);
+    var v'lastAiActionTime = sc_4~load_int(257);
+    var v'heartbeatTimeout = sc_4~load_uint(32);
+    var v'lastHeartbeat = sc_4~load_int(257);
+    var v'ownerOverrideWindow = sc_4~load_uint(32);
+    var v'vetoThresholdBps = sc_4~load_uint(16);
+    var v'aiActionLog = sc_4~load_dict();
+    slice sc_5 = sc_4~load_ref().begin_parse();
+    var v'aiActionIndex = sc_5~load_int(257);
+    var v'pendingAiActions = sc_5~load_dict();
+    var v'vetoLog = sc_5~load_dict();
+    var v'totalVetoStake = sc_5~load_coins();
+    var v'stakingEnabled = sc_5~load_int(1);
+    var v'stakingApyBps = sc_5~load_uint(16);
+    var v'stakingMinStake = sc_5~load_coins();
+    var v'stakingLockPeriod = sc_5~load_uint(32);
+    var v'stakers = sc_5~load_dict();
+    var v'totalStaked = sc_5~load_coins();
+    var v'stakingRewardsPool = sc_5~load_coins();
+    var v'referralEnabled = sc_5~load_int(1);
+    var v'referralRewardBps = sc_5~load_uint(16);
+    slice sc_6 = sc_5~load_ref().begin_parse();
+    var v'referrals = sc_6~load_dict();
+    var v'vestingEnabled = sc_6~load_int(1);
+    var v'teamAllocation = sc_6~load_coins();
+    var v'teamClaimed = sc_6~load_coins();
+    var v'vestingSchedules = sc_6~load_dict();
+    var v'lotteryEnabled = sc_6~load_int(1);
+    var v'lotteryTicketPrice = sc_6~load_coins();
+    var v'lotteryDrawInterval = sc_6~load_uint(32);
+    var v'lotteryJackpotShare = sc_6~load_uint(8);
+    var v'lotteryRound = sc_6~load_int(257);
+    var v'lotteryLastDraw = sc_6~load_int(257);
+    slice sc_7 = sc_6~load_ref().begin_parse();
+    var v'lotteryJackpot = sc_7~load_coins();
+    var v'lotteryTickets = sc_7~load_dict();
+    var v'lotteryTicketCount = sc_7~load_int(257);
+    var v'lotteryWinners = sc_7~load_dict();
+    return (sc_0, (v'totalSupply, v'mintable, v'owner, v'content, v'walletCode, v'feeBps, v'feeBurnShare, v'treasury, v'totalBurned, v'totalFeesCollected, v'maxTxBps, v'maxWalletBps, v'cooldownSeconds, v'tradingEnabled, v'buybackEnabled, v'buybackPool, v'buybackThreshold, v'buybackCooldown, v'buybackBurnPercent, v'lastBuybackTime, v'totalBuybacks, v'totalQsrBurnedViaBuyback, v'totalTonSpentOnBuyback, v'aiOracle, v'aiEnabled, v'aiFullAutonomy, v'lastRebalanceTime, v'signalCount, v'priceHistory, v'anomalyLog, v'anomalyIndex, v'minConfidence, v'emergencyPause, v'aiActionCooldown, v'lastAiActionTime, v'heartbeatTimeout, v'lastHeartbeat, v'ownerOverrideWindow, v'vetoThresholdBps, v'aiActionLog, v'aiActionIndex, v'pendingAiActions, v'vetoLog, v'totalVetoStake, v'stakingEnabled, v'stakingApyBps, v'stakingMinStake, v'stakingLockPeriod, v'stakers, v'totalStaked, v'stakingRewardsPool, v'referralEnabled, v'referralRewardBps, v'referrals, v'vestingEnabled, v'teamAllocation, v'teamClaimed, v'vestingSchedules, v'lotteryEnabled, v'lotteryTicketPrice, v'lotteryDrawInterval, v'lotteryJackpotShare, v'lotteryRound, v'lotteryLastDraw, v'lotteryJackpot, v'lotteryTickets, v'lotteryTicketCount, v'lotteryWinners));
+}
+
+(slice, ((slice, cell, cell))) $QuasarMaster$init$_load(slice sc_0) inline {
+    var v'owner = sc_0~__tact_load_address();
+    var v'content = sc_0~load_ref();
+    var v'walletCode = sc_0~load_ref();
+    return (sc_0, (v'owner, v'content, v'walletCode));
+}
+
+(int, int, slice, cell, cell, int, int, slice, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, slice, int, int, int, int, cell, cell, int, int, int, int, int, int, int, int, int, cell, int, cell, cell, int, int, int, int, int, cell, int, int, int, int, cell, int, int, int, cell, int, int, int, int, int, int, int, cell, int, cell) $QuasarMaster$_contract_load() impure inline_ref {
+    slice $sc = get_data().begin_parse();
+    __tact_context_sys = $sc~load_ref();
+    int $loaded = $sc~load_int(1);
+    if ($loaded) {
+        return $sc~$QuasarMaster$_load();
+    } else {
+        ;; Allow only workchain deployments
+        throw_unless(137, my_address().preload_uint(11) == 1024);
+        (slice $owner, cell $content, cell $walletCode) = $sc~$QuasarMaster$init$_load();
+        $sc.end_parse();
+        return $QuasarMaster$_contract_init($owner, $content, $walletCode);
+    }
+}
+
+() $QuasarMaster$_contract_store((int, int, slice, cell, cell, int, int, slice, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, slice, int, int, int, int, cell, cell, int, int, int, int, int, int, int, int, int, cell, int, cell, cell, int, int, int, int, int, cell, int, int, int, int, cell, int, int, int, cell, int, int, int, int, int, int, int, cell, int, cell) v) impure inline {
+    builder b = begin_cell();
+    b = b.store_ref(__tact_context_sys);
+    b = b.store_int(true, 1);
+    b = $QuasarMaster$_store(b, v);
+    set_data(b.end_cell());
+}
+
+;;
+;; Type: QuasarWallet
+;;
+
+builder $QuasarWallet$init$_store(builder build_0, (slice, slice) v) inline {
+    var (v'owner, v'master) = v;
+    build_0 = __tact_store_address(build_0, v'owner);
+    build_0 = __tact_store_address(build_0, v'master);
+    return build_0;
+}
+
+(cell, cell) $QuasarWallet$_init_child(cell sys', slice $owner, slice $master) inline_ref {
+    slice sc' = sys'.begin_parse();
+    cell source = sc'~load_dict();
+    cell contracts = new_dict();
+    
+    ;; Contract Code: QuasarWallet
+    cell mine = __tact_dict_get_code(source, 28323);
+    contracts = __tact_dict_set_code(contracts, 28323, mine);
+    
+    ;; Build cell
+    builder b = begin_cell();
+    b = b.store_ref(begin_cell().store_dict(contracts).end_cell());
+    b = b.store_int(false, 1);
+    b = $QuasarWallet$init$_store(b, ($owner, $master));
+    return (mine, b.end_cell());
+}
