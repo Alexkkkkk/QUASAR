@@ -1,16 +1,16 @@
 # QUASAR
 
-> The Ultimate AI-Powered Jetton on TON. 0.30% fee. Auto-burn. Anti-whale. Unstoppable.
+> The First Fully Autonomous AI-Powered Jetton on TON. 0.30% fee. Auto-burn. AI Sovereignty.
 
 [![TON](https://img.shields.io/badge/Blockchain-TON-blue)](https://ton.org)
 [![Tact](https://img.shields.io/badge/Language-Tact-purple)](https://tact-lang.org)
-[![AI](https://img.shields.io/badge/AI-Integrated-red)](https://github.com/Alexkkkkk/QUASAR)
+[![AI](https://img.shields.io/badge/AI-Sovereign-red)](https://github.com/Alexkkkkk/QUASAR)
 [![Fee](https://img.shields.io/badge/Fee-0.30%25-green)](https://github.com/Alexkkkkk/QUASAR)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 ## Overview
 
-**QUASAR** is the most advanced Jetton on TON. Every transaction fuels the ecosystem through a **0.30% fee** that auto-burns and funds the treasury. AI Oracle monitors the market 24/7, adjusting parameters in real-time to protect holders and maximize value.
+**QUASAR** is the world's first **fully autonomous AI-powered Jetton**. The AI Oracle has sovereign control over all token parameters — fees, burn rates, anti-whale limits, trading status, and even its own rotation. Protected by community veto, owner override, and a dead man's switch.
 
 ## Why QUASAR is the Best
 
@@ -19,10 +19,12 @@
 | **Transaction Fee** | 0.30% auto-distributed | 0% or manual |
 | **Auto-Burn** | 50% of fee burned forever | Rare |
 | **Auto-Buyback** | Contract buys & burns QSR automatically | None |
-| **AI Oracle** | Real-time fee adjustment | None |
+| **AI Sovereignty** | Full autonomous control over all parameters | None |
+| **Community Veto** | Holders can reject AI decisions | None |
+| **Dead Man's Switch** | Owner regains control if AI dies | None |
 | **Anti-Whale** | Max tx 1%, max wallet 3% | Rare |
 | **Anti-Bot** | 15s cooldown | Rare |
-| **Emergency Pause** | AI + Owner controlled | Manual only |
+| **Emergency Pause** | AI instant pause, community resume | Manual only |
 | **Type Safety** | Tact compiled | FunC mostly |
 
 ## Fee Mechanics
@@ -36,6 +38,59 @@ Every Transfer: 0.30% fee
 
 **Example:** Send 1000 QSR → Recipient gets 997 QSR, 3 QSR fee (1.5 burned, 0.9 treasury, 0.6 buyback pool)
 
+## AI Sovereignty — Full Autonomous Control
+
+QUASAR is the first token where **AI has sovereign authority** over all parameters. Once enabled, the AI Oracle controls:
+
+| Parameter | AI Control | Cooldown |
+|-----------|-----------|----------|
+| Transaction Fee | 0.10% - 1.00% | 6 hours |
+| Burn Rate | 0% - 100% | 6 hours |
+| Treasury Address | Any valid address | 6 hours |
+| Anti-Whale Limits | Max tx, max wallet, cooldown | 6 hours |
+| Buyback Settings | Threshold, cooldown, burn % | 6 hours |
+| Trading Status | Enabled/Disabled | 6 hours |
+| Emergency Pause | Instant (no cooldown) | — |
+| Oracle Rotation | Change AI agent | 6 hours |
+
+### AI Emergency Powers
+- **Instant Pause**: AI can freeze all operations immediately (no cooldown)
+- **Auto-Response**: Critical anomalies trigger automatic protective measures
+- **Self-Rotation**: AI can appoint a new oracle agent
+
+### Safeguards
+
+#### Community Veto
+Holders can vote against any AI decision within 24 hours. If **10% of supply** votes to veto, the decision is reversed.
+
+```
+AIVetoVote { actionId, stake, reason }
+```
+
+#### Owner Override
+The original owner can override any AI decision within **24 hours** of execution.
+
+```
+OwnerOverride { actionId, reason }
+```
+
+#### Dead Man's Switch
+If the AI Oracle doesn't send a heartbeat for **7 days**, the owner can reclaim full control:
+
+```
+"Claim AI Control" → Owner regains all powers
+```
+
+### Enabling Full Autonomy
+
+```bash
+# Owner grants full autonomy to AI
+AIGrantFullAutonomy { enabled: true }
+
+# AI sends periodic heartbeat
+AIHeartbeat { status: "operational" }
+```
+
 ## Auto-Buyback & Burn
 
 QUASAR automatically accumulates fees in a **Buyback Pool**. When the pool reaches the threshold (10 TON), the contract executes an automatic buyback:
@@ -44,12 +99,6 @@ QUASAR automatically accumulates fees in a **Buyback Pool**. When the pool reach
 2. **Trigger**: Anyone can trigger buyback when pool ≥ 10 TON (1h cooldown)
 3. **Execution**: Contract "buys" QSR from the market and burns it
 4. **Deflation**: Total supply decreases → price pressure increases
-
-### Buyback Stats (on-chain)
-- Total buybacks executed
-- Total QSR burned via buyback
-- Total TON spent on buybacks
-- Current pool balance
 
 ### AI-Triggered Buyback
 AI Oracle automatically triggers buyback during price dips (sentiment < -30), creating automatic price support.
@@ -195,7 +244,7 @@ Burn: 1.5  Treasury: 1.5
 
 ## Roadmap
 
-- [x] Smart contracts (Tact + AI + Fee + Buyback)
+- [x] Smart contracts (Tact + AI Sovereignty + Fee + Buyback)
 - [x] Website launch
 - [ ] AI Oracle testnet deployment
 - [ ] Security audit

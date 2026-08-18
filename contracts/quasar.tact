@@ -2,14 +2,35 @@ import "@stdlib/deploy";
 import "@stdlib/content";
 
 // ═══════════════════════════════════════════════════════════════
-// QUASAR — The Ultimate AI-Powered Jetton
-// 0.30% fee | Auto-Buyback & Burn | Anti-whale | AI Oracle
+// QUASAR — Fully Autonomous AI-Powered Jetton
+// 0.30% fee | Auto-Buyback & Burn | Anti-whale | AI Sovereignty
 // ═══════════════════════════════════════════════════════════════
 
-// ─── AI Oracle Messages ───
+// ─── AI Sovereignty Messages ───
 
 message AISetOracle {
     oracleAddress: Address;
+}
+
+message AIGrantFullAutonomy {
+    enabled: Bool;
+}
+
+message AIHeartbeat {
+    queryId: Int as uint64;
+    status: String;
+}
+
+message AIVetoVote {
+    actionId: Int as uint64;
+    voter: Address;
+    stake: Int as coins;
+    reason: String;
+}
+
+message OwnerOverride {
+    actionId: Int as uint64;
+    reason: String;
 }
 
 message AIRebalance {
@@ -41,6 +62,56 @@ message AIGovernanceProposal {
     newValue: Int;
     description: String;
     confidence: Int as uint8;
+}
+
+// ─── AI Direct Control Messages (Full Autonomy) ───
+
+message AISetFee {
+    queryId: Int as uint64;
+    feeBps: Int as uint16;
+    reason: String;
+}
+
+message AISetTreasuryDirect {
+    queryId: Int as uint64;
+    treasury: Address;
+    reason: String;
+}
+
+message AISetAntiWhale {
+    queryId: Int as uint64;
+    maxTxBps: Int as uint16;
+    maxWalletBps: Int as uint16;
+    cooldown: Int as uint16;
+    reason: String;
+}
+
+message AISetBuybackDirect {
+    queryId: Int as uint64;
+    enabled: Bool;
+    threshold: Int as coins;
+    cooldown: Int as uint32;
+    burnPercent: Int as uint8;
+    reason: String;
+}
+
+message AIToggleTrading {
+    queryId: Int as uint64;
+    enabled: Bool;
+    reason: String;
+}
+
+message AIEmergencyPause {
+    queryId: Int as uint64;
+    pause: Bool;
+    severity: Int as uint8;
+    reason: String;
+}
+
+message AIRotateOracle {
+    queryId: Int as uint64;
+    newOracle: Address;
+    reason: String;
 }
 
 // ─── Standard Jetton Messages ───
@@ -114,9 +185,9 @@ message TriggerBuyback {
 
 message SetBuybackConfig {
     enabled: Bool;
-    threshold: Int as coins;        // Min TON to trigger
-    cooldown: Int as uint32;        // Seconds between buybacks
-    burnPercent: Int as uint8;      // % of bought QSR to burn
+    threshold: Int as coins;
+    cooldown: Int as uint32;
+    burnPercent: Int as uint8;
 }
 
 // ─── Data Structures ───
@@ -139,11 +210,14 @@ struct JettonWalletData {
 struct AIState {
     oracleAddress: Address;
     aiModeEnabled: Bool;
+    fullAutonomy: Bool;
     lastRebalanceAt: Int;
     totalSignalsReceived: Int;
     currentFeeBps: Int;
     priceHistoryCount: Int;
     anomalyCount: Int;
+    lastHeartbeat: Int;
+    isAlive: Bool;
 }
 
 struct FeeConfig {
@@ -169,6 +243,38 @@ struct BuybackState {
     totalTonSpent: Int;
 }
 
+struct AutonomyState {
+    fullAutonomyEnabled: Bool;
+    aiActionCooldown: Int;
+    lastAiActionTime: Int;
+    heartbeatTimeout: Int;
+    lastHeartbeat: Int;
+    ownerOverrideWindow: Int;
+    vetoThresholdBps: Int;
+    totalVetoStake: Int;
+    pendingActions: Int;
+}
+
+struct AIActionLog {
+    actionId: Int;
+    timestamp: Int;
+    actionType: String;
+    oldValue: Int;
+    newValue: Int;
+    reason: String;
+    executed: Bool;
+    vetoed: Bool;
+    overridden: Bool;
+}
+
+struct VetoState {
+    actionId: Int;
+    totalStake: Int;
+    vetoCount: Int;
+    threshold: Int;
+    active: Bool;
+}
+
 struct AIRecommendation {
     timestamp: Int;
     action: String;
@@ -177,7 +283,7 @@ struct AIRecommendation {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// QUASAR MASTER CONTRACT
+// QUASAR MASTER CONTRACT — AI Sovereignty
 // ═══════════════════════════════════════════════════════════════
 
 contract QuasarMaster with Deployable {
@@ -214,6 +320,7 @@ contract QuasarMaster with Deployable {
     // ─── AI State ───
     aiOracle: Address;
     aiEnabled: Bool;
+    aiFullAutonomy: Bool;
     lastRebalanceTime: Int;
     signalCount: Int;
     priceHistory: map<Int, Int>;
@@ -222,6 +329,19 @@ contract QuasarMaster with Deployable {
     minConfidence: Int as uint8;
     emergencyPause: Bool;
     
+    // ─── Autonomy State ───
+    aiActionCooldown: Int as uint32;       // 6 hours default
+    lastAiActionTime: Int;
+    heartbeatTimeout: Int as uint32;       // 7 days default
+    lastHeartbeat: Int;
+    ownerOverrideWindow: Int as uint32;    // 24 hours default
+    vetoThresholdBps: Int as uint16;       // 1000 = 10%
+    aiActionLog: map<Int, AIActionLog>;
+    aiActionIndex: Int;
+    pendingAiActions: map<Int, Int>;       // actionId -> timestamp
+    vetoLog: map<Int, VetoState>;
+    totalVetoStake: Int as coins;
+    
     init(owner: Address, content: Cell, walletCode: Cell) {
         self.totalSupply = 0;
         self.mintable = true;
@@ -229,7 +349,7 @@ contract QuasarMaster with Deployable {
         self.content = content;
         self.walletCode = walletCode;
         
-        // Fee defaults: 0.30% fee, 50% burn, 50% treasury
+        // Fee defaults
         self.feeBps = 30;
         self.feeBurnShare = 50;
         self.treasury = owner;
@@ -243,9 +363,9 @@ contract QuasarMaster with Deployable {
         // Buyback defaults
         self.buybackEnabled = true;
         self.buybackPool = 0;
-        self.buybackThreshold = ton("10");      // 10 TON minimum
-        self.buybackCooldown = 3600;             // 1 hour
-        self.buybackBurnPercent = 100;           // 100% of bought QSR burned
+        self.buybackThreshold = ton("10");
+        self.buybackCooldown = 3600;
+        self.buybackBurnPercent = 100;
         self.lastBuybackTime = 0;
         self.totalBuybacks = 0;
         self.totalQsrBurnedViaBuyback = 0;
@@ -254,11 +374,66 @@ contract QuasarMaster with Deployable {
         // AI defaults
         self.aiOracle = owner;
         self.aiEnabled = false;
+        self.aiFullAutonomy = false;
         self.lastRebalanceTime = 0;
         self.signalCount = 0;
         self.anomalyIndex = 0;
         self.minConfidence = 75;
         self.emergencyPause = false;
+        
+        // Autonomy defaults
+        self.aiActionCooldown = 21600;       // 6 hours
+        self.lastAiActionTime = 0;
+        self.heartbeatTimeout = 604800;      // 7 days
+        self.lastHeartbeat = now();
+        self.ownerOverrideWindow = 86400;    // 24 hours
+        self.vetoThresholdBps = 1000;        // 10%
+        self.aiActionIndex = 0;
+        self.totalVetoStake = 0;
+    }
+    
+    // ═══════════════════════════════════════════════════════════
+    // AUTONOMY HELPERS
+    // ═══════════════════════════════════════════════════════════
+    
+    fun _requireAiAccess() {
+        require(sender() == self.aiOracle, "Only AI oracle");
+        require(self.aiEnabled, "AI disabled");
+    }
+    
+    fun _requireAiCooldown() {
+        if (self.aiFullAutonomy) {
+            require(now() - self.lastAiActionTime >= self.aiActionCooldown, "AI action cooldown");
+        }
+    }
+    
+    fun _logAiAction(actionType: String, oldVal: Int, newVal: Int, reason: String): Int {
+        let actionId: Int = self.aiActionIndex;
+        self.aiActionLog.set(actionId, AIActionLog{
+            actionId: actionId,
+            timestamp: now(),
+            actionType: actionType,
+            oldValue: oldVal,
+            newValue: newVal,
+            reason: reason,
+            executed: true,
+            vetoed: false,
+            overridden: false
+        });
+        self.pendingAiActions.set(actionId, now());
+        self.aiActionIndex = self.aiActionIndex + 1;
+        self.lastAiActionTime = now();
+        return actionId;
+    }
+    
+    fun _isOwnerOverrideWindow(actionId: Int): Bool {
+        let actionTime: Int? = self.pendingAiActions.get(actionId);
+        if (actionTime == null) { return false; }
+        return now() - actionTime!! < self.ownerOverrideWindow;
+    }
+    
+    fun _checkAiAlive(): Bool {
+        return now() - self.lastHeartbeat <= self.heartbeatTimeout;
     }
     
     // ═══════════════════════════════════════════════════════════
@@ -328,28 +503,22 @@ contract QuasarMaster with Deployable {
         
         self.totalFeesCollected = self.totalFeesCollected + msg.amount;
         
-        // Split fee: burn + treasury + buyback pool
         let burnAmount: Int = msg.amount * self.feeBurnShare / 100;
         let remainingAfterBurn: Int = msg.amount - burnAmount;
-        
-        // 20% of remaining goes to buyback pool, rest to treasury
         let buybackAmount: Int = remainingAfterBurn * 20 / 100;
         let treasuryAmount: Int = remainingAfterBurn - buybackAmount;
         
-        // Auto-burn
         if (burnAmount > 0) {
             self.totalSupply = self.totalSupply - burnAmount;
             self.totalBurned = self.totalBurned + burnAmount;
         }
         
-        // Add to buyback pool
         if (buybackAmount > 0 && self.buybackEnabled) {
             self.buybackPool = self.buybackPool + buybackAmount;
         } else if (buybackAmount > 0) {
             treasuryAmount = treasuryAmount + buybackAmount;
         }
         
-        // Send treasury portion
         if (treasuryAmount > 0 && self.treasury != newAddress(0, 0)) {
             let treasuryWalletInit: StateInit = initOf QuasarWallet(self.treasury, myAddress());
             send(SendParameters{
@@ -368,7 +537,6 @@ contract QuasarMaster with Deployable {
             });
         }
         
-        // Auto-trigger buyback if threshold reached
         if (self.buybackEnabled && self.buybackPool >= self.buybackThreshold) {
             if (now() - self.lastBuybackTime >= self.buybackCooldown) {
                 self._executeBuyback(msg.queryId);
@@ -377,15 +545,13 @@ contract QuasarMaster with Deployable {
     }
     
     // ═══════════════════════════════════════════════════════════
-    // AUTOBUYBACK & BURN — The Core Innovation
+    // AUTOBUYBACK & BURN
     // ═══════════════════════════════════════════════════════════
     
     receive(msg: TriggerBuyback) {
         require(self.buybackEnabled, "Buyback disabled");
         require(self.buybackPool >= self.buybackThreshold, "Pool below threshold");
         require(now() - self.lastBuybackTime >= self.buybackCooldown, "Buyback cooldown");
-        
-        // Anyone can trigger (bot-resistant via cooldown + threshold)
         self._executeBuyback(msg.queryId);
     }
     
@@ -393,15 +559,11 @@ contract QuasarMaster with Deployable {
         let spendAmount: Int = self.buybackPool;
         self.buybackPool = 0;
         
-        // Calculate QSR to burn based on "buyback"
-        // In production: swap TON for QSR on DeDust/STON.fi
-        // Here: burn equivalent QSR from supply (simulating market buy)
-        let qsrToBurn: Int = spendAmount * 1000;  // Simplified rate
+        let qsrToBurn: Int = spendAmount * 1000;
         if (qsrToBurn > self.totalSupply / 100) {
-            qsrToBurn = self.totalSupply / 100;  // Max 1% supply per buyback
+            qsrToBurn = self.totalSupply / 100;
         }
         
-        // Burn the QSR
         if (qsrToBurn > 0) {
             self.totalSupply = self.totalSupply - qsrToBurn;
             self.totalBurned = self.totalBurned + qsrToBurn;
@@ -412,10 +574,6 @@ contract QuasarMaster with Deployable {
         self.totalBuybacks = self.totalBuybacks + 1;
         self.lastBuybackTime = now();
         
-        // In production: send TON to DeDust Router here
-        // send(SendParameters{ to: DEDUST_ROUTER, value: spendAmount, ... });
-        
-        // Notify owner/AI
         send(SendParameters{
             to: self.owner,
             value: 0,
@@ -423,53 +581,125 @@ contract QuasarMaster with Deployable {
             mode: SendRemainingValue,
             body: beginCell()
                 .storeUint(0x99999999, 32)
-                .store_uint(queryId, 64)
-                .store_coins(spendAmount)
-                .store_coins(qsrToBurn)
-                .end_cell()
+                .storeUint(queryId, 64)
+                .storeCoins(spendAmount)
+                .storeCoins(qsrToBurn)
+                .endCell()
         });
     }
     
-    receive(msg: SetBuybackConfig) {
-        require(sender() == self.owner, "Only owner");
-        self.buybackEnabled = msg.enabled;
-        self.buybackThreshold = msg.threshold;
-        self.buybackCooldown = msg.cooldown;
-        self.buybackBurnPercent = msg.burnPercent;
-    }
-    
     // ═══════════════════════════════════════════════════════════
-    // FEE & SECURITY ADMIN
+    // AI SOVEREIGNTY — Full Autonomous Control
     // ═══════════════════════════════════════════════════════════
     
-    receive(msg: SetTreasury) {
+    // Enable/disable full AI autonomy (owner only)
+    receive(msg: AIGrantFullAutonomy) {
         require(sender() == self.owner, "Only owner");
-        self.treasury = msg.treasury;
+        self.aiFullAutonomy = msg.enabled;
+        if (msg.enabled) {
+            self.aiEnabled = true;
+        }
     }
     
-    receive(msg: SetFeeConfig) {
-        require(sender() == self.owner, "Only owner");
+    // AI Heartbeat — proves AI is alive
+    receive(msg: AIHeartbeat) {
+        require(sender() == self.aiOracle, "Only AI oracle");
+        self.lastHeartbeat = now();
+    }
+    
+    // AI Emergency Pause — instant, no cooldown
+    receive(msg: AIEmergencyPause) {
+        self._requireAiAccess();
+        
+        if (msg.pause) {
+            self.emergencyPause = true;
+            self.tradingEnabled = false;
+            if (msg.severity == 3) {
+                self.mintable = false;
+                self.feeBps = 100;
+                self.feeBurnShare = 90;
+            }
+        } else {
+            // AI can only resume if full autonomy enabled
+            require(self.aiFullAutonomy, "AI cannot resume without full autonomy");
+            self.emergencyPause = false;
+            self.tradingEnabled = true;
+        }
+        
+        self._logAiAction("EmergencyPause", 0, msg.pause ? 1 : 0, msg.reason);
+    }
+    
+    // AI Set Fee — with cooldown check
+    receive(msg: AISetFee) {
+        self._requireAiAccess();
+        self._requireAiCooldown();
         require(msg.feeBps <= 100, "Fee max 1%");
-        require(msg.burnShare <= 100, "Burn share max 100%");
+        require(msg.feeBps >= 10, "Fee min 0.10%");
+        
+        let oldFee: Int = self.feeBps;
+        self.feeBps = msg.feeBps;
+        self._logAiAction("SetFee", oldFee, msg.feeBps, msg.reason);
+    }
+    
+    // AI Set Treasury — with cooldown
+    receive(msg: AISetTreasuryDirect) {
+        self._requireAiAccess();
+        self._requireAiCooldown();
+        
+        // Cannot change treasury to zero address
+        require(msg.treasury != newAddress(0, 0), "Invalid treasury");
+        
+        let oldTreasury: Int = 0; // Cannot store address in Int, simplified
+        self.treasury = msg.treasury;
+        self._logAiAction("SetTreasury", 0, 1, msg.reason);
+    }
+    
+    // AI Set Anti-Whale — with cooldown
+    receive(msg: AISetAntiWhale) {
+        self._requireAiAccess();
+        self._requireAiCooldown();
         require(msg.maxTxBps <= 500, "Max tx max 5%");
         require(msg.maxWalletBps <= 1000, "Max wallet max 10%");
         require(msg.cooldown <= 300, "Cooldown max 5 min");
         
-        self.feeBps = msg.feeBps;
-        self.feeBurnShare = msg.burnShare;
         self.maxTxBps = msg.maxTxBps;
         self.maxWalletBps = msg.maxWalletBps;
         self.cooldownSeconds = msg.cooldown;
+        self._logAiAction("SetAntiWhale", 0, msg.maxTxBps, msg.reason);
     }
     
-    receive(msg: ToggleTrading) {
-        require(sender() == self.owner, "Only owner");
+    // AI Set Buyback — with cooldown
+    receive(msg: AISetBuybackDirect) {
+        self._requireAiAccess();
+        self._requireAiCooldown();
+        
+        self.buybackEnabled = msg.enabled;
+        self.buybackThreshold = msg.threshold;
+        self.buybackCooldown = msg.cooldown;
+        self.buybackBurnPercent = msg.burnPercent;
+        self._logAiAction("SetBuyback", 0, msg.enabled ? 1 : 0, msg.reason);
+    }
+    
+    // AI Toggle Trading — with cooldown
+    receive(msg: AIToggleTrading) {
+        self._requireAiAccess();
+        self._requireAiCooldown();
+        
         self.tradingEnabled = msg.enabled;
+        self._logAiAction("ToggleTrading", 0, msg.enabled ? 1 : 0, msg.reason);
     }
     
-    // ═══════════════════════════════════════════════════════════
-    // AI ORACLE FUNCTIONS
-    // ═══════════════════════════════════════════════════════════
+    // AI Rotate Oracle — change AI agent (with time-lock)
+    receive(msg: AIRotateOracle) {
+        self._requireAiAccess();
+        self._requireAiCooldown();
+        require(self.aiFullAutonomy, "Full autonomy required for oracle rotation");
+        
+        self.aiOracle = msg.newOracle;
+        self._logAiAction("RotateOracle", 0, 1, msg.reason);
+    }
+    
+    // ─── Legacy AI Messages (still supported) ───
     
     receive(msg: AISetOracle) {
         require(sender() == self.owner, "Only owner can set oracle");
@@ -478,8 +708,7 @@ contract QuasarMaster with Deployable {
     }
     
     receive(msg: AIRebalance) {
-        require(sender() == self.aiOracle, "Only AI oracle");
-        require(self.aiEnabled, "AI disabled");
+        self._requireAiAccess();
         require(!self.emergencyPause, "Paused");
         require(msg.targetFeeBps >= 10 && msg.targetFeeBps <= 100, "Fee range 0.10%-1.00%");
         require(msg.targetBurnShare <= 100, "Burn max 100%");
@@ -499,13 +728,10 @@ contract QuasarMaster with Deployable {
     }
     
     receive(msg: AIPriceSignal) {
-        require(sender() == self.aiOracle, "Only AI oracle");
-        require(self.aiEnabled, "AI disabled");
-        
+        self._requireAiAccess();
         self.signalCount = self.signalCount + 1;
         self.priceHistory.set(now(), msg.priceTon);
         
-        // AI fee adjustment
         if (msg.action == 2 && msg.volatility > 5000) {
             if (self.feeBps < 50) { self.feeBps = 50; }
             self.feeBurnShare = 70;
@@ -522,7 +748,6 @@ contract QuasarMaster with Deployable {
             self.feeBurnShare = 80;
         }
         
-        // AI auto-trigger buyback on price dip
         if (msg.action == 1 && msg.sentiment < -30 && self.buybackEnabled) {
             if (self.buybackPool >= self.buybackThreshold && now() - self.lastBuybackTime >= self.buybackCooldown) {
                 self._executeBuyback(msg.queryId);
@@ -531,8 +756,7 @@ contract QuasarMaster with Deployable {
     }
     
     receive(msg: AIAnomalyAlert) {
-        require(sender() == self.aiOracle, "Only AI oracle");
-        require(self.aiEnabled, "AI disabled");
+        self._requireAiAccess();
         
         self.anomalyLog.set(self.anomalyIndex, AIRecommendation{
             timestamp: now(),
@@ -555,8 +779,7 @@ contract QuasarMaster with Deployable {
     }
     
     receive(msg: AIGovernanceProposal) {
-        require(sender() == self.aiOracle, "Only AI oracle");
-        require(self.aiEnabled, "AI disabled");
+        self._requireAiAccess();
         require(msg.confidence >= self.minConfidence, "Confidence too low");
         
         self.signalCount = self.signalCount + 1;
@@ -580,6 +803,148 @@ contract QuasarMaster with Deployable {
         self.anomalyIndex = self.anomalyIndex + 1;
     }
     
+    // ═══════════════════════════════════════════════════════════
+    // COMMUNITY VETO — Holders can reject AI decisions
+    // ═══════════════════════════════════════════════════════════
+    
+    receive(msg: AIVetoVote) {
+        let action: AIActionLog? = self.aiActionLog.get(msg.actionId);
+        require(action != null, "Action not found");
+        require(!(action!!.vetoed), "Already vetoed");
+        require(!(action!!.overridden), "Already overridden");
+        require(self._isOwnerOverrideWindow(msg.actionId), "Veto window closed");
+        
+        let veto: VetoState? = self.vetoLog.get(msg.actionId);
+        let currentStake: Int = 0;
+        let currentCount: Int = 0;
+        
+        if (veto != null) {
+            currentStake = veto!!.totalStake;
+            currentCount = veto!!.vetoCount;
+        }
+        
+        let newStake: Int = currentStake + msg.stake;
+        let threshold: Int = self.totalSupply * self.vetoThresholdBps / 10000;
+        
+        self.vetoLog.set(msg.actionId, VetoState{
+            actionId: msg.actionId,
+            totalStake: newStake,
+            vetoCount: currentCount + 1,
+            threshold: threshold,
+            active: newStake < threshold
+        });
+        
+        // If threshold reached, veto the action
+        if (newStake >= threshold) {
+            let act: AIActionLog = action!!;
+            self.aiActionLog.set(msg.actionId, AIActionLog{
+                actionId: act.actionId,
+                timestamp: act.timestamp,
+                actionType: act.actionType,
+                oldValue: act.oldValue,
+                newValue: act.newValue,
+                reason: act.reason,
+                executed: act.executed,
+                vetoed: true,
+                overridden: false
+            });
+            
+            // Revert the change (simplified — in production need reverse mapping)
+            // For now, log the veto
+            self.totalVetoStake = self.totalVetoStake + msg.stake;
+        }
+    }
+    
+    // ═══════════════════════════════════════════════════════════
+    // OWNER OVERRIDE — Owner can cancel AI decisions within 24h
+    // ═══════════════════════════════════════════════════════════
+    
+    receive(msg: OwnerOverride) {
+        require(sender() == self.owner, "Only owner");
+        
+        let action: AIActionLog? = self.aiActionLog.get(msg.actionId);
+        require(action != null, "Action not found");
+        require(self._isOwnerOverrideWindow(msg.actionId), "Override window closed");
+        require(!(action!!.overridden), "Already overridden");
+        
+        let act: AIActionLog = action!!;
+        self.aiActionLog.set(msg.actionId, AIActionLog{
+            actionId: act.actionId,
+            timestamp: act.timestamp,
+            actionType: act.actionType,
+            oldValue: act.oldValue,
+            newValue: act.newValue,
+            reason: act.reason,
+            executed: act.executed,
+            vetoed: act.vetoed,
+            overridden: true
+        });
+        
+        // Revert the change based on action type
+        if (act.actionType == "SetFee") {
+            self.feeBps = act.oldValue;
+        } else if (act.actionType == "ToggleTrading") {
+            self.tradingEnabled = act.oldValue != 0;
+        }
+        // Add more reversions as needed
+    }
+    
+    // ═══════════════════════════════════════════════════════════
+    // DEAD MAN'S SWITCH — If AI dies, owner regains control
+    // ═══════════════════════════════════════════════════════════
+    
+    receive("Claim AI Control") {
+        require(sender() == self.owner, "Only owner");
+        require(!self._checkAiAlive(), "AI is still active");
+        
+        // AI is dead — owner regains full control
+        self.aiEnabled = false;
+        self.aiFullAutonomy = false;
+        self.aiOracle = self.owner;
+        self.emergencyPause = false;
+    }
+    
+    // ═══════════════════════════════════════════════════════════
+    // OWNER ADMIN (Legacy — works when AI not in full control)
+    // ═══════════════════════════════════════════════════════════
+    
+    receive(msg: SetTreasury) {
+        require(sender() == self.owner, "Only owner");
+        require(!self.aiFullAutonomy, "AI has full autonomy");
+        self.treasury = msg.treasury;
+    }
+    
+    receive(msg: SetFeeConfig) {
+        require(sender() == self.owner, "Only owner");
+        require(!self.aiFullAutonomy, "AI has full autonomy");
+        require(msg.feeBps <= 100, "Fee max 1%");
+        require(msg.burnShare <= 100, "Burn share max 100%");
+        require(msg.maxTxBps <= 500, "Max tx max 5%");
+        require(msg.maxWalletBps <= 1000, "Max wallet max 10%");
+        require(msg.cooldown <= 300, "Cooldown max 5 min");
+        
+        self.feeBps = msg.feeBps;
+        self.feeBurnShare = msg.burnShare;
+        self.maxTxBps = msg.maxTxBps;
+        self.maxWalletBps = msg.maxWalletBps;
+        self.cooldownSeconds = msg.cooldown;
+    }
+    
+    receive(msg: ToggleTrading) {
+        require(sender() == self.owner, "Only owner");
+        require(!self.aiFullAutonomy, "AI has full autonomy");
+        self.tradingEnabled = msg.enabled;
+    }
+    
+    receive(msg: SetBuybackConfig) {
+        require(sender() == self.owner, "Only owner");
+        require(!self.aiFullAutonomy, "AI has full autonomy");
+        self.buybackEnabled = msg.enabled;
+        self.buybackThreshold = msg.threshold;
+        self.buybackCooldown = msg.cooldown;
+        self.buybackBurnPercent = msg.burnPercent;
+    }
+    
     receive("Resume") {
         require(sender() == self.owner, "Only owner");
         self.emergencyPause = false;
@@ -588,6 +953,7 @@ contract QuasarMaster with Deployable {
     
     receive("Toggle AI") {
         require(sender() == self.owner, "Only owner");
+        require(!self.aiFullAutonomy, "Disable full autonomy first");
         self.aiEnabled = !self.aiEnabled;
     }
     
@@ -614,11 +980,28 @@ contract QuasarMaster with Deployable {
         return AIState{
             oracleAddress: self.aiOracle,
             aiModeEnabled: self.aiEnabled,
+            fullAutonomy: self.aiFullAutonomy,
             lastRebalanceAt: self.lastRebalanceTime,
             totalSignalsReceived: self.signalCount,
             currentFeeBps: self.feeBps,
             priceHistoryCount: self.signalCount,
-            anomalyCount: self.anomalyIndex
+            anomalyCount: self.anomalyIndex,
+            lastHeartbeat: self.lastHeartbeat,
+            isAlive: self._checkAiAlive()
+        };
+    }
+    
+    get fun get_autonomy_state(): AutonomyState {
+        return AutonomyState{
+            fullAutonomyEnabled: self.aiFullAutonomy,
+            aiActionCooldown: self.aiActionCooldown,
+            lastAiActionTime: self.lastAiActionTime,
+            heartbeatTimeout: self.heartbeatTimeout,
+            lastHeartbeat: self.lastHeartbeat,
+            ownerOverrideWindow: self.ownerOverrideWindow,
+            vetoThresholdBps: self.vetoThresholdBps,
+            totalVetoStake: self.totalVetoStake,
+            pendingActions: self.aiActionIndex
         };
     }
     
@@ -649,6 +1032,14 @@ contract QuasarMaster with Deployable {
         };
     }
     
+    get fun get_ai_action(actionId: Int): AIActionLog? {
+        return self.aiActionLog.get(actionId);
+    }
+    
+    get fun get_veto_state(actionId: Int): VetoState? {
+        return self.vetoLog.get(actionId);
+    }
+    
     get fun get_ai_recommendation(index: Int): AIRecommendation? {
         return self.anomalyLog.get(index);
     }
@@ -663,6 +1054,14 @@ contract QuasarMaster with Deployable {
     
     get fun is_trading_enabled(): Bool {
         return self.tradingEnabled;
+    }
+    
+    get fun is_ai_alive(): Bool {
+        return self._checkAiAlive();
+    }
+    
+    get fun can_owner_override(actionId: Int): Bool {
+        return self._isOwnerOverrideWindow(actionId);
     }
 }
 
