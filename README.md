@@ -307,14 +307,18 @@ npm run website      # Serves website/ on localhost
 
 ## Roadmap
 
-- [x] All smart contracts (Master + DeFi)
-- [x] Web3 UI with TON Connect
-- [x] Built-in DEX + Yield Farming
-- [ ] Testnet deployment
-- [ ] Security audit
-- [ ] Mainnet launch
-- [ ] Cross-chain bridges
-- [ ] AI agent live deployment
+> Checked against the current repository. A checked item means the source implementation exists; it does not mean the feature has been audited, deployed to mainnet, or approved for production funds.
+
+- [x] Tact smart contracts (Master + DeFi) implemented
+- [x] Web3 UI with TON Connect implemented
+- [x] CPMM DEX and LP farming implemented in source
+- [ ] Reconcile token supply and tokenomics documentation with the on-chain implementation
+- [ ] TON testnet deployment and public scenario testing
+- [ ] Independent security audit and remediation
+- [ ] Production-ready buyback swap and secure lottery randomness
+- [ ] Mainnet launch with published addresses and build hashes
+- [ ] Cross-chain bridges (future)
+- [ ] Production AI agent deployment (future)
 
 ---
 
@@ -324,6 +328,7 @@ npm run website      # Serves website/ on localhost
 
 ## Links
 
+- Whitepaper: [WHITEPAPER.md](WHITEPAPER.md)
 - Website: [quasar-ton.netlify.app](https://quasar-ton.netlify.app)
 - Telegram: [@quasar_ton](https://t.me/quasar_ton)
 - Twitter: [@quasar_ton](https://twitter.com/quasar_ton)
