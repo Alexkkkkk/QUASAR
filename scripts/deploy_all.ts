@@ -3,6 +3,10 @@ import { TonClient, WalletContractV4 } from '@ton/ton';
 import { mnemonicToPrivateKey } from '@ton/crypto';
 import * as fs from 'fs';
 import * as path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // ═══════════════════════════════════════════════════════════════
 // QUASAR Unified Deployment Script
@@ -75,38 +79,41 @@ async function deploy() {
     
     const { QuasarMaster } = await import('../build/quasar_QuasarMaster');
     const quasar = client.open(
-        QuasarMaster.createFromConfig({
-            owner: wallet.address,
-            content: jettonContent,
-            walletCode: walletCode
-        })
+        await QuasarMaster.fromInit(wallet.address, jettonContent, walletCode)
     );
     
     console.log(`   Address: ${quasar.address.toString()}`);
     
-    await quasar.sendDeploy(wallet.sender(keyPair.secretKey), toNano('0.1'));
+    await quasar.send(
+        wallet.sender(keyPair.secretKey),
+        { value: toNano('0.1') },
+        { $$$type: 'Deploy', queryId: 0n }
+    );
     console.log('   ⏳ Waiting for deployment...');
     await new Promise(r => setTimeout(r, 15000));
     
     // Mint initial supply
     console.log(`   🔨 Minting ${CONFIG.totalSupply} QSR...`);
-    await quasar.sendMint(wallet.sender(keyPair.secretKey), {
-        amount: CONFIG.totalSupply * (10 ** CONFIG.decimals),
-        receiver: wallet.address
-    });
+    await quasar.send(
+        wallet.sender(keyPair.secretKey),
+        { value: toNano('0.05') },
+        {
+            $$$type: 'Mint',
+            amount: BigInt(CONFIG.totalSupply) * (10n ** BigInt(CONFIG.decimals)),
+            receiver: wallet.address
+        }
+    );
     await new Promise(r => setTimeout(r, 5000));
     
     // Setup AI Oracle if provided
     if (process.env.AI_ORACLE_ADDRESS) {
         console.log('   🤖 Setting AI Oracle...');
         const oracleAddr = Address.parse(process.env.AI_ORACLE_ADDRESS);
-        await quasar.send(wallet.sender(keyPair.secretKey), {
-            value: toNano('0.05'),
-            body: beginCell()
-                .storeUint(0x12345678, 32)
-                .storeAddress(oracleAddr)
-                .endCell()
-        });
+        await quasar.send(
+            wallet.sender(keyPair.secretKey),
+            { value: toNano('0.05') },
+            { $$type: 'AISetOracle', oracleAddress: oracleAddr }
+        );
     }
     
     console.log('   ✅ QuasarMaster deployed!');
@@ -116,7 +123,7 @@ async function deploy() {
     // ═══════════════════════════════════════════════════════
     console.log('\n📦 STEP 2: Deploying QuasarDeFi...');
     
-    const { QuasarDeFi } = await import('../build/QuasarDeFi/tact_QuasarDeFi');
+    const { QuasarDeFi } = await import('../build/quasar_defi_QuasarDeFi');
     const defi = client.open(
         await QuasarDeFi.fromInit(wallet.address, quasar.address)
     );
@@ -126,20 +133,18 @@ async function deploy() {
     await defi.send(
         wallet.sender(keyPair.secretKey),
         { value: toNano('0.5') },
-        { $$type: 'Deploy', queryId: 0n }
+        { $$$type: 'Deploy', queryId: 0n }
     );
     console.log('   ⏳ Waiting for deployment...');
     await new Promise(r => setTimeout(r, 15000));
     
     // Link DeFi to Master
     console.log('   🔗 Linking QuasarMaster ↔ QuasarDeFi...');
-    await quasar.send(wallet.sender(keyPair.secretKey), {
-        value: toNano('0.05'),
-        body: beginCell()
-            .storeUint(0xabcdef00, 32)  // SetDefiAddress op
-            .storeAddress(defi.address)
-            .endCell()
-    });
+    await quasar.send(
+        wallet.sender(keyPair.secretKey),
+        { value: toNano('0.05') },
+        { $$type: 'SetDefiAddress', defiAddress: defi.address }
+    );
     
     console.log('   ✅ QuasarDeFi deployed & linked!');
     
