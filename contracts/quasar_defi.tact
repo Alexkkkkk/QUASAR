@@ -1,5 +1,5 @@
-import "@stdlib/deploy"
-import "@stdlib/content"
+import "@stdlib/deploy";
+import "@stdlib/content";
 
 // ═══════════════════════════════════════════════════════════════
 // QUASAR DeFi Module v2.0 — DEX | Liquidity Pool | Yield Farming
@@ -39,95 +39,110 @@ struct SwapQuote { tonIn: Int; qsrIn: Int; tonOut: Int; qsrOut: Int; fee: Int; p
 
 contract QuasarDeFi with Deployable {
     
-    owner: Address
-    qsrMaster: Address
+    owner: Address;
+    qsrMaster: Address;
     
     // LP Pool
-    lpTotalSupply: Int as coins
-    tonReserve: Int as coins
-    qsrReserve: Int as coins
-    lpBalances: map<Address, Int>
+    lpTotalSupply: Int as coins;
+    tonReserve: Int as coins;
+    qsrReserve: Int as coins;
+    lpBalances: map<Address, Int>;
     
     // AMM Fee (0.30% default = 30 bps)
-    feeBps: Int as uint16
-    feeAccumulated: Int as coins
+    feeBps: Int as uint16;
+    feeAccumulated: Int as coins;
     
     // Farm
-    farmEnabled: Bool
-    farmRewardPerSecond: Int as coins
-    farmStartTime: Int as uint32
-    farmEndTime: Int as uint32
-    farmLastUpdate: Int
-    farmAccRewardPerShare: Int
-    farmTotalStaked: Int as coins
-    farmStakes: map<Address, UserFarmInfo>
+    farmEnabled: Bool;
+    farmRewardPerSecond: Int as coins;
+    farmStartTime: Int as uint32;
+    farmEndTime: Int as uint32;
+    farmLastUpdate: Int;
+    farmAccRewardPerShare: Int;
+    farmTotalStaked: Int as coins;
+    farmStakes: map<Address, UserFarmInfo>;
     
     // Safety
-    locked: Bool
+    locked: Bool;
     
     init(owner: Address, qsrMaster: Address) {
-        self.owner = owner
-        self.qsrMaster = qsrMaster
-        self.lpTotalSupply = 0
-        self.tonReserve = 0
-        self.qsrReserve = 0
-        self.feeBps = 30
-        self.feeAccumulated = 0
-        self.farmEnabled = true
-        self.farmRewardPerSecond = 100000000
-        self.farmStartTime = now()
-        self.farmEndTime = now() + 31536000
-        self.farmLastUpdate = now()
-        self.farmAccRewardPerShare = 0
-        self.farmTotalStaked = 0
-        self.locked = false
+        self.owner = owner;
+        self.qsrMaster = qsrMaster;
+        self.lpTotalSupply = 0;
+        self.tonReserve = 0;
+        self.qsrReserve = 0;
+        self.feeBps = 30;
+        self.feeAccumulated = 0;
+        self.farmEnabled = true;
+        self.farmRewardPerSecond = 100000000;
+        self.farmStartTime = now();
+        self.farmEndTime = now() + 31536000;
+        self.farmLastUpdate = now();
+        self.farmAccRewardPerShare = 0;
+        self.farmTotalStaked = 0;
+        self.locked = false;
     }
     
     // ─── Reentrancy Guard ───
     fun _lock() { require(!self.locked, "Reentrant call"); self.locked = true }
-    fun _unlock() { self.locked = false }
+    fun _unlock() { self.locked = false; }
+
+    fun _min(a: Int, b: Int): Int {
+        return a < b ? a : b;
+    }
+
+    fun _sqrt(value: Int): Int {
+        if (value <= 0) { return 0; }
+        let x: Int = value;
+        let y: Int = (x + 1) / 2;
+        while (y < x) {
+            x = y;
+            y = (x + value / x) / 2;
+        }
+        return x;
+    }
     
     // ─── Receive TON ───
     receive() { }
     
     // ─── Jetton QSR Deposit (for liquidity) ───
     receive(msg: TokenNotification) {
-        require(sender() == self.qsrMaster, "Only QSR master")
+        require(sender() == self.qsrMaster, "Only QSR master");
         // QSR received — can be used for swaps or liquidity
         // In production: track pending deposits per user
-        self.qsrReserve = self.qsrReserve + msg.amount
+        self.qsrReserve = self.qsrReserve + msg.amount;
     }
     
     // ─── ADD LIQUIDITY ───
     receive(msg: AddLiquidity) {
-        self._lock()
-        require(msg.tonAmount > 0 && msg.qsrAmount > 0, "Invalid amounts")
-        require(context().value >= msg.tonAmount, "Insufficient TON sent")
+        self._lock();
+        require(msg.tonAmount > 0 && msg.qsrAmount > 0, "Invalid amounts");
+        require(context().value >= msg.tonAmount, "Insufficient TON sent");
         
-        let lpToMint: Int = 0
+        let lpToMint: Int = 0;
         if (self.lpTotalSupply == 0) {
             // First deposit: LP = sqrt(ton * qsr)
-            lpToMint = sqrt(msg.tonAmount * msg.qsrAmount)
+            lpToMint = self._sqrt(msg.tonAmount * msg.qsrAmount);
         } else {
             // Subsequent: proportional to existing reserves
-            let lpByTon: Int = (msg.tonAmount * self.lpTotalSupply) / self.tonReserve
-            let lpByQsr: Int = (msg.qsrAmount * self.lpTotalSupply) / self.qsrReserve
-            lpToMint = min(lpByTon, lpByQsr)
+            let lpByTon: Int = (msg.tonAmount * self.lpTotalSupply) / self.tonReserve;
+            let lpByQsr: Int = (msg.qsrAmount * self.lpTotalSupply) / self.qsrReserve;
+            lpToMint = self._min(lpByTon, lpByQsr);
         }
-        require(lpToMint > 0, "Zero LP tokens")
+        require(lpToMint > 0, "Zero LP tokens");
         
         // Update reserves
-        self.tonReserve += msg.tonAmount
-        self.qsrReserve += msg.qsrAmount
-        self.lpTotalSupply += lpToMint
+        self.tonReserve += msg.tonAmount;
+        self.qsrReserve += msg.qsrAmount;
+        self.lpTotalSupply += lpToMint;
         
         // Credit LP tokens
-        let current: Int? = self.lpBalances.get(sender())
-        self.lpBalances.set(sender(), current == null ? lpToMint : current!! + lpToMint)
+        let current: Int? = self.lpBalances.get(sender());
+        self.lpBalances.set(sender(), current == null ? lpToMint : current!! + lpToMint);
         
         // Auto-stake LP in farm
-        self._updateFarm()
-        self._stakeLp(sender(), lpToMint)
+        self._updateFarm();
+        self._stakeLp(sender(), lpToMint);
         
         // Emit event
         send(SendParameters{
@@ -139,32 +154,32 @@ contract QuasarDeFi with Deployable {
                 tonAmount: msg.tonAmount,
                 qsrAmount: msg.qsrAmount,
                 lpMinted: lpToMint
-            }.toCell()
-        })
+            }.toCell(),
+        });
         
-        self._unlock()
+        self._unlock();
     }
     
     // ─── REMOVE LIQUIDITY ───
     receive(msg: RemoveLiquidity) {
-        self._lock()
-        let current: Int? = self.lpBalances.get(sender())
-        require(current != null && current!! >= msg.lpAmount, "Insufficient LP balance")
+        self._lock();
+        let current: Int? = self.lpBalances.get(sender());
+        require(current != null && current!! >= msg.lpAmount, "Insufficient LP balance");
         
         // Calculate proportional output
-        let tonOut: Int = (msg.lpAmount * self.tonReserve) / self.lpTotalSupply
-        let qsrOut: Int = (msg.lpAmount * self.qsrReserve) / self.lpTotalSupply
-        require(tonOut > 0 && qsrOut > 0, "Zero output")
+        let tonOut: Int = (msg.lpAmount * self.tonReserve) / self.lpTotalSupply;
+        let qsrOut: Int = (msg.lpAmount * self.qsrReserve) / self.lpTotalSupply;
+        require(tonOut > 0 && qsrOut > 0, "Zero output");
         
         // Unstake from farm first (claim pending rewards)
-        self._updateFarm()
-        self._unstakeLp(sender(), msg.lpAmount)
+        self._updateFarm();
+        self._unstakeLp(sender(), msg.lpAmount);
         
         // Burn LP tokens
-        self.lpBalances.set(sender(), current!! - msg.lpAmount)
-        self.lpTotalSupply -= msg.lpAmount
-        self.tonReserve -= tonOut
-        self.qsrReserve -= qsrOut
+        self.lpBalances.set(sender(), current!! - msg.lpAmount);
+        self.lpTotalSupply -= msg.lpAmount;
+        self.tonReserve -= tonOut;
+        self.qsrReserve -= qsrOut;
         
         // Send TON back
         send(SendParameters{
@@ -172,7 +187,7 @@ contract QuasarDeFi with Deployable {
             value: tonOut,
             mode: SendIgnoreErrors,
             body: emptyCell()
-        })
+        });
         
         // Send QSR back via Jetton transfer
         // In production: send TokenNotification back through qsrMaster
@@ -187,30 +202,30 @@ contract QuasarDeFi with Deployable {
                 tonOut: tonOut,
                 qsrOut: qsrOut,
                 lpBurned: msg.lpAmount
-            }.toCell()
-        })
+            }.toCell(),
+        });
         
-        self._unlock()
+        self._unlock();
     }
     
     // ─── SWAP QSR → TON (sell QSR) ───
     receive(msg: SwapToTON) {
-        self._lock()
-        require(msg.qsrAmount > 0 && self.qsrReserve > 0, "Invalid swap")
+        self._lock();
+        require(msg.qsrAmount > 0 && self.qsrReserve > 0, "Invalid swap");
         
         // CPMM with fee: tonOut = (qsrIn * tonReserve) / (qsrReserve + qsrIn)
         // Fee is taken from output
-        let grossTonOut: Int = (msg.qsrAmount * self.tonReserve) / (self.qsrReserve + msg.qsrAmount)
-        let fee: Int = (grossTonOut * self.feeBps) / 10000
-        let tonOut: Int = grossTonOut - fee
+        let grossTonOut: Int = (msg.qsrAmount * self.tonReserve) / (self.qsrReserve + msg.qsrAmount);
+        let fee: Int = (grossTonOut * self.feeBps) / 10000;
+        let tonOut: Int = grossTonOut - fee;
         
-        require(tonOut >= msg.minTonOut, "Slippage exceeded")
-        require(tonOut > 0 && tonOut < self.tonReserve, "Insufficient reserve")
+        require(tonOut >= msg.minTonOut, "Slippage exceeded");
+        require(tonOut > 0 && tonOut < self.tonReserve, "Insufficient reserve");
         
         // Update reserves
-        self.qsrReserve += msg.qsrAmount
-        self.tonReserve -= tonOut
-        self.feeAccumulated += fee
+        self.qsrReserve += msg.qsrAmount;
+        self.tonReserve -= tonOut;
+        self.feeAccumulated += fee;
         
         // Send TON to trader
         send(SendParameters{
@@ -224,30 +239,30 @@ contract QuasarDeFi with Deployable {
                 tonOut: tonOut,
                 qsrOut: 0,
                 fee: fee
-            }.toCell()
-        })
+            }.toCell(),
+        });
         
-        self._unlock()
+        self._unlock();
     }
     
     // ─── SWAP TON → QSR (buy QSR) ───
     receive(msg: SwapToQSR) {
-        self._lock()
-        require(msg.tonAmount > 0 && self.tonReserve > 0, "Invalid swap")
-        require(context().value >= msg.tonAmount, "Insufficient TON sent")
+        self._lock();
+        require(msg.tonAmount > 0 && self.tonReserve > 0, "Invalid swap");
+        require(context().value >= msg.tonAmount, "Insufficient TON sent");
         
         // CPMM with fee
-        let grossQsrOut: Int = (msg.tonAmount * self.qsrReserve) / (self.tonReserve + msg.tonAmount)
-        let fee: Int = (grossQsrOut * self.feeBps) / 10000
-        let qsrOut: Int = grossQsrOut - fee
+        let grossQsrOut: Int = (msg.tonAmount * self.qsrReserve) / (self.tonReserve + msg.tonAmount);
+        let fee: Int = (grossQsrOut * self.feeBps) / 10000;
+        let qsrOut: Int = grossQsrOut - fee;
         
-        require(qsrOut >= msg.minQsrOut, "Slippage exceeded")
-        require(qsrOut > 0 && qsrOut < self.qsrReserve, "Insufficient reserve")
+        require(qsrOut >= msg.minQsrOut, "Slippage exceeded");
+        require(qsrOut > 0 && qsrOut < self.qsrReserve, "Insufficient reserve");
         
         // Update reserves
-        self.tonReserve += msg.tonAmount
-        self.qsrReserve -= qsrOut
-        self.feeAccumulated += fee
+        self.tonReserve += msg.tonAmount;
+        self.qsrReserve -= qsrOut;
+        self.feeAccumulated += fee;
         
         // Send QSR back via Jetton
         // In production: trigger TokenNotification through qsrMaster
@@ -264,29 +279,29 @@ contract QuasarDeFi with Deployable {
                 tonOut: 0,
                 qsrOut: qsrOut,
                 fee: fee
-            }.toCell()
-        })
+            }.toCell(),
+        });
         
-        self._unlock()
+        self._unlock();
     }
     
     // ─── CLAIM FARM REWARDS ───
     receive(msg: ClaimFarmRewards) {
-        self._updateFarm()
-        let stake: UserFarmInfo? = self.farmStakes.get(sender())
-        require(stake != null && stake!!.staked > 0, "No LP stake")
+        self._updateFarm();
+        let stake: UserFarmInfo? = self.farmStakes.get(sender());
+        require(stake != null && stake!!.staked > 0, "No LP stake");
         
-        let s: UserFarmInfo = stake!!
-        let pending: Int = (s.staked * (self.farmAccRewardPerShare - s.debt)) / 1000000000
-        let totalReward: Int = s.pending + pending
-        require(totalReward > 0, "No rewards to claim")
+        let s: UserFarmInfo = stake!!;
+        let pending: Int = (s.staked * (self.farmAccRewardPerShare - s.debt)) / 1000000000;
+        let totalReward: Int = s.pending + pending;
+        require(totalReward > 0, "No rewards to claim");
         
         // Reset debt
         self.farmStakes.set(sender(), UserFarmInfo{
             staked: s.staked,
             debt: self.farmAccRewardPerShare,
             pending: 0
-        })
+        });
         
         // Send reward (as TON for simplicity, in prod as QSR Jetton)
         send(SendParameters{
@@ -294,70 +309,70 @@ contract QuasarDeFi with Deployable {
             value: totalReward,
             mode: SendIgnoreErrors,
             body: EventFarmReward{ farmer: sender(), amount: totalReward }.toCell()
-        })
+        });
     }
     
     // ─── ADMIN ───
     receive(msg: SetFarmConfig) {
-        require(sender() == self.owner, "Only owner")
-        self.farmRewardPerSecond = msg.rewardPerSecond
-        self.farmStartTime = msg.startTime
-        self.farmEndTime = msg.endTime
+        require(sender() == self.owner, "Only owner");
+        self.farmRewardPerSecond = msg.rewardPerSecond;
+        self.farmStartTime = msg.startTime;
+        self.farmEndTime = msg.endTime;
     }
     
     receive(msg: SetFeeBps) {
-        require(sender() == self.owner, "Only owner")
-        require(msg.feeBps <= 100, "Max 1% fee")
-        self.feeBps = msg.feeBps
+        require(sender() == self.owner, "Only owner");
+        require(msg.feeBps <= 100, "Max 1% fee");
+        self.feeBps = msg.feeBps;
     }
     
     // ─── INTERNAL: Farm Helpers ───
     fun _updateFarm() {
         if (now() <= self.farmLastUpdate || self.farmTotalStaked == 0) { return }
-        let end: Int = min(now(), self.farmEndTime)
-        let multiplier: Int = end - self.farmLastUpdate
-        let reward: Int = multiplier * self.farmRewardPerSecond
-        self.farmAccRewardPerShare += (reward * 1000000000) / self.farmTotalStaked
-        self.farmLastUpdate = now()
+        let end: Int = self._min(now(), self.farmEndTime);
+        let multiplier: Int = end - self.farmLastUpdate;
+        let reward: Int = multiplier * self.farmRewardPerSecond;
+        self.farmAccRewardPerShare += (reward * 1000000000) / self.farmTotalStaked;
+        self.farmLastUpdate = now();
     }
     
     fun _stakeLp(user: Address, amount: Int) {
-        let stake: UserFarmInfo? = self.farmStakes.get(user)
+        let stake: UserFarmInfo? = self.farmStakes.get(user);
         if (stake == null) {
             self.farmStakes.set(user, UserFarmInfo{
                 staked: amount,
                 debt: self.farmAccRewardPerShare,
                 pending: 0
-            })
+            });
         } else {
-            let s: UserFarmInfo = stake!!
-            let pending: Int = (s.staked * (self.farmAccRewardPerShare - s.debt)) / 1000000000
+            let s: UserFarmInfo = stake!!;
+            let pending: Int = (s.staked * (self.farmAccRewardPerShare - s.debt)) / 1000000000;
             self.farmStakes.set(user, UserFarmInfo{
                 staked: s.staked + amount,
                 debt: self.farmAccRewardPerShare,
                 pending: s.pending + pending
-            })
+            });
         }
-        self.farmTotalStaked += amount
+        self.farmTotalStaked += amount;
     }
     
     fun _unstakeLp(user: Address, amount: Int) {
-        let stake: UserFarmInfo? = self.farmStakes.get(user)
-        require(stake != null && stake!!.staked >= amount, "Farm stake insufficient")
-        let s: UserFarmInfo = stake!!
-        let pending: Int = (s.staked * (self.farmAccRewardPerShare - s.debt)) / 1000000000
+        let stake: UserFarmInfo? = self.farmStakes.get(user);
+        require(stake != null && stake!!.staked >= amount, "Farm stake insufficient");
+        let s: UserFarmInfo = stake!!;
+        let pending: Int = (s.staked * (self.farmAccRewardPerShare - s.debt)) / 1000000000;
         self.farmStakes.set(user, UserFarmInfo{
             staked: s.staked - amount,
             debt: self.farmAccRewardPerShare,
             pending: s.pending + pending
-        })
-        self.farmTotalStaked -= amount
+        });
+        self.farmTotalStaked -= amount;
     }
     
     // ─── GETTERS ───
     get fun lpBalance(user: Address): Int {
-        let b: Int? = self.lpBalances.get(user)
-        return b == null ? 0 : b!!
+        let b: Int? = self.lpBalances.get(user);
+        return b == null ? 0 : b!!;
     }
     
     get fun poolInfo(): LPInfo {
@@ -380,8 +395,8 @@ contract QuasarDeFi with Deployable {
     }
     
     get fun userFarm(user: Address): UserFarmInfo {
-        let s: UserFarmInfo? = self.farmStakes.get(user)
-        return s == null ? UserFarmInfo{staked: 0, debt: 0, pending: 0} : s!!
+        let s: UserFarmInfo? = self.farmStakes.get(user);
+        return s == null ? UserFarmInfo{staked: 0, debt: 0, pending: 0} : s!!;
     }
     
     // ─── SWAP ESTIMATES ───
@@ -389,10 +404,10 @@ contract QuasarDeFi with Deployable {
         if (self.qsrReserve == 0 || qsrAmount == 0) {
             return SwapQuote{tonIn: 0, qsrIn: qsrAmount, tonOut: 0, qsrOut: 0, fee: 0, priceImpactBps: 0}
         }
-        let grossTonOut: Int = (qsrAmount * self.tonReserve) / (self.qsrReserve + qsrAmount)
-        let fee: Int = (grossTonOut * self.feeBps) / 10000
-        let tonOut: Int = grossTonOut - fee
-        let priceImpact: Int = (qsrAmount * 10000) / self.qsrReserve
+        let grossTonOut: Int = (qsrAmount * self.tonReserve) / (self.qsrReserve + qsrAmount);
+        let fee: Int = (grossTonOut * self.feeBps) / 10000;
+        let tonOut: Int = grossTonOut - fee;
+        let priceImpact: Int = (qsrAmount * 10000) / self.qsrReserve;
         if (priceImpact > 10000) { priceImpact = 10000 }
         return SwapQuote{tonIn: 0, qsrIn: qsrAmount, tonOut: tonOut, qsrOut: 0, fee: fee, priceImpactBps: priceImpact}
     }
@@ -401,29 +416,29 @@ contract QuasarDeFi with Deployable {
         if (self.tonReserve == 0 || tonAmount == 0) {
             return SwapQuote{tonIn: tonAmount, qsrIn: 0, tonOut: 0, qsrOut: 0, fee: 0, priceImpactBps: 0}
         }
-        let grossQsrOut: Int = (tonAmount * self.qsrReserve) / (self.tonReserve + tonAmount)
-        let fee: Int = (grossQsrOut * self.feeBps) / 10000
-        let qsrOut: Int = grossQsrOut - fee
-        let priceImpact: Int = (tonAmount * 10000) / self.tonReserve
+        let grossQsrOut: Int = (tonAmount * self.qsrReserve) / (self.tonReserve + tonAmount);
+        let fee: Int = (grossQsrOut * self.feeBps) / 10000;
+        let qsrOut: Int = grossQsrOut - fee;
+        let priceImpact: Int = (tonAmount * 10000) / self.tonReserve;
         if (priceImpact > 10000) { priceImpact = 10000 }
         return SwapQuote{tonIn: tonAmount, qsrIn: 0, tonOut: 0, qsrOut: qsrOut, fee: fee, priceImpactBps: priceImpact}
     }
     
     get fun estimateLpOut(tonAmount: Int, qsrAmount: Int): Int {
         if (self.lpTotalSupply == 0) {
-            return sqrt(tonAmount * qsrAmount)
+            return self._sqrt(tonAmount * qsrAmount);
         }
-        let lpByTon: Int = (tonAmount * self.lpTotalSupply) / self.tonReserve
-        let lpByQsr: Int = (qsrAmount * self.lpTotalSupply) / self.qsrReserve
-        return min(lpByTon, lpByQsr)
+        let lpByTon: Int = (tonAmount * self.lpTotalSupply) / self.tonReserve;
+        let lpByQsr: Int = (qsrAmount * self.lpTotalSupply) / self.qsrReserve;
+        return self._min(lpByTon, lpByQsr);
     }
     
     get fun estimateRemoveLiquidity(lpAmount: Int): LPInfo {
         if (self.lpTotalSupply == 0 || lpAmount == 0) {
             return LPInfo{totalSupply: 0, tonReserve: 0, qsrReserve: 0}
         }
-        let tonOut: Int = (lpAmount * self.tonReserve) / self.lpTotalSupply
-        let qsrOut: Int = (lpAmount * self.qsrReserve) / self.lpTotalSupply
+        let tonOut: Int = (lpAmount * self.tonReserve) / self.lpTotalSupply;
+        let qsrOut: Int = (lpAmount * self.qsrReserve) / self.lpTotalSupply;
         return LPInfo{totalSupply: self.lpTotalSupply, tonReserve: tonOut, qsrReserve: qsrOut}
     }
     
