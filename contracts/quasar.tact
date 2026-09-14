@@ -42,6 +42,7 @@ message BurnNotification { queryId: Int as uint64; amount: Int; sender: Address;
 message TokenTransfer { queryId: Int as uint64; amount: Int as coins; destination: Address; responseDestination: Address; customPayload: Cell?; forwardTonAmount: Int as coins; forwardPayload: Slice as remaining }
 message TokenBurn { queryId: Int as uint64; amount: Int as coins; responseDestination: Address; customPayload: Cell? }
 message TokenNotification { queryId: Int as uint64; amount: Int as coins; from: Address; forwardPayload: Slice as remaining }
+message DefiPayout { queryId: Int as uint64; amount: Int as coins; destination: Address }
 
 // ─── Fee & Buyback Messages ───
 message FeeTransfer { queryId: Int as uint64; amount: Int as coins; originalSender: Address; originalReceiver: Address }
@@ -166,6 +167,9 @@ contract QuasarMaster with Deployable {
     stakers: map<Address, StakeInfo>;
     totalStaked: Int as coins;
     stakingRewardsPool: Int as coins;
+    // QSR sent to the master is held as an unassigned deposit until a
+    // staking or vesting operation consumes it.
+    pendingQsrDeposits: map<Address, Int>;
     
     // Referral
     referralEnabled: Bool;
@@ -332,6 +336,17 @@ contract QuasarMaster with Deployable {
     
     receive("Stop Minting") { self._requireOwner(); self.mintable = false }
     
+    // A user funds staking by sending QSR to the master wallet. The
+    // subsequent Stake message can only consume a deposit from that wallet.
+    receive(msg: TokenNotification) {
+        require(msg.amount > 0, "Invalid amount");
+        let walletInit: StateInit = initOf QuasarWallet(msg.from, myAddress());
+        require(sender() == contractAddress(walletInit), "Invalid token source");
+
+        let pending: Int? = self.pendingQsrDeposits.get(msg.from);
+        self.pendingQsrDeposits.set(msg.from, pending == null ? msg.amount : pending!! + msg.amount);
+    }
+
     // ═══════════════════════════════════════════════════════════
     // FEE PROCESSING — 0.30% with Buyback + Lottery + Staking + DeFi
     // ═══════════════════════════════════════════════════════════
@@ -455,6 +470,8 @@ contract QuasarMaster with Deployable {
         require(self.stakingEnabled, "Staking off");
         require(msg.amount > 0, "Invalid amount");
         require(msg.amount >= self.stakingMinStake, "Below min");
+        let depositPending: Int? = self.pendingQsrDeposits.get(sender());
+        require(depositPending != null && depositPending!! >= msg.amount, "Deposit QSR first");
         
         let staker: Address = sender();
         let info: StakeInfo? = self.stakers.get(staker);
@@ -474,6 +491,7 @@ contract QuasarMaster with Deployable {
         
         self.stakers.set(staker, StakeInfo{ amount: current + msg.amount, startTime: now(), lastClaim: now(), lockEnd: lockEnd });
         self.totalStaked = self.totalStaked + msg.amount;
+        self.pendingQsrDeposits.set(staker, depositPending!! - msg.amount);
         
         send(SendParameters{ to: sender(), value: 0, mode: SendRemainingValue, body: EventStake{ staker: staker, amount: msg.amount }.toCell() });
     }
@@ -577,8 +595,11 @@ contract QuasarMaster with Deployable {
         self._requireOwner();
         require(msg.totalAmount > 0 && msg.duration > 0 && msg.cliff <= msg.duration, "Invalid vesting");
         require(self.vestingSchedules.get(msg.beneficiary) == null, "Already exists");
+        let depositPending: Int? = self.pendingQsrDeposits.get(sender());
+        require(depositPending != null && depositPending!! >= msg.totalAmount, "Deposit QSR first");
         self.vestingSchedules.set(msg.beneficiary, VestingInfo{ totalAmount: msg.totalAmount, claimed: 0, startTime: now(), cliff: msg.cliff, duration: msg.duration });
         self.teamAllocation = self.teamAllocation + msg.totalAmount;
+        self.pendingQsrDeposits.set(sender(), depositPending!! - msg.totalAmount);
     }
     
     receive(msg: ClaimVested) {
@@ -858,6 +879,16 @@ contract QuasarMaster with Deployable {
         require(msg.defiAddress != newAddress(0, 0), "Invalid DeFi address");
         self.defiAddress = msg.defiAddress;
     }
+
+    // DeFi can only ask the master to release QSR that it has accounted for
+    // in its pool reserves. The master remains the only contract allowed to
+    // credit a user's Jetton wallet.
+    receive(msg: DefiPayout) {
+        require(sender() == self.defiAddress, "Only DeFi");
+        require(msg.amount > 0, "Invalid amount");
+        require(msg.destination != newAddress(0, 0), "Invalid destination");
+        self._sendTokens(msg.destination, msg.amount, msg.queryId, myAddress());
+    }
     
     // ═══════════════════════════════════════════════════════════
     // OWNER ADMIN
@@ -941,6 +972,10 @@ contract QuasarMaster with Deployable {
     }
     
     get fun get_stake_info(staker: Address): StakeInfo? { return self.stakers.get(staker) }
+    get fun get_pending_qsr_deposit(depositor: Address): Int {
+        let pending: Int? = self.pendingQsrDeposits.get(depositor);
+        return pending == null ? 0 : pending!!
+    }
     get fun get_referral_info(user: Address): ReferralInfo? { return self.referrals.get(user) }
     get fun get_vesting_info(beneficiary: Address): VestingInfo? { return self.vestingSchedules.get(beneficiary) }
     
