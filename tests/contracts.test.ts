@@ -5,8 +5,10 @@ import {
     QuasarMaster,
     loadDeploy,
     loadMint,
+    loadTokenNotification,
     storeDeploy,
-    storeMint
+    storeMint,
+    storeTokenNotification
 } from '../build/quasar_QuasarMaster.js';
 import {
     QuasarDeFi,
@@ -14,10 +16,12 @@ import {
     loadSwapToTON,
     loadSetPaused,
     loadSetMaxTradeBps,
+    loadDefiPayout,
     storeAddLiquidity,
     storeSwapToTON,
     storeSetPaused,
-    storeSetMaxTradeBps
+    storeSetMaxTradeBps,
+    storeDefiPayout
 } from '../build/quasar_defi_QuasarDeFi.js';
 
 const owner = Address.parseRaw(`0:${'00'.repeat(32)}`);
@@ -99,4 +103,29 @@ test('DeFi risk controls preserve pause and trade-limit settings', () => {
         $$type: 'SetMaxTradeBps',
         maxTradeBps: 3000n
     });
+});
+
+test('QSR deposit and payout messages preserve their ownership fields', () => {
+    const notification = beginCell()
+        .store(storeTokenNotification({
+            $$type: 'TokenNotification',
+            queryId: 7n,
+            amount: 5_000_000_000n,
+            from: owner,
+            forwardPayload: beginCell().endCell().beginParse()
+        }))
+        .endCell();
+    const payout = beginCell()
+        .store(storeDefiPayout({
+            $$type: 'DefiPayout',
+            queryId: 8n,
+            amount: 2_000_000_000n,
+            destination: owner
+        }))
+        .endCell();
+
+    const parsedNotification = loadTokenNotification(notification.beginParse());
+    assert.equal(parsedNotification.amount, 5_000_000_000n);
+    assert.equal(parsedNotification.from.toRawString(), owner.toRawString());
+    assert.equal(loadDefiPayout(payout.beginParse()).destination.toRawString(), owner.toRawString());
 });
