@@ -35,7 +35,7 @@ async function deploy() {
     });
     
     // ─── Setup Wallet ───
-    const mnemonic = process.env.WALLET_MNEMONIC?.split(' ');
+    const mnemonic = process.env.WALLET_MNEMONIC?.trim().split(/\s+/);
     if (!mnemonic || mnemonic.length !== 24) {
         console.error('❌ Set WALLET_MNEMONIC (24 words) in .env');
         process.exit(1);
@@ -51,7 +51,7 @@ async function deploy() {
     
     // ─── Load Build Artifacts ───
     const buildDir = path.join(__dirname, '..', 'build');
-    const walletCodePath = path.join(buildDir, 'quasar_QuasarWallet.cell');
+    const walletCodePath = path.join(buildDir, 'quasar_QuasarWallet.code.boc');
     
     if (!fs.existsSync(walletCodePath)) {
         console.error('❌ Build artifacts missing. Run: npm run build');
@@ -61,23 +61,20 @@ async function deploy() {
     const walletCode = Cell.fromBoc(fs.readFileSync(walletCodePath))[0];
     
     // ─── Jetton Metadata (TEP-64) ───
+    // TEP-64 off-chain content: the metadata document contains the name,
+    // symbol, decimals, description, and image URL.
     const jettonContent = beginCell()
         .storeUint(0x01, 8)
-        .storeDict([
-            ['name', CONFIG.name],
-            ['symbol', CONFIG.symbol],
-            ['decimals', CONFIG.decimals.toString()],
-            ['description', 'The brightest AI-powered Jetton with DeFi integration'],
-            ['image', 'https://quasar-ton.netlify.app/assets/logo.png']
-        ])
+        .storeStringTail('https://quasar-ton.netlify.app/metadata.json')
         .endCell();
+    const sender = wallet.sender(client.provider(wallet.address), keyPair.secretKey);
     
     // ═══════════════════════════════════════════════════════
     // STEP 1: Deploy QuasarMaster
     // ═══════════════════════════════════════════════════════
     console.log('\n📦 STEP 1: Deploying QuasarMaster...');
     
-    const { QuasarMaster } = await import('../build/quasar_QuasarMaster');
+    const { QuasarMaster } = await import('../build/quasar_QuasarMaster.js');
     const quasar = client.open(
         await QuasarMaster.fromInit(wallet.address, jettonContent, walletCode)
     );
@@ -85,9 +82,9 @@ async function deploy() {
     console.log(`   Address: ${quasar.address.toString()}`);
     
     await quasar.send(
-        wallet.sender(keyPair.secretKey),
+        sender,
         { value: toNano('0.1') },
-        { $$$type: 'Deploy', queryId: 0n }
+        { $$type: 'Deploy', queryId: 0n }
     );
     console.log('   ⏳ Waiting for deployment...');
     await new Promise(r => setTimeout(r, 15000));
@@ -95,10 +92,10 @@ async function deploy() {
     // Mint initial supply
     console.log(`   🔨 Minting ${CONFIG.totalSupply} QSR...`);
     await quasar.send(
-        wallet.sender(keyPair.secretKey),
+        sender,
         { value: toNano('0.05') },
         {
-            $$$type: 'Mint',
+            $$type: 'Mint',
             amount: BigInt(CONFIG.totalSupply) * (10n ** BigInt(CONFIG.decimals)),
             receiver: wallet.address
         }
@@ -110,7 +107,7 @@ async function deploy() {
         console.log('   🤖 Setting AI Oracle...');
         const oracleAddr = Address.parse(process.env.AI_ORACLE_ADDRESS);
         await quasar.send(
-            wallet.sender(keyPair.secretKey),
+            sender,
             { value: toNano('0.05') },
             { $$type: 'AISetOracle', oracleAddress: oracleAddr }
         );
@@ -123,7 +120,7 @@ async function deploy() {
     // ═══════════════════════════════════════════════════════
     console.log('\n📦 STEP 2: Deploying QuasarDeFi...');
     
-    const { QuasarDeFi } = await import('../build/quasar_defi_QuasarDeFi');
+    const { QuasarDeFi } = await import('../build/quasar_defi_QuasarDeFi.js');
     const defi = client.open(
         await QuasarDeFi.fromInit(wallet.address, quasar.address)
     );
@@ -131,9 +128,9 @@ async function deploy() {
     console.log(`   Address: ${defi.address.toString()}`);
     
     await defi.send(
-        wallet.sender(keyPair.secretKey),
+        sender,
         { value: toNano('0.5') },
-        { $$$type: 'Deploy', queryId: 0n }
+        { $$type: 'Deploy', queryId: 0n }
     );
     console.log('   ⏳ Waiting for deployment...');
     await new Promise(r => setTimeout(r, 15000));
@@ -141,7 +138,7 @@ async function deploy() {
     // Link DeFi to Master
     console.log('   🔗 Linking QuasarMaster ↔ QuasarDeFi...');
     await quasar.send(
-        wallet.sender(keyPair.secretKey),
+        sender,
         { value: toNano('0.05') },
         { $$type: 'SetDefiAddress', defiAddress: defi.address }
     );
