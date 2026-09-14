@@ -1,9 +1,9 @@
 # Tact compilation report
 Contract: QuasarMaster
-BoC Size: 48054 bytes
+BoC Size: 48361 bytes
 
 ## Structures (Structs and Messages)
-Total structures: 82
+Total structures: 84
 
 ### DataSize
 TL-B: `_ cells:int257 bits:int257 refs:int257 = DataSize`
@@ -162,24 +162,32 @@ TL-B: `ai_rotate_oracle#2fb11c16 queryId:uint64 newOracle:address reason:^string
 Signature: `AIRotateOracle{queryId:uint64,newOracle:address,reason:^string}`
 
 ### Mint
-TL-B: `mint#fc708bd2 amount:int257 receiver:address = Mint`
-Signature: `Mint{amount:int257,receiver:address}`
+TL-B: `mint#642b7d07 amount:coins receiver:address = Mint`
+Signature: `Mint{amount:coins,receiver:address}`
 
 ### BurnNotification
-TL-B: `burn_notification#db17f0ca queryId:uint64 amount:int257 sender:address responseDestination:address = BurnNotification`
-Signature: `BurnNotification{queryId:uint64,amount:int257,sender:address,responseDestination:address}`
+TL-B: `burn_notification#7bdd97de queryId:uint64 amount:coins sender:address responseDestination:address = BurnNotification`
+Signature: `BurnNotification{queryId:uint64,amount:coins,sender:address,responseDestination:address}`
 
 ### TokenTransfer
-TL-B: `token_transfer#93abb53e queryId:uint64 amount:coins destination:address responseDestination:address customPayload:Maybe ^cell forwardTonAmount:coins forwardPayload:remainder<slice> = TokenTransfer`
+TL-B: `token_transfer#0f8a7ea5 queryId:uint64 amount:coins destination:address responseDestination:address customPayload:Maybe ^cell forwardTonAmount:coins forwardPayload:remainder<slice> = TokenTransfer`
 Signature: `TokenTransfer{queryId:uint64,amount:coins,destination:address,responseDestination:address,customPayload:Maybe ^cell,forwardTonAmount:coins,forwardPayload:remainder<slice>}`
 
 ### TokenBurn
-TL-B: `token_burn#e7822413 queryId:uint64 amount:coins responseDestination:address customPayload:Maybe ^cell = TokenBurn`
+TL-B: `token_burn#595f07bc queryId:uint64 amount:coins responseDestination:address customPayload:Maybe ^cell = TokenBurn`
 Signature: `TokenBurn{queryId:uint64,amount:coins,responseDestination:address,customPayload:Maybe ^cell}`
 
 ### TokenNotification
-TL-B: `token_notification#04ad3783 queryId:uint64 amount:coins from:address forwardPayload:remainder<slice> = TokenNotification`
+TL-B: `token_notification#7362d09c queryId:uint64 amount:coins from:address forwardPayload:remainder<slice> = TokenNotification`
 Signature: `TokenNotification{queryId:uint64,amount:coins,from:address,forwardPayload:remainder<slice>}`
+
+### InternalTransfer
+TL-B: `internal_transfer#178d4519 queryId:uint64 amount:coins from:address responseDestination:address forwardTonAmount:coins forwardPayload:remainder<slice> = InternalTransfer`
+Signature: `InternalTransfer{queryId:uint64,amount:coins,from:address,responseDestination:address,forwardTonAmount:coins,forwardPayload:remainder<slice>}`
+
+### PoolPayout
+TL-B: `pool_payout#51a5c3d1 queryId:uint64 amount:coins destination:address = PoolPayout`
+Signature: `PoolPayout{queryId:uint64,amount:coins,destination:address}`
 
 ### DefiPayout
 TL-B: `defi_payout#bb8d8491 queryId:uint64 amount:coins destination:address = DefiPayout`
@@ -326,17 +334,20 @@ TL-B: `_ round:int257 owner:address = LotteryTicket`
 Signature: `LotteryTicket{round:int257,owner:address}`
 
 ### QuasarMaster$Data
-TL-B: `_ totalSupply:coins mintable:bool owner:address content:^cell walletCode:^cell feeBps:uint16 feeBurnShare:uint8 treasury:address totalBurned:coins totalFeesCollected:coins maxTxBps:uint16 maxWalletBps:uint16 cooldownSeconds:uint16 tradingEnabled:bool buybackEnabled:bool buybackPool:coins buybackThreshold:coins buybackCooldown:uint32 buybackBurnPercent:uint8 lastBuybackTime:int257 totalBuybacks:int257 totalQsrBurnedViaBuyback:coins totalTonSpentOnBuyback:coins aiOracle:address aiEnabled:bool aiFullAutonomy:bool lastRebalanceTime:int257 signalCount:int257 priceHistory:dict<int, int> anomalyLog:dict<int, ^AIRecommendation{timestamp:int257,action:^string,confidence:int257,executed:bool}> anomalyIndex:int257 minConfidence:uint8 emergencyPause:bool aiActionCooldown:uint32 lastAiActionTime:int257 heartbeatTimeout:uint32 lastHeartbeat:int257 ownerOverrideWindow:uint32 vetoThresholdBps:uint16 aiActionLog:dict<int, ^AIActionLog{actionId:int257,timestamp:int257,actionType:^string,oldValue:int257,newValue:int257,reason:^string,executed:bool,vetoed:bool,overridden:bool}> aiActionIndex:int257 pendingAiActions:dict<int, int> vetoLog:dict<int, ^VetoState{actionId:int257,totalStake:int257,vetoCount:int257,threshold:int257,active:bool}> totalVetoStake:coins stakingEnabled:bool stakingApyBps:uint16 stakingMinStake:coins stakingLockPeriod:uint32 stakers:dict<address, ^StakeInfo{amount:int257,startTime:int257,lastClaim:int257,lockEnd:int257}> totalStaked:coins stakingRewardsPool:coins pendingQsrDeposits:dict<address, int> referralEnabled:bool referralRewardBps:uint16 referrals:dict<address, ^ReferralInfo{referrer:address,totalEarned:int257,totalReferrals:int257}> vestingEnabled:bool teamAllocation:coins teamClaimed:coins vestingSchedules:dict<address, ^VestingInfo{totalAmount:int257,claimed:int257,startTime:int257,cliff:int257,duration:int257}> lotteryEnabled:bool lotteryTicketPrice:coins lotteryDrawInterval:uint32 lotteryJackpotShare:uint8 lotteryRound:int257 lotteryLastDraw:int257 lotteryJackpot:coins lotteryTickets:dict<int, address> lotteryTicketCount:int257 lotteryWinners:dict<int, address> defiAddress:address defiFeeShareBps:uint16 = QuasarMaster`
-Signature: `QuasarMaster{totalSupply:coins,mintable:bool,owner:address,content:^cell,walletCode:^cell,feeBps:uint16,feeBurnShare:uint8,treasury:address,totalBurned:coins,totalFeesCollected:coins,maxTxBps:uint16,maxWalletBps:uint16,cooldownSeconds:uint16,tradingEnabled:bool,buybackEnabled:bool,buybackPool:coins,buybackThreshold:coins,buybackCooldown:uint32,buybackBurnPercent:uint8,lastBuybackTime:int257,totalBuybacks:int257,totalQsrBurnedViaBuyback:coins,totalTonSpentOnBuyback:coins,aiOracle:address,aiEnabled:bool,aiFullAutonomy:bool,lastRebalanceTime:int257,signalCount:int257,priceHistory:dict<int, int>,anomalyLog:dict<int, ^AIRecommendation{timestamp:int257,action:^string,confidence:int257,executed:bool}>,anomalyIndex:int257,minConfidence:uint8,emergencyPause:bool,aiActionCooldown:uint32,lastAiActionTime:int257,heartbeatTimeout:uint32,lastHeartbeat:int257,ownerOverrideWindow:uint32,vetoThresholdBps:uint16,aiActionLog:dict<int, ^AIActionLog{actionId:int257,timestamp:int257,actionType:^string,oldValue:int257,newValue:int257,reason:^string,executed:bool,vetoed:bool,overridden:bool}>,aiActionIndex:int257,pendingAiActions:dict<int, int>,vetoLog:dict<int, ^VetoState{actionId:int257,totalStake:int257,vetoCount:int257,threshold:int257,active:bool}>,totalVetoStake:coins,stakingEnabled:bool,stakingApyBps:uint16,stakingMinStake:coins,stakingLockPeriod:uint32,stakers:dict<address, ^StakeInfo{amount:int257,startTime:int257,lastClaim:int257,lockEnd:int257}>,totalStaked:coins,stakingRewardsPool:coins,pendingQsrDeposits:dict<address, int>,referralEnabled:bool,referralRewardBps:uint16,referrals:dict<address, ^ReferralInfo{referrer:address,totalEarned:int257,totalReferrals:int257}>,vestingEnabled:bool,teamAllocation:coins,teamClaimed:coins,vestingSchedules:dict<address, ^VestingInfo{totalAmount:int257,claimed:int257,startTime:int257,cliff:int257,duration:int257}>,lotteryEnabled:bool,lotteryTicketPrice:coins,lotteryDrawInterval:uint32,lotteryJackpotShare:uint8,lotteryRound:int257,lotteryLastDraw:int257,lotteryJackpot:coins,lotteryTickets:dict<int, address>,lotteryTicketCount:int257,lotteryWinners:dict<int, address>,defiAddress:address,defiFeeShareBps:uint16}`
+TL-B: `_ totalSupply:coins mintable:bool owner:address content:^cell walletCode:^cell reserveBalance:coins feeBps:uint16 feeBurnShare:uint8 treasury:address totalBurned:coins totalFeesCollected:coins maxTxBps:uint16 maxWalletBps:uint16 cooldownSeconds:uint16 tradingEnabled:bool buybackEnabled:bool buybackPool:coins buybackThreshold:coins buybackCooldown:uint32 buybackBurnPercent:uint8 lastBuybackTime:int257 totalBuybacks:int257 totalQsrBurnedViaBuyback:coins totalTonSpentOnBuyback:coins aiOracle:address aiEnabled:bool aiFullAutonomy:bool lastRebalanceTime:int257 signalCount:int257 priceHistory:dict<int, int> anomalyLog:dict<int, ^AIRecommendation{timestamp:int257,action:^string,confidence:int257,executed:bool}> anomalyIndex:int257 minConfidence:uint8 emergencyPause:bool aiActionCooldown:uint32 lastAiActionTime:int257 heartbeatTimeout:uint32 lastHeartbeat:int257 ownerOverrideWindow:uint32 vetoThresholdBps:uint16 aiActionLog:dict<int, ^AIActionLog{actionId:int257,timestamp:int257,actionType:^string,oldValue:int257,newValue:int257,reason:^string,executed:bool,vetoed:bool,overridden:bool}> aiActionIndex:int257 pendingAiActions:dict<int, int> vetoLog:dict<int, ^VetoState{actionId:int257,totalStake:int257,vetoCount:int257,threshold:int257,active:bool}> totalVetoStake:coins stakingEnabled:bool stakingApyBps:uint16 stakingMinStake:coins stakingLockPeriod:uint32 stakers:dict<address, ^StakeInfo{amount:int257,startTime:int257,lastClaim:int257,lockEnd:int257}> totalStaked:coins stakingRewardsPool:coins pendingQsrDeposits:dict<address, int> referralEnabled:bool referralRewardBps:uint16 referrals:dict<address, ^ReferralInfo{referrer:address,totalEarned:int257,totalReferrals:int257}> vestingEnabled:bool teamAllocation:coins teamClaimed:coins vestingSchedules:dict<address, ^VestingInfo{totalAmount:int257,claimed:int257,startTime:int257,cliff:int257,duration:int257}> lotteryEnabled:bool lotteryTicketPrice:coins lotteryDrawInterval:uint32 lotteryJackpotShare:uint8 lotteryRound:int257 lotteryLastDraw:int257 lotteryJackpot:coins lotteryTickets:dict<int, address> lotteryTicketCount:int257 lotteryWinners:dict<int, address> defiAddress:address defiFeeShareBps:uint16 = QuasarMaster`
+Signature: `QuasarMaster{totalSupply:coins,mintable:bool,owner:address,content:^cell,walletCode:^cell,reserveBalance:coins,feeBps:uint16,feeBurnShare:uint8,treasury:address,totalBurned:coins,totalFeesCollected:coins,maxTxBps:uint16,maxWalletBps:uint16,cooldownSeconds:uint16,tradingEnabled:bool,buybackEnabled:bool,buybackPool:coins,buybackThreshold:coins,buybackCooldown:uint32,buybackBurnPercent:uint8,lastBuybackTime:int257,totalBuybacks:int257,totalQsrBurnedViaBuyback:coins,totalTonSpentOnBuyback:coins,aiOracle:address,aiEnabled:bool,aiFullAutonomy:bool,lastRebalanceTime:int257,signalCount:int257,priceHistory:dict<int, int>,anomalyLog:dict<int, ^AIRecommendation{timestamp:int257,action:^string,confidence:int257,executed:bool}>,anomalyIndex:int257,minConfidence:uint8,emergencyPause:bool,aiActionCooldown:uint32,lastAiActionTime:int257,heartbeatTimeout:uint32,lastHeartbeat:int257,ownerOverrideWindow:uint32,vetoThresholdBps:uint16,aiActionLog:dict<int, ^AIActionLog{actionId:int257,timestamp:int257,actionType:^string,oldValue:int257,newValue:int257,reason:^string,executed:bool,vetoed:bool,overridden:bool}>,aiActionIndex:int257,pendingAiActions:dict<int, int>,vetoLog:dict<int, ^VetoState{actionId:int257,totalStake:int257,vetoCount:int257,threshold:int257,active:bool}>,totalVetoStake:coins,stakingEnabled:bool,stakingApyBps:uint16,stakingMinStake:coins,stakingLockPeriod:uint32,stakers:dict<address, ^StakeInfo{amount:int257,startTime:int257,lastClaim:int257,lockEnd:int257}>,totalStaked:coins,stakingRewardsPool:coins,pendingQsrDeposits:dict<address, int>,referralEnabled:bool,referralRewardBps:uint16,referrals:dict<address, ^ReferralInfo{referrer:address,totalEarned:int257,totalReferrals:int257}>,vestingEnabled:bool,teamAllocation:coins,teamClaimed:coins,vestingSchedules:dict<address, ^VestingInfo{totalAmount:int257,claimed:int257,startTime:int257,cliff:int257,duration:int257}>,lotteryEnabled:bool,lotteryTicketPrice:coins,lotteryDrawInterval:uint32,lotteryJackpotShare:uint8,lotteryRound:int257,lotteryLastDraw:int257,lotteryJackpot:coins,lotteryTickets:dict<int, address>,lotteryTicketCount:int257,lotteryWinners:dict<int, address>,defiAddress:address,defiFeeShareBps:uint16}`
 
 ### QuasarWallet$Data
 TL-B: `_ balance:coins owner:address master:address lastTxTime:int257 = QuasarWallet`
 Signature: `QuasarWallet{balance:coins,owner:address,master:address,lastTxTime:int257}`
 
 ## Get methods
-Total get methods: 23
+Total get methods: 24
 
 ## get_jetton_data
+No arguments
+
+## get_reserve_balance
 No arguments
 
 ## get_wallet_address
@@ -451,6 +462,7 @@ No arguments
 * 8916: Window closed
 * 10363: Unauthorized burn
 * 11836: Invalid fee source
+* 12493: Invalid token wallet
 * 13478: Minting off
 * 14534: Not owner
 * 17062: Invalid amount
@@ -472,10 +484,10 @@ No arguments
 * 33624: Invalid DeFi address
 * 34524: Limits
 * 35499: Only owner
-* 35596: Invalid token source
 * 36222: Invalid lottery config
 * 38227: Fee 0.10%-1.00%
 * 40072: Pool empty
+* 40265: Invalid transfer amount
 * 40372: Max tx exceeded
 * 41094: Already exists
 * 42340: Too early
@@ -485,6 +497,7 @@ No arguments
 * 44799: Nothing to claim
 * 45296: Invalid vesting
 * 45605: Lottery off
+* 46710: Amount too small
 * 47767: Invalid referral reward
 * 49729: Unauthorized
 * 52432: Only AI oracle
@@ -496,6 +509,7 @@ No arguments
 * 57292: Trading off
 * 57316: AI cooldown
 * 57665: Invalid staking config
+* 57732: Insufficient QSR reserve
 * 57784: No rewards
 * 57871: Invalid
 * 59457: Paused
