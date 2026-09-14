@@ -305,6 +305,7 @@ contract QuasarMaster with Deployable {
     receive(msg: Mint) {
         self._requireNotPaused();
         require(msg.amount > 0, "Invalid amount");
+        require(msg.receiver != newAddress(0, 0), "Invalid receiver");
         self._requireTrading();
         self._requireOwner();
         require(self.mintable, "Minting off");
@@ -452,6 +453,7 @@ contract QuasarMaster with Deployable {
     receive(msg: Stake) {
         self._requireNotPaused();
         require(self.stakingEnabled, "Staking off");
+        require(msg.amount > 0, "Invalid amount");
         require(msg.amount >= self.stakingMinStake, "Below min");
         
         let staker: Address = sender();
@@ -477,6 +479,8 @@ contract QuasarMaster with Deployable {
     }
     
     receive(msg: Unstake) {
+        self._requireNotPaused();
+        require(msg.amount > 0, "Invalid amount");
         let staker: Address = sender();
         let info: StakeInfo? = self.stakers.get(staker);
         require(info != null, "No stake");
@@ -529,6 +533,7 @@ contract QuasarMaster with Deployable {
     receive(msg: SetStakingConfig) {
         self._requireOwner();
         require(!self.aiFullAutonomy, "AI controls");
+        require(msg.apyBps <= 10000 && msg.minStake > 0 && msg.lockPeriod > 0, "Invalid staking config");
         self.stakingEnabled = msg.enabled;
         self.stakingApyBps = msg.apyBps;
         self.stakingMinStake = msg.minStake;
@@ -559,6 +564,7 @@ contract QuasarMaster with Deployable {
     receive(msg: SetReferralConfig) {
         self._requireOwner();
         require(!self.aiFullAutonomy, "AI controls");
+        require(msg.rewardBps <= 10000, "Invalid referral reward");
         self.referralEnabled = msg.enabled;
         self.referralRewardBps = msg.rewardBps;
     }
@@ -628,6 +634,7 @@ contract QuasarMaster with Deployable {
     receive(msg: SetLotteryConfig) {
         self._requireOwner();
         require(!self.aiFullAutonomy, "AI controls");
+        require(msg.ticketPrice > 0 && msg.drawInterval > 0 && msg.jackpotShare > 0 && msg.jackpotShare <= 100, "Invalid lottery config");
         self.lotteryEnabled = msg.enabled;
         self.lotteryTicketPrice = msg.ticketPrice;
         self.lotteryDrawInterval = msg.drawInterval;
@@ -848,6 +855,7 @@ contract QuasarMaster with Deployable {
     
     receive(msg: SetDefiAddress) {
         self._requireOwner();
+        require(msg.defiAddress != newAddress(0, 0), "Invalid DeFi address");
         self.defiAddress = msg.defiAddress;
     }
     
@@ -864,7 +872,7 @@ contract QuasarMaster with Deployable {
     receive(msg: SetFeeConfig) {
         self._requireOwner();
         require(!self.aiFullAutonomy, "AI controls");
-        require(msg.feeBps <= 100 && msg.burnShare <= 100 && msg.maxTxBps <= 500 && msg.maxWalletBps <= 1000 && msg.cooldown <= 300, "Limits");
+        require(msg.feeBps > 0 && msg.feeBps <= 100 && msg.burnShare <= 100 && msg.maxTxBps > 0 && msg.maxTxBps <= 500 && msg.maxWalletBps > 0 && msg.maxWalletBps <= 1000 && msg.cooldown <= 300, "Limits");
         self.feeBps = msg.feeBps;
         self.feeBurnShare = msg.burnShare;
         self.maxTxBps = msg.maxTxBps;
