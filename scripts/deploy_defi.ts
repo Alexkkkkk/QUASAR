@@ -9,7 +9,11 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const isMainnet = process.env.TON_NETWORK === 'mainnet';
+    const network = process.env.TON_NETWORK?.trim().toLowerCase();
+    if (network !== 'mainnet' && network !== 'testnet') {
+        throw new Error('TON_NETWORK must be explicitly set to "mainnet" or "testnet"');
+    }
+    const isMainnet = network === 'mainnet';
 const endpoint = isMainnet
     ? 'https://toncenter.com/api/v2/jsonRPC'
     : 'https://testnet.toncenter.com/api/v2/jsonRPC';
@@ -59,7 +63,12 @@ async function deploy() {
         name: 'QuasarDeFi',
         deployedAt: new Date().toISOString()
     };
-    fs.writeFileSync(deploymentPath, JSON.stringify(deployment, null, 2));
+    const deploymentJson = JSON.stringify(deployment, null, 2);
+    fs.writeFileSync(deploymentPath, deploymentJson);
+    fs.writeFileSync(
+        path.join(__dirname, '..', 'website', 'deployment.json'),
+        deploymentJson
+    );
     console.log('QuasarDeFi deployed and deployment.json updated.');
 }
 
