@@ -8,7 +8,7 @@
     "build": "tact --config tact.config.json",
     "deploy": "tsx scripts/deploy_all.ts",
     "deploy:defi": "tsx scripts/deploy_defi.ts",
-    "test": "jest --passWithNoTests",
+    "test": "node --import tsx --test tests/contracts.test.ts",
     "lint": "tact --config tact.config.json --check",
     "website": "npx serve website"
   },
