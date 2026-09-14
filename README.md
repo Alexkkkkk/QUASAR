@@ -65,7 +65,8 @@ Built-in **Constant Product Market Maker (CPMM)** AMM. No external DEX needed.
 
 #### Swap QSR → TON
 ```bash
-# Sell QSR for TON
+# 1. Send QSR from the user's Jetton wallet to QuasarDeFi.
+# 2. Submit the swap using the deposited amount.
 SwapToTON { qsrAmount: 1000000000, minTonOut: 50000000 }
 ```
 
@@ -77,7 +78,8 @@ SwapToQSR { tonAmount: 50000000, minQsrOut: 900000000 }
 
 #### Add Liquidity
 ```bash
-# Provide both TON and QSR, receive LP tokens
+# 1. Deposit QSR to QuasarDeFi from the user's Jetton wallet.
+# 2. Send TON with this message; the QSR deposit is consumed atomically.
 AddLiquidity { tonAmount: 1000000000, qsrAmount: 100000000000 }
 ```
 
@@ -130,7 +132,8 @@ Every Transfer: 0.30% fee
 Stake QSR and earn **20% APY** paid from transaction fees.
 
 ```bash
-# Stake minimum 100 QSR for 30 days
+# 1. Deposit QSR to QuasarMaster from the user's Jetton wallet.
+# 2. Consume that deposit with this message.
 Stake { amount: 100000000000 }
 
 # Claim rewards anytime
@@ -144,6 +147,9 @@ Unstake { amount: 50000000000 }
 - **Lock Period**: 30 days
 - **APY**: 20% (adjustable by AI)
 - **Rewards**: Paid instantly from fee pool
+
+The master does not accept a bare `Stake` message as a deposit. QSR must be
+sent to the master wallet first; this prevents staking unowned tokens.
 
 ---
 
