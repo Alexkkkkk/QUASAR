@@ -35,6 +35,12 @@ builder $DeployOk$_store(builder build_0, (int) v) inline;
 ;; $DeployOk$_store_cell
 cell $DeployOk$_store_cell((int) v, builder b) inline;
 
+;; $DefiPayout$_store
+builder $DefiPayout$_store(builder build_0, (int, int, slice) v) inline;
+
+;; $DefiPayout$_store_cell
+cell $DefiPayout$_store_cell((int, int, slice) v, builder b) inline;
+
 ;; $EventLiquidityAdded$_store
 builder $EventLiquidityAdded$_store(builder build_0, (slice, int, int, int) v) inline;
 
@@ -75,10 +81,10 @@ tuple $UserFarmInfo$_as_optional((int, int, int) v) inline;
 tuple $UserFarmInfo$_load_opt(cell cl) inline;
 
 ;; $QuasarDeFi$_store
-builder $QuasarDeFi$_store(builder build_0, (slice, slice, int, int, int, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int) v) inline;
+builder $QuasarDeFi$_store(builder build_0, (slice, slice, int, int, int, cell, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int) v) inline;
 
 ;; $QuasarDeFi$_load
-(slice, ((slice, slice, int, int, int, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int))) $QuasarDeFi$_load(slice sc_0) inline;
+(slice, ((slice, slice, int, int, int, cell, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int))) $QuasarDeFi$_load(slice sc_0) inline;
 
 ;; $Context$_get_value
 _ $Context$_get_value((int, slice, int, slice) v) inline;
@@ -105,91 +111,103 @@ _ $UserFarmInfo$_get_staked((int, int, int) v) inline;
 (slice, ((slice, slice))) $QuasarDeFi$init$_load(slice sc_0) inline;
 
 ;; $QuasarDeFi$_contract_init
-(slice, slice, int, int, int, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int) $QuasarDeFi$_contract_init(slice $owner, slice $qsrMaster) impure inline;
+(slice, slice, int, int, int, cell, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int) $QuasarDeFi$_contract_init(slice $owner, slice $qsrMaster) impure inline;
 
 ;; $QuasarDeFi$_contract_load
-(slice, slice, int, int, int, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int) $QuasarDeFi$_contract_load() impure inline;
+(slice, slice, int, int, int, cell, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int) $QuasarDeFi$_contract_load() impure inline;
 
 ;; $QuasarDeFi$_contract_store
-() $QuasarDeFi$_contract_store((slice, slice, int, int, int, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int) v) impure inline;
+() $QuasarDeFi$_contract_store((slice, slice, int, int, int, cell, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int) v) impure inline;
 
 ;; $QuasarDeFi$_fun__lock
-((slice, slice, int, int, int, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int), ()) $QuasarDeFi$_fun__lock((slice, slice, int, int, int, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int) $self) impure inline_ref;
+((slice, slice, int, int, int, cell, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int), ()) $QuasarDeFi$_fun__lock((slice, slice, int, int, int, cell, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int) $self) impure inline_ref;
 
 ;; $QuasarDeFi$_fun__unlock
-((slice, slice, int, int, int, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int), ()) $QuasarDeFi$_fun__unlock((slice, slice, int, int, int, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int) $self) impure inline_ref;
+((slice, slice, int, int, int, cell, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int), ()) $QuasarDeFi$_fun__unlock((slice, slice, int, int, int, cell, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int) $self) impure inline_ref;
 
 ;; $QuasarDeFi$_fun__requireActive
-((slice, slice, int, int, int, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int), ()) $QuasarDeFi$_fun__requireActive((slice, slice, int, int, int, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int) $self) impure inline_ref;
+((slice, slice, int, int, int, cell, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int), ()) $QuasarDeFi$_fun__requireActive((slice, slice, int, int, int, cell, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int) $self) impure inline_ref;
+
+;; $SendParameters$_constructor_to_value_bounce_mode_body
+((int, cell, cell, cell, int, slice, int)) $SendParameters$_constructor_to_value_bounce_mode_body(slice $to, int $value, int $bounce, int $mode, cell $body) inline;
+
+;; $DefiPayout$_constructor_queryId_amount_destination
+((int, int, slice)) $DefiPayout$_constructor_queryId_amount_destination(int $queryId, int $amount, slice $destination) inline;
+
+;; $QuasarDeFi$_fun__sendQsr
+((slice, slice, int, int, int, cell, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int), ()) $QuasarDeFi$_fun__sendQsr((slice, slice, int, int, int, cell, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int) $self, slice $to, int $amount, int $queryId) impure inline_ref;
 
 ;; $QuasarDeFi$_fun__min
-((slice, slice, int, int, int, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int), int) $QuasarDeFi$_fun__min((slice, slice, int, int, int, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int) $self, int $a, int $b) impure inline_ref;
+((slice, slice, int, int, int, cell, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int), int) $QuasarDeFi$_fun__min((slice, slice, int, int, int, cell, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int) $self, int $a, int $b) impure inline_ref;
 
 ;; $QuasarDeFi$_fun__sqrt
-((slice, slice, int, int, int, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int), int) $QuasarDeFi$_fun__sqrt((slice, slice, int, int, int, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int) $self, int $value) impure inline_ref;
+((slice, slice, int, int, int, cell, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int), int) $QuasarDeFi$_fun__sqrt((slice, slice, int, int, int, cell, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int) $self, int $value) impure inline_ref;
 
 ;; $QuasarDeFi$_fun__updateFarm
-((slice, slice, int, int, int, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int), ()) $QuasarDeFi$_fun__updateFarm((slice, slice, int, int, int, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int) $self) impure inline_ref;
+((slice, slice, int, int, int, cell, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int), ()) $QuasarDeFi$_fun__updateFarm((slice, slice, int, int, int, cell, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int) $self) impure inline_ref;
 
 ;; $UserFarmInfo$_constructor_staked_debt_pending
 ((int, int, int)) $UserFarmInfo$_constructor_staked_debt_pending(int $staked, int $debt, int $pending) inline;
 
 ;; $QuasarDeFi$_fun__stakeLp
-((slice, slice, int, int, int, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int), ()) $QuasarDeFi$_fun__stakeLp((slice, slice, int, int, int, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int) $self, slice $user, int $amount) impure inline_ref;
+((slice, slice, int, int, int, cell, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int), ()) $QuasarDeFi$_fun__stakeLp((slice, slice, int, int, int, cell, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int) $self, slice $user, int $amount) impure inline_ref;
 
 ;; $QuasarDeFi$_fun__unstakeLp
-((slice, slice, int, int, int, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int), ()) $QuasarDeFi$_fun__unstakeLp((slice, slice, int, int, int, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int) $self, slice $user, int $amount) impure inline_ref;
+((slice, slice, int, int, int, cell, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int), ()) $QuasarDeFi$_fun__unstakeLp((slice, slice, int, int, int, cell, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int) $self, slice $user, int $amount) impure inline_ref;
 
 ;; $QuasarDeFi$_fun_lpBalance
-((slice, slice, int, int, int, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int), int) $QuasarDeFi$_fun_lpBalance((slice, slice, int, int, int, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int) $self, slice $user) impure inline_ref;
+((slice, slice, int, int, int, cell, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int), int) $QuasarDeFi$_fun_lpBalance((slice, slice, int, int, int, cell, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int) $self, slice $user) impure inline_ref;
+
+;; $QuasarDeFi$_fun_pendingQsrDeposit
+((slice, slice, int, int, int, cell, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int), int) $QuasarDeFi$_fun_pendingQsrDeposit((slice, slice, int, int, int, cell, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int) $self, slice $user) impure inline_ref;
 
 ;; $LPInfo$_constructor_totalSupply_tonReserve_qsrReserve
 ((int, int, int)) $LPInfo$_constructor_totalSupply_tonReserve_qsrReserve(int $totalSupply, int $tonReserve, int $qsrReserve) inline;
 
 ;; $QuasarDeFi$_fun_poolInfo
-((slice, slice, int, int, int, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int), (int, int, int)) $QuasarDeFi$_fun_poolInfo((slice, slice, int, int, int, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int) $self) impure inline_ref;
+((slice, slice, int, int, int, cell, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int), (int, int, int)) $QuasarDeFi$_fun_poolInfo((slice, slice, int, int, int, cell, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int) $self) impure inline_ref;
 
 ;; $FarmInfo$_constructor_staked_rewardPerSecond_lastUpdate_accRewardPerShare_startTime_endTime
 ((int, int, int, int, int, int)) $FarmInfo$_constructor_staked_rewardPerSecond_lastUpdate_accRewardPerShare_startTime_endTime(int $staked, int $rewardPerSecond, int $lastUpdate, int $accRewardPerShare, int $startTime, int $endTime) inline;
 
 ;; $QuasarDeFi$_fun_farmInfo
-((slice, slice, int, int, int, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int), (int, int, int, int, int, int)) $QuasarDeFi$_fun_farmInfo((slice, slice, int, int, int, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int) $self) impure inline_ref;
+((slice, slice, int, int, int, cell, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int), (int, int, int, int, int, int)) $QuasarDeFi$_fun_farmInfo((slice, slice, int, int, int, cell, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int) $self) impure inline_ref;
 
 ;; $QuasarDeFi$_fun_userFarm
-((slice, slice, int, int, int, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int), (int, int, int)) $QuasarDeFi$_fun_userFarm((slice, slice, int, int, int, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int) $self, slice $user) impure inline_ref;
+((slice, slice, int, int, int, cell, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int), (int, int, int)) $QuasarDeFi$_fun_userFarm((slice, slice, int, int, int, cell, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int) $self, slice $user) impure inline_ref;
 
 ;; $SwapQuote$_constructor_tonIn_qsrIn_tonOut_qsrOut_fee_priceImpactBps
 ((int, int, int, int, int, int)) $SwapQuote$_constructor_tonIn_qsrIn_tonOut_qsrOut_fee_priceImpactBps(int $tonIn, int $qsrIn, int $tonOut, int $qsrOut, int $fee, int $priceImpactBps) inline;
 
 ;; $QuasarDeFi$_fun_estimateSwapToTon
-((slice, slice, int, int, int, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int), (int, int, int, int, int, int)) $QuasarDeFi$_fun_estimateSwapToTon((slice, slice, int, int, int, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int) $self, int $qsrAmount) impure inline_ref;
+((slice, slice, int, int, int, cell, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int), (int, int, int, int, int, int)) $QuasarDeFi$_fun_estimateSwapToTon((slice, slice, int, int, int, cell, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int) $self, int $qsrAmount) impure inline_ref;
 
 ;; $QuasarDeFi$_fun_estimateSwapToQsr
-((slice, slice, int, int, int, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int), (int, int, int, int, int, int)) $QuasarDeFi$_fun_estimateSwapToQsr((slice, slice, int, int, int, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int) $self, int $tonAmount) impure inline_ref;
+((slice, slice, int, int, int, cell, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int), (int, int, int, int, int, int)) $QuasarDeFi$_fun_estimateSwapToQsr((slice, slice, int, int, int, cell, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int) $self, int $tonAmount) impure inline_ref;
 
 ;; $QuasarDeFi$_fun_estimateLpOut
-((slice, slice, int, int, int, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int), int) $QuasarDeFi$_fun_estimateLpOut((slice, slice, int, int, int, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int) $self, int $tonAmount, int $qsrAmount) impure inline_ref;
+((slice, slice, int, int, int, cell, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int), int) $QuasarDeFi$_fun_estimateLpOut((slice, slice, int, int, int, cell, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int) $self, int $tonAmount, int $qsrAmount) impure inline_ref;
 
 ;; $QuasarDeFi$_fun_estimateRemoveLiquidity
-((slice, slice, int, int, int, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int), (int, int, int)) $QuasarDeFi$_fun_estimateRemoveLiquidity((slice, slice, int, int, int, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int) $self, int $lpAmount) impure inline_ref;
+((slice, slice, int, int, int, cell, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int), (int, int, int)) $QuasarDeFi$_fun_estimateRemoveLiquidity((slice, slice, int, int, int, cell, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int) $self, int $lpAmount) impure inline_ref;
 
 ;; $QuasarDeFi$_fun_feeConfig
-((slice, slice, int, int, int, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int), int) $QuasarDeFi$_fun_feeConfig((slice, slice, int, int, int, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int) $self) impure inline_ref;
+((slice, slice, int, int, int, cell, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int), int) $QuasarDeFi$_fun_feeConfig((slice, slice, int, int, int, cell, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int) $self) impure inline_ref;
 
 ;; $QuasarDeFi$_fun_feeAccumulated
-((slice, slice, int, int, int, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int), int) $QuasarDeFi$_fun_feeAccumulated((slice, slice, int, int, int, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int) $self) impure inline_ref;
+((slice, slice, int, int, int, cell, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int), int) $QuasarDeFi$_fun_feeAccumulated((slice, slice, int, int, int, cell, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int) $self) impure inline_ref;
 
 ;; $QuasarDeFi$_fun_owner
-((slice, slice, int, int, int, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int), slice) $QuasarDeFi$_fun_owner((slice, slice, int, int, int, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int) $self) impure inline_ref;
+((slice, slice, int, int, int, cell, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int), slice) $QuasarDeFi$_fun_owner((slice, slice, int, int, int, cell, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int) $self) impure inline_ref;
 
 ;; $QuasarDeFi$_fun_qsrMaster
-((slice, slice, int, int, int, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int), slice) $QuasarDeFi$_fun_qsrMaster((slice, slice, int, int, int, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int) $self) impure inline_ref;
+((slice, slice, int, int, int, cell, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int), slice) $QuasarDeFi$_fun_qsrMaster((slice, slice, int, int, int, cell, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int) $self) impure inline_ref;
 
 ;; $MessageParameters$_constructor_bounce_to_value_mode_body
 ((int, cell, int, slice, int)) $MessageParameters$_constructor_bounce_to_value_mode_body(int $bounce, slice $to, int $value, int $mode, cell $body) inline;
 
 ;; $QuasarDeFi$_fun_notify
-((slice, slice, int, int, int, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int), ()) $QuasarDeFi$_fun_notify((slice, slice, int, int, int, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int) $self, cell $body) impure inline;
+((slice, slice, int, int, int, cell, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int), ()) $QuasarDeFi$_fun_notify((slice, slice, int, int, int, cell, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int) $self, cell $body) impure inline;
 
 ;; $SendParameters$_constructor_to_value_mode_body
 ((int, cell, cell, cell, int, slice, int)) $SendParameters$_constructor_to_value_mode_body(slice $to, int $value, int $mode, cell $body) inline;
@@ -399,8 +417,8 @@ int $global_myBalance() impure asm """
     SENDRAWMSG // https://github.com/tact-lang/tact/issues/1558
 """;
 
-((slice, slice, int, int, int, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int), ()) $QuasarDeFi$_fun_notify((slice, slice, int, int, int, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int) $self, cell $body) impure inline {
-    var (($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps)) = $self;
+((slice, slice, int, int, int, cell, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int), ()) $QuasarDeFi$_fun_notify((slice, slice, int, int, int, cell, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int) $self, cell $body) impure inline {
+    var (($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'pendingQsrDeposits, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps)) = $self;
     slice $to = __tact_context_get_sender();
     int $bounce = false;
     if (false) {
@@ -409,12 +427,18 @@ int $global_myBalance() impure asm """
         if (($balanceBeforeMessage < 0)) {
             $global_nativeReserve(0, 0);
             $global_message($MessageParameters$_constructor_bounce_to_value_mode_body($bounce, $to, 0, 130, $body));
-            return (($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps), ());
+            return (($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'pendingQsrDeposits, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps), ());
         }
     }
     $global_message($MessageParameters$_constructor_bounce_to_value_mode_body($bounce, $to, 0, 66, $body));
-    return (($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps), ());
+    return (($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'pendingQsrDeposits, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps), ());
 }
+
+;; quasar_defi_QuasarDeFi.constants.fc
+;; EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c
+slice __gen_slice_address_61ab4641fa30d9310391025086eec65d200d79268e1b7cd402565e01ba64be3c() asm """
+    B{b5ee9c72410101010024000043800000000000000000000000000000000000000000000000000000000000000000104aec829d} B>boc <s PUSHSLICE
+""";
 
 ;; quasar_defi_QuasarDeFi.storage.fc
 ;;
@@ -431,6 +455,10 @@ _ $Context$_get_value((int, slice, int, slice) v) inline {
 ;; Type: SendParameters
 ;; TLB: _ mode:int257 body:Maybe ^cell code:Maybe ^cell data:Maybe ^cell value:int257 to:address bounce:bool = SendParameters
 ;;
+
+((int, cell, cell, cell, int, slice, int)) $SendParameters$_constructor_to_value_bounce_mode_body(slice $to, int $value, int $bounce, int $mode, cell $body) inline {
+    return ($mode, $body, null(), null(), $value, $to, $bounce);
+}
 
 ((int, cell, cell, cell, int, slice, int)) $SendParameters$_constructor_to_value_mode_body(slice $to, int $value, int $mode, cell $body) inline {
     return ($mode, $body, null(), null(), $value, $to, true);
@@ -464,6 +492,29 @@ cell $DeployOk$_store_cell((int) v, builder b) inline {
 
 ((int)) $DeployOk$_constructor_queryId(int $queryId) inline {
     return ($queryId);
+}
+
+;;
+;; Type: DefiPayout
+;; Header: 0xbb8d8491
+;; TLB: defi_payout#bb8d8491 queryId:uint64 amount:coins destination:address = DefiPayout
+;;
+
+builder $DefiPayout$_store(builder build_0, (int, int, slice) v) inline {
+    var (v'queryId, v'amount, v'destination) = v;
+    build_0 = store_uint(build_0, 3146613905, 32);
+    build_0 = build_0.store_uint(v'queryId, 64);
+    build_0 = build_0.store_varuint16(v'amount);
+    build_0 = build_0.store_slice(v'destination);
+    return build_0;
+}
+
+cell $DefiPayout$_store_cell((int, int, slice) v, builder b) inline {
+    return $DefiPayout$_store(b, v).end_cell();
+}
+
+((int, int, slice)) $DefiPayout$_constructor_queryId_amount_destination(int $queryId, int $amount, slice $destination) inline {
+    return ($queryId, $amount, $destination);
 }
 
 ;;
@@ -669,19 +720,20 @@ _ $UserFarmInfo$_get_staked((int, int, int) v) inline {
 
 ;;
 ;; Type: QuasarDeFi
-;; TLB: _ owner:address qsrMaster:address lpTotalSupply:coins tonReserve:coins qsrReserve:coins lpBalances:dict<address, int> feeBps:uint16 feeAccumulated:coins farmEnabled:bool farmRewardPerSecond:coins farmStartTime:uint32 farmEndTime:uint32 farmLastUpdate:int257 farmAccRewardPerShare:int257 farmTotalStaked:coins farmStakes:dict<address, ^UserFarmInfo{staked:int257,debt:int257,pending:int257}> locked:bool paused:bool maxTradeBps:uint16 = QuasarDeFi
+;; TLB: _ owner:address qsrMaster:address lpTotalSupply:coins tonReserve:coins qsrReserve:coins lpBalances:dict<address, int> pendingQsrDeposits:dict<address, int> feeBps:uint16 feeAccumulated:coins farmEnabled:bool farmRewardPerSecond:coins farmStartTime:uint32 farmEndTime:uint32 farmLastUpdate:int257 farmAccRewardPerShare:int257 farmTotalStaked:coins farmStakes:dict<address, ^UserFarmInfo{staked:int257,debt:int257,pending:int257}> locked:bool paused:bool maxTradeBps:uint16 = QuasarDeFi
 ;;
 
-builder $QuasarDeFi$_store(builder build_0, (slice, slice, int, int, int, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int) v) inline {
-    var (v'owner, v'qsrMaster, v'lpTotalSupply, v'tonReserve, v'qsrReserve, v'lpBalances, v'feeBps, v'feeAccumulated, v'farmEnabled, v'farmRewardPerSecond, v'farmStartTime, v'farmEndTime, v'farmLastUpdate, v'farmAccRewardPerShare, v'farmTotalStaked, v'farmStakes, v'locked, v'paused, v'maxTradeBps) = v;
+builder $QuasarDeFi$_store(builder build_0, (slice, slice, int, int, int, cell, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int) v) inline {
+    var (v'owner, v'qsrMaster, v'lpTotalSupply, v'tonReserve, v'qsrReserve, v'lpBalances, v'pendingQsrDeposits, v'feeBps, v'feeAccumulated, v'farmEnabled, v'farmRewardPerSecond, v'farmStartTime, v'farmEndTime, v'farmLastUpdate, v'farmAccRewardPerShare, v'farmTotalStaked, v'farmStakes, v'locked, v'paused, v'maxTradeBps) = v;
     build_0 = build_0.store_slice(v'owner);
     build_0 = build_0.store_slice(v'qsrMaster);
     build_0 = build_0.store_varuint16(v'lpTotalSupply);
     build_0 = build_0.store_varuint16(v'tonReserve);
     build_0 = build_0.store_varuint16(v'qsrReserve);
     build_0 = build_0.store_dict(v'lpBalances);
-    build_0 = build_0.store_uint(v'feeBps, 16);
     var build_1 = begin_cell();
+    build_1 = build_1.store_dict(v'pendingQsrDeposits);
+    build_1 = build_1.store_uint(v'feeBps, 16);
     build_1 = build_1.store_varuint16(v'feeAccumulated);
     build_1 = build_1.store_int(v'farmEnabled, 1);
     build_1 = build_1.store_varuint16(v'farmRewardPerSecond);
@@ -698,15 +750,16 @@ builder $QuasarDeFi$_store(builder build_0, (slice, slice, int, int, int, cell, 
     return build_0;
 }
 
-(slice, ((slice, slice, int, int, int, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int))) $QuasarDeFi$_load(slice sc_0) inline {
+(slice, ((slice, slice, int, int, int, cell, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int))) $QuasarDeFi$_load(slice sc_0) inline {
     var v'owner = sc_0~load_msg_addr();
     var v'qsrMaster = sc_0~load_msg_addr();
     var v'lpTotalSupply = sc_0~load_varuint16();
     var v'tonReserve = sc_0~load_varuint16();
     var v'qsrReserve = sc_0~load_varuint16();
     var v'lpBalances = sc_0~load_dict();
-    var v'feeBps = sc_0~load_uint(16);
     slice sc_1 = sc_0~load_ref().begin_parse();
+    var v'pendingQsrDeposits = sc_1~load_dict();
+    var v'feeBps = sc_1~load_uint(16);
     var v'feeAccumulated = sc_1~load_varuint16();
     var v'farmEnabled = sc_1~load_int(1);
     var v'farmRewardPerSecond = sc_1~load_varuint16();
@@ -719,7 +772,7 @@ builder $QuasarDeFi$_store(builder build_0, (slice, slice, int, int, int, cell, 
     var v'locked = sc_1~load_int(1);
     var v'paused = sc_1~load_int(1);
     var v'maxTradeBps = sc_1~load_uint(16);
-    return (sc_0, (v'owner, v'qsrMaster, v'lpTotalSupply, v'tonReserve, v'qsrReserve, v'lpBalances, v'feeBps, v'feeAccumulated, v'farmEnabled, v'farmRewardPerSecond, v'farmStartTime, v'farmEndTime, v'farmLastUpdate, v'farmAccRewardPerShare, v'farmTotalStaked, v'farmStakes, v'locked, v'paused, v'maxTradeBps));
+    return (sc_0, (v'owner, v'qsrMaster, v'lpTotalSupply, v'tonReserve, v'qsrReserve, v'lpBalances, v'pendingQsrDeposits, v'feeBps, v'feeAccumulated, v'farmEnabled, v'farmRewardPerSecond, v'farmStartTime, v'farmEndTime, v'farmLastUpdate, v'farmAccRewardPerShare, v'farmTotalStaked, v'farmStakes, v'locked, v'paused, v'maxTradeBps));
 }
 
 (slice, ((slice, slice))) $QuasarDeFi$init$_load(slice sc_0) inline {
@@ -728,7 +781,7 @@ builder $QuasarDeFi$_store(builder build_0, (slice, slice, int, int, int, cell, 
     return (sc_0, (v'owner, v'qsrMaster));
 }
 
-(slice, slice, int, int, int, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int) $QuasarDeFi$_contract_load() impure inline {
+(slice, slice, int, int, int, cell, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int) $QuasarDeFi$_contract_load() impure inline {
     slice $sc = get_data().begin_parse();
     int $loaded = $sc~load_int(1);
     if ($loaded) {
@@ -741,7 +794,7 @@ builder $QuasarDeFi$_store(builder build_0, (slice, slice, int, int, int, cell, 
     }
 }
 
-() $QuasarDeFi$_contract_store((slice, slice, int, int, int, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int) v) impure inline {
+() $QuasarDeFi$_contract_store((slice, slice, int, int, int, cell, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int) v) impure inline {
     builder b = begin_cell();
     b = b.store_int(true, 1);
     b = $QuasarDeFi$_store(b, v);
@@ -752,8 +805,8 @@ builder $QuasarDeFi$_store(builder build_0, (slice, slice, int, int, int, cell, 
 ;; Contract QuasarDeFi functions
 ;;
 
-(slice, slice, int, int, int, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int) $QuasarDeFi$_contract_init(slice $owner, slice $qsrMaster) impure inline {
-    var (($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps)) = (null(), null(), null(), null(), null(), null(), null(), null(), null(), null(), null(), null(), null(), null(), null(), null(), null(), null(), null());
+(slice, slice, int, int, int, cell, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int) $QuasarDeFi$_contract_init(slice $owner, slice $qsrMaster) impure inline {
+    var (($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'pendingQsrDeposits, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps)) = (null(), null(), null(), null(), null(), null(), null(), null(), null(), null(), null(), null(), null(), null(), null(), null(), null(), null(), null(), null());
     $self'owner = $owner;
     $self'qsrMaster = $qsrMaster;
     $self'lpTotalSupply = 0;
@@ -771,39 +824,45 @@ builder $QuasarDeFi$_store(builder build_0, (slice, slice, int, int, int, cell, 
     $self'locked = false;
     $self'paused = false;
     $self'maxTradeBps = 3000;
-    return ($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps);
+    return ($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'pendingQsrDeposits, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps);
 }
 
-((slice, slice, int, int, int, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int), ()) $QuasarDeFi$_fun__lock((slice, slice, int, int, int, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int) $self) impure inline_ref {
-    var (($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps)) = $self;
+((slice, slice, int, int, int, cell, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int), ()) $QuasarDeFi$_fun__lock((slice, slice, int, int, int, cell, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int) $self) impure inline_ref {
+    var (($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'pendingQsrDeposits, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps)) = $self;
     throw_unless(42362, (~ $self'locked));
     $self'locked = true;
-    return (($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps), ());
+    return (($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'pendingQsrDeposits, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps), ());
 }
 
-((slice, slice, int, int, int, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int), ()) $QuasarDeFi$_fun__unlock((slice, slice, int, int, int, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int) $self) impure inline_ref {
-    var (($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps)) = $self;
+((slice, slice, int, int, int, cell, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int), ()) $QuasarDeFi$_fun__unlock((slice, slice, int, int, int, cell, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int) $self) impure inline_ref {
+    var (($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'pendingQsrDeposits, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps)) = $self;
     $self'locked = false;
-    return (($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps), ());
+    return (($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'pendingQsrDeposits, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps), ());
 }
 
-((slice, slice, int, int, int, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int), ()) $QuasarDeFi$_fun__requireActive((slice, slice, int, int, int, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int) $self) impure inline_ref {
-    var (($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps)) = $self;
+((slice, slice, int, int, int, cell, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int), ()) $QuasarDeFi$_fun__requireActive((slice, slice, int, int, int, cell, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int) $self) impure inline_ref {
+    var (($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'pendingQsrDeposits, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps)) = $self;
     throw_unless(24969, (~ $self'paused));
-    return (($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps), ());
+    return (($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'pendingQsrDeposits, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps), ());
 }
 
-((slice, slice, int, int, int, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int), int) $QuasarDeFi$_fun__min((slice, slice, int, int, int, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int) $self, int $a, int $b) impure inline_ref {
-    var (($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps)) = $self;
-    var $fresh$ret_58 = (($a < $b) ? $a : $b);
-    return (($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps), $fresh$ret_58);
+((slice, slice, int, int, int, cell, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int), ()) $QuasarDeFi$_fun__sendQsr((slice, slice, int, int, int, cell, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int) $self, slice $to, int $amount, int $queryId) impure inline_ref {
+    var (($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'pendingQsrDeposits, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps)) = $self;
+    $global_send($SendParameters$_constructor_to_value_bounce_mode_body($self'qsrMaster, 0, true, 64, $DefiPayout$_store_cell($DefiPayout$_constructor_queryId_amount_destination($queryId, $amount, $to), begin_cell())));
+    return (($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'pendingQsrDeposits, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps), ());
 }
 
-((slice, slice, int, int, int, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int), int) $QuasarDeFi$_fun__sqrt((slice, slice, int, int, int, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int) $self, int $value) impure inline_ref {
-    var (($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps)) = $self;
+((slice, slice, int, int, int, cell, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int), int) $QuasarDeFi$_fun__min((slice, slice, int, int, int, cell, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int) $self, int $a, int $b) impure inline_ref {
+    var (($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'pendingQsrDeposits, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps)) = $self;
+    var $fresh$ret_60 = (($a < $b) ? $a : $b);
+    return (($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'pendingQsrDeposits, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps), $fresh$ret_60);
+}
+
+((slice, slice, int, int, int, cell, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int), int) $QuasarDeFi$_fun__sqrt((slice, slice, int, int, int, cell, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int) $self, int $value) impure inline_ref {
+    var (($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'pendingQsrDeposits, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps)) = $self;
     if (($value <= 0)) {
-        var $fresh$ret_59 = 0;
-        return (($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps), $fresh$ret_59);
+        var $fresh$ret_61 = 0;
+        return (($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'pendingQsrDeposits, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps), $fresh$ret_61);
     }
     int $x = $value;
     int $y = (($x + 1) / 2);
@@ -811,28 +870,28 @@ builder $QuasarDeFi$_store(builder build_0, (slice, slice, int, int, int, cell, 
         $x = $y;
         $y = (($x + ($value / $x)) / 2);
     }
-    var $fresh$ret_60 = $x;
-    return (($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps), $fresh$ret_60);
+    var $fresh$ret_62 = $x;
+    return (($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'pendingQsrDeposits, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps), $fresh$ret_62);
 }
 
-((slice, slice, int, int, int, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int), ()) $QuasarDeFi$_fun__updateFarm((slice, slice, int, int, int, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int) $self) impure inline_ref {
-    var (($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps)) = $self;
+((slice, slice, int, int, int, cell, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int), ()) $QuasarDeFi$_fun__updateFarm((slice, slice, int, int, int, cell, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int) $self) impure inline_ref {
+    var (($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'pendingQsrDeposits, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps)) = $self;
     if (( (($global_now() <= $self'farmLastUpdate)) ? (true) : (($self'farmTotalStaked == 0)) )) {
-        return (($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps), ());
+        return (($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'pendingQsrDeposits, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps), ());
     }
-    int $end = ($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps)~$QuasarDeFi$_fun__min($global_now(), $self'farmEndTime);
+    int $end = ($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'pendingQsrDeposits, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps)~$QuasarDeFi$_fun__min($global_now(), $self'farmEndTime);
     if (($end <= $self'farmLastUpdate)) {
-        return (($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps), ());
+        return (($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'pendingQsrDeposits, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps), ());
     }
     int $multiplier = ($end - $self'farmLastUpdate);
     int $reward = ($multiplier * $self'farmRewardPerSecond);
     $self'farmAccRewardPerShare = $self'farmAccRewardPerShare + (($reward * 1000000000) / $self'farmTotalStaked);
     $self'farmLastUpdate = $end;
-    return (($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps), ());
+    return (($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'pendingQsrDeposits, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps), ());
 }
 
-((slice, slice, int, int, int, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int), ()) $QuasarDeFi$_fun__stakeLp((slice, slice, int, int, int, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int) $self, slice $user, int $amount) impure inline_ref {
-    var (($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps)) = $self;
+((slice, slice, int, int, int, cell, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int), ()) $QuasarDeFi$_fun__stakeLp((slice, slice, int, int, int, cell, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int) $self, slice $user, int $amount) impure inline_ref {
+    var (($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'pendingQsrDeposits, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps)) = $self;
     tuple $stake = $UserFarmInfo$_load_opt(__tact_dict_get_slice_cell($self'farmStakes, 267, $user));
     if (null?($stake)) {
         $self'farmStakes~__tact_dict_set_slice_cell(267, $user, $UserFarmInfo$_store_cell($UserFarmInfo$_constructor_staked_debt_pending($amount, $self'farmAccRewardPerShare, 0), begin_cell()));
@@ -842,51 +901,58 @@ builder $QuasarDeFi$_store(builder build_0, (slice, slice, int, int, int, cell, 
         $self'farmStakes~__tact_dict_set_slice_cell(267, $user, $UserFarmInfo$_store_cell($UserFarmInfo$_constructor_staked_debt_pending(($s'staked + $amount), $self'farmAccRewardPerShare, ($s'pending + $pending)), begin_cell()));
     }
     $self'farmTotalStaked = $self'farmTotalStaked + $amount;
-    return (($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps), ());
+    return (($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'pendingQsrDeposits, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps), ());
 }
 
-((slice, slice, int, int, int, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int), ()) $QuasarDeFi$_fun__unstakeLp((slice, slice, int, int, int, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int) $self, slice $user, int $amount) impure inline_ref {
-    var (($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps)) = $self;
+((slice, slice, int, int, int, cell, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int), ()) $QuasarDeFi$_fun__unstakeLp((slice, slice, int, int, int, cell, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int) $self, slice $user, int $amount) impure inline_ref {
+    var (($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'pendingQsrDeposits, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps)) = $self;
     tuple $stake = $UserFarmInfo$_load_opt(__tact_dict_get_slice_cell($self'farmStakes, 267, $user));
     throw_unless(51358, ( ((~ null?($stake))) ? (($UserFarmInfo$_get_staked($UserFarmInfo$_not_null($stake)) >= $amount)) : (false) ));
     var ($s'staked, $s'debt, $s'pending) = $UserFarmInfo$_not_null($stake);
     int $pending = (($s'staked * ($self'farmAccRewardPerShare - $s'debt)) / 1000000000);
     $self'farmStakes~__tact_dict_set_slice_cell(267, $user, $UserFarmInfo$_store_cell($UserFarmInfo$_constructor_staked_debt_pending(($s'staked - $amount), $self'farmAccRewardPerShare, ($s'pending + $pending)), begin_cell()));
     $self'farmTotalStaked = $self'farmTotalStaked - $amount;
-    return (($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps), ());
+    return (($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'pendingQsrDeposits, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps), ());
 }
 
-((slice, slice, int, int, int, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int), int) $QuasarDeFi$_fun_lpBalance((slice, slice, int, int, int, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int) $self, slice $user) impure inline_ref {
-    var (($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps)) = $self;
+((slice, slice, int, int, int, cell, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int), int) $QuasarDeFi$_fun_lpBalance((slice, slice, int, int, int, cell, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int) $self, slice $user) impure inline_ref {
+    var (($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'pendingQsrDeposits, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps)) = $self;
     int $b = __tact_dict_get_slice_int($self'lpBalances, 267, $user, 257);
-    var $fresh$ret_61 = (null?($b) ? 0 : __tact_not_null($b));
-    return (($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps), $fresh$ret_61);
+    var $fresh$ret_63 = (null?($b) ? 0 : __tact_not_null($b));
+    return (($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'pendingQsrDeposits, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps), $fresh$ret_63);
 }
 
-((slice, slice, int, int, int, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int), (int, int, int)) $QuasarDeFi$_fun_poolInfo((slice, slice, int, int, int, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int) $self) impure inline_ref {
-    var (($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps)) = $self;
-    var $fresh$ret_62 = $LPInfo$_constructor_totalSupply_tonReserve_qsrReserve($self'lpTotalSupply, $self'tonReserve, $self'qsrReserve);
-    return (($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps), $fresh$ret_62);
+((slice, slice, int, int, int, cell, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int), int) $QuasarDeFi$_fun_pendingQsrDeposit((slice, slice, int, int, int, cell, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int) $self, slice $user) impure inline_ref {
+    var (($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'pendingQsrDeposits, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps)) = $self;
+    int $b = __tact_dict_get_slice_int($self'pendingQsrDeposits, 267, $user, 257);
+    var $fresh$ret_64 = (null?($b) ? 0 : __tact_not_null($b));
+    return (($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'pendingQsrDeposits, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps), $fresh$ret_64);
 }
 
-((slice, slice, int, int, int, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int), (int, int, int, int, int, int)) $QuasarDeFi$_fun_farmInfo((slice, slice, int, int, int, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int) $self) impure inline_ref {
-    var (($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps)) = $self;
-    var $fresh$ret_63 = $FarmInfo$_constructor_staked_rewardPerSecond_lastUpdate_accRewardPerShare_startTime_endTime($self'farmTotalStaked, $self'farmRewardPerSecond, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmStartTime, $self'farmEndTime);
-    return (($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps), $fresh$ret_63);
+((slice, slice, int, int, int, cell, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int), (int, int, int)) $QuasarDeFi$_fun_poolInfo((slice, slice, int, int, int, cell, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int) $self) impure inline_ref {
+    var (($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'pendingQsrDeposits, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps)) = $self;
+    var $fresh$ret_65 = $LPInfo$_constructor_totalSupply_tonReserve_qsrReserve($self'lpTotalSupply, $self'tonReserve, $self'qsrReserve);
+    return (($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'pendingQsrDeposits, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps), $fresh$ret_65);
 }
 
-((slice, slice, int, int, int, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int), (int, int, int)) $QuasarDeFi$_fun_userFarm((slice, slice, int, int, int, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int) $self, slice $user) impure inline_ref {
-    var (($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps)) = $self;
+((slice, slice, int, int, int, cell, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int), (int, int, int, int, int, int)) $QuasarDeFi$_fun_farmInfo((slice, slice, int, int, int, cell, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int) $self) impure inline_ref {
+    var (($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'pendingQsrDeposits, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps)) = $self;
+    var $fresh$ret_66 = $FarmInfo$_constructor_staked_rewardPerSecond_lastUpdate_accRewardPerShare_startTime_endTime($self'farmTotalStaked, $self'farmRewardPerSecond, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmStartTime, $self'farmEndTime);
+    return (($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'pendingQsrDeposits, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps), $fresh$ret_66);
+}
+
+((slice, slice, int, int, int, cell, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int), (int, int, int)) $QuasarDeFi$_fun_userFarm((slice, slice, int, int, int, cell, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int) $self, slice $user) impure inline_ref {
+    var (($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'pendingQsrDeposits, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps)) = $self;
     tuple $s = $UserFarmInfo$_load_opt(__tact_dict_get_slice_cell($self'farmStakes, 267, $user));
-    var $fresh$ret_64 = (null?($s) ? $UserFarmInfo$_constructor_staked_debt_pending(0, 0, 0) : $UserFarmInfo$_not_null($s));
-    return (($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps), $fresh$ret_64);
+    var $fresh$ret_67 = (null?($s) ? $UserFarmInfo$_constructor_staked_debt_pending(0, 0, 0) : $UserFarmInfo$_not_null($s));
+    return (($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'pendingQsrDeposits, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps), $fresh$ret_67);
 }
 
-((slice, slice, int, int, int, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int), (int, int, int, int, int, int)) $QuasarDeFi$_fun_estimateSwapToTon((slice, slice, int, int, int, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int) $self, int $qsrAmount) impure inline_ref {
-    var (($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps)) = $self;
+((slice, slice, int, int, int, cell, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int), (int, int, int, int, int, int)) $QuasarDeFi$_fun_estimateSwapToTon((slice, slice, int, int, int, cell, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int) $self, int $qsrAmount) impure inline_ref {
+    var (($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'pendingQsrDeposits, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps)) = $self;
     if (( (($self'qsrReserve == 0)) ? (true) : (($qsrAmount == 0)) )) {
-        var $fresh$ret_65 = $SwapQuote$_constructor_tonIn_qsrIn_tonOut_qsrOut_fee_priceImpactBps(0, $qsrAmount, 0, 0, 0, 0);
-        return (($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps), $fresh$ret_65);
+        var $fresh$ret_68 = $SwapQuote$_constructor_tonIn_qsrIn_tonOut_qsrOut_fee_priceImpactBps(0, $qsrAmount, 0, 0, 0, 0);
+        return (($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'pendingQsrDeposits, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps), $fresh$ret_68);
     }
     int $grossTonOut = (($qsrAmount * $self'tonReserve) / ($self'qsrReserve + $qsrAmount));
     int $fee = (($grossTonOut * $self'feeBps) / 10000);
@@ -895,15 +961,15 @@ builder $QuasarDeFi$_store(builder build_0, (slice, slice, int, int, int, cell, 
     if (($priceImpact > 10000)) {
         $priceImpact = 10000;
     }
-    var $fresh$ret_66 = $SwapQuote$_constructor_tonIn_qsrIn_tonOut_qsrOut_fee_priceImpactBps(0, $qsrAmount, $tonOut, 0, $fee, $priceImpact);
-    return (($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps), $fresh$ret_66);
+    var $fresh$ret_69 = $SwapQuote$_constructor_tonIn_qsrIn_tonOut_qsrOut_fee_priceImpactBps(0, $qsrAmount, $tonOut, 0, $fee, $priceImpact);
+    return (($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'pendingQsrDeposits, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps), $fresh$ret_69);
 }
 
-((slice, slice, int, int, int, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int), (int, int, int, int, int, int)) $QuasarDeFi$_fun_estimateSwapToQsr((slice, slice, int, int, int, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int) $self, int $tonAmount) impure inline_ref {
-    var (($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps)) = $self;
+((slice, slice, int, int, int, cell, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int), (int, int, int, int, int, int)) $QuasarDeFi$_fun_estimateSwapToQsr((slice, slice, int, int, int, cell, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int) $self, int $tonAmount) impure inline_ref {
+    var (($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'pendingQsrDeposits, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps)) = $self;
     if (( (($self'tonReserve == 0)) ? (true) : (($tonAmount == 0)) )) {
-        var $fresh$ret_67 = $SwapQuote$_constructor_tonIn_qsrIn_tonOut_qsrOut_fee_priceImpactBps($tonAmount, 0, 0, 0, 0, 0);
-        return (($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps), $fresh$ret_67);
+        var $fresh$ret_70 = $SwapQuote$_constructor_tonIn_qsrIn_tonOut_qsrOut_fee_priceImpactBps($tonAmount, 0, 0, 0, 0, 0);
+        return (($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'pendingQsrDeposits, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps), $fresh$ret_70);
     }
     int $grossQsrOut = (($tonAmount * $self'qsrReserve) / ($self'tonReserve + $tonAmount));
     int $fee = (($grossQsrOut * $self'feeBps) / 10000);
@@ -912,56 +978,56 @@ builder $QuasarDeFi$_store(builder build_0, (slice, slice, int, int, int, cell, 
     if (($priceImpact > 10000)) {
         $priceImpact = 10000;
     }
-    var $fresh$ret_68 = $SwapQuote$_constructor_tonIn_qsrIn_tonOut_qsrOut_fee_priceImpactBps($tonAmount, 0, 0, $qsrOut, $fee, $priceImpact);
-    return (($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps), $fresh$ret_68);
+    var $fresh$ret_71 = $SwapQuote$_constructor_tonIn_qsrIn_tonOut_qsrOut_fee_priceImpactBps($tonAmount, 0, 0, $qsrOut, $fee, $priceImpact);
+    return (($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'pendingQsrDeposits, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps), $fresh$ret_71);
 }
 
-((slice, slice, int, int, int, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int), int) $QuasarDeFi$_fun_estimateLpOut((slice, slice, int, int, int, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int) $self, int $tonAmount, int $qsrAmount) impure inline_ref {
-    var (($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps)) = $self;
+((slice, slice, int, int, int, cell, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int), int) $QuasarDeFi$_fun_estimateLpOut((slice, slice, int, int, int, cell, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int) $self, int $tonAmount, int $qsrAmount) impure inline_ref {
+    var (($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'pendingQsrDeposits, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps)) = $self;
     ifnot ($self'lpTotalSupply) {
-        var $fresh$ret_69 = ($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps)~$QuasarDeFi$_fun__sqrt(($tonAmount * $qsrAmount));
-        return (($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps), $fresh$ret_69);
+        var $fresh$ret_72 = ($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'pendingQsrDeposits, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps)~$QuasarDeFi$_fun__sqrt(($tonAmount * $qsrAmount));
+        return (($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'pendingQsrDeposits, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps), $fresh$ret_72);
     }
     int $lpByTon = (($tonAmount * $self'lpTotalSupply) / $self'tonReserve);
     int $lpByQsr = (($qsrAmount * $self'lpTotalSupply) / $self'qsrReserve);
-    var $fresh$ret_70 = ($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps)~$QuasarDeFi$_fun__min($lpByTon, $lpByQsr);
-    return (($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps), $fresh$ret_70);
+    var $fresh$ret_73 = ($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'pendingQsrDeposits, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps)~$QuasarDeFi$_fun__min($lpByTon, $lpByQsr);
+    return (($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'pendingQsrDeposits, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps), $fresh$ret_73);
 }
 
-((slice, slice, int, int, int, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int), (int, int, int)) $QuasarDeFi$_fun_estimateRemoveLiquidity((slice, slice, int, int, int, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int) $self, int $lpAmount) impure inline_ref {
-    var (($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps)) = $self;
+((slice, slice, int, int, int, cell, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int), (int, int, int)) $QuasarDeFi$_fun_estimateRemoveLiquidity((slice, slice, int, int, int, cell, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int) $self, int $lpAmount) impure inline_ref {
+    var (($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'pendingQsrDeposits, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps)) = $self;
     if (( (($self'lpTotalSupply == 0)) ? (true) : (($lpAmount == 0)) )) {
-        var $fresh$ret_71 = $LPInfo$_constructor_totalSupply_tonReserve_qsrReserve(0, 0, 0);
-        return (($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps), $fresh$ret_71);
+        var $fresh$ret_74 = $LPInfo$_constructor_totalSupply_tonReserve_qsrReserve(0, 0, 0);
+        return (($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'pendingQsrDeposits, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps), $fresh$ret_74);
     }
     int $tonOut = (($lpAmount * $self'tonReserve) / $self'lpTotalSupply);
     int $qsrOut = (($lpAmount * $self'qsrReserve) / $self'lpTotalSupply);
-    var $fresh$ret_72 = $LPInfo$_constructor_totalSupply_tonReserve_qsrReserve($self'lpTotalSupply, $tonOut, $qsrOut);
-    return (($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps), $fresh$ret_72);
+    var $fresh$ret_75 = $LPInfo$_constructor_totalSupply_tonReserve_qsrReserve($self'lpTotalSupply, $tonOut, $qsrOut);
+    return (($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'pendingQsrDeposits, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps), $fresh$ret_75);
 }
 
-((slice, slice, int, int, int, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int), int) $QuasarDeFi$_fun_feeConfig((slice, slice, int, int, int, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int) $self) impure inline_ref {
-    var (($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps)) = $self;
-    var $fresh$ret_73 = $self'feeBps;
-    return (($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps), $fresh$ret_73);
+((slice, slice, int, int, int, cell, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int), int) $QuasarDeFi$_fun_feeConfig((slice, slice, int, int, int, cell, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int) $self) impure inline_ref {
+    var (($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'pendingQsrDeposits, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps)) = $self;
+    var $fresh$ret_76 = $self'feeBps;
+    return (($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'pendingQsrDeposits, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps), $fresh$ret_76);
 }
 
-((slice, slice, int, int, int, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int), int) $QuasarDeFi$_fun_feeAccumulated((slice, slice, int, int, int, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int) $self) impure inline_ref {
-    var (($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps)) = $self;
-    var $fresh$ret_74 = $self'feeAccumulated;
-    return (($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps), $fresh$ret_74);
+((slice, slice, int, int, int, cell, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int), int) $QuasarDeFi$_fun_feeAccumulated((slice, slice, int, int, int, cell, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int) $self) impure inline_ref {
+    var (($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'pendingQsrDeposits, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps)) = $self;
+    var $fresh$ret_77 = $self'feeAccumulated;
+    return (($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'pendingQsrDeposits, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps), $fresh$ret_77);
 }
 
-((slice, slice, int, int, int, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int), slice) $QuasarDeFi$_fun_owner((slice, slice, int, int, int, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int) $self) impure inline_ref {
-    var (($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps)) = $self;
-    var $fresh$ret_75 = $self'owner;
-    return (($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps), $fresh$ret_75);
+((slice, slice, int, int, int, cell, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int), slice) $QuasarDeFi$_fun_owner((slice, slice, int, int, int, cell, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int) $self) impure inline_ref {
+    var (($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'pendingQsrDeposits, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps)) = $self;
+    var $fresh$ret_78 = $self'owner;
+    return (($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'pendingQsrDeposits, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps), $fresh$ret_78);
 }
 
-((slice, slice, int, int, int, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int), slice) $QuasarDeFi$_fun_qsrMaster((slice, slice, int, int, int, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int) $self) impure inline_ref {
-    var (($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps)) = $self;
-    var $fresh$ret_76 = $self'qsrMaster;
-    return (($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps), $fresh$ret_76);
+((slice, slice, int, int, int, cell, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int), slice) $QuasarDeFi$_fun_qsrMaster((slice, slice, int, int, int, cell, cell, int, int, int, int, int, int, int, int, int, cell, int, int, int) $self) impure inline_ref {
+    var (($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'pendingQsrDeposits, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps)) = $self;
+    var $fresh$ret_79 = $self'qsrMaster;
+    return (($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'pendingQsrDeposits, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps), $fresh$ret_79);
 }
 
 ;;
@@ -972,6 +1038,13 @@ _ %lpBalance(slice $user) method_id(66831) {
     slice $user = $user;
     var self = $QuasarDeFi$_contract_load();
     var res = self~$QuasarDeFi$_fun_lpBalance($user);
+    return res;
+}
+
+_ %pendingQsrDeposit(slice $user) method_id(83522) {
+    slice $user = $user;
+    var self = $QuasarDeFi$_contract_load();
+    var res = self~$QuasarDeFi$_fun_pendingQsrDeposit($user);
     return res;
 }
 
@@ -1067,7 +1140,7 @@ _ %qsrMaster() method_id(81078) {
     __tact_context_sender = msg_sender_addr;
     
     ;; Load contract data
-    var ($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps) = $QuasarDeFi$_contract_load();
+    var ($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'pendingQsrDeposits, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps) = $QuasarDeFi$_contract_load();
     
     ;; Handle bounced messages
     if (msg_bounced) { return (); }
@@ -1083,8 +1156,11 @@ _ %qsrMaster() method_id(81078) {
         var $msg'from = in_msg~load_msg_addr();
         var $msg'forwardPayload = in_msg;
         throw_unless(27536, ( equal_slices_bits(__tact_context_get_sender(), $self'qsrMaster) ));
-        $self'qsrReserve = ($self'qsrReserve + $msg'amount);
-        $QuasarDeFi$_contract_store(($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps));
+        throw_unless(17062, ($msg'amount > 0));
+        throw_unless(58957, ( ~ equal_slices_bits($msg'from, __gen_slice_address_61ab4641fa30d9310391025086eec65d200d79268e1b7cd402565e01ba64be3c()) ));
+        int $pending = __tact_dict_get_slice_int($self'pendingQsrDeposits, 267, $msg'from, 257);
+        $self'pendingQsrDeposits~__tact_dict_set_slice_int(267, $msg'from, (null?($pending) ? $msg'amount : (__tact_not_null($pending) + $msg'amount)), 257);
+        $QuasarDeFi$_contract_store(($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'pendingQsrDeposits, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps));
         return ();
     }
     
@@ -1092,57 +1168,61 @@ _ %qsrMaster() method_id(81078) {
     if (op == 146776957) {
         var $msg'tonAmount = in_msg~load_varuint16();
         var $msg'qsrAmount = in_msg~load_varuint16();
-        ($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps)~$QuasarDeFi$_fun__requireActive();
-        ($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps)~$QuasarDeFi$_fun__lock();
+        ($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'pendingQsrDeposits, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps)~$QuasarDeFi$_fun__requireActive();
+        ($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'pendingQsrDeposits, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps)~$QuasarDeFi$_fun__lock();
         throw_unless(12203, ( (($msg'tonAmount > 0)) ? (($msg'qsrAmount > 0)) : (false) ));
         throw_unless(48341, ($Context$_get_value(__tact_context_get()) >= $msg'tonAmount));
+        int $deposited = __tact_dict_get_slice_int($self'pendingQsrDeposits, 267, __tact_context_get_sender(), 257);
+        throw_unless(20145, ( ((~ null?($deposited))) ? ((__tact_not_null($deposited) >= $msg'qsrAmount)) : (false) ));
         if (($self'lpTotalSupply > 0)) {
             throw_unless(3561, (($msg'tonAmount * 10000) <= ($self'tonReserve * $self'maxTradeBps)));
             throw_unless(54751, (($msg'qsrAmount * 10000) <= ($self'qsrReserve * $self'maxTradeBps)));
         }
         int $lpToMint = 0;
         ifnot ($self'lpTotalSupply) {
-            $lpToMint = ($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps)~$QuasarDeFi$_fun__sqrt(($msg'tonAmount * $msg'qsrAmount));
+            $lpToMint = ($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'pendingQsrDeposits, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps)~$QuasarDeFi$_fun__sqrt(($msg'tonAmount * $msg'qsrAmount));
         } else {
             int $lpByTon = (($msg'tonAmount * $self'lpTotalSupply) / $self'tonReserve);
             int $lpByQsr = (($msg'qsrAmount * $self'lpTotalSupply) / $self'qsrReserve);
-            $lpToMint = ($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps)~$QuasarDeFi$_fun__min($lpByTon, $lpByQsr);
+            $lpToMint = ($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'pendingQsrDeposits, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps)~$QuasarDeFi$_fun__min($lpByTon, $lpByQsr);
         }
         throw_unless(55678, ($lpToMint > 0));
         $self'tonReserve = $self'tonReserve + $msg'tonAmount;
         $self'qsrReserve = $self'qsrReserve + $msg'qsrAmount;
         $self'lpTotalSupply = $self'lpTotalSupply + $lpToMint;
+        $self'pendingQsrDeposits~__tact_dict_set_slice_int(267, __tact_context_get_sender(), (__tact_not_null($deposited) - $msg'qsrAmount), 257);
         int $current = __tact_dict_get_slice_int($self'lpBalances, 267, __tact_context_get_sender(), 257);
         $self'lpBalances~__tact_dict_set_slice_int(267, __tact_context_get_sender(), (null?($current) ? $lpToMint : (__tact_not_null($current) + $lpToMint)), 257);
-        ($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps)~$QuasarDeFi$_fun__updateFarm();
-        ($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps)~$QuasarDeFi$_fun__stakeLp(__tact_context_get_sender(), $lpToMint);
+        ($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'pendingQsrDeposits, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps)~$QuasarDeFi$_fun__updateFarm();
+        ($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'pendingQsrDeposits, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps)~$QuasarDeFi$_fun__stakeLp(__tact_context_get_sender(), $lpToMint);
         $global_send($SendParameters$_constructor_to_value_mode_body(__tact_context_get_sender(), 0, 64, $EventLiquidityAdded$_store_cell($EventLiquidityAdded$_constructor_provider_tonAmount_qsrAmount_lpMinted(__tact_context_get_sender(), $msg'tonAmount, $msg'qsrAmount, $lpToMint), begin_cell())));
-        ($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps)~$QuasarDeFi$_fun__unlock();
-        $QuasarDeFi$_contract_store(($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps));
+        ($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'pendingQsrDeposits, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps)~$QuasarDeFi$_fun__unlock();
+        $QuasarDeFi$_contract_store(($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'pendingQsrDeposits, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps));
         return ();
     }
     
     ;; Receive RemoveLiquidity message
     if (op == 3287568056) {
         var $msg'lpAmount = in_msg~load_varuint16();
-        ($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps)~$QuasarDeFi$_fun__requireActive();
-        ($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps)~$QuasarDeFi$_fun__lock();
+        ($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'pendingQsrDeposits, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps)~$QuasarDeFi$_fun__requireActive();
+        ($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'pendingQsrDeposits, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps)~$QuasarDeFi$_fun__lock();
         int $current = __tact_dict_get_slice_int($self'lpBalances, 267, __tact_context_get_sender(), 257);
         throw_unless(52158, ($msg'lpAmount > 0));
         throw_unless(22606, ( ((~ null?($current))) ? ((__tact_not_null($current) >= $msg'lpAmount)) : (false) ));
         int $tonOut = (($msg'lpAmount * $self'tonReserve) / $self'lpTotalSupply);
         int $qsrOut = (($msg'lpAmount * $self'qsrReserve) / $self'lpTotalSupply);
         throw_unless(43467, ( (($tonOut > 0)) ? (($qsrOut > 0)) : (false) ));
-        ($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps)~$QuasarDeFi$_fun__updateFarm();
-        ($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps)~$QuasarDeFi$_fun__unstakeLp(__tact_context_get_sender(), $msg'lpAmount);
+        ($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'pendingQsrDeposits, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps)~$QuasarDeFi$_fun__updateFarm();
+        ($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'pendingQsrDeposits, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps)~$QuasarDeFi$_fun__unstakeLp(__tact_context_get_sender(), $msg'lpAmount);
         $self'lpBalances~__tact_dict_set_slice_int(267, __tact_context_get_sender(), (__tact_not_null($current) - $msg'lpAmount), 257);
         $self'lpTotalSupply = $self'lpTotalSupply - $msg'lpAmount;
         $self'tonReserve = $self'tonReserve - $tonOut;
         $self'qsrReserve = $self'qsrReserve - $qsrOut;
         $global_send($SendParameters$_constructor_to_value_mode_body(__tact_context_get_sender(), $tonOut, 2, $global_emptyCell()));
+        ($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'pendingQsrDeposits, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps)~$QuasarDeFi$_fun__sendQsr(__tact_context_get_sender(), $qsrOut, 0);
         $global_send($SendParameters$_constructor_to_value_mode_body(__tact_context_get_sender(), 0, 64, $EventLiquidityRemoved$_store_cell($EventLiquidityRemoved$_constructor_provider_tonOut_qsrOut_lpBurned(__tact_context_get_sender(), $tonOut, $qsrOut, $msg'lpAmount), begin_cell())));
-        ($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps)~$QuasarDeFi$_fun__unlock();
-        $QuasarDeFi$_contract_store(($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps));
+        ($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'pendingQsrDeposits, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps)~$QuasarDeFi$_fun__unlock();
+        $QuasarDeFi$_contract_store(($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'pendingQsrDeposits, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps));
         return ();
     }
     
@@ -1150,10 +1230,12 @@ _ %qsrMaster() method_id(81078) {
     if (op == 1118291020) {
         var $msg'qsrAmount = in_msg~load_varuint16();
         var $msg'minTonOut = in_msg~load_varuint16();
-        ($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps)~$QuasarDeFi$_fun__requireActive();
-        ($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps)~$QuasarDeFi$_fun__lock();
+        ($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'pendingQsrDeposits, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps)~$QuasarDeFi$_fun__requireActive();
+        ($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'pendingQsrDeposits, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps)~$QuasarDeFi$_fun__lock();
         throw_unless(5623, ( (($msg'qsrAmount > 0)) ? (($self'qsrReserve > 0)) : (false) ));
         throw_unless(27929, (($msg'qsrAmount * 10000) <= ($self'qsrReserve * $self'maxTradeBps)));
+        int $deposited = __tact_dict_get_slice_int($self'pendingQsrDeposits, 267, __tact_context_get_sender(), 257);
+        throw_unless(20145, ( ((~ null?($deposited))) ? ((__tact_not_null($deposited) >= $msg'qsrAmount)) : (false) ));
         int $grossTonOut = (($msg'qsrAmount * $self'tonReserve) / ($self'qsrReserve + $msg'qsrAmount));
         int $fee = (($grossTonOut * $self'feeBps) / 10000);
         int $tonOut = ($grossTonOut - $fee);
@@ -1162,9 +1244,10 @@ _ %qsrMaster() method_id(81078) {
         $self'qsrReserve = $self'qsrReserve + $msg'qsrAmount;
         $self'tonReserve = $self'tonReserve - $tonOut;
         $self'feeAccumulated = $self'feeAccumulated + $fee;
+        $self'pendingQsrDeposits~__tact_dict_set_slice_int(267, __tact_context_get_sender(), (__tact_not_null($deposited) - $msg'qsrAmount), 257);
         $global_send($SendParameters$_constructor_to_value_mode_body(__tact_context_get_sender(), $tonOut, 2, $EventSwap$_store_cell($EventSwap$_constructor_trader_tonIn_qsrIn_tonOut_qsrOut_fee(__tact_context_get_sender(), 0, $msg'qsrAmount, $tonOut, 0, $fee), begin_cell())));
-        ($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps)~$QuasarDeFi$_fun__unlock();
-        $QuasarDeFi$_contract_store(($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps));
+        ($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'pendingQsrDeposits, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps)~$QuasarDeFi$_fun__unlock();
+        $QuasarDeFi$_contract_store(($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'pendingQsrDeposits, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps));
         return ();
     }
     
@@ -1172,8 +1255,8 @@ _ %qsrMaster() method_id(81078) {
     if (op == 3020093557) {
         var $msg'tonAmount = in_msg~load_varuint16();
         var $msg'minQsrOut = in_msg~load_varuint16();
-        ($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps)~$QuasarDeFi$_fun__requireActive();
-        ($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps)~$QuasarDeFi$_fun__lock();
+        ($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'pendingQsrDeposits, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps)~$QuasarDeFi$_fun__requireActive();
+        ($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'pendingQsrDeposits, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps)~$QuasarDeFi$_fun__lock();
         throw_unless(5623, ( (($msg'tonAmount > 0)) ? (($self'tonReserve > 0)) : (false) ));
         throw_unless(48341, ($Context$_get_value(__tact_context_get()) >= $msg'tonAmount));
         throw_unless(27929, (($msg'tonAmount * 10000) <= ($self'tonReserve * $self'maxTradeBps)));
@@ -1185,17 +1268,18 @@ _ %qsrMaster() method_id(81078) {
         $self'tonReserve = $self'tonReserve + $msg'tonAmount;
         $self'qsrReserve = $self'qsrReserve - $qsrOut;
         $self'feeAccumulated = $self'feeAccumulated + $fee;
+        ($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'pendingQsrDeposits, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps)~$QuasarDeFi$_fun__sendQsr(__tact_context_get_sender(), $qsrOut, 0);
         $global_send($SendParameters$_constructor_to_value_mode_body(__tact_context_get_sender(), 0, 64, $EventSwap$_store_cell($EventSwap$_constructor_trader_tonIn_qsrIn_tonOut_qsrOut_fee(__tact_context_get_sender(), $msg'tonAmount, 0, 0, $qsrOut, $fee), begin_cell())));
-        ($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps)~$QuasarDeFi$_fun__unlock();
-        $QuasarDeFi$_contract_store(($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps));
+        ($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'pendingQsrDeposits, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps)~$QuasarDeFi$_fun__unlock();
+        $QuasarDeFi$_contract_store(($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'pendingQsrDeposits, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps));
         return ();
     }
     
     ;; Receive ClaimFarmRewards message
     if (op == 1360209904) {
         var $msg = empty_tuple();
-        ($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps)~$QuasarDeFi$_fun__requireActive();
-        ($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps)~$QuasarDeFi$_fun__updateFarm();
+        ($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'pendingQsrDeposits, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps)~$QuasarDeFi$_fun__requireActive();
+        ($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'pendingQsrDeposits, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps)~$QuasarDeFi$_fun__updateFarm();
         tuple $stake = $UserFarmInfo$_load_opt(__tact_dict_get_slice_cell($self'farmStakes, 267, __tact_context_get_sender()));
         throw_unless(16729, ( ((~ null?($stake))) ? (($UserFarmInfo$_get_staked($UserFarmInfo$_not_null($stake)) > 0)) : (false) ));
         var ($s'staked, $s'debt, $s'pending) = $UserFarmInfo$_not_null($stake);
@@ -1204,7 +1288,7 @@ _ %qsrMaster() method_id(81078) {
         throw_unless(63475, ($totalReward > 0));
         $self'farmStakes~__tact_dict_set_slice_cell(267, __tact_context_get_sender(), $UserFarmInfo$_store_cell($UserFarmInfo$_constructor_staked_debt_pending($s'staked, $self'farmAccRewardPerShare, 0), begin_cell()));
         $global_send($SendParameters$_constructor_to_value_mode_body(__tact_context_get_sender(), $totalReward, 2, $EventFarmReward$_store_cell($EventFarmReward$_constructor_farmer_amount(__tact_context_get_sender(), $totalReward), begin_cell())));
-        $QuasarDeFi$_contract_store(($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps));
+        $QuasarDeFi$_contract_store(($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'pendingQsrDeposits, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps));
         return ();
     }
     
@@ -1217,14 +1301,14 @@ _ %qsrMaster() method_id(81078) {
         throw_unless(40520, ($msg'rewardPerSecond > 0));
         throw_unless(52910, ($msg'endTime > $msg'startTime));
         throw_unless(31600, ($msg'endTime >= $global_now()));
-        ($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps)~$QuasarDeFi$_fun__updateFarm();
+        ($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'pendingQsrDeposits, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps)~$QuasarDeFi$_fun__updateFarm();
         $self'farmRewardPerSecond = $msg'rewardPerSecond;
         $self'farmStartTime = $msg'startTime;
         $self'farmEndTime = $msg'endTime;
         if (($self'farmLastUpdate < $msg'startTime)) {
             $self'farmLastUpdate = $msg'startTime;
         }
-        $QuasarDeFi$_contract_store(($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps));
+        $QuasarDeFi$_contract_store(($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'pendingQsrDeposits, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps));
         return ();
     }
     
@@ -1234,7 +1318,7 @@ _ %qsrMaster() method_id(81078) {
         throw_unless(35499, ( equal_slices_bits(__tact_context_get_sender(), $self'owner) ));
         throw_unless(39600, ( (($msg'feeBps > 0)) ? (($msg'feeBps <= 100)) : (false) ));
         $self'feeBps = $msg'feeBps;
-        $QuasarDeFi$_contract_store(($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps));
+        $QuasarDeFi$_contract_store(($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'pendingQsrDeposits, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps));
         return ();
     }
     
@@ -1243,7 +1327,7 @@ _ %qsrMaster() method_id(81078) {
         var $msg'paused = in_msg~load_int(1);
         throw_unless(35499, ( equal_slices_bits(__tact_context_get_sender(), $self'owner) ));
         $self'paused = $msg'paused;
-        $QuasarDeFi$_contract_store(($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps));
+        $QuasarDeFi$_contract_store(($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'pendingQsrDeposits, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps));
         return ();
     }
     
@@ -1253,21 +1337,21 @@ _ %qsrMaster() method_id(81078) {
         throw_unless(35499, ( equal_slices_bits(__tact_context_get_sender(), $self'owner) ));
         throw_unless(19907, ( (($msg'maxTradeBps >= 100)) ? (($msg'maxTradeBps <= 5000)) : (false) ));
         $self'maxTradeBps = $msg'maxTradeBps;
-        $QuasarDeFi$_contract_store(($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps));
+        $QuasarDeFi$_contract_store(($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'pendingQsrDeposits, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps));
         return ();
     }
     
     ;; Receive Deploy message
     if (op == 0x946a98b6) {
         var $deploy'queryId = in_msg~load_uint(64);
-        ($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps)~$QuasarDeFi$_fun_notify($DeployOk$_store_cell($DeployOk$_constructor_queryId($deploy'queryId), begin_cell()));
-        $QuasarDeFi$_contract_store(($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps));
+        ($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'pendingQsrDeposits, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps)~$QuasarDeFi$_fun_notify($DeployOk$_store_cell($DeployOk$_constructor_queryId($deploy'queryId), begin_cell()));
+        $QuasarDeFi$_contract_store(($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'pendingQsrDeposits, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps));
         return ();
     }
     
     ;; Receive empty message
     if ((op == 0) & (in_msg_length <= 32)) {
-        $QuasarDeFi$_contract_store(($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps));
+        $QuasarDeFi$_contract_store(($self'owner, $self'qsrMaster, $self'lpTotalSupply, $self'tonReserve, $self'qsrReserve, $self'lpBalances, $self'pendingQsrDeposits, $self'feeBps, $self'feeAccumulated, $self'farmEnabled, $self'farmRewardPerSecond, $self'farmStartTime, $self'farmEndTime, $self'farmLastUpdate, $self'farmAccRewardPerShare, $self'farmTotalStaked, $self'farmStakes, $self'locked, $self'paused, $self'maxTradeBps));
         return ();
     }
     ;; Throw if not handled
