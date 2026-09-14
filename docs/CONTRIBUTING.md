@@ -1,5 +1,23 @@
 # Contributing to QUASAR
 
+## Before opening a pull request
+
+Install the locked dependencies and run the same checks as CI:
+
+```bash
+npm ci
+npm run lint
+npm test
+npm run build
+```
+
+Do not commit `.env`, wallet material, deployment state, or generated local
+artifacts. Never use a real wallet mnemonic or a mainnet key in tests.
+
+Contract changes should include a regression test for the affected message
+serialization or state transition. Deployment scripts must fail closed when
+the network or required secrets are missing.
+
 Thank you for your interest in contributing to QUASAR! We welcome contributions from the community.
 
 ## How to Contribute
