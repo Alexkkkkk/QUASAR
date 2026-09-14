@@ -1,4 +1,4 @@
-// automatically generated from `@stdlib/std/stdlib.fc` `/home/runner/workspace/quasar/build/quasar_defi_QuasarDeFi.fc` 
+// automatically generated from `@stdlib/std/stdlib.fc` `/home/runner/workspace/quasar-audit/build/quasar_defi_QuasarDeFi.fc` 
 PROGRAM{
   DECLPROC __tact_not_null
   DECLPROC __tact_context_get
@@ -9,6 +9,8 @@ PROGRAM{
   DECLPROC __tact_dict_set_slice_cell
   DECLPROC $DeployOk$_store
   DECLPROC $DeployOk$_store_cell
+  DECLPROC $DefiPayout$_store
+  DECLPROC $DefiPayout$_store_cell
   DECLPROC $EventLiquidityAdded$_store
   DECLPROC $EventLiquidityAdded$_store_cell
   DECLPROC $EventLiquidityRemoved$_store
@@ -38,6 +40,9 @@ PROGRAM{
   DECLPROC $QuasarDeFi$_fun__lock
   DECLPROC $QuasarDeFi$_fun__unlock
   DECLPROC $QuasarDeFi$_fun__requireActive
+  DECLPROC $SendParameters$_constructor_to_value_bounce_mode_body
+  DECLPROC $DefiPayout$_constructor_queryId_amount_destination
+  DECLPROC $QuasarDeFi$_fun__sendQsr
   DECLPROC $QuasarDeFi$_fun__min
   DECLPROC $QuasarDeFi$_fun__sqrt
   DECLPROC $QuasarDeFi$_fun__updateFarm
@@ -45,6 +50,7 @@ PROGRAM{
   DECLPROC $QuasarDeFi$_fun__stakeLp
   DECLPROC $QuasarDeFi$_fun__unstakeLp
   DECLPROC $QuasarDeFi$_fun_lpBalance
+  DECLPROC $QuasarDeFi$_fun_pendingQsrDeposit
   DECLPROC $LPInfo$_constructor_totalSupply_tonReserve_qsrReserve
   DECLPROC $QuasarDeFi$_fun_poolInfo
   DECLPROC $FarmInfo$_constructor_staked_rewardPerSecond_lastUpdate_accRewardPerShare_startTime_endTime
@@ -68,6 +74,7 @@ PROGRAM{
   DECLPROC $EventFarmReward$_constructor_farmer_amount
   DECLPROC $DeployOk$_constructor_queryId
   66831 DECLMETHOD %lpBalance
+  83522 DECLMETHOD %pendingQsrDeposit
   106583 DECLMETHOD %poolInfo
   119094 DECLMETHOD %farmInfo
   120611 DECLMETHOD %userFarm
@@ -156,6 +163,21 @@ PROGRAM{
   $DeployOk$_store_cell PROCINLINE:<{
     SWAP
     $DeployOk$_store INLINECALLDICT
+    ENDC
+  }>
+  $DefiPayout$_store PROCINLINE:<{
+    3146613905 PUSHINT
+    s0 s4 XCHG2
+    32 STU
+    s1 s2 XCHG
+    64 STU
+    SWAP
+    STVARUINT16
+    STSLICE
+  }>
+  $DefiPayout$_store_cell PROCINLINE:<{
+    3 -ROLL
+    $DefiPayout$_store INLINECALLDICT
     ENDC
   }>
   $EventLiquidityAdded$_store PROCINLINE:<{
@@ -281,30 +303,31 @@ PROGRAM{
     }>
   }>
   $QuasarDeFi$_store PROCINLINE:<{
-    s1 18 s() XCHG
-    s0 19 s() XCHG
+    s1 19 s() XCHG
+    s0 20 s() XCHG
     STSLICE
-    s1 16 s() XCHG
+    s1 17 s() XCHG
     STSLICE
-    s0 s14 XCHG2
+    s0 s15 XCHG2
     STVARUINT16
-    s0 s12 XCHG2
+    s0 s13 XCHG2
     STVARUINT16
-    s0 s10 XCHG2
+    s0 s11 XCHG2
     STVARUINT16
-    s1 s8 XCHG
+    s1 s9 XCHG
+    STDICT
+    s0 s7 XCHG
+    NEWC
     STDICT
     s1 s6 XCHG
     16 STU
-    NEWC
-    s0 s5 XCHG2
+    s0 s4 XCHG2
     STVARUINT16
-    s1 s3 XCHG
+    s1 s2 XCHG
     1 STI
     SWAP
     STVARUINT16
     32 STU
-    s1 s2 XCHG
     32 STU
     s1 s2 XCHG
     257 PUSHINT
@@ -331,10 +354,11 @@ PROGRAM{
     LDVARUINT16
     LDVARUINT16
     LDDICT
-    16 LDU
     LDREF
     SWAP
     CTOS
+    LDDICT
+    16 LDU
     LDVARUINT16
     1 LDI
     LDVARUINT16
@@ -350,13 +374,12 @@ PROGRAM{
     1 LDI
     16 LDU
     DROP
-    s12 19 s() XCHG
-    s12 18 s() XCHG
-    s12 17 s() XCHG
-    s12 16 s() XCHG
-    s12 s15 XCHG
-    s12 s14 XCHG
-    s12 s13 XCHG
+    s14 20 s() XCHG
+    s14 19 s() XCHG
+    s14 18 s() XCHG
+    s14 17 s() XCHG
+    s14 16 s() XCHG
+    s14 s15 XCHG
   }>
   $Context$_get_value PROCINLINE:<{
     s1 s3 XCHG
@@ -387,6 +410,7 @@ PROGRAM{
   $QuasarDeFi$_contract_init PROCINLINE:<{
     PUSHNULL
     PUSHNULL
+    PUSHNULL
     0 PUSHINT
     s0 s0 PUSH2
     30 PUSHINT
@@ -399,10 +423,10 @@ PROGRAM{
     ADD
         NOW
     s5 s5 PUSH2
-    s11 s13 XCHG
-    s10 s12 XCHG
-    s9 s11 XCHG
-    10 ROLL
+    s11 s14 XCHG
+    s10 s13 XCHG
+    s9 s12 XCHG
+    9 ROLL
     FALSE
     FALSE
     3000 PUSHINT
@@ -414,7 +438,8 @@ PROGRAM{
     SWAP
     IF:<{
       $QuasarDeFi$_load INLINECALLDICT
-      19 s() POP
+      20 s() POP
+      18 s() 19 s() XCHG
       17 s() 18 s() XCHG
       16 s() 17 s() XCHG
       s15 16 s() XCHG
@@ -432,6 +457,7 @@ PROGRAM{
     TRUE
     SWAP
     1 STI
+    s0 20 s() XCHG
     s0 19 s() XCHG
     s0 18 s() XCHG
     s0 17 s() XCHG
@@ -459,6 +485,94 @@ PROGRAM{
     s2 PUSH
     NOT
     THROWANYIFNOT
+  }>
+  $SendParameters$_constructor_to_value_bounce_mode_body PROCINLINE:<{
+    s1 s4 XCHG
+    PUSHNULL
+    s4 s3 XCHG2
+    PUSHNULL
+    s3 s3 XCHG2
+  }>
+  $DefiPayout$_constructor_queryId_amount_destination PROCINLINE:<{
+  }>
+  $QuasarDeFi$_fun__sendQsr PROCREF:<{
+    0 PUSHINT
+    TRUE
+    s2 s3 XCHG2
+    64 PUSHINT
+    s0 s5 XCHG
+    $DefiPayout$_constructor_queryId_amount_destination INLINECALLDICT
+    NEWC
+    $DefiPayout$_store_cell INLINECALLDICT
+    22 s() PUSH
+    s3 s4 s4 XCHG3
+    $SendParameters$_constructor_to_value_bounce_mode_body INLINECALLDICT
+        NEWC
+        b{01} STSLICECONST  // store tag = $0 and ihr_disabled = true
+        1 STI               // store `bounce`
+        b{000} STSLICECONST // store bounced = false and src = addr_none
+        STSLICE             // store `to`
+        SWAP
+        STGRAMS             // store `value`
+        105 PUSHINT         // 1 + 4 + 4 + 64 + 32
+        STZEROES            // store currency_collection, ihr_fee, fwd_fee, created_lt and created_at
+        // → Stack state
+        // s0: Builder
+        // s1: `data`
+        // s2: `code`
+        // s3: `body`
+        // s4: `mode`
+        // Group 2: Placing the Builder after code and data, then checking those for nullability
+        s2 XCHG0
+        DUP2
+        ISNULL
+        SWAP
+        ISNULL
+        AND
+        // → Stack state
+        // s0: -1 (true) if `data` and `code` are both null, 0 (false) otherwise
+        // s1: `code`
+        // s2: `data`
+        // s3: Builder
+        // s4: `body`
+        // s5: `mode`
+        // Group 3: Left branch of the IFELSE, executed if s0 is -1 (true)
+        <{
+            DROP2 // drop `data` and `code`, since either of those is null
+            b{0} STSLICECONST
+        }> PUSHCONT
+        // Group 3: Right branch of the IFELSE, executed if s0 is 0 (false)
+        <{
+            // _ split_depth:(Maybe (## 5))
+            //   special:(Maybe TickTock)
+            //   code:(Maybe ^Cell)
+            //   data:(Maybe ^Cell)
+            //   library:(Maybe ^Cell)
+            // = StateInit;
+            ROT                // place message Builder on top
+            b{10} STSLICECONST // store Maybe = true, Either = false
+            // Start composing inlined StateInit
+            b{00} STSLICECONST // store split_depth and special first
+            STDICT             // store code
+            STDICT             // store data
+            b{0} STSLICECONST  // store library
+        }> PUSHCONT
+        // Group 3: IFELSE that does the branching shown above
+        IFELSE
+        // → Stack state
+        // s0: Builder
+        // s1: null or StateInit
+        // s2: `body`
+        // s3: `mode`
+        // Group 4: Finalizing the message
+        STDICT // store `body` as ref with an extra Maybe bit, since `body` might be null
+        ENDC
+        // → Stack state
+        // s0: Cell
+        // s1: `mode`
+        // Group 5: Sending the message, with `mode` on top
+        SWAP
+        SENDRAWMSG // https://github.com/tact-lang/tact/issues/1558
   }>
   $QuasarDeFi$_fun__min PROCREF:<{
     2DUP
@@ -616,6 +730,21 @@ PROGRAM{
   }>
   $QuasarDeFi$_fun_lpBalance PROCREF:<{
     267 PUSHINT
+    16 s() PUSH
+    s0 s2 XCHG
+    257 PUSHINT
+    __tact_dict_get_slice_int INLINECALLDICT
+    DUP
+    ISNULL
+    IF:<{
+      DROP
+      0 PUSHINT
+    }>ELSE<{
+      __tact_not_null INLINECALLDICT
+    }>
+  }>
+  $QuasarDeFi$_fun_pendingQsrDeposit PROCREF:<{
+    267 PUSHINT
     s15 PUSH
     s0 s2 XCHG
     257 PUSHINT
@@ -632,9 +761,9 @@ PROGRAM{
   $LPInfo$_constructor_totalSupply_tonReserve_qsrReserve PROCINLINE:<{
   }>
   $QuasarDeFi$_fun_poolInfo PROCREF:<{
-    16 s() PUSH
-    16 s() PUSH
-    16 s() PUSH
+    17 s() PUSH
+    17 s() PUSH
+    17 s() PUSH
     $LPInfo$_constructor_totalSupply_tonReserve_qsrReserve INLINECALLDICT
   }>
   $FarmInfo$_constructor_staked_rewardPerSecond_lastUpdate_accRewardPerShare_startTime_endTime PROCINLINE:<{
@@ -664,7 +793,7 @@ PROGRAM{
   $SwapQuote$_constructor_tonIn_qsrIn_tonOut_qsrOut_fee_priceImpactBps PROCINLINE:<{
   }>
   $QuasarDeFi$_fun_estimateSwapToTon PROCREF:<{
-    s15 PUSH
+    16 s() PUSH
     0 EQINT
     IF:<{
       TRUE
@@ -680,52 +809,7 @@ PROGRAM{
       $SwapQuote$_constructor_tonIn_qsrIn_tonOut_qsrOut_fee_priceImpactBps INLINECALLDICT
     }>
     DUP
-    17 s() PUSH
-    MUL
-    16 s() PUSH
-    s2 PUSH
-    ADD
-    DIV
-    s0 s14 PUSH2
-    MUL
-    10000 PUSHINT
-    DIV
-    TUCK
-    SUB
-    s2 PUSH
-    10000 PUSHINT
-    MUL
     18 s() PUSH
-    DIV
-    DUP
-    10000 PUSHINT
-    GREATER
-    IF:<{
-      DROP
-      10000 PUSHINT
-    }>
-    0 PUSHINT
-    s0 s1 PUXC
-    s1 s5 XCHG
-    s1 s4 XCHG
-    $SwapQuote$_constructor_tonIn_qsrIn_tonOut_qsrOut_fee_priceImpactBps INLINECALLDICT
-  }>
-  $QuasarDeFi$_fun_estimateSwapToQsr PROCREF:<{
-    16 s() PUSH
-    0 EQINT
-    IF:<{
-      TRUE
-    }>ELSE<{
-      DUP
-      0 EQINT
-    }>
-    IFJMP:<{
-      0 PUSHINT
-      s0 s0 s0 PUSH3
-      DUP
-      $SwapQuote$_constructor_tonIn_qsrIn_tonOut_qsrOut_fee_priceImpactBps INLINECALLDICT
-    }>
-    s0 s15 PUSH2
     MUL
     17 s() PUSH
     s2 PUSH
@@ -750,30 +834,76 @@ PROGRAM{
       10000 PUSHINT
     }>
     0 PUSHINT
+    s0 s1 PUXC
+    s1 s5 XCHG
+    s1 s4 XCHG
+    $SwapQuote$_constructor_tonIn_qsrIn_tonOut_qsrOut_fee_priceImpactBps INLINECALLDICT
+  }>
+  $QuasarDeFi$_fun_estimateSwapToQsr PROCREF:<{
+    17 s() PUSH
+    0 EQINT
+    IF:<{
+      TRUE
+    }>ELSE<{
+      DUP
+      0 EQINT
+    }>
+    IFJMP:<{
+      0 PUSHINT
+      s0 s0 s0 PUSH3
+      DUP
+      $SwapQuote$_constructor_tonIn_qsrIn_tonOut_qsrOut_fee_priceImpactBps INLINECALLDICT
+    }>
+    DUP
+    17 s() PUSH
+    MUL
+    18 s() PUSH
+    s2 PUSH
+    ADD
+    DIV
+    s0 s14 PUSH2
+    MUL
+    10000 PUSHINT
+    DIV
+    TUCK
+    SUB
+    s2 PUSH
+    10000 PUSHINT
+    MUL
+    20 s() PUSH
+    DIV
+    DUP
+    10000 PUSHINT
+    GREATER
+    IF:<{
+      DROP
+      10000 PUSHINT
+    }>
+    0 PUSHINT
     s2 s0 s2 XCPUXC
     s1 s4 XCHG
     $SwapQuote$_constructor_tonIn_qsrIn_tonOut_qsrOut_fee_priceImpactBps INLINECALLDICT
   }>
   $QuasarDeFi$_fun_estimateLpOut PROCREF:<{
-    18 s() PUSH
+    19 s() PUSH
     IFNOTJMP:<{
       MUL
       $QuasarDeFi$_fun__sqrt INLINECALLDICT
     }>
     SWAP
-    18 s() PUSH
+    19 s() PUSH
     MUL
-    17 s() PUSH
+    18 s() PUSH
     DIV
     SWAP
-    18 s() PUSH
+    19 s() PUSH
     MUL
-    16 s() PUSH
+    17 s() PUSH
     DIV
     $QuasarDeFi$_fun__min INLINECALLDICT
   }>
   $QuasarDeFi$_fun_estimateRemoveLiquidity PROCREF:<{
-    17 s() PUSH
+    18 s() PUSH
     0 EQINT
     IF:<{
       TRUE
@@ -788,16 +918,16 @@ PROGRAM{
       $LPInfo$_constructor_totalSupply_tonReserve_qsrReserve INLINECALLDICT
     }>
     DUP
-    17 s() PUSH
-    MUL
     18 s() PUSH
+    MUL
+    19 s() PUSH
     DIV
     SWAP
-    16 s() PUSH
+    17 s() PUSH
     MUL
-    18 s() PUSH
+    19 s() PUSH
     DIV
-    18 s() PUSH
+    19 s() PUSH
     -ROT
     $LPInfo$_constructor_totalSupply_tonReserve_qsrReserve INLINECALLDICT
   }>
@@ -808,10 +938,10 @@ PROGRAM{
     s11 PUSH
   }>
   $QuasarDeFi$_fun_owner PROCREF:<{
-    18 s() PUSH
+    19 s() PUSH
   }>
   $QuasarDeFi$_fun_qsrMaster PROCREF:<{
-    17 s() PUSH
+    18 s() PUSH
   }>
   $MessageParameters$_constructor_bounce_to_value_mode_body PROCINLINE:<{
     s3 s3 XCHG2
@@ -862,6 +992,7 @@ PROGRAM{
   }>
   %lpBalance PROC:<{
     $QuasarDeFi$_contract_load INLINECALLDICT
+    19 s() 20 s() XCHG
     18 s() 19 s() XCHG
     17 s() 18 s() XCHG
     16 s() 17 s() XCHG
@@ -870,24 +1001,38 @@ PROGRAM{
     $QuasarDeFi$_fun_lpBalance INLINECALLDICT
     16 s() POP
     15 BLKDROP
-    3 1 BLKDROP2
+    4 1 BLKDROP2
+  }>
+  %pendingQsrDeposit PROC:<{
+    $QuasarDeFi$_contract_load INLINECALLDICT
+    19 s() 20 s() XCHG
+    18 s() 19 s() XCHG
+    17 s() 18 s() XCHG
+    16 s() 17 s() XCHG
+    s15 16 s() XCHG
+    15 ROLL
+    $QuasarDeFi$_fun_pendingQsrDeposit INLINECALLDICT
+    16 s() POP
+    15 BLKDROP
+    4 1 BLKDROP2
   }>
   %poolInfo PROC:<{
     $QuasarDeFi$_contract_load INLINECALLDICT
     $QuasarDeFi$_fun_poolInfo INLINECALLDICT
     15 3 BLKDROP2
-    4 3 BLKDROP2
+    5 3 BLKDROP2
     $LPInfo$_to_external INLINECALLDICT
   }>
   %farmInfo PROC:<{
     $QuasarDeFi$_contract_load INLINECALLDICT
     $QuasarDeFi$_fun_farmInfo INLINECALLDICT
     12 6 BLKDROP2
-    7 6 BLKDROP2
+    8 6 BLKDROP2
     $FarmInfo$_to_external INLINECALLDICT
   }>
   %userFarm PROC:<{
     $QuasarDeFi$_contract_load INLINECALLDICT
+    19 s() 20 s() XCHG
     18 s() 19 s() XCHG
     17 s() 18 s() XCHG
     16 s() 17 s() XCHG
@@ -895,11 +1040,12 @@ PROGRAM{
     15 ROLL
     $QuasarDeFi$_fun_userFarm INLINECALLDICT
     15 3 BLKDROP2
-    4 3 BLKDROP2
+    5 3 BLKDROP2
     $UserFarmInfo$_to_external INLINECALLDICT
   }>
   %estimateSwapToTon PROC:<{
     $QuasarDeFi$_contract_load INLINECALLDICT
+    19 s() 20 s() XCHG
     18 s() 19 s() XCHG
     17 s() 18 s() XCHG
     16 s() 17 s() XCHG
@@ -907,11 +1053,12 @@ PROGRAM{
     15 ROLL
     $QuasarDeFi$_fun_estimateSwapToTon INLINECALLDICT
     12 6 BLKDROP2
-    7 6 BLKDROP2
+    8 6 BLKDROP2
     $SwapQuote$_to_external INLINECALLDICT
   }>
   %estimateSwapToQsr PROC:<{
     $QuasarDeFi$_contract_load INLINECALLDICT
+    19 s() 20 s() XCHG
     18 s() 19 s() XCHG
     17 s() 18 s() XCHG
     16 s() 17 s() XCHG
@@ -919,25 +1066,26 @@ PROGRAM{
     15 ROLL
     $QuasarDeFi$_fun_estimateSwapToQsr INLINECALLDICT
     12 6 BLKDROP2
-    7 6 BLKDROP2
+    8 6 BLKDROP2
     $SwapQuote$_to_external INLINECALLDICT
   }>
   %estimateLpOut PROC:<{
     $QuasarDeFi$_contract_load INLINECALLDICT
+    19 s() 21 s() XCHG
     18 s() 20 s() XCHG
     17 s() 19 s() XCHG
     16 s() 18 s() XCHG
     s15 17 s() XCHG
     s14 16 s() XCHG
-    s13 s15 XCHG
-    2 13 BLKSWAP
+    2 14 BLKSWAP
     $QuasarDeFi$_fun_estimateLpOut INLINECALLDICT
     16 s() POP
     15 BLKDROP
-    3 1 BLKDROP2
+    4 1 BLKDROP2
   }>
   %estimateRemoveLiquidity PROC:<{
     $QuasarDeFi$_contract_load INLINECALLDICT
+    19 s() 20 s() XCHG
     18 s() 19 s() XCHG
     17 s() 18 s() XCHG
     16 s() 17 s() XCHG
@@ -945,7 +1093,7 @@ PROGRAM{
     15 ROLL
     $QuasarDeFi$_fun_estimateRemoveLiquidity INLINECALLDICT
     15 3 BLKDROP2
-    4 3 BLKDROP2
+    5 3 BLKDROP2
     $LPInfo$_to_external INLINECALLDICT
   }>
   %feeConfig PROC:<{
@@ -953,28 +1101,28 @@ PROGRAM{
     $QuasarDeFi$_fun_feeConfig INLINECALLDICT
     16 s() POP
     15 BLKDROP
-    3 1 BLKDROP2
+    4 1 BLKDROP2
   }>
   %feeAccumulated PROC:<{
     $QuasarDeFi$_contract_load INLINECALLDICT
     $QuasarDeFi$_fun_feeAccumulated INLINECALLDICT
     16 s() POP
     15 BLKDROP
-    3 1 BLKDROP2
+    4 1 BLKDROP2
   }>
   %owner PROC:<{
     $QuasarDeFi$_contract_load INLINECALLDICT
     $QuasarDeFi$_fun_owner INLINECALLDICT
     16 s() POP
     15 BLKDROP
-    3 1 BLKDROP2
+    4 1 BLKDROP2
   }>
   %qsrMaster PROC:<{
     $QuasarDeFi$_contract_load INLINECALLDICT
     $QuasarDeFi$_fun_qsrMaster INLINECALLDICT
     16 s() POP
     15 BLKDROP
-    3 1 BLKDROP2
+    4 1 BLKDROP2
   }>
   recv_internal PROC:<{
     SWAP
@@ -992,45 +1140,76 @@ PROGRAM{
     s0 s2 XCHG
     __tact_context_sender SETGLOB
     $QuasarDeFi$_contract_load INLINECALLDICT
-    s0 20 s() XCHG
+    s0 21 s() XCHG
     IFJMP:<{
       15 BLKDROP
-      5 BLKDROP
+      6 BLKDROP
     }>
     0 PUSHINT
-    19 s() PUSH
+    20 s() PUSH
     SBITS
     DUP
     31 GTINT
     IF:<{
       NIP
-      s0 19 s() XCHG
-      32 LDU
       s0 20 s() XCHG
+      32 LDU
+      s0 21 s() XCHG
     }>
     OVER
     78460803 PUSHINT
     EQUAL
     IFJMP:<{
       2DROP
-      s0 18 s() XCHG
+      s0 19 s() XCHG
       64 LDU
       NIP
       LDVARUINT16
+      LDMSGADDR
       DROP
       27536 PUSHINT
       __tact_context_get_sender INLINECALLDICT
-      18 s() PUSH
+      20 s() PUSH
       SDEQ
       THROWANYIFNOT
-      s1 s13 XCHG
-      ADD
+      17062 PUSHINT
+      s2 PUSH
+      0 GTINT
+      THROWANYIFNOT
+      58957 PUSHINT
+          B{b5ee9c72410101010024000043800000000000000000000000000000000000000000000000000000000000000000104aec829d} B>boc <s PUSHSLICE
+      s2 s(-1) PUXC
+      SDEQ
+      NOT
+      THROWANYIFNOT
+      s13 PUSH
+      267 PUSHINT
+      s2 PUSH
+      257 PUSHINT
+      __tact_dict_get_slice_int INLINECALLDICT
+      267 PUSHINT
+      OVER
+      ISNULL
+      IF:<{
+        NIP
+      }>ELSE<{
+        SWAP
+        __tact_not_null INLINECALLDICT
+        s0 s3 XCHG2
+        ADD
+        s0 s2 XCHG
+      }>
+      s3 s14 XCHG
+      s0 s2 XCHG
+      257 PUSHINT
+      __tact_dict_set_slice_int INLINECALLDICT
+      17 s() 19 s() XCHG
       16 s() 18 s() XCHG
       s15 17 s() XCHG
       s14 16 s() XCHG
       s13 s15 XCHG
-      s0 s14 XCHG
-      s11 s13 XCHG
+      s12 s14 XCHG
+      s0 s13 XCHG
       s10 s12 XCHG
       s9 s11 XCHG
       s8 s10 XCHG
@@ -1040,6 +1219,7 @@ PROGRAM{
       s4 s6 XCHG
       s3 s5 XCHG
       s4 s3 s0 XCHG3
+      s1 s2 XCHG
       $QuasarDeFi$_contract_store INLINECALLDICT
     }>
     OVER
@@ -1047,19 +1227,19 @@ PROGRAM{
     EQUAL
     IFJMP:<{
       2DROP
-      s0 18 s() XCHG
+      s0 19 s() XCHG
       LDVARUINT16
       LDVARUINT16
       DROP
-      s1 19 s() XCHG
-      s0 20 s() XCHG
+      s1 20 s() XCHG
+      s0 21 s() XCHG
       $QuasarDeFi$_fun__requireActive INLINECALLDICT
       $QuasarDeFi$_fun__lock INLINECALLDICT
       12203 PUSHINT
-      20 s() PUSH
+      21 s() PUSH
       0 GTINT
       IF:<{
-        21 s() PUSH
+        22 s() PUSH
         0 GTINT
       }>ELSE<{
         FALSE
@@ -1068,63 +1248,133 @@ PROGRAM{
       48341 PUSHINT
       __tact_context_get INLINECALLDICT
       $Context$_get_value INLINECALLDICT
-      21 s() PUSH
+      22 s() PUSH
       GEQ
       THROWANYIFNOT
-      16 s() PUSH
+      267 PUSHINT
+      __tact_context_get_sender INLINECALLDICT
+      s15 PUSH
+      -ROT
+      257 PUSHINT
+      __tact_dict_get_slice_int INLINECALLDICT
+      20145 PUSHINT
+      OVER
+      ISNULL
+      NOT
+      IF:<{
+        OVER
+        __tact_not_null INLINECALLDICT
+        24 s() PUSH
+        GEQ
+      }>ELSE<{
+        FALSE
+      }>
+      THROWANYIFNOT
+      18 s() PUSH
       0 GTINT
       IF:<{
         3561 PUSHINT
-        20 s() PUSH
+        22 s() PUSH
         10000 PUSHINT
         MUL
-        17 s() PUSH
-        s3 PUSH
+        19 s() PUSH
+        s4 PUSH
         MUL
         LEQ
         THROWANYIFNOT
         54751 PUSHINT
-        21 s() PUSH
+        23 s() PUSH
         10000 PUSHINT
         MUL
-        16 s() PUSH
-        s3 PUSH
+        18 s() PUSH
+        s4 PUSH
         MUL
         LEQ
         THROWANYIFNOT
       }>
-      16 s() PUSH
+      18 s() PUSH
       IF:<{
-        19 s() PUSH
-        17 s() PUSH
-        MUL
-        16 s() PUSH
-        DIV
         21 s() PUSH
-        18 s() PUSH
+        19 s() PUSH
         MUL
-        16 s() PUSH
+        18 s() PUSH
         DIV
+        23 s() PUSH
+        20 s() PUSH
+        MUL
+        18 s() PUSH
+        DIV
+        21 s() 22 s() XCHG
+        20 s() 22 s() XCHG
+        19 s() 22 s() XCHG
+        18 s() 22 s() XCHG
+        17 s() 22 s() XCHG
+        16 s() 22 s() XCHG
+        s15 22 s() XCHG
+        s14 22 s() XCHG
+        s13 22 s() XCHG
+        s12 22 s() XCHG
+        s11 22 s() XCHG
+        s10 22 s() XCHG
+        s9 22 s() XCHG
+        s8 22 s() XCHG
+        s7 22 s() XCHG
+        s6 22 s() XCHG
+        s5 22 s() XCHG
+        s4 22 s() XCHG
+        s3 22 s() XCHG
+        s2 22 s() XCHG
         $QuasarDeFi$_fun__min INLINECALLDICT
       }>ELSE<{
-        19 s() PUSH
         21 s() PUSH
+        23 s() PUSH
         MUL
+        20 s() 21 s() XCHG
+        19 s() 21 s() XCHG
+        18 s() 21 s() XCHG
+        17 s() 21 s() XCHG
+        16 s() 21 s() XCHG
+        s15 21 s() XCHG
+        s14 21 s() XCHG
+        s13 21 s() XCHG
+        s12 21 s() XCHG
+        s11 21 s() XCHG
+        s10 21 s() XCHG
+        s9 21 s() XCHG
+        s8 21 s() XCHG
+        s7 21 s() XCHG
+        s6 21 s() XCHG
+        s5 21 s() XCHG
+        s4 21 s() XCHG
+        s3 21 s() XCHG
+        s2 21 s() XCHG
+        s1 21 s() XCHG
         $QuasarDeFi$_fun__sqrt INLINECALLDICT
       }>
       55678 PUSHINT
       OVER
       0 GTINT
       THROWANYIFNOT
-      s0 16 s() XCHG
-      20 s() PUSH
-      ADD
-      s0 s15 XCHG
-      21 s() PUSH
-      ADD
       s0 17 s() XCHG
-      16 s() PUSH
+      22 s() PUSH
       ADD
+      s0 16 s() XCHG
+      23 s() PUSH
+      ADD
+      s0 18 s() XCHG
+      17 s() PUSH
+      ADD
+      267 PUSHINT
+      __tact_context_get_sender INLINECALLDICT
+      s0 23 s() XCHG
+      __tact_not_null INLINECALLDICT
+      25 s() PUSH
+      SUB
+      s3 16 s() XCHG
+      s1 s2 XCHG
+      s1 23 s() XCHG
+      257 PUSHINT
+      __tact_dict_set_slice_int INLINECALLDICT
       267 PUSHINT
       __tact_context_get_sender INLINECALLDICT
       16 s() PUSH
@@ -1148,29 +1398,29 @@ PROGRAM{
       s1 s2 XCHG
       257 PUSHINT
       __tact_dict_set_slice_int INLINECALLDICT
-      18 s() 19 s() XCHG
-      17 s() 19 s() XCHG
-      s14 16 s() XCHG
-      s14 19 s() XCHG
-      13 -ROLL
+      17 s() 20 s() XCHG
+      s15 16 s() XCHG
+      s15 20 s() XCHG
+      s0 s14 XCHG
+      s0 s13 XCHG
       $QuasarDeFi$_fun__updateFarm INLINECALLDICT
       __tact_context_get_sender INLINECALLDICT
-      20 s() PUSH
+      21 s() PUSH
       $QuasarDeFi$_fun__stakeLp INLINECALLDICT
       __tact_context_get_sender INLINECALLDICT
       0 PUSHINT
       64 PUSHINT
       __tact_context_get_sender INLINECALLDICT
       s0 s3 XCHG
-      s2 24 s() XCHG
-      s1 25 s() XCHG
-      s0 23 s() XCHG
+      s2 25 s() XCHG
+      s1 26 s() XCHG
+      s0 24 s() XCHG
       $EventLiquidityAdded$_constructor_provider_tonAmount_qsrAmount_lpMinted INLINECALLDICT
       NEWC
       $EventLiquidityAdded$_store_cell INLINECALLDICT
-      s3 20 s() XCHG
-      s2 21 s() XCHG
-      s1 22 s() XCHG
+      s3 21 s() XCHG
+      s2 22 s() XCHG
+      s1 23 s() XCHG
       $SendParameters$_constructor_to_value_mode_body INLINECALLDICT
           NEWC
           b{01} STSLICECONST  // store tag = $0 and ihr_disabled = true
@@ -1238,12 +1488,22 @@ PROGRAM{
           // Group 5: Sending the message, with `mode` on top
           SWAP
           SENDRAWMSG // https://github.com/tact-lang/tact/issues/1558
+      16 s() 19 s() XCHG
       s15 18 s() XCHG
       s14 17 s() XCHG
       s13 16 s() XCHG
       s12 s15 XCHG
-      3 12 BLKSWAP
-      s1 s2 XCHG
+      s11 s14 XCHG
+      s10 s13 XCHG
+      s9 s12 XCHG
+      s8 s11 XCHG
+      s7 s10 XCHG
+      s6 s9 XCHG
+      s5 s8 XCHG
+      s4 s7 XCHG
+      s3 s6 XCHG
+      s5 s3 s3 XCHG3
+      s0 s4 XCHG
       $QuasarDeFi$_fun__unlock INLINECALLDICT
       $QuasarDeFi$_contract_store INLINECALLDICT
     }>
@@ -1252,9 +1512,10 @@ PROGRAM{
     EQUAL
     IFJMP:<{
       2DROP
-      s0 18 s() XCHG
+      s0 19 s() XCHG
       LDVARUINT16
       DROP
+      18 s() 19 s() XCHG
       17 s() 18 s() XCHG
       16 s() 17 s() XCHG
       s15 16 s() XCHG
@@ -1270,18 +1531,18 @@ PROGRAM{
       s5 s6 XCHG
       s4 s5 XCHG
       s3 s4 XCHG
-      s0 19 s() XCHG
+      s0 20 s() XCHG
       s1 s3 s0 XCHG3
       $QuasarDeFi$_fun__requireActive INLINECALLDICT
       $QuasarDeFi$_fun__lock INLINECALLDICT
       267 PUSHINT
       __tact_context_get_sender INLINECALLDICT
-      s15 PUSH
+      16 s() PUSH
       -ROT
       257 PUSHINT
       __tact_dict_get_slice_int INLINECALLDICT
       52158 PUSHINT
-      21 s() PUSH
+      22 s() PUSH
       0 GTINT
       THROWANYIFNOT
       22606 PUSHINT
@@ -1291,21 +1552,21 @@ PROGRAM{
       IF:<{
         OVER
         __tact_not_null INLINECALLDICT
-        22 s() PUSH
+        23 s() PUSH
         GEQ
       }>ELSE<{
         FALSE
       }>
       THROWANYIFNOT
-      20 s() PUSH
-      17 s() PUSH
-      MUL
-      18 s() PUSH
-      DIV
       21 s() PUSH
-      17 s() PUSH
+      18 s() PUSH
       MUL
       19 s() PUSH
+      DIV
+      22 s() PUSH
+      18 s() PUSH
+      MUL
+      20 s() PUSH
       DIV
       43467 PUSHINT
       s2 PUSH
@@ -1317,53 +1578,54 @@ PROGRAM{
         FALSE
       }>
       THROWANYIFNOT
+      19 s() 22 s() XCHG
       18 s() 21 s() XCHG
       17 s() 20 s() XCHG
-      16 s() 19 s() XCHG
+      16 s() 22 s() XCHG
       s15 21 s() XCHG
       s14 20 s() XCHG
-      s13 19 s() XCHG
+      s13 22 s() XCHG
       s12 21 s() XCHG
       s11 20 s() XCHG
-      s10 19 s() XCHG
+      s10 22 s() XCHG
       s9 21 s() XCHG
       s8 20 s() XCHG
-      s7 19 s() XCHG
+      s7 22 s() XCHG
       s6 21 s() XCHG
       s5 20 s() XCHG
-      s4 19 s() XCHG
+      s4 22 s() XCHG
       s3 21 s() XCHG
       s2 20 s() XCHG
-      s1 19 s() XCHG
+      s1 22 s() XCHG
       s0 21 s() XCHG
       $QuasarDeFi$_fun__updateFarm INLINECALLDICT
       __tact_context_get_sender INLINECALLDICT
-      23 s() PUSH
+      24 s() PUSH
       $QuasarDeFi$_fun__unstakeLp INLINECALLDICT
       267 PUSHINT
       __tact_context_get_sender INLINECALLDICT
       s0 22 s() XCHG
       __tact_not_null INLINECALLDICT
-      24 s() PUSH
+      25 s() PUSH
       SUB
-      s3 s15 XCHG
+      s3 16 s() XCHG
       s1 s2 XCHG
       s1 22 s() XCHG
       257 PUSHINT
       __tact_dict_set_slice_int INLINECALLDICT
+      s0 16 s() XCHG
+      22 s() PUSH
+      SUB
       s0 s15 XCHG
       21 s() PUSH
       SUB
       s0 s14 XCHG
-      18 s() PUSH
-      SUB
-      s0 s13 XCHG
       20 s() PUSH
       SUB
       __tact_context_get_sender INLINECALLDICT
       2 PUSHINT
           <b b> PUSHREF // Pure Fift: "<b" creates a builder, "b>" turns it into a cell at compile time
-      21 s() PUSH
+      24 s() PUSH
       -ROT
       $SendParameters$_constructor_to_value_mode_body INLINECALLDICT
           NEWC
@@ -1433,18 +1695,39 @@ PROGRAM{
           SWAP
           SENDRAWMSG // https://github.com/tact-lang/tact/issues/1558
       __tact_context_get_sender INLINECALLDICT
+      19 s() 20 s() XCHG
+      18 s() 19 s() XCHG
+      16 s() 18 s() XCHG
+      s15 17 s() XCHG
+      s1 16 s() XCHG
+      s13 s14 XCHG
+      s12 s13 XCHG
+      s11 s12 XCHG
+      s10 s11 XCHG
+      s9 s10 XCHG
+      s8 s9 XCHG
+      s7 s8 XCHG
+      s6 s7 XCHG
+      s5 s6 XCHG
+      s4 s5 XCHG
+      s3 s4 XCHG
+      s2 s3 XCHG
+      21 s() PUSH
+      0 PUSHINT
+      $QuasarDeFi$_fun__sendQsr INLINECALLDICT
+      __tact_context_get_sender INLINECALLDICT
       0 PUSHINT
       64 PUSHINT
       __tact_context_get_sender INLINECALLDICT
       s0 s3 XCHG
-      s2 22 s() XCHG
+      s2 25 s() XCHG
       s1 24 s() XCHG
-      s0 25 s() XCHG
+      s0 26 s() XCHG
       $EventLiquidityRemoved$_constructor_provider_tonOut_qsrOut_lpBurned INLINECALLDICT
       NEWC
       $EventLiquidityRemoved$_store_cell INLINECALLDICT
-      s3 22 s() XCHG
-      s2 19 s() XCHG
+      s3 23 s() XCHG
+      s2 22 s() XCHG
       s1 21 s() XCHG
       $SendParameters$_constructor_to_value_mode_body INLINECALLDICT
           NEWC
@@ -1513,20 +1796,13 @@ PROGRAM{
           // Group 5: Sending the message, with `mode` on top
           SWAP
           SENDRAWMSG // https://github.com/tact-lang/tact/issues/1558
-      s14 18 s() XCHG
-      s13 17 s() XCHG
-      s11 16 s() XCHG
-      s10 s15 XCHG
-      s13 s14 XCHG
-      s12 s13 XCHG
-      s8 s12 XCHG
-      s7 s11 XCHG
-      s6 s10 XCHG
-      s5 s9 XCHG
-      s4 s8 XCHG
-      s3 s7 XCHG
-      s6 s1 s4 XCHG3
-      s5 s3 XCHG2
+      16 s() 19 s() XCHG
+      s15 18 s() XCHG
+      s14 17 s() XCHG
+      s13 16 s() XCHG
+      s12 s15 XCHG
+      s11 s14 XCHG
+      3 11 BLKSWAP
       $QuasarDeFi$_fun__unlock INLINECALLDICT
       $QuasarDeFi$_contract_store INLINECALLDICT
     }>
@@ -1535,41 +1811,60 @@ PROGRAM{
     EQUAL
     IFJMP:<{
       2DROP
-      s0 18 s() XCHG
+      s0 19 s() XCHG
       LDVARUINT16
       LDVARUINT16
       DROP
-      s1 19 s() XCHG
-      s0 20 s() XCHG
+      s1 20 s() XCHG
+      s0 21 s() XCHG
       $QuasarDeFi$_fun__requireActive INLINECALLDICT
       $QuasarDeFi$_fun__lock INLINECALLDICT
       5623 PUSHINT
-      20 s() PUSH
+      21 s() PUSH
       0 GTINT
       IF:<{
-        s15 PUSH
+        16 s() PUSH
         0 GTINT
       }>ELSE<{
         FALSE
       }>
       THROWANYIFNOT
       27929 PUSHINT
-      20 s() PUSH
+      21 s() PUSH
       10000 PUSHINT
       MUL
-      16 s() PUSH
+      17 s() PUSH
       s3 PUSH
       MUL
       LEQ
       THROWANYIFNOT
-      19 s() PUSH
-      16 s() PUSH
-      MUL
+      267 PUSHINT
+      __tact_context_get_sender INLINECALLDICT
       s15 PUSH
+      -ROT
+      257 PUSHINT
+      __tact_dict_get_slice_int INLINECALLDICT
+      20145 PUSHINT
+      OVER
+      ISNULL
+      NOT
+      IF:<{
+        OVER
+        __tact_not_null INLINECALLDICT
+        23 s() PUSH
+        GEQ
+      }>ELSE<{
+        FALSE
+      }>
+      THROWANYIFNOT
       21 s() PUSH
+      18 s() PUSH
+      MUL
+      17 s() PUSH
+      23 s() PUSH
       ADD
       DIV
-      s0 s13 PUSH2
+      s0 s14 PUSH2
       MUL
       10000 PUSHINT
       DIV
@@ -1577,44 +1872,56 @@ PROGRAM{
       SUB
       DUP
       41529 PUSHINT
-      s0 24 s() XCHG
+      s0 26 s() XCHG
       GEQ
-      s1 23 s() XCHG
+      s1 25 s() XCHG
       THROWANYIFNOT
       16323 PUSHINT
-      22 s() PUSH
+      24 s() PUSH
       0 GTINT
       IF:<{
-        22 s() PUSH
-        18 s() PUSH
+        24 s() PUSH
+        20 s() PUSH
         LESS
       }>ELSE<{
         FALSE
       }>
       THROWANYIFNOT
-      s0 s15 XCHG
-      20 s() PUSH
+      s0 17 s() XCHG
+      22 s() PUSH
       ADD
-      s0 16 s() XCHG
-      21 s() PUSH
+      s0 18 s() XCHG
+      23 s() PUSH
       SUB
-      s12 s15 XCPU
+      s0 s13 XCHG
+      17 s() PUSH
       ADD
+      267 PUSHINT
+      __tact_context_get_sender INLINECALLDICT
+      s0 s3 XCHG
+      __tact_not_null INLINECALLDICT
+      24 s() PUSH
+      SUB
+      s3 17 s() XCHG
+      s1 s2 XCHG
+      s1 17 s() XCHG
+      257 PUSHINT
+      __tact_dict_set_slice_int INLINECALLDICT
       __tact_context_get_sender INLINECALLDICT
       2 PUSHINT
       __tact_context_get_sender INLINECALLDICT
       0 PUSHINT
       s3 s2 s2 XC2PU
-      s2 25 s() XCHG
-      26 s() PUSH
+      s2 26 s() XCHG
+      27 s() PUSH
       s0 s2 XCHG
-      s0 21 s() XCHG
+      s0 22 s() XCHG
       $EventSwap$_constructor_trader_tonIn_qsrIn_tonOut_qsrOut_fee INLINECALLDICT
       NEWC
       $EventSwap$_store_cell INLINECALLDICT
-      s3 21 s() XCHG
-      s2 22 s() XCHG
-      s1 16 s() XCHG
+      s3 22 s() XCHG
+      s2 23 s() XCHG
+      s1 17 s() XCHG
       $SendParameters$_constructor_to_value_mode_body INLINECALLDICT
           NEWC
           b{01} STSLICECONST  // store tag = $0 and ihr_disabled = true
@@ -1682,14 +1989,13 @@ PROGRAM{
           // Group 5: Sending the message, with `mode` on top
           SWAP
           SENDRAWMSG // https://github.com/tact-lang/tact/issues/1558
+      17 s() 19 s() XCHG
       16 s() 18 s() XCHG
       s15 17 s() XCHG
-      s14 16 s() XCHG
-      s9 s15 XCHG
-      s13 s14 XCHG
-      s11 s13 XCHG
+      s9 16 s() XCHG
+      s14 s15 XCHG
+      s12 s14 XCHG
       s10 s12 XCHG
-      s10 s11 XCHG
       s8 s10 XCHG
       2 8 BLKSWAP
       $QuasarDeFi$_fun__unlock INLINECALLDICT
@@ -1700,19 +2006,19 @@ PROGRAM{
     EQUAL
     IFJMP:<{
       2DROP
-      s0 18 s() XCHG
+      s0 19 s() XCHG
       LDVARUINT16
       LDVARUINT16
       DROP
-      s1 19 s() XCHG
-      s0 20 s() XCHG
+      s1 20 s() XCHG
+      s0 21 s() XCHG
       $QuasarDeFi$_fun__requireActive INLINECALLDICT
       $QuasarDeFi$_fun__lock INLINECALLDICT
       5623 PUSHINT
-      20 s() PUSH
+      21 s() PUSH
       0 GTINT
       IF:<{
-        16 s() PUSH
+        17 s() PUSH
         0 GTINT
       }>ELSE<{
         FALSE
@@ -1721,23 +2027,23 @@ PROGRAM{
       48341 PUSHINT
       __tact_context_get INLINECALLDICT
       $Context$_get_value INLINECALLDICT
-      21 s() PUSH
+      22 s() PUSH
       GEQ
       THROWANYIFNOT
       27929 PUSHINT
-      20 s() PUSH
+      21 s() PUSH
       10000 PUSHINT
       MUL
-      17 s() PUSH
+      18 s() PUSH
       s3 PUSH
       MUL
       LEQ
       THROWANYIFNOT
-      19 s() PUSH
-      s15 PUSH
-      MUL
+      20 s() PUSH
       16 s() PUSH
-      21 s() PUSH
+      MUL
+      17 s() PUSH
+      22 s() PUSH
       ADD
       DIV
       s0 s13 PUSH2
@@ -1748,45 +2054,65 @@ PROGRAM{
       SUB
       DUP
       41529 PUSHINT
-      s0 24 s() XCHG
+      s0 25 s() XCHG
       GEQ
-      s1 23 s() XCHG
+      s1 24 s() XCHG
       THROWANYIFNOT
       16323 PUSHINT
-      22 s() PUSH
+      23 s() PUSH
       0 GTINT
       IF:<{
-        22 s() PUSH
-        17 s() PUSH
+        23 s() PUSH
+        18 s() PUSH
         LESS
       }>ELSE<{
         FALSE
       }>
       THROWANYIFNOT
-      s0 16 s() XCHG
-      20 s() PUSH
-      ADD
-      s0 s15 XCHG
+      s0 17 s() XCHG
       21 s() PUSH
+      ADD
+      s0 16 s() XCHG
+      22 s() PUSH
       SUB
       s0 s12 XCHG
-      16 s() PUSH
+      17 s() PUSH
       ADD
+      __tact_context_get_sender INLINECALLDICT
+      20 s() 21 s() XCHG
+      19 s() 21 s() XCHG
+      18 s() 21 s() XCHG
+      s13 16 s() XCHG
+      s13 s15 XCHG
+      s13 s14 XCHG
+      s1 s12 XCHG
+      s1 s11 XCHG
+      s1 s10 XCHG
+      s1 s9 XCHG
+      s1 s8 XCHG
+      s1 s7 XCHG
+      s1 s6 XCHG
+      s1 s5 XCHG
+      s1 s4 XCHG
+      s3 s3 s0 XCHG3
+      23 s() PUSH
+      0 PUSHINT
+      $QuasarDeFi$_fun__sendQsr INLINECALLDICT
       __tact_context_get_sender INLINECALLDICT
       0 PUSHINT
       64 PUSHINT
       __tact_context_get_sender INLINECALLDICT
       s3 s2 s2 XCPU2
-      s4 26 s() XCHG
+      s4 27 s() XCHG
       2SWAP
-      s1 27 s() XCHG
-      s0 22 s() XCHG
+      s1 28 s() XCHG
+      s0 26 s() XCHG
       $EventSwap$_constructor_trader_tonIn_qsrIn_tonOut_qsrOut_fee INLINECALLDICT
       NEWC
       $EventSwap$_store_cell INLINECALLDICT
-      s3 17 s() XCHG
-      s2 21 s() XCHG
-      s1 22 s() XCHG
+      s3 21 s() XCHG
+      s2 22 s() XCHG
+      s1 23 s() XCHG
       $SendParameters$_constructor_to_value_mode_body INLINECALLDICT
           NEWC
           b{01} STSLICECONST  // store tag = $0 and ihr_disabled = true
@@ -1854,12 +2180,22 @@ PROGRAM{
           // Group 5: Sending the message, with `mode` on top
           SWAP
           SENDRAWMSG // https://github.com/tact-lang/tact/issues/1558
-      16 s() 18 s() XCHG
-      s15 17 s() XCHG
-      s14 16 s() XCHG
+      16 s() 19 s() XCHG
+      s15 18 s() XCHG
+      s14 17 s() XCHG
+      s13 16 s() XCHG
       s12 s15 XCHG
-      s9 s14 XCHG
-      2 12 BLKSWAP
+      s11 s14 XCHG
+      s10 s13 XCHG
+      s9 s12 XCHG
+      s8 s11 XCHG
+      s7 s10 XCHG
+      s6 s9 XCHG
+      s5 s8 XCHG
+      s4 s7 XCHG
+      s3 s6 XCHG
+      s5 s3 s3 XCHG3
+      s0 s4 XCHG
       $QuasarDeFi$_fun__unlock INLINECALLDICT
       $QuasarDeFi$_contract_store INLINECALLDICT
     }>
@@ -1868,11 +2204,13 @@ PROGRAM{
     EQUAL
     IFJMP:<{
       2DROP
-      18 s() POP
+      19 s() POP
+      17 s() 19 s() XCHG
       16 s() 18 s() XCHG
       s15 17 s() XCHG
       s14 16 s() XCHG
-      2 14 BLKSWAP
+      s13 s15 XCHG
+      2 13 BLKSWAP
       $QuasarDeFi$_fun__requireActive INLINECALLDICT
       $QuasarDeFi$_fun__updateFarm INLINECALLDICT
       267 PUSHINT
@@ -1999,14 +2337,14 @@ PROGRAM{
     EQUAL
     IFJMP:<{
       2DROP
-      s0 18 s() XCHG
+      s0 19 s() XCHG
       LDVARUINT16
       32 LDU
       32 LDU
       DROP
       35499 PUSHINT
       __tact_context_get_sender INLINECALLDICT
-      21 s() PUSH
+      22 s() PUSH
       SDEQ
       THROWANYIFNOT
       40520 PUSHINT
@@ -2022,39 +2360,41 @@ PROGRAM{
       s2 s(-1) PUXC
       GEQ
       THROWANYIFNOT
-      18 s() 19 s() XCHG
-      17 s() 19 s() XCHG
-      16 s() 19 s() XCHG
-      s15 19 s() XCHG
-      s14 19 s() XCHG
-      s13 19 s() XCHG
-      s12 19 s() XCHG
-      s11 19 s() XCHG
-      s10 19 s() XCHG
-      s9 19 s() XCHG
-      s8 19 s() XCHG
-      s7 19 s() XCHG
-      s6 19 s() XCHG
-      s5 19 s() XCHG
-      s4 19 s() XCHG
-      s3 19 s() XCHG
-      s2 19 s() XCHG
-      s1 20 s() XCHG
-      s0 21 s() XCHG
+      19 s() 20 s() XCHG
+      18 s() 20 s() XCHG
+      17 s() 20 s() XCHG
+      16 s() 20 s() XCHG
+      s15 20 s() XCHG
+      s14 20 s() XCHG
+      s13 20 s() XCHG
+      s12 20 s() XCHG
+      s11 20 s() XCHG
+      s10 20 s() XCHG
+      s9 20 s() XCHG
+      s8 20 s() XCHG
+      s7 20 s() XCHG
+      s6 20 s() XCHG
+      s5 20 s() XCHG
+      s4 20 s() XCHG
+      s3 20 s() XCHG
+      s2 20 s() XCHG
+      s1 21 s() XCHG
+      s0 22 s() XCHG
       $QuasarDeFi$_fun__updateFarm INLINECALLDICT
       s7 POP
       s7 POP
       s7 POP
-      17 s() PUSH
+      18 s() PUSH
       s4 PUSH
-      19 s() PUSH
+      20 s() PUSH
       LESS
       IF:<{
         s4 POP
-        s3 17 s() XCHG
+        s3 18 s() XCHG
       }>ELSE<{
-        18 s() POP
+        19 s() POP
       }>
+      16 s() 19 s() XCHG
       s15 18 s() XCHG
       s14 17 s() XCHG
       s13 16 s() XCHG
@@ -2063,8 +2403,7 @@ PROGRAM{
       s10 s13 XCHG
       s9 s12 XCHG
       s8 s11 XCHG
-      s7 s10 XCHG
-      s7 s9 XCHG
+      4 7 REVERSE
       3 4 BLKSWAP
       $QuasarDeFi$_contract_store INLINECALLDICT
     }>
@@ -2074,12 +2413,12 @@ PROGRAM{
     IFJMP:<{
       2DROP
       s11 POP
-      s0 17 s() XCHG
+      s0 18 s() XCHG
       16 LDU
       DROP
       35499 PUSHINT
       __tact_context_get_sender INLINECALLDICT
-      18 s() PUSH
+      19 s() PUSH
       SDEQ
       THROWANYIFNOT
       39600 PUSHINT
@@ -2092,6 +2431,7 @@ PROGRAM{
         FALSE
       }>
       THROWANYIFNOT
+      17 s() 19 s() XCHG
       16 s() 18 s() XCHG
       s15 17 s() XCHG
       s14 16 s() XCHG
@@ -2100,14 +2440,7 @@ PROGRAM{
       s11 s13 XCHG
       s0 s12 XCHG
       s9 s11 XCHG
-      s8 s10 XCHG
-      s7 s9 XCHG
-      s6 s8 XCHG
-      s5 s7 XCHG
-      s4 s6 XCHG
-      s3 s5 XCHG
-      s4 s3 s0 XCHG3
-      s1 s2 XCHG
+      2 9 BLKSWAP
       $QuasarDeFi$_contract_store INLINECALLDICT
     }>
     OVER
@@ -2115,14 +2448,15 @@ PROGRAM{
     EQUAL
     IFJMP:<{
       3 BLKDROP
-      s0 17 s() XCHG
+      s0 18 s() XCHG
       1 LDI
       DROP
       35499 PUSHINT
       __tact_context_get_sender INLINECALLDICT
-      18 s() PUSH
+      19 s() PUSH
       SDEQ
       THROWANYIFNOT
+      17 s() 19 s() XCHG
       16 s() 18 s() XCHG
       s15 17 s() XCHG
       s14 16 s() XCHG
@@ -2138,7 +2472,6 @@ PROGRAM{
       s4 s6 XCHG
       s3 s5 XCHG
       s4 s0 s3 XCHG3
-      s0 s2 XCHG
       $QuasarDeFi$_contract_store INLINECALLDICT
     }>
     OVER
@@ -2146,13 +2479,13 @@ PROGRAM{
     EQUAL
     IFJMP:<{
       2DROP
-      19 s() POP
-      s0 17 s() XCHG
+      20 s() POP
+      s0 18 s() XCHG
       16 LDU
       DROP
       35499 PUSHINT
       __tact_context_get_sender INLINECALLDICT
-      18 s() PUSH
+      19 s() PUSH
       SDEQ
       THROWANYIFNOT
       19907 PUSHINT
@@ -2166,35 +2499,6 @@ PROGRAM{
         FALSE
       }>
       THROWANYIFNOT
-      16 s() 18 s() XCHG
-      s15 17 s() XCHG
-      s14 16 s() XCHG
-      s13 s15 XCHG
-      s12 s14 XCHG
-      s11 s13 XCHG
-      s10 s12 XCHG
-      s9 s11 XCHG
-      s8 s10 XCHG
-      s7 s9 XCHG
-      s6 s8 XCHG
-      s5 s7 XCHG
-      s4 s6 XCHG
-      s3 s5 XCHG
-      s4 s3 s0 XCHG3
-      s1 s2 XCHG
-      $QuasarDeFi$_contract_store INLINECALLDICT
-    }>
-    OVER
-    2490013878 PUSHINT
-    EQUAL
-    IFJMP:<{
-      2DROP
-      s0 18 s() XCHG
-      64 LDU
-      DROP
-      $DeployOk$_constructor_queryId INLINECALLDICT
-      NEWC
-      $DeployOk$_store_cell INLINECALLDICT
       17 s() 19 s() XCHG
       16 s() 18 s() XCHG
       s15 17 s() XCHG
@@ -2211,24 +2515,57 @@ PROGRAM{
       s4 s6 XCHG
       s3 s5 XCHG
       s4 s3 s0 XCHG3
-      $QuasarDeFi$_fun_notify INLINECALLDICT
       $QuasarDeFi$_contract_store INLINECALLDICT
     }>
-    20 s() POP
-    0 EQINT
-    s0 19 s() XCHG
-    33 LESSINT
-    s1 19 s() XCHG
-    AND
+    OVER
+    2490013878 PUSHINT
+    EQUAL
     IFJMP:<{
+      2DROP
+      s0 19 s() XCHG
+      64 LDU
+      DROP
+      $DeployOk$_constructor_queryId INLINECALLDICT
+      NEWC
+      $DeployOk$_store_cell INLINECALLDICT
+      18 s() 20 s() XCHG
+      17 s() 19 s() XCHG
       16 s() 18 s() XCHG
       s15 17 s() XCHG
       s14 16 s() XCHG
-      2 14 BLKSWAP
+      s13 s15 XCHG
+      s12 s14 XCHG
+      s11 s13 XCHG
+      s10 s12 XCHG
+      s9 s11 XCHG
+      s8 s10 XCHG
+      s7 s9 XCHG
+      s6 s8 XCHG
+      s5 s7 XCHG
+      s4 s6 XCHG
+      s3 s5 XCHG
+      s4 s3 s0 XCHG3
+      s1 s2 XCHG
+      $QuasarDeFi$_fun_notify INLINECALLDICT
+      $QuasarDeFi$_contract_store INLINECALLDICT
+    }>
+    21 s() POP
+    0 EQINT
+    s0 20 s() XCHG
+    33 LESSINT
+    s1 20 s() XCHG
+    AND
+    IFJMP:<{
+      17 s() 19 s() XCHG
+      16 s() 18 s() XCHG
+      s15 17 s() XCHG
+      s14 16 s() XCHG
+      s13 s15 XCHG
+      2 13 BLKSWAP
       $QuasarDeFi$_contract_store INLINECALLDICT
     }>
     15 BLKDROP
-    4 BLKDROP
+    5 BLKDROP
     130 THROW
   }>
   __tact_selector_hack PROC:<{
