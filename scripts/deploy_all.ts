@@ -23,11 +23,16 @@ const CONFIG = {
 };
 
 async function deploy() {
-    console.log('🌟 QUASAR Unified Deployment');
+    const network = process.env.TON_NETWORK?.trim().toLowerCase();
+    if (network !== 'mainnet' && network !== 'testnet') {
+        throw new Error('TON_NETWORK must be explicitly set to "mainnet" or "testnet"');
+    }
+    const isMainnet = network === 'mainnet';
+
+    console.log(`🌟 QUASAR Unified Deployment (${network})`);
     console.log('═══════════════════════════════════════');
     
     // ─── Setup Client ───
-    const isMainnet = process.env.TON_NETWORK === 'mainnet';
     const client = new TonClient({
         endpoint: isMainnet
             ? 'https://toncenter.com/api/v2/jsonRPC'
@@ -178,10 +183,11 @@ async function deploy() {
     };
     
     if (!fs.existsSync(buildDir)) fs.mkdirSync(buildDir, { recursive: true });
-    fs.writeFileSync(
-        path.join(buildDir, 'deployment.json'),
-        JSON.stringify(deploymentInfo, null, 2)
-    );
+    const deploymentJson = JSON.stringify(deploymentInfo, null, 2);
+    fs.writeFileSync(path.join(buildDir, 'deployment.json'), deploymentJson);
+    const websiteDir = path.join(__dirname, '..', 'website');
+    fs.mkdirSync(websiteDir, { recursive: true });
+    fs.writeFileSync(path.join(websiteDir, 'deployment.json'), deploymentJson);
     
     console.log('\n═══════════════════════════════════════');
     console.log('✅ DEPLOYMENT COMPLETE!');
