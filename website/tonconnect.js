@@ -1,4 +1,6 @@
 // ═══════════════════════════════════════════════════════════════
+import { beginCell } from 'https://esm.sh/@ton/core@0.63.1?bundle';
+
 // QUASAR Web3 Provider v2.0 — TON Connect 2.0 + @ton/core
 // Synchronized with QuasarMaster & QuasarDeFi contracts
 // ═══════════════════════════════════════════════════════════════
@@ -77,7 +79,8 @@ function updateWalletUI(wallet) {
 async function loadBalances(address) {
     try {
         const config = window.QUASAR_CONFIG || {};
-        const endpoint = config.toncenter?.testnet || 'https://testnet.toncenter.com/api/v2/jsonRPC';
+        const network = config.network === 'mainnet' ? 'mainnet' : 'testnet';
+        const endpoint = config.toncenter?.[network] || 'https://testnet.toncenter.com/api/v2/jsonRPC';
         
         const res = await fetch(`${endpoint}/getAddressBalance?address=${address}`);
         const data = await res.json();
@@ -98,29 +101,21 @@ async function loadPoolStats() {
 
 // ─── BOC Builder ───
 function buildPayload(op, ...args) {
-    // Try to use @ton/core if available
-    if (typeof window !== 'undefined' && window.toncore) {
-        try {
-            const { beginCell, storeUint, storeCoins } = window.toncore;
-            let cell = beginCell();
-            cell = storeUint(cell, op, 32);
-            for (const arg of args) {
-                if (typeof arg === 'bigint') {
-                    cell = storeCoins(cell, arg);
-                } else if (typeof arg === 'number') {
-                    cell = storeUint(cell, arg, 32);
-                }
-            }
-            return cell.endCell().toBoc().toString('base64');
-        } catch (e) {
-            console.warn('[QUASAR] @ton/core cell build failed, using fallback:', e);
+    const cell = beginCell();
+    cell.storeUint(op, 32);
+    for (const arg of args) {
+        if (typeof arg === 'bigint') {
+            cell.storeCoins(arg);
+        } else if (typeof arg === 'number') {
+            cell.storeUint(arg, 32);
+        } else {
+            throw new TypeError(`Unsupported payload argument: ${typeof arg}`);
         }
     }
-    
-    // Fallback: raw hex payload (won't work on-chain but allows UI testing)
-    const hex = op.toString(16).padStart(8, '0') +
-        args.map(a => (typeof a === 'bigint' ? a : BigInt(a)).toString(16).padStart(16, '0')).join('');
-    return btoa(hex.match(/\w{2}/g).map(b => String.fromCharCode(parseInt(b, 16))).join(''));
+    const bytes = cell.endCell().toBoc();
+    let binary = '';
+    for (const byte of bytes) binary += String.fromCharCode(byte);
+    return btoa(binary);
 }
 
 // ─── Transaction Sender ───
@@ -130,8 +125,11 @@ async function sendTx(address, amount, payload) {
         return null;
     }
     
-    const config = window.QUASAR_CONFIG || {};
-    const target = config.addresses?.[address] || address;
+    const target = address;
+    if (!target || target.includes('YOUR_QUASAR_')) {
+        window.showToast?.('Contract addresses are not configured yet', 'error');
+        return null;
+    }
     
     try {
         const tx = await tonConnectUI.sendTransaction({
