@@ -1262,6 +1262,219 @@ export function dictValueParserDefiPayout(): DictionaryValue<DefiPayout> {
     }
 }
 
+export type BurnNotification = {
+    $$type: 'BurnNotification';
+    queryId: bigint;
+    amount: bigint;
+    sender: Address;
+    responseDestination: Address;
+}
+
+export function storeBurnNotification(src: BurnNotification) {
+    return (builder: Builder) => {
+        const b_0 = builder;
+        b_0.storeUint(2078119902, 32);
+        b_0.storeUint(src.queryId, 64);
+        b_0.storeCoins(src.amount);
+        b_0.storeAddress(src.sender);
+        b_0.storeAddress(src.responseDestination);
+    };
+}
+
+export function loadBurnNotification(slice: Slice) {
+    const sc_0 = slice;
+    if (sc_0.loadUint(32) !== 2078119902) { throw Error('Invalid prefix'); }
+    const _queryId = sc_0.loadUintBig(64);
+    const _amount = sc_0.loadCoins();
+    const _sender = sc_0.loadAddress();
+    const _responseDestination = sc_0.loadAddress();
+    return { $$type: 'BurnNotification' as const, queryId: _queryId, amount: _amount, sender: _sender, responseDestination: _responseDestination };
+}
+
+export function loadTupleBurnNotification(source: TupleReader) {
+    const _queryId = source.readBigNumber();
+    const _amount = source.readBigNumber();
+    const _sender = source.readAddress();
+    const _responseDestination = source.readAddress();
+    return { $$type: 'BurnNotification' as const, queryId: _queryId, amount: _amount, sender: _sender, responseDestination: _responseDestination };
+}
+
+export function loadGetterTupleBurnNotification(source: TupleReader) {
+    const _queryId = source.readBigNumber();
+    const _amount = source.readBigNumber();
+    const _sender = source.readAddress();
+    const _responseDestination = source.readAddress();
+    return { $$type: 'BurnNotification' as const, queryId: _queryId, amount: _amount, sender: _sender, responseDestination: _responseDestination };
+}
+
+export function storeTupleBurnNotification(source: BurnNotification) {
+    const builder = new TupleBuilder();
+    builder.writeNumber(source.queryId);
+    builder.writeNumber(source.amount);
+    builder.writeAddress(source.sender);
+    builder.writeAddress(source.responseDestination);
+    return builder.build();
+}
+
+export function dictValueParserBurnNotification(): DictionaryValue<BurnNotification> {
+    return {
+        serialize: (src, builder) => {
+            builder.storeRef(beginCell().store(storeBurnNotification(src)).endCell());
+        },
+        parse: (src) => {
+            return loadBurnNotification(src.loadRef().beginParse());
+        }
+    }
+}
+
+export type TokenTransfer = {
+    $$type: 'TokenTransfer';
+    queryId: bigint;
+    amount: bigint;
+    destination: Address;
+    responseDestination: Address;
+    customPayload: Cell | null;
+    forwardTonAmount: bigint;
+    forwardPayload: Slice;
+}
+
+export function storeTokenTransfer(src: TokenTransfer) {
+    return (builder: Builder) => {
+        const b_0 = builder;
+        b_0.storeUint(260734629, 32);
+        b_0.storeUint(src.queryId, 64);
+        b_0.storeCoins(src.amount);
+        b_0.storeAddress(src.destination);
+        b_0.storeAddress(src.responseDestination);
+        if (src.customPayload !== null && src.customPayload !== undefined) { b_0.storeBit(true).storeRef(src.customPayload); } else { b_0.storeBit(false); }
+        b_0.storeCoins(src.forwardTonAmount);
+        b_0.storeBuilder(src.forwardPayload.asBuilder());
+    };
+}
+
+export function loadTokenTransfer(slice: Slice) {
+    const sc_0 = slice;
+    if (sc_0.loadUint(32) !== 260734629) { throw Error('Invalid prefix'); }
+    const _queryId = sc_0.loadUintBig(64);
+    const _amount = sc_0.loadCoins();
+    const _destination = sc_0.loadAddress();
+    const _responseDestination = sc_0.loadAddress();
+    const _customPayload = sc_0.loadBit() ? sc_0.loadRef() : null;
+    const _forwardTonAmount = sc_0.loadCoins();
+    const _forwardPayload = sc_0;
+    return { $$type: 'TokenTransfer' as const, queryId: _queryId, amount: _amount, destination: _destination, responseDestination: _responseDestination, customPayload: _customPayload, forwardTonAmount: _forwardTonAmount, forwardPayload: _forwardPayload };
+}
+
+export function loadTupleTokenTransfer(source: TupleReader) {
+    const _queryId = source.readBigNumber();
+    const _amount = source.readBigNumber();
+    const _destination = source.readAddress();
+    const _responseDestination = source.readAddress();
+    const _customPayload = source.readCellOpt();
+    const _forwardTonAmount = source.readBigNumber();
+    const _forwardPayload = source.readCell().asSlice();
+    return { $$type: 'TokenTransfer' as const, queryId: _queryId, amount: _amount, destination: _destination, responseDestination: _responseDestination, customPayload: _customPayload, forwardTonAmount: _forwardTonAmount, forwardPayload: _forwardPayload };
+}
+
+export function loadGetterTupleTokenTransfer(source: TupleReader) {
+    const _queryId = source.readBigNumber();
+    const _amount = source.readBigNumber();
+    const _destination = source.readAddress();
+    const _responseDestination = source.readAddress();
+    const _customPayload = source.readCellOpt();
+    const _forwardTonAmount = source.readBigNumber();
+    const _forwardPayload = source.readCell().asSlice();
+    return { $$type: 'TokenTransfer' as const, queryId: _queryId, amount: _amount, destination: _destination, responseDestination: _responseDestination, customPayload: _customPayload, forwardTonAmount: _forwardTonAmount, forwardPayload: _forwardPayload };
+}
+
+export function storeTupleTokenTransfer(source: TokenTransfer) {
+    const builder = new TupleBuilder();
+    builder.writeNumber(source.queryId);
+    builder.writeNumber(source.amount);
+    builder.writeAddress(source.destination);
+    builder.writeAddress(source.responseDestination);
+    builder.writeCell(source.customPayload);
+    builder.writeNumber(source.forwardTonAmount);
+    builder.writeSlice(source.forwardPayload.asCell());
+    return builder.build();
+}
+
+export function dictValueParserTokenTransfer(): DictionaryValue<TokenTransfer> {
+    return {
+        serialize: (src, builder) => {
+            builder.storeRef(beginCell().store(storeTokenTransfer(src)).endCell());
+        },
+        parse: (src) => {
+            return loadTokenTransfer(src.loadRef().beginParse());
+        }
+    }
+}
+
+export type TokenBurn = {
+    $$type: 'TokenBurn';
+    queryId: bigint;
+    amount: bigint;
+    responseDestination: Address;
+    customPayload: Cell | null;
+}
+
+export function storeTokenBurn(src: TokenBurn) {
+    return (builder: Builder) => {
+        const b_0 = builder;
+        b_0.storeUint(1499400124, 32);
+        b_0.storeUint(src.queryId, 64);
+        b_0.storeCoins(src.amount);
+        b_0.storeAddress(src.responseDestination);
+        if (src.customPayload !== null && src.customPayload !== undefined) { b_0.storeBit(true).storeRef(src.customPayload); } else { b_0.storeBit(false); }
+    };
+}
+
+export function loadTokenBurn(slice: Slice) {
+    const sc_0 = slice;
+    if (sc_0.loadUint(32) !== 1499400124) { throw Error('Invalid prefix'); }
+    const _queryId = sc_0.loadUintBig(64);
+    const _amount = sc_0.loadCoins();
+    const _responseDestination = sc_0.loadAddress();
+    const _customPayload = sc_0.loadBit() ? sc_0.loadRef() : null;
+    return { $$type: 'TokenBurn' as const, queryId: _queryId, amount: _amount, responseDestination: _responseDestination, customPayload: _customPayload };
+}
+
+export function loadTupleTokenBurn(source: TupleReader) {
+    const _queryId = source.readBigNumber();
+    const _amount = source.readBigNumber();
+    const _responseDestination = source.readAddress();
+    const _customPayload = source.readCellOpt();
+    return { $$type: 'TokenBurn' as const, queryId: _queryId, amount: _amount, responseDestination: _responseDestination, customPayload: _customPayload };
+}
+
+export function loadGetterTupleTokenBurn(source: TupleReader) {
+    const _queryId = source.readBigNumber();
+    const _amount = source.readBigNumber();
+    const _responseDestination = source.readAddress();
+    const _customPayload = source.readCellOpt();
+    return { $$type: 'TokenBurn' as const, queryId: _queryId, amount: _amount, responseDestination: _responseDestination, customPayload: _customPayload };
+}
+
+export function storeTupleTokenBurn(source: TokenBurn) {
+    const builder = new TupleBuilder();
+    builder.writeNumber(source.queryId);
+    builder.writeNumber(source.amount);
+    builder.writeAddress(source.responseDestination);
+    builder.writeCell(source.customPayload);
+    return builder.build();
+}
+
+export function dictValueParserTokenBurn(): DictionaryValue<TokenBurn> {
+    return {
+        serialize: (src, builder) => {
+            builder.storeRef(beginCell().store(storeTokenBurn(src)).endCell());
+        },
+        parse: (src) => {
+            return loadTokenBurn(src.loadRef().beginParse());
+        }
+    }
+}
+
 export type TokenNotification = {
     $$type: 'TokenNotification';
     queryId: bigint;
@@ -1273,7 +1486,7 @@ export type TokenNotification = {
 export function storeTokenNotification(src: TokenNotification) {
     return (builder: Builder) => {
         const b_0 = builder;
-        b_0.storeUint(78460803, 32);
+        b_0.storeUint(1935855772, 32);
         b_0.storeUint(src.queryId, 64);
         b_0.storeCoins(src.amount);
         b_0.storeAddress(src.from);
@@ -1283,7 +1496,7 @@ export function storeTokenNotification(src: TokenNotification) {
 
 export function loadTokenNotification(slice: Slice) {
     const sc_0 = slice;
-    if (sc_0.loadUint(32) !== 78460803) { throw Error('Invalid prefix'); }
+    if (sc_0.loadUint(32) !== 1935855772) { throw Error('Invalid prefix'); }
     const _queryId = sc_0.loadUintBig(64);
     const _amount = sc_0.loadCoins();
     const _from = sc_0.loadAddress();
@@ -1323,6 +1536,207 @@ export function dictValueParserTokenNotification(): DictionaryValue<TokenNotific
         },
         parse: (src) => {
             return loadTokenNotification(src.loadRef().beginParse());
+        }
+    }
+}
+
+export type InternalTransfer = {
+    $$type: 'InternalTransfer';
+    queryId: bigint;
+    amount: bigint;
+    from: Address;
+    responseDestination: Address;
+    forwardTonAmount: bigint;
+    forwardPayload: Slice;
+}
+
+export function storeInternalTransfer(src: InternalTransfer) {
+    return (builder: Builder) => {
+        const b_0 = builder;
+        b_0.storeUint(395134233, 32);
+        b_0.storeUint(src.queryId, 64);
+        b_0.storeCoins(src.amount);
+        b_0.storeAddress(src.from);
+        b_0.storeAddress(src.responseDestination);
+        b_0.storeCoins(src.forwardTonAmount);
+        b_0.storeBuilder(src.forwardPayload.asBuilder());
+    };
+}
+
+export function loadInternalTransfer(slice: Slice) {
+    const sc_0 = slice;
+    if (sc_0.loadUint(32) !== 395134233) { throw Error('Invalid prefix'); }
+    const _queryId = sc_0.loadUintBig(64);
+    const _amount = sc_0.loadCoins();
+    const _from = sc_0.loadAddress();
+    const _responseDestination = sc_0.loadAddress();
+    const _forwardTonAmount = sc_0.loadCoins();
+    const _forwardPayload = sc_0;
+    return { $$type: 'InternalTransfer' as const, queryId: _queryId, amount: _amount, from: _from, responseDestination: _responseDestination, forwardTonAmount: _forwardTonAmount, forwardPayload: _forwardPayload };
+}
+
+export function loadTupleInternalTransfer(source: TupleReader) {
+    const _queryId = source.readBigNumber();
+    const _amount = source.readBigNumber();
+    const _from = source.readAddress();
+    const _responseDestination = source.readAddress();
+    const _forwardTonAmount = source.readBigNumber();
+    const _forwardPayload = source.readCell().asSlice();
+    return { $$type: 'InternalTransfer' as const, queryId: _queryId, amount: _amount, from: _from, responseDestination: _responseDestination, forwardTonAmount: _forwardTonAmount, forwardPayload: _forwardPayload };
+}
+
+export function loadGetterTupleInternalTransfer(source: TupleReader) {
+    const _queryId = source.readBigNumber();
+    const _amount = source.readBigNumber();
+    const _from = source.readAddress();
+    const _responseDestination = source.readAddress();
+    const _forwardTonAmount = source.readBigNumber();
+    const _forwardPayload = source.readCell().asSlice();
+    return { $$type: 'InternalTransfer' as const, queryId: _queryId, amount: _amount, from: _from, responseDestination: _responseDestination, forwardTonAmount: _forwardTonAmount, forwardPayload: _forwardPayload };
+}
+
+export function storeTupleInternalTransfer(source: InternalTransfer) {
+    const builder = new TupleBuilder();
+    builder.writeNumber(source.queryId);
+    builder.writeNumber(source.amount);
+    builder.writeAddress(source.from);
+    builder.writeAddress(source.responseDestination);
+    builder.writeNumber(source.forwardTonAmount);
+    builder.writeSlice(source.forwardPayload.asCell());
+    return builder.build();
+}
+
+export function dictValueParserInternalTransfer(): DictionaryValue<InternalTransfer> {
+    return {
+        serialize: (src, builder) => {
+            builder.storeRef(beginCell().store(storeInternalTransfer(src)).endCell());
+        },
+        parse: (src) => {
+            return loadInternalTransfer(src.loadRef().beginParse());
+        }
+    }
+}
+
+export type PoolPayout = {
+    $$type: 'PoolPayout';
+    queryId: bigint;
+    amount: bigint;
+    destination: Address;
+}
+
+export function storePoolPayout(src: PoolPayout) {
+    return (builder: Builder) => {
+        const b_0 = builder;
+        b_0.storeUint(1369818065, 32);
+        b_0.storeUint(src.queryId, 64);
+        b_0.storeCoins(src.amount);
+        b_0.storeAddress(src.destination);
+    };
+}
+
+export function loadPoolPayout(slice: Slice) {
+    const sc_0 = slice;
+    if (sc_0.loadUint(32) !== 1369818065) { throw Error('Invalid prefix'); }
+    const _queryId = sc_0.loadUintBig(64);
+    const _amount = sc_0.loadCoins();
+    const _destination = sc_0.loadAddress();
+    return { $$type: 'PoolPayout' as const, queryId: _queryId, amount: _amount, destination: _destination };
+}
+
+export function loadTuplePoolPayout(source: TupleReader) {
+    const _queryId = source.readBigNumber();
+    const _amount = source.readBigNumber();
+    const _destination = source.readAddress();
+    return { $$type: 'PoolPayout' as const, queryId: _queryId, amount: _amount, destination: _destination };
+}
+
+export function loadGetterTuplePoolPayout(source: TupleReader) {
+    const _queryId = source.readBigNumber();
+    const _amount = source.readBigNumber();
+    const _destination = source.readAddress();
+    return { $$type: 'PoolPayout' as const, queryId: _queryId, amount: _amount, destination: _destination };
+}
+
+export function storeTuplePoolPayout(source: PoolPayout) {
+    const builder = new TupleBuilder();
+    builder.writeNumber(source.queryId);
+    builder.writeNumber(source.amount);
+    builder.writeAddress(source.destination);
+    return builder.build();
+}
+
+export function dictValueParserPoolPayout(): DictionaryValue<PoolPayout> {
+    return {
+        serialize: (src, builder) => {
+            builder.storeRef(beginCell().store(storePoolPayout(src)).endCell());
+        },
+        parse: (src) => {
+            return loadPoolPayout(src.loadRef().beginParse());
+        }
+    }
+}
+
+export type FeeTransfer = {
+    $$type: 'FeeTransfer';
+    queryId: bigint;
+    amount: bigint;
+    originalSender: Address;
+    originalReceiver: Address;
+}
+
+export function storeFeeTransfer(src: FeeTransfer) {
+    return (builder: Builder) => {
+        const b_0 = builder;
+        b_0.storeUint(3948052191, 32);
+        b_0.storeUint(src.queryId, 64);
+        b_0.storeCoins(src.amount);
+        b_0.storeAddress(src.originalSender);
+        b_0.storeAddress(src.originalReceiver);
+    };
+}
+
+export function loadFeeTransfer(slice: Slice) {
+    const sc_0 = slice;
+    if (sc_0.loadUint(32) !== 3948052191) { throw Error('Invalid prefix'); }
+    const _queryId = sc_0.loadUintBig(64);
+    const _amount = sc_0.loadCoins();
+    const _originalSender = sc_0.loadAddress();
+    const _originalReceiver = sc_0.loadAddress();
+    return { $$type: 'FeeTransfer' as const, queryId: _queryId, amount: _amount, originalSender: _originalSender, originalReceiver: _originalReceiver };
+}
+
+export function loadTupleFeeTransfer(source: TupleReader) {
+    const _queryId = source.readBigNumber();
+    const _amount = source.readBigNumber();
+    const _originalSender = source.readAddress();
+    const _originalReceiver = source.readAddress();
+    return { $$type: 'FeeTransfer' as const, queryId: _queryId, amount: _amount, originalSender: _originalSender, originalReceiver: _originalReceiver };
+}
+
+export function loadGetterTupleFeeTransfer(source: TupleReader) {
+    const _queryId = source.readBigNumber();
+    const _amount = source.readBigNumber();
+    const _originalSender = source.readAddress();
+    const _originalReceiver = source.readAddress();
+    return { $$type: 'FeeTransfer' as const, queryId: _queryId, amount: _amount, originalSender: _originalSender, originalReceiver: _originalReceiver };
+}
+
+export function storeTupleFeeTransfer(source: FeeTransfer) {
+    const builder = new TupleBuilder();
+    builder.writeNumber(source.queryId);
+    builder.writeNumber(source.amount);
+    builder.writeAddress(source.originalSender);
+    builder.writeAddress(source.originalReceiver);
+    return builder.build();
+}
+
+export function dictValueParserFeeTransfer(): DictionaryValue<FeeTransfer> {
+    return {
+        serialize: (src, builder) => {
+            builder.storeRef(beginCell().store(storeFeeTransfer(src)).endCell());
+        },
+        parse: (src) => {
+            return loadFeeTransfer(src.loadRef().beginParse());
         }
     }
 }
@@ -1913,6 +2327,69 @@ export function dictValueParserSwapQuote(): DictionaryValue<SwapQuote> {
     }
 }
 
+export type JettonWalletData = {
+    $$type: 'JettonWalletData';
+    balance: bigint;
+    owner: Address;
+    master: Address;
+    walletCode: Cell;
+}
+
+export function storeJettonWalletData(src: JettonWalletData) {
+    return (builder: Builder) => {
+        const b_0 = builder;
+        b_0.storeInt(src.balance, 257);
+        b_0.storeAddress(src.owner);
+        b_0.storeAddress(src.master);
+        b_0.storeRef(src.walletCode);
+    };
+}
+
+export function loadJettonWalletData(slice: Slice) {
+    const sc_0 = slice;
+    const _balance = sc_0.loadIntBig(257);
+    const _owner = sc_0.loadAddress();
+    const _master = sc_0.loadAddress();
+    const _walletCode = sc_0.loadRef();
+    return { $$type: 'JettonWalletData' as const, balance: _balance, owner: _owner, master: _master, walletCode: _walletCode };
+}
+
+export function loadTupleJettonWalletData(source: TupleReader) {
+    const _balance = source.readBigNumber();
+    const _owner = source.readAddress();
+    const _master = source.readAddress();
+    const _walletCode = source.readCell();
+    return { $$type: 'JettonWalletData' as const, balance: _balance, owner: _owner, master: _master, walletCode: _walletCode };
+}
+
+export function loadGetterTupleJettonWalletData(source: TupleReader) {
+    const _balance = source.readBigNumber();
+    const _owner = source.readAddress();
+    const _master = source.readAddress();
+    const _walletCode = source.readCell();
+    return { $$type: 'JettonWalletData' as const, balance: _balance, owner: _owner, master: _master, walletCode: _walletCode };
+}
+
+export function storeTupleJettonWalletData(source: JettonWalletData) {
+    const builder = new TupleBuilder();
+    builder.writeNumber(source.balance);
+    builder.writeAddress(source.owner);
+    builder.writeAddress(source.master);
+    builder.writeCell(source.walletCode);
+    return builder.build();
+}
+
+export function dictValueParserJettonWalletData(): DictionaryValue<JettonWalletData> {
+    return {
+        serialize: (src, builder) => {
+            builder.storeRef(beginCell().store(storeJettonWalletData(src)).endCell());
+        },
+        parse: (src) => {
+            return loadJettonWalletData(src.loadRef().beginParse());
+        }
+    }
+}
+
 export type QuasarDeFi$Data = {
     $$type: 'QuasarDeFi$Data';
     owner: Address;
@@ -2076,6 +2553,69 @@ export function dictValueParserQuasarDeFi$Data(): DictionaryValue<QuasarDeFi$Dat
     }
 }
 
+export type QuasarWallet$Data = {
+    $$type: 'QuasarWallet$Data';
+    balance: bigint;
+    owner: Address;
+    master: Address;
+    lastTxTime: bigint;
+}
+
+export function storeQuasarWallet$Data(src: QuasarWallet$Data) {
+    return (builder: Builder) => {
+        const b_0 = builder;
+        b_0.storeCoins(src.balance);
+        b_0.storeAddress(src.owner);
+        b_0.storeAddress(src.master);
+        b_0.storeInt(src.lastTxTime, 257);
+    };
+}
+
+export function loadQuasarWallet$Data(slice: Slice) {
+    const sc_0 = slice;
+    const _balance = sc_0.loadCoins();
+    const _owner = sc_0.loadAddress();
+    const _master = sc_0.loadAddress();
+    const _lastTxTime = sc_0.loadIntBig(257);
+    return { $$type: 'QuasarWallet$Data' as const, balance: _balance, owner: _owner, master: _master, lastTxTime: _lastTxTime };
+}
+
+export function loadTupleQuasarWallet$Data(source: TupleReader) {
+    const _balance = source.readBigNumber();
+    const _owner = source.readAddress();
+    const _master = source.readAddress();
+    const _lastTxTime = source.readBigNumber();
+    return { $$type: 'QuasarWallet$Data' as const, balance: _balance, owner: _owner, master: _master, lastTxTime: _lastTxTime };
+}
+
+export function loadGetterTupleQuasarWallet$Data(source: TupleReader) {
+    const _balance = source.readBigNumber();
+    const _owner = source.readAddress();
+    const _master = source.readAddress();
+    const _lastTxTime = source.readBigNumber();
+    return { $$type: 'QuasarWallet$Data' as const, balance: _balance, owner: _owner, master: _master, lastTxTime: _lastTxTime };
+}
+
+export function storeTupleQuasarWallet$Data(source: QuasarWallet$Data) {
+    const builder = new TupleBuilder();
+    builder.writeNumber(source.balance);
+    builder.writeAddress(source.owner);
+    builder.writeAddress(source.master);
+    builder.writeNumber(source.lastTxTime);
+    return builder.build();
+}
+
+export function dictValueParserQuasarWallet$Data(): DictionaryValue<QuasarWallet$Data> {
+    return {
+        serialize: (src, builder) => {
+            builder.storeRef(beginCell().store(storeQuasarWallet$Data(src)).endCell());
+        },
+        parse: (src) => {
+            return loadQuasarWallet$Data(src.loadRef().beginParse());
+        }
+    }
+}
+
  type QuasarDeFi_init_args = {
     $$type: 'QuasarDeFi_init_args';
     owner: Address;
@@ -2091,7 +2631,7 @@ function initQuasarDeFi_init_args(src: QuasarDeFi_init_args) {
 }
 
 async function QuasarDeFi_init(owner: Address, qsrMaster: Address) {
-    const __code = Cell.fromHex('b5ee9c72410259010016ed000228ff008e88f4a413f4bcf2c80bed5320e303ed43d9012702027102190201200311020120040c020148050a02016a060802c5a0abb5134348000638cfe903e901640b4405b5b5b5c14c02007885fe084017d78403e08fe08e082784ce0283e08d4d5442f842b442715421c1c2042ee38c34444c4450444c4448444c44484444444844444440444444403c44403d543b6cf1b3cdb14e280700485612c000917f9320c000e29430705300e0205612a85613a904015611a85613a90456135902c9a03fb5134348000638cfe903e901640b4405b5b5b5c14c02007885fe084017d78403e08fe08e082784ce0283e08d4d5442f842b442715421c1c2042ee38c34444c4450444c4448444c44484444444844444440444444403c44403d543b6cf15c417c3db1062809004881010b5610028101014133f40a6fa19401d70030925b6de2206e92307095206ef2d080e2028fad39f6a268690000c719fd207d202c816880b6b6b6b82980400f10bfc10802faf0807c11fc11c104f099c0507c11a9aa885f0856884e2a8438384085dc7186ed9e2b882f87b620c0280b00022c0201200d0f02d3b1d0fb5134348000638cfe903e901640b4405b5b5b5c14c02007885fe084017d78403e08fe08e082784ce0283e08d4d5442f842b442715421c1c2042ee38c34444c4454444c4448445044484444444c44444440444844403c44443c3844403954776cf15c417c3db1060280e023456138e83a8db3ce1015613a85612a904015613a85611a904db3c2f51028fb32dbb5134348000638cfe903e901640b4405b5b5b5c14c02007885fe084017d78403e08fe08e082784ce0283e08d4d5442f842b442715421c1c2042ee38c376cf15c417c3db10602810000456120201c71214028eaa9eed44d0d200018e33fa40fa405902d1016d6d6d705300801e217f821005f5e100f823f8238209e13380a0f823535510be10ad109c55087070810bb8e30ddb3c57105f0f6c41281300022b0201201517028da63bda89a1a400031c67f481f480b205a202dadadae0a601003c42ff04200bebc201f047f0470413c2670141f046a6aa217c215a2138aa10e0e1021771c61bb678ae20be1ed88328160004561302c9a485da89a1a400031c67f481f480b205a202dadadae0a601003c42ff04200bebc201f047f0470413c2670141f046a6aa217c215a2138aa10e0e1021771c61a2226222822262224222622242222222422222220222222201e22201eaa1db678ae20be1ed8832818004681010b2f028101014133f40a6fa19401d70030925b6de2206e92307095206ef2d080e20201201a1f02039a081b1d0289bd7ed44d0d200018e33fa40fa405902d1016d6d6d705300801e217f821005f5e100f823f8238209e13380a0f823535510be10ad109c55087070810bb8e30ddb3c6cf36c538281c000c56115611561102c5ba9ed44d0d200018e33fa40fa405902d1016d6d6d705300801e217f821005f5e100f823f8238209e13380a0f823535510be10ad109c55087070810bb8e30d1113111411131112111311121111111211111110111111100f11100f550edb3c6cc66c868281e00825610c000917f9320c000e29770547000201045e0205612a8561122a0a904530ea8812710a90466a122812710a85613a90420812710bc9430812710de705202151402016620250201202123028aa936ed44d0d200018e33fa40fa405902d1016d6d6d705300801e217f821005f5e100f823f8238209e13380a0f823535510be10ad109c55087070810bb8e30ddb3c6cc66c862822000c5474965478ba02c6ab23ed44d0d200018e33fa40fa405902d1016d6d6d705300801e217f821005f5e100f823f8238209e13380a0f823535510be10ad109c55087070810bb8e30d1113111411131112111311121111111211111110111111100f11100f550edb3c6cf36c532824007881010b250259f40b6fa192306ddf206e92306d8e16d0810101d700810101d700810101d70055206c136f03e2206e943070530097206ef2d0806f23e202c7af7d76a268690000c719fd207d202c816880b6b6b6b82980400f10bfc10802faf0807c11fc11c104f099c0507c11a9aa885f0856884e2a8438384085dc71868889888a088988890889888908888889088888880888888807888807aa876d9e36633643402826007e5611c000917f9320c000e2957054700020e0205611a8561222a0a904530ea8812710a90466a122812710a85614a90420812710bc9430812710de705422031403f23001d072d721d200d200fa4021103450666f04f86102f862ed44d0d200018e33fa40fa405902d1016d6d6d705300801e217f821005f5e100f823f8238209e13380a0f823535510be10ad109c55087070810bb8e30d1115945f0f5f06e0705614d74920c21f97311114d31f1115de21821004ad3783bae3022128292b00c4fa40fa40fa00fa00fa00f404d401d0f404d30ffa00d200fa00d31fd31f810101d700810101d700fa00f404d200d200d30f300e11140e0e11130e0e11120e0e11110e0e11100e10ef57141112111311121111111211111110111111100f11100f550e01fa5b1113d33f31fa00fa4030816b90f8425614c705f2f48142a622c200f2f48200e64d8d08600000000000000000000000000000000000000000000000000000000000000000045220c705b3f2f42d81010b228101014133f40a6fa19401d70030925b6de281010b216e91319a01206ef2d0805003a002e2103e028101012a017c216e955b59f4593098c801cf004133f441e21111111311111110111211100f11110f0e11100e10df10ce0d10ac109b108a1079106810571046103544301256044a821008bfa37dbae302218210c3f44eb8bae30221821042a7c44cbae302218210b402f875ba2c373f4304d25b1113fa00fa0030011114011115db3cdb3c812fab5615c200945616c2009170e2f2f48200bcd5f8416f24135f035616bef2f481010bf8422f598101014133f40a6fa19401d70030925b6de2814eb1216eb39921206ef2d0805618be9170e2f2f45612c200e30056124b452d2e0042810de95616812710a8561324a8bbf2f48200d5df5617812710a8561224a8bbf2f403fa8ee156155617a81114111511141113111511131112111511121111111511111110111511100f11150f0e11150e0d11150d0c11150c0b11150b0a11150a091115090811150807111507061115060511150504111504031115030211150201111501db3ce30d8200d97e21c200f2f411115616a011105617a011125611a02f3031003a20c101923070e05300a4ab00935301b999315ca9045210a0ab00e8303101e056155613a85612a90456175614a85612a9041115111611151114111611141113111611131112111611121111111611111110111611100f11160f0e11160e0d11160d0c11160c0b11160b0a11160a0911160908111608071116070611160605111605041116040311160302111602db3c5101fa81010bf8421117206ef2d0805619a1031110031201111701810101216e955b59f4593098c801cf004133f441e281010bf8425610598101014133f40a6fa19401d70030925b6de281010bf842226e933256129902206ef2d0805613a0e20311110312810101216e955b59f4593098c801cf004133f441e21111111411113204f60f11100f0f11140f0e0ddb3cf8425615db3cf842708040f842030211190201111a011118c8553082101323cbef5005cb1f13ce810101cf00810101cf0001c8810101cf00cdc90311150302111602011117015a6d6d40037fc8cf8580ca00cf8440ce01fa028069cf40025c6e016eb0935bcf818ae2f400c901fb0050334d3602f62581010b2359f40b6fa192306ddf206e92306d8e16d0810101d700810101d700810101d70055206c136f03e2206e8e46206ef2d0806f2352a2a15220a882103b9aca00a90481010b5134a059a052a0c855205023810101cf00810101cf00810101cf00c910374170206e953059f45930944133f413e2e30d5054a03435005c3081010b531870c855205023810101cf00810101cf00810101cf00c910374170206e953059f45930944133f413e200020402561110111311100f11120f0e11110e0d11100d10cf10be10ad109c108b107a1069105810471036453304db3c495603fc5b1113fa00301112111311121111111211111110111111100f11100f10ef10de10cd10bc10ab109a10891078106710561045103411144130db3cdb3c81010bf8425610598101014133f40a6fa19401d70030925b6de28200cbbe5616c200f2f481584e216eb39921206ef2d0805617be9170e2f2f456155612a85613a9044b453803fc56165612a85614a9048200a9cb22c2009321c2009170e2f2f41113111611131112111511121111111411111110111611100f11150f0e11140e0d11160d0c11150c0b11140b0a11160a0911150908111408071116070611150605111405041116040311150302111402011116011115db3cf8425618db3c81010bf842111650393b01f42581010b2359f40b6fa192306ddf206e92306d8e16d0810101d700810101d700810101d70055206c136f03e28200c89e216eb39b21206ef2d0806f235b23be9170e2f2f4206ef2d0806f2352a2a15220a882103b9aca00a90481010b5134a159a052a0c855205023810101cf00810101cf00810101cf00c910373a00284170206e953059f45930944133f413e25054a10402fc206ef2d0805619a1031110031201111601810101216e955b59f4593098c801cf004133f441e211105616a10f5615a10e5614a1f84272885618595a6d6d40037fc8cf8580ca00cf8440ce01fa028069cf40025c6e016eb0935bcf819d58cf8680cf8480f400f400cf81e2f400c901fb00f8421113111411131112111311123c3d000002fc1110111211100f11110f0111100110de10cd10bc10ab109a1089107810671056104510341023561570db3cf842708040f842030211190201111801111ac8553082105b4f24a95005cb1f13ce810101cf00810101cf0001c8810101cf00cdc90311170302111602011115015a6d6d40037fc8cf8580ca00cf8440ce01fa02473e027a8069cf40025c6e016eb0935bcf819d58cf8680cf8480f400f400cf81e2f400c901fb001110111311100f11120f0e11110e0d11100d10cf10be552adb3c495603fe5b1113fa00fa0030011114011115db3cdb3c8115f75615c200945610c2009170e2f2f4816d195615812710a8561123a8bbf2f481010bf8422f598101014133f40a6fa19401d70030925b6de2814eb1216eb39921206ef2d0805617be9170e2f2f456155612a856115617a0a904530ea8812710a90466a1208200a239111abe4b454001ca01111901f2f4813fc35618c2009556185614b99170e2f2f411115616a011125617a10d5611a081010bf84203206ef2d0805618a1031111031201111101810101216e955b59f4593098c801cf004133f441e2f84272f8427054132202111a02561b021116c84101f855508210c02a54935007cb1f15ce13810101cf00810101cf0001c8810101cf0012810101cf0012810101cf00cdc90311160302111702011111015a6d6d40037fc8cf8580ca00cf8440ce01fa028069cf40025c6e016eb0935bcf819d58cf8680cf8480f400f400cf81e2f400c901fb001111111311111110111211104201e80f11110f0911100910ef10ce10ac108a5517db3cc87f01ca001114111311121111111055e0011113011114ce01111101ce500ffa02500dfa02500bfa0219f40007c8f40016cb0f5004fa0212ca0001fa02cb1fcb1f12810101cf0012810101cf0058fa0212f40012ca0012ca0012cb0fcdc9ed5449043ce302218210511327f0bae302218210e7ceed7ebae30221821017000fb2ba444a4e5203fc5b1113fa00fa0030011114011115db3cdb3c8115f75615c200945611c2009170e2f2f48200bcd5f8416f24135f035616bef2f4816d195615812710a8561223a8bbf2f456145610a856115616a0a904530da8812710a90466a1208200a2391119be01111801f2f4813fc35617c2009556175612b99170e2f2f411115615a04b454600168200a57a03b313f2f47f0202fa11105616a10c5611a0f8421114111511141113111511131112111511120d11100d10df10de1c1b1a1918171615144330561770db3cf842708040f84254332204111b045a01111c01111ac855508210c02a54935007cb1f15ce13810101cf00810101cf0001c8810101cf0012810101cf0012810101cf00cdc903111503474800ae707f5023804005c855208210bb8d84915004cb1f12cb3f01fa02cec956164344146d50436d5033c8cf8580ca00cf8440ce01fa028069cf40025c6e016eb0935bcf819d58cf8680cf8480f400f400cf81e2f400c901fb0002d202111602011117015a6d6d40037fc8cf8580ca00cf8440ce01fa028069cf40025c6e016eb0935bcf819d58cf8680cf8480f400f400cf81e2f400c901fb001110111311100f11120f0e11110e0d11100d10cf10be10ad109c108b107a1069105810471036453304db3c49560004703303fe5b57131111111311111110111211100f11110f0e11100e10df551cdb3cdb3c81010bf842255959f40b6fa192306ddf206e92306d8e16d0810101d700810101d700810101d70055206c136f03e2814159216eb39b21206ef2d0806f235bc2009170e2f2f4206ef2d0806f235282a15220a882103b9aca00a904a08200f7f3214b504c000e81618922b3f2f402f2c200f2f481010bf842513970c855205023810101cf00810101cf00810101cf00c910374170206e953059f45930944133f413e2f84272f84227c8598210ca3de6d55003cb1fce810101cf00c9102310275a6d6d40037fc8cf8580ca00cf8440ce01fa028069cf40025c6e016eb0935bcf818ae2f400c901fb004d56001a58cf8680cf8480f400f400cf8101fc5b1113fa00d31fd31f3082008aabf8425616c705f2f482009e4823c200f2f48200ceae5312bcf2f4817b70f8235220bef2f41113111411131112111411121111111411111110111411100f11140f0e11140e0d11140d0c11140c0b11140b0a11140a091114090811140807111407061114060511140504111404031114034f027e02111402011115011116db3c3737375612245614b9953403111203925713e21110111311100f11120f0e11110e0d11100d10cf10be10ad109c108b5e27552350560152f82327bb917f9324c000e2dcf82328db3c5307bb9130e05208a12aa882103b9aca00a825a90416a00551000e5cb991309131e204c28ec25b3b1112d30f3082008aabf8425613c705f2f482009ab021c2009321c1659170e2f2f41111111311111110111211100f11110f0e11100e10df10ce10bd0c109b5518e0218210096819ffbae302218210dcff684fbae302218210946a98b6ba56535455017e5f031112d2003082008aabf8425613c705f2f41111111311111110111211100f11110f0e11100e10df10ce10bd10ac109b108a1079106810571046103544035601a25b57141112d30f3082008aabf8425613c705f2f4814dc321c2639521811388bb9170e2f2f41111111311111110111211100f11110f0e11100e10df10ce10bd10ac109b108a1079106810571046103544305603fc8eea5b1113d33f30c8018210aff90f5758cb1fcb3fc91112111411121111111311111110111211100f11110f0e11100e10df10ce10bd10ac109b108a10791068105710461035443012f84270705003804201503304c8cf8580ca00cf8440ce01fa02806acf40f400c901fb00e05715c0001114c12101111401b0e3025f0f56575800c0c87f01ca001114111311121111111055e0011113011114ce01111101ce500ffa02500dfa02500bfa0219f40007c8f40016cb0f5004fa0212ca0001fa02cb1fcb1f12810101cf0012810101cf0058fa0212f40012ca0012ca0012cb0fcdc9ed5400f01111111311111110111211100f11110f0e11100e10df551cc87f01ca001114111311121111111055e0011113011114ce01111101ce500ffa02500dfa02500bfa0219f40007c8f40016cb0f5004fa0212ca0001fa02cb1fcb1f12810101cf0012810101cf0058fa0212f40012ca0012ca0012cb0fcdc9ed54000a5f05f2c08254b86947');
+    const __code = Cell.fromHex('b5ee9c7241026d01001c6f000228ff008e88f4a413f4bcf2c80bed5320e303ed43d9012702027102190201200311020120040c020148050a02016a060802c5a0abb5134348000638cfe903e901640b4405b5b5b5c14c02007885fe084017d78403e08fe08e082784ce0283e08d4d5442f842b442715421c1c2042ee38c34444c4450444c4448444c44484444444844444440444444403c44403d543b6cf1b3cdb14e280700485612c000917f9320c000e29430705300e0205612a85613a904015611a85613a90456135902c9a03fb5134348000638cfe903e901640b4405b5b5b5c14c02007885fe084017d78403e08fe08e082784ce0283e08d4d5442f842b442715421c1c2042ee38c34444c4450444c4448444c44484444444844444440444444403c44403d543b6cf15c417c3db1062809004881010b5610028101014133f40a6fa19401d70030925b6de2206e92307095206ef2d080e2028fad39f6a268690000c719fd207d202c816880b6b6b6b82980400f10bfc10802faf0807c11fc11c104f099c0507c11a9aa885f0856884e2a8438384085dc7186ed9e2b882f87b620c0280b00022c0201200d0f02d3b1d0fb5134348000638cfe903e901640b4405b5b5b5c14c02007885fe084017d78403e08fe08e082784ce0283e08d4d5442f842b442715421c1c2042ee38c34444c4454444c4448445044484444444c44444440444844403c44443c3844403954776cf15c417c3db1060280e023456138e83a8db3ce1015613a85612a904015613a85611a904db3c2f65028fb32dbb5134348000638cfe903e901640b4405b5b5b5c14c02007885fe084017d78403e08fe08e082784ce0283e08d4d5442f842b442715421c1c2042ee38c376cf15c417c3db10602810000456120201c71214028eaa9eed44d0d200018e33fa40fa405902d1016d6d6d705300801e217f821005f5e100f823f8238209e13380a0f823535510be10ad109c55087070810bb8e30ddb3c57105f0f6c41281300022b0201201517028da63bda89a1a400031c67f481f480b205a202dadadae0a601003c42ff04200bebc201f047f0470413c2670141f046a6aa217c215a2138aa10e0e1021771c61bb678ae20be1ed88328160004561302c9a485da89a1a400031c67f481f480b205a202dadadae0a601003c42ff04200bebc201f047f0470413c2670141f046a6aa217c215a2138aa10e0e1021771c61a2226222822262224222622242222222422222220222222201e22201eaa1db678ae20be1ed8832818004681010b2f028101014133f40a6fa19401d70030925b6de2206e92307095206ef2d080e20201201a1f02039a081b1d0289bd7ed44d0d200018e33fa40fa405902d1016d6d6d705300801e217f821005f5e100f823f8238209e13380a0f823535510be10ad109c55087070810bb8e30ddb3c6cf36c538281c000c56115611561102c5ba9ed44d0d200018e33fa40fa405902d1016d6d6d705300801e217f821005f5e100f823f8238209e13380a0f823535510be10ad109c55087070810bb8e30d1113111411131112111311121111111211111110111111100f11100f550edb3c6cc66c868281e00825610c000917f9320c000e29770547000201045e0205612a8561122a0a904530ea8812710a90466a122812710a85613a90420812710bc9430812710de705202151402016620250201202123028aa936ed44d0d200018e33fa40fa405902d1016d6d6d705300801e217f821005f5e100f823f8238209e13380a0f823535510be10ad109c55087070810bb8e30ddb3c6cc66c862822000c5474965478ba02c6ab23ed44d0d200018e33fa40fa405902d1016d6d6d705300801e217f821005f5e100f823f8238209e13380a0f823535510be10ad109c55087070810bb8e30d1113111411131112111311121111111211111110111111100f11100f550edb3c6cf36c532824007881010b250259f40b6fa192306ddf206e92306d8e16d0810101d700810101d700810101d70055206c136f03e2206e943070530097206ef2d0806f23e202c7af7d76a268690000c719fd207d202c816880b6b6b6b82980400f10bfc10802faf0807c11fc11c104f099c0507c11a9aa885f0856884e2a8438384085dc71868889888a088988890889888908888889088888880888888807888807aa876d9e36633643402826007e5611c000917f9320c000e2957054700020e0205611a8561222a0a904530ea8812710a90466a122812710a85614a90420812710bc9430812710de705422031403f23001d072d721d200d200fa4021103450666f04f86102f862ed44d0d200018e33fa40fa405902d1016d6d6d705300801e217f821005f5e100f823f8238209e13380a0f823535510be10ad109c55087070810bb8e30d1115945f0f5f06e0705614d74920c21f97311114d31f1115de2182107362d09cbae3022128292b00c4fa40fa40fa00fa00fa00f404d401d0f404d30ffa00d200fa00d31fd31f810101d700810101d700fa00f404d200d200d30f300e11140e0e11130e0e11120e0e11110e0e11100e10ef57141112111311121111111211111110111111100f11100f550e02fe5b1113d33f31fa00fa4030f8285613db3c8130cdf8425a705920f90022f9005ad76501d76582020134c8cb17cb0fcb0fcbffcbff71f90400c87401cb0212ca07cbffc9d0c705f2f48142a622c200f2f48200e64d8d08600000000000000000000000000000000000000000000000000000000000000000045220c705b3f2f44d2a01dc2d81010b228101014133f40a6fa19401d70030925b6de281010b216e91319a01206ef2d0805003a002e2103e02810101216e955b59f4593098c801cf004133f441e21111111311111110111211100f11110f0e11100e10df10ce0d10ac109b108a107910681057104610354430126a044a821008bfa37dbae302218210c3f44eb8bae30221821042a7c44cbae302218210b402f875ba2c373f4304d25b1113fa00fa0030011114011115db3cdb3c812fab5615c200945616c2009170e2f2f48200bcd5f8416f24135f035616bef2f481010bf8422f598101014133f40a6fa19401d70030925b6de2814eb1216eb39921206ef2d0805618be9170e2f2f45612c200e30056124a452d2e0042810de95616812710a8561324a8bbf2f48200d5df5617812710a8561224a8bbf2f403fa8ee156155617a81114111511141113111511131112111511121111111511111110111511100f11150f0e11150e0d11150d0c11150c0b11150b0a11150a091115090811150807111507061115060511150504111504031115030211150201111501db3ce30d8200d97e21c200f2f411115616a011105617a011125611a02f3031003a20c101923070e05300a4ab00935301b999315ca9045210a0ab00e8303101e056155613a85612a90456175614a85612a9041115111611151114111611141113111611131112111611121111111611111110111611100f11160f0e11160e0d11160d0c11160c0b11160b0a11160a0911160908111608071116070611160605111605041116040311160302111602db3c6501fa81010bf8421117206ef2d0805619a1031110031201111701810101216e955b59f4593098c801cf004133f441e281010bf8425610598101014133f40a6fa19401d70030925b6de281010bf842226e933256129902206ef2d0805613a0e20311110312810101216e955b59f4593098c801cf004133f441e21111111411113204f60f11100f0f11140f0e0ddb3cf8425615db3cf842708040f842030211190201111a011118c8553082101323cbef5005cb1f13ce810101cf00810101cf0001c8810101cf00cdc90311150302111602011117015a6d6d40037fc8cf8580ca00cf8440ce01fa028069cf40025c6e016eb0935bcf818ae2f400c901fb006433573602f62581010b2359f40b6fa192306ddf206e92306d8e16d0810101d700810101d700810101d70055206c136f03e2206e8e46206ef2d0806f2352a2a15220a882103b9aca00a90481010b5134a059a052a0c855205023810101cf00810101cf00810101cf00c910374170206e953059f45930944133f413e2e30d5054a03435005c3081010b531870c855205023810101cf00810101cf00810101cf00c910374170206e953059f45930944133f413e200020402561110111311100f11120f0e11110e0d11100d10cf10be10ad109c108b107a1069105810471036453304db3c486a03fc5b1113fa00301112111311121111111211111110111111100f11100f10ef10de10cd10bc10ab109a10891078106710561045103411144130db3cdb3c81010bf8425610598101014133f40a6fa19401d70030925b6de28200cbbe5616c200f2f481584e216eb39921206ef2d0805617be9170e2f2f456155612a85613a9044a453803fc56165612a85614a9048200a9cb22c2009321c2009170e2f2f41113111611131112111511121111111411111110111611100f11150f0e11140e0d11160d0c11150c0b11140b0a11160a0911150908111408071116070611150605111405041116040311150302111402011116011115db3cf8425618db3c81010bf842111664393b01f42581010b2359f40b6fa192306ddf206e92306d8e16d0810101d700810101d700810101d70055206c136f03e28200c89e216eb39b21206ef2d0806f235b23be9170e2f2f4206ef2d0806f2352a2a15220a882103b9aca00a90481010b5134a159a052a0c855205023810101cf00810101cf00810101cf00c910373a00284170206e953059f45930944133f413e25054a10402fc206ef2d0805619a1031110031201111601810101216e955b59f4593098c801cf004133f441e211105616a10f5615a10e5614a1f84273885618595a6d6d40037fc8cf8580ca00cf8440ce01fa028069cf40025c6e016eb0935bcf819d58cf8680cf8480f400f400cf81e2f400c901fb00f8421113111411131112111311123c3d000002fc1110111211100f11110f0111100110de10cd10bc10ab109a1089107810671056104510341023561570db3cf842708040f842030211190201111801111ac8553082105b4f24a95005cb1f13ce810101cf00810101cf0001c8810101cf00cdc90311170302111602011115015a6d6d40037fc8cf8580ca00cf8440ce01fa024c3e027a8069cf40025c6e016eb0935bcf819d58cf8680cf8480f400f400cf81e2f400c901fb001110111311100f11120f0e11110e0d11100d10cf10be552adb3c486a03fe5b1113fa00fa0030011114011115db3cdb3c8115f75615c200945610c2009170e2f2f4816d195615812710a8561123a8bbf2f481010bf8422f598101014133f40a6fa19401d70030925b6de2814eb1216eb39921206ef2d0805617be9170e2f2f456155612a856115617a0a904530ea8812710a90466a1208200a239111abe4a454001ca01111901f2f4813fc35618c2009556185614b99170e2f2f411115616a011125617a10d5611a081010bf84203206ef2d0805618a1031111031201111101810101216e955b59f4593098c801cf004133f441e2f84272f8427054132202111a02561b021116c84101f855508210c02a54935007cb1f15ce13810101cf00810101cf0001c8810101cf0012810101cf0012810101cf00cdc90311160302111702011111015a6d6d40037fc8cf8580ca00cf8440ce01fa028069cf40025c6e016eb0935bcf819d58cf8680cf8480f400f400cf81e2f400c901fb001111111311111110111211104201e80f11110f0911100910ef10ce10ac108a5517db3cc87f01ca001114111311121111111055e0011113011114ce01111101ce500ffa02500dfa02500bfa0219f40007c8f40016cb0f5004fa0212ca0001fa02cb1fcb1f12810101cf0012810101cf0058fa0212f40012ca0012ca0012cb0fcdc9ed5448043ce302218210511327f0bae302218210e7ceed7ebae30221821017000fb2ba4449626603fc5b1113fa00fa0030011114011115db3cdb3c8115f75615c200945611c2009170e2f2f48200bcd5f8416f24135f035616bef2f4816d195615812710a8561223a8bbf2f456145610a856115616a0a904530da8812710a90466a1208200a2391119be01111801f2f4813fc35617c2009556175612b99170e2f2f411115615a04a454600168200a57a03b313f2f47f0202fa11105616a10c5611a0f8421114111511141113111511131112111511120d11100d10df10de1c1b1a1918171615144330561770db3cf842708040f84254332204111b045a01111c01111ac855508210c02a54935007cb1f15ce13810101cf00810101cf0001c8810101cf0012810101cf0012810101cf00cdc9031115034c4702d202111602011117015a6d6d40037fc8cf8580ca00cf8440ce01fa028069cf40025c6e016eb0935bcf819d58cf8680cf8480f400f400cf81e2f400c901fb001110111311100f11120f0e11110e0d11100d10cf10be10ad109c108b107a1069105810471036453304db3c486a0004703303fa5b57131111111311111110111211100f11110f0e11100e10df551cdb3cdb3c81010bf842255959f40b6fa192306ddf206e92306d8e16d0810101d700810101d700810101d70055206c136f03e2814159216eb3f2f4206ef2d0806f235282a15220a882103b9aca00a904a08200f7f321c200f2f481010bf842513970c84a644b000e81618922b3f2f402fc55205023810101cf00810101cf00810101cf00c910374170206e953059f45930944133f413e2f8421114111511141113111511131112111511121111111511111110111511100f11150f0e11150e0d11150d0c11150c0b11150b0a11150a0911150908111508071115070611150605111505144330561570db3cf84270734c6102f68200865822c200f2f4f8285616db3c5c705920f90022f9005ad76501d76582020134c8cb17cb0fcb0fcbffcbff71f90400c87401cb0212ca07cbffc9d08209312d007f50567108c85520821051a5c3d15004cb1f12cb3f01fa02cec91610455a1036453304c8cf8580ca00cf8440ce01fa028069cf40025c6e016e4d60011688c87001ca005a02cecec94e022cff008e88f4a413f4bcf2c80bed53208e8130e1ed43d94f510157a65ec0bb513434800067fe803e903e9020404075c0154c1b05273e903e901640b4405c150488b8b6cf1b11205001145321db3c3054644052405b04da01d072d721d200d200fa4021103450666f04f86102f862ed44d0d200019ffa00fa40fa40810101d70055306c149cfa40fa405902d10170541222e205925f05e003d70d1ff2e082218210178d4519bae3022182100f8a7ea5bae30221821051a5c3d1bae302018210595f07bcba52545a5d03d431d33ffa00fa40fa4031fa005327db3c8200c241f8422bc705936c217f8e32f8425a705920f90022f9005ad76501d76582020134c8cb17cb0fcb0fcbffcbff71f90400c87401cb0212ca07cbffc9d0c705e2f2f48142a624c200f2f45163a021c20093365f04e30d40035b535900b0147f50437308c8553082107362d09c5005cb1f13cb3f01fa02cecec92404035066146d50436d5033c8cf8580ca00cf8440ce01fa028069cf40025c6e016eb0935bcf819d58cf8680cf8480f400f400cf81e2f400c901fb0002b631d33ffa00fa40fa40f40431fa008142a625c200f2f48138c6f84228c705f2f48121d45385bef2f48200da29f823500ba1c2041af2f4f82324a71e812710a90420c101923071de5350a18200b67621c200f2f45096a15349db3c5c5b5503fc705920f90022f9005ad76501d76582020134c8cb17cb0fcb0fcbffcbff71f90400c87401cb0212ca07cbffc9d0707f80402c514e104d4b1311121ac855508210178d45195007cb1f15cb3f5003fa02cece01fa02cec910561058104d1038591036453304c8cf8580ca00cf8440ce01fa028069cf40025c6e016eb08a8ae256575800065bcf81001a58cf8680cf8480f400f400cf8101d6f400c901fb0024c2008e5970705414657304c855308210eb527edf5005cb1f13cb3f01fa02cecec92604034666146d50436d5033c8cf8580ca00cf8440ce01fa028069cf40025c6e016eb0935bcf819d58cf8680cf8480f400f400cf81e2f400c901fb0093303330e2400359002cc87f01ca0055305043fa02ce12ce810101cf00c9ed5402ce31d33ffa00fa40308142a622c200f2f48138c6f84225c705f2f48121d45352bef2f45141a15145db3c5c705920f90022f9005ad76501d76582020134c8cb17cb0fcb0fcbffcbff71f90400c87401cb0212ca07cbffc9d0707f8040228b082a104a1039544b30c85b5c0018f82ac87001ca005a02cecec900da55508210178d45195007cb1f15cb3f5003fa02cece01fa02cec94016504405031036453304c8cf8580ca00cf8440ce01fa028069cf40025c6e016eb0935bcf819d58cf8680cf8480f400f400cf81e2f400c901fb004003c87f01ca0055305043fa02ce12ce810101cf00c9ed54010ee3025f05f2c0825e01fed33ffa00fa40308142a622c200f2f48138c6f84225c705f2f48121d45352bef2f45141a1707f541435804008c8553082107bdd97de5005cb1f13cb3f01fa02cecec9260443135066146d50436d5033c8cf8580ca00cf8440ce01fa028069cf40025c6e016eb0935bcf819d58cf8680cf8480f400f400cf81e2f400c901fb005f00304003c87f01ca0055305043fa02ce12ce810101cf00c9ed540034b0935bcf819d58cf8680cf8480f400f400cf81e2f400c901fb0001d8f842011118c8598210ca3de6d55003cb1fce810101cf00c94130011117015a6d6d40037fc8cf8580ca00cf8440ce01fa028069cf40025c6e016eb0935bcf819d58cf8680cf8480f400f400cf81e2f400c901fb001112111311121111111211111110111111100f11100f550e6a01fc5b1113fa00d31fd31f3082008aabf8425616c705f2f482009e4823c200f2f48200ceae5312bcf2f4817b70f8235220bef2f41113111411131112111411121111111411111110111411100f11140f0e11140e0d11140d0c11140c0b11140b0a11140a0911140908111408071114070611140605111405041114040311140363027e02111402011115011116db3c3737375612245614b9953403111203925713e21110111311100f11120f0e11110e0d11100d10cf10be10ad109c108b5e275523646a0152f82327bb917f9324c000e2dcf82328db3c5307bb9130e05208a12aa882103b9aca00a825a90416a00565000e5cb991309131e204c28ec25b3b1112d30f3082008aabf8425613c705f2f482009ab021c2009321c1659170e2f2f41111111311111110111211100f11110f0e11100e10df10ce10bd0c109b5518e0218210096819ffbae302218210dcff684fbae302218210946a98b6ba6a676869017e5f031112d2003082008aabf8425613c705f2f41111111311111110111211100f11110f0e11100e10df10ce10bd10ac109b108a1079106810571046103544036a01a25b57141112d30f3082008aabf8425613c705f2f4814dc321c2639521811388bb9170e2f2f41111111311111110111211100f11110f0e11100e10df10ce10bd10ac109b108a1079106810571046103544306a03fc8eea5b1113d33f30c8018210aff90f5758cb1fcb3fc91112111411121111111311111110111211100f11110f0e11100e10df10ce10bd10ac109b108a10791068105710461035443012f84270705003804201503304c8cf8580ca00cf8440ce01fa02806acf40f400c901fb00e05715c0001114c12101111401b0e3025f0f6a6b6c00c0c87f01ca001114111311121111111055e0011113011114ce01111101ce500ffa02500dfa02500bfa0219f40007c8f40016cb0f5004fa0212ca0001fa02cb1fcb1f12810101cf0012810101cf0058fa0212f40012ca0012ca0012cb0fcdc9ed5400f01111111311111110111211100f11110f0e11100e10df551cc87f01ca001114111311121111111055e0011113011114ce01111101ce500ffa02500dfa02500bfa0219f40007c8f40016cb0f5004fa0212ca0001fa02cb1fcb1f12810101cf0012810101cf0058fa0212f40012ca0012ca0012cb0fcdc9ed54000a5f05f2c082d220840d');
     const builder = beginCell();
     builder.storeUint(0, 1);
     initQuasarDeFi_init_args({ $$type: 'QuasarDeFi_init_args', owner, qsrMaster })(builder);
@@ -2138,7 +2678,10 @@ export const QuasarDeFi_errors = {
     138: { message: "Not a basechain address" },
     3561: { message: "TON deposit too large" },
     5623: { message: "Invalid swap" },
+    8660: { message: "Insufficient" },
     12203: { message: "Invalid amounts" },
+    12493: { message: "Invalid token wallet" },
+    14534: { message: "Not owner" },
     16323: { message: "Insufficient reserve" },
     16729: { message: "No LP stake" },
     17062: { message: "Invalid amount" },
@@ -2146,21 +2689,24 @@ export const QuasarDeFi_errors = {
     20145: { message: "Deposit QSR first" },
     22606: { message: "Insufficient LP balance" },
     24969: { message: "DeFi paused" },
-    27536: { message: "Only QSR master" },
     27929: { message: "Trade too large" },
     31600: { message: "Farm already ended" },
+    34392: { message: "Invalid QSR amount" },
     35499: { message: "Only owner" },
     39600: { message: "Fee must be 0.01%-1%" },
     40520: { message: "Invalid reward rate" },
     41529: { message: "Slippage exceeded" },
     42362: { message: "Reentrant call" },
     43467: { message: "Zero output" },
+    46710: { message: "Amount too small" },
     48341: { message: "Insufficient TON sent" },
+    49729: { message: "Unauthorized" },
     51358: { message: "Farm stake insufficient" },
     52158: { message: "Invalid LP amount" },
     52910: { message: "Invalid farm period" },
     54751: { message: "QSR deposit too large" },
     55678: { message: "Zero LP tokens" },
+    55849: { message: "Cooldown" },
     58957: { message: "Invalid depositor" },
     63475: { message: "No rewards to claim" },
 } as const
@@ -2204,7 +2750,10 @@ export const QuasarDeFi_errors_backward = {
     "Not a basechain address": 138,
     "TON deposit too large": 3561,
     "Invalid swap": 5623,
+    "Insufficient": 8660,
     "Invalid amounts": 12203,
+    "Invalid token wallet": 12493,
+    "Not owner": 14534,
     "Insufficient reserve": 16323,
     "No LP stake": 16729,
     "Invalid amount": 17062,
@@ -2212,21 +2761,24 @@ export const QuasarDeFi_errors_backward = {
     "Deposit QSR first": 20145,
     "Insufficient LP balance": 22606,
     "DeFi paused": 24969,
-    "Only QSR master": 27536,
     "Trade too large": 27929,
     "Farm already ended": 31600,
+    "Invalid QSR amount": 34392,
     "Only owner": 35499,
     "Fee must be 0.01%-1%": 39600,
     "Invalid reward rate": 40520,
     "Slippage exceeded": 41529,
     "Reentrant call": 42362,
     "Zero output": 43467,
+    "Amount too small": 46710,
     "Insufficient TON sent": 48341,
+    "Unauthorized": 49729,
     "Farm stake insufficient": 51358,
     "Invalid LP amount": 52158,
     "Invalid farm period": 52910,
     "QSR deposit too large": 54751,
     "Zero LP tokens": 55678,
+    "Cooldown": 55849,
     "Invalid depositor": 58957,
     "No rewards to claim": 63475,
 } as const
@@ -2255,7 +2807,13 @@ const QuasarDeFi_types: ABIType[] = [
     {"name":"SetPaused","header":157817343,"fields":[{"name":"paused","type":{"kind":"simple","type":"bool","optional":false}}]},
     {"name":"SetMaxTradeBps","header":3707725903,"fields":[{"name":"maxTradeBps","type":{"kind":"simple","type":"uint","optional":false,"format":16}}]},
     {"name":"DefiPayout","header":3146613905,"fields":[{"name":"queryId","type":{"kind":"simple","type":"uint","optional":false,"format":64}},{"name":"amount","type":{"kind":"simple","type":"uint","optional":false,"format":"coins"}},{"name":"destination","type":{"kind":"simple","type":"address","optional":false}}]},
-    {"name":"TokenNotification","header":78460803,"fields":[{"name":"queryId","type":{"kind":"simple","type":"uint","optional":false,"format":64}},{"name":"amount","type":{"kind":"simple","type":"uint","optional":false,"format":"coins"}},{"name":"from","type":{"kind":"simple","type":"address","optional":false}},{"name":"forwardPayload","type":{"kind":"simple","type":"slice","optional":false,"format":"remainder"}}]},
+    {"name":"BurnNotification","header":2078119902,"fields":[{"name":"queryId","type":{"kind":"simple","type":"uint","optional":false,"format":64}},{"name":"amount","type":{"kind":"simple","type":"uint","optional":false,"format":"coins"}},{"name":"sender","type":{"kind":"simple","type":"address","optional":false}},{"name":"responseDestination","type":{"kind":"simple","type":"address","optional":false}}]},
+    {"name":"TokenTransfer","header":260734629,"fields":[{"name":"queryId","type":{"kind":"simple","type":"uint","optional":false,"format":64}},{"name":"amount","type":{"kind":"simple","type":"uint","optional":false,"format":"coins"}},{"name":"destination","type":{"kind":"simple","type":"address","optional":false}},{"name":"responseDestination","type":{"kind":"simple","type":"address","optional":false}},{"name":"customPayload","type":{"kind":"simple","type":"cell","optional":true}},{"name":"forwardTonAmount","type":{"kind":"simple","type":"uint","optional":false,"format":"coins"}},{"name":"forwardPayload","type":{"kind":"simple","type":"slice","optional":false,"format":"remainder"}}]},
+    {"name":"TokenBurn","header":1499400124,"fields":[{"name":"queryId","type":{"kind":"simple","type":"uint","optional":false,"format":64}},{"name":"amount","type":{"kind":"simple","type":"uint","optional":false,"format":"coins"}},{"name":"responseDestination","type":{"kind":"simple","type":"address","optional":false}},{"name":"customPayload","type":{"kind":"simple","type":"cell","optional":true}}]},
+    {"name":"TokenNotification","header":1935855772,"fields":[{"name":"queryId","type":{"kind":"simple","type":"uint","optional":false,"format":64}},{"name":"amount","type":{"kind":"simple","type":"uint","optional":false,"format":"coins"}},{"name":"from","type":{"kind":"simple","type":"address","optional":false}},{"name":"forwardPayload","type":{"kind":"simple","type":"slice","optional":false,"format":"remainder"}}]},
+    {"name":"InternalTransfer","header":395134233,"fields":[{"name":"queryId","type":{"kind":"simple","type":"uint","optional":false,"format":64}},{"name":"amount","type":{"kind":"simple","type":"uint","optional":false,"format":"coins"}},{"name":"from","type":{"kind":"simple","type":"address","optional":false}},{"name":"responseDestination","type":{"kind":"simple","type":"address","optional":false}},{"name":"forwardTonAmount","type":{"kind":"simple","type":"uint","optional":false,"format":"coins"}},{"name":"forwardPayload","type":{"kind":"simple","type":"slice","optional":false,"format":"remainder"}}]},
+    {"name":"PoolPayout","header":1369818065,"fields":[{"name":"queryId","type":{"kind":"simple","type":"uint","optional":false,"format":64}},{"name":"amount","type":{"kind":"simple","type":"uint","optional":false,"format":"coins"}},{"name":"destination","type":{"kind":"simple","type":"address","optional":false}}]},
+    {"name":"FeeTransfer","header":3948052191,"fields":[{"name":"queryId","type":{"kind":"simple","type":"uint","optional":false,"format":64}},{"name":"amount","type":{"kind":"simple","type":"uint","optional":false,"format":"coins"}},{"name":"originalSender","type":{"kind":"simple","type":"address","optional":false}},{"name":"originalReceiver","type":{"kind":"simple","type":"address","optional":false}}]},
     {"name":"EventLiquidityAdded","header":321113071,"fields":[{"name":"provider","type":{"kind":"simple","type":"address","optional":false}},{"name":"tonAmount","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"qsrAmount","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"lpMinted","type":{"kind":"simple","type":"int","optional":false,"format":257}}]},
     {"name":"EventLiquidityRemoved","header":1531913385,"fields":[{"name":"provider","type":{"kind":"simple","type":"address","optional":false}},{"name":"tonOut","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"qsrOut","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"lpBurned","type":{"kind":"simple","type":"int","optional":false,"format":257}}]},
     {"name":"EventSwap","header":3223999635,"fields":[{"name":"trader","type":{"kind":"simple","type":"address","optional":false}},{"name":"tonIn","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"qsrIn","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"tonOut","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"qsrOut","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"fee","type":{"kind":"simple","type":"int","optional":false,"format":257}}]},
@@ -2265,7 +2823,9 @@ const QuasarDeFi_types: ABIType[] = [
     {"name":"FarmInfo","header":null,"fields":[{"name":"staked","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"rewardPerSecond","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"lastUpdate","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"accRewardPerShare","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"startTime","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"endTime","type":{"kind":"simple","type":"int","optional":false,"format":257}}]},
     {"name":"UserFarmInfo","header":null,"fields":[{"name":"staked","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"debt","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"pending","type":{"kind":"simple","type":"int","optional":false,"format":257}}]},
     {"name":"SwapQuote","header":null,"fields":[{"name":"tonIn","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"qsrIn","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"tonOut","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"qsrOut","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"fee","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"priceImpactBps","type":{"kind":"simple","type":"int","optional":false,"format":257}}]},
+    {"name":"JettonWalletData","header":null,"fields":[{"name":"balance","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"owner","type":{"kind":"simple","type":"address","optional":false}},{"name":"master","type":{"kind":"simple","type":"address","optional":false}},{"name":"walletCode","type":{"kind":"simple","type":"cell","optional":false}}]},
     {"name":"QuasarDeFi$Data","header":null,"fields":[{"name":"owner","type":{"kind":"simple","type":"address","optional":false}},{"name":"qsrMaster","type":{"kind":"simple","type":"address","optional":false}},{"name":"lpTotalSupply","type":{"kind":"simple","type":"uint","optional":false,"format":"coins"}},{"name":"tonReserve","type":{"kind":"simple","type":"uint","optional":false,"format":"coins"}},{"name":"qsrReserve","type":{"kind":"simple","type":"uint","optional":false,"format":"coins"}},{"name":"lpBalances","type":{"kind":"dict","key":"address","value":"int"}},{"name":"pendingQsrDeposits","type":{"kind":"dict","key":"address","value":"int"}},{"name":"feeBps","type":{"kind":"simple","type":"uint","optional":false,"format":16}},{"name":"feeAccumulated","type":{"kind":"simple","type":"uint","optional":false,"format":"coins"}},{"name":"farmEnabled","type":{"kind":"simple","type":"bool","optional":false}},{"name":"farmRewardPerSecond","type":{"kind":"simple","type":"uint","optional":false,"format":"coins"}},{"name":"farmStartTime","type":{"kind":"simple","type":"uint","optional":false,"format":32}},{"name":"farmEndTime","type":{"kind":"simple","type":"uint","optional":false,"format":32}},{"name":"farmLastUpdate","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"farmAccRewardPerShare","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"farmTotalStaked","type":{"kind":"simple","type":"uint","optional":false,"format":"coins"}},{"name":"farmStakes","type":{"kind":"dict","key":"address","value":"UserFarmInfo","valueFormat":"ref"}},{"name":"locked","type":{"kind":"simple","type":"bool","optional":false}},{"name":"paused","type":{"kind":"simple","type":"bool","optional":false}},{"name":"maxTradeBps","type":{"kind":"simple","type":"uint","optional":false,"format":16}}]},
+    {"name":"QuasarWallet$Data","header":null,"fields":[{"name":"balance","type":{"kind":"simple","type":"uint","optional":false,"format":"coins"}},{"name":"owner","type":{"kind":"simple","type":"address","optional":false}},{"name":"master","type":{"kind":"simple","type":"address","optional":false}},{"name":"lastTxTime","type":{"kind":"simple","type":"int","optional":false,"format":257}}]},
 ]
 
 const QuasarDeFi_opcodes = {
@@ -2282,7 +2842,13 @@ const QuasarDeFi_opcodes = {
     "SetPaused": 157817343,
     "SetMaxTradeBps": 3707725903,
     "DefiPayout": 3146613905,
-    "TokenNotification": 78460803,
+    "BurnNotification": 2078119902,
+    "TokenTransfer": 260734629,
+    "TokenBurn": 1499400124,
+    "TokenNotification": 1935855772,
+    "InternalTransfer": 395134233,
+    "PoolPayout": 1369818065,
+    "FeeTransfer": 3948052191,
     "EventLiquidityAdded": 321113071,
     "EventLiquidityRemoved": 1531913385,
     "EventSwap": 3223999635,
