@@ -1,9 +1,9 @@
 # Tact compilation report
 Contract: QuasarDeFi
-BoC Size: 5881 bytes
+BoC Size: 7291 bytes
 
 ## Structures (Structs and Messages)
-Total structures: 34
+Total structures: 42
 
 ### DataSize
 TL-B: `_ cells:int257 bits:int257 refs:int257 = DataSize`
@@ -97,9 +97,33 @@ Signature: `SetMaxTradeBps{maxTradeBps:uint16}`
 TL-B: `defi_payout#bb8d8491 queryId:uint64 amount:coins destination:address = DefiPayout`
 Signature: `DefiPayout{queryId:uint64,amount:coins,destination:address}`
 
+### BurnNotification
+TL-B: `burn_notification#7bdd97de queryId:uint64 amount:coins sender:address responseDestination:address = BurnNotification`
+Signature: `BurnNotification{queryId:uint64,amount:coins,sender:address,responseDestination:address}`
+
+### TokenTransfer
+TL-B: `token_transfer#0f8a7ea5 queryId:uint64 amount:coins destination:address responseDestination:address customPayload:Maybe ^cell forwardTonAmount:coins forwardPayload:remainder<slice> = TokenTransfer`
+Signature: `TokenTransfer{queryId:uint64,amount:coins,destination:address,responseDestination:address,customPayload:Maybe ^cell,forwardTonAmount:coins,forwardPayload:remainder<slice>}`
+
+### TokenBurn
+TL-B: `token_burn#595f07bc queryId:uint64 amount:coins responseDestination:address customPayload:Maybe ^cell = TokenBurn`
+Signature: `TokenBurn{queryId:uint64,amount:coins,responseDestination:address,customPayload:Maybe ^cell}`
+
 ### TokenNotification
-TL-B: `token_notification#04ad3783 queryId:uint64 amount:coins from:address forwardPayload:remainder<slice> = TokenNotification`
+TL-B: `token_notification#7362d09c queryId:uint64 amount:coins from:address forwardPayload:remainder<slice> = TokenNotification`
 Signature: `TokenNotification{queryId:uint64,amount:coins,from:address,forwardPayload:remainder<slice>}`
+
+### InternalTransfer
+TL-B: `internal_transfer#178d4519 queryId:uint64 amount:coins from:address responseDestination:address forwardTonAmount:coins forwardPayload:remainder<slice> = InternalTransfer`
+Signature: `InternalTransfer{queryId:uint64,amount:coins,from:address,responseDestination:address,forwardTonAmount:coins,forwardPayload:remainder<slice>}`
+
+### PoolPayout
+TL-B: `pool_payout#51a5c3d1 queryId:uint64 amount:coins destination:address = PoolPayout`
+Signature: `PoolPayout{queryId:uint64,amount:coins,destination:address}`
+
+### FeeTransfer
+TL-B: `fee_transfer#eb527edf queryId:uint64 amount:coins originalSender:address originalReceiver:address = FeeTransfer`
+Signature: `FeeTransfer{queryId:uint64,amount:coins,originalSender:address,originalReceiver:address}`
 
 ### EventLiquidityAdded
 TL-B: `event_liquidity_added#1323cbef provider:address tonAmount:int257 qsrAmount:int257 lpMinted:int257 = EventLiquidityAdded`
@@ -137,9 +161,17 @@ Signature: `UserFarmInfo{staked:int257,debt:int257,pending:int257}`
 TL-B: `_ tonIn:int257 qsrIn:int257 tonOut:int257 qsrOut:int257 fee:int257 priceImpactBps:int257 = SwapQuote`
 Signature: `SwapQuote{tonIn:int257,qsrIn:int257,tonOut:int257,qsrOut:int257,fee:int257,priceImpactBps:int257}`
 
+### JettonWalletData
+TL-B: `_ balance:int257 owner:address master:address walletCode:^cell = JettonWalletData`
+Signature: `JettonWalletData{balance:int257,owner:address,master:address,walletCode:^cell}`
+
 ### QuasarDeFi$Data
 TL-B: `_ owner:address qsrMaster:address lpTotalSupply:coins tonReserve:coins qsrReserve:coins lpBalances:dict<address, int> pendingQsrDeposits:dict<address, int> feeBps:uint16 feeAccumulated:coins farmEnabled:bool farmRewardPerSecond:coins farmStartTime:uint32 farmEndTime:uint32 farmLastUpdate:int257 farmAccRewardPerShare:int257 farmTotalStaked:coins farmStakes:dict<address, ^UserFarmInfo{staked:int257,debt:int257,pending:int257}> locked:bool paused:bool maxTradeBps:uint16 = QuasarDeFi`
 Signature: `QuasarDeFi{owner:address,qsrMaster:address,lpTotalSupply:coins,tonReserve:coins,qsrReserve:coins,lpBalances:dict<address, int>,pendingQsrDeposits:dict<address, int>,feeBps:uint16,feeAccumulated:coins,farmEnabled:bool,farmRewardPerSecond:coins,farmStartTime:uint32,farmEndTime:uint32,farmLastUpdate:int257,farmAccRewardPerShare:int257,farmTotalStaked:coins,farmStakes:dict<address, ^UserFarmInfo{staked:int257,debt:int257,pending:int257}>,locked:bool,paused:bool,maxTradeBps:uint16}`
+
+### QuasarWallet$Data
+TL-B: `_ balance:coins owner:address master:address lastTxTime:int257 = QuasarWallet`
+Signature: `QuasarWallet{balance:coins,owner:address,master:address,lastTxTime:int257}`
 
 ## Get methods
 Total get methods: 13
@@ -223,7 +255,10 @@ No arguments
 * 138: Not a basechain address
 * 3561: TON deposit too large
 * 5623: Invalid swap
+* 8660: Insufficient
 * 12203: Invalid amounts
+* 12493: Invalid token wallet
+* 14534: Not owner
 * 16323: Insufficient reserve
 * 16729: No LP stake
 * 17062: Invalid amount
@@ -231,21 +266,24 @@ No arguments
 * 20145: Deposit QSR first
 * 22606: Insufficient LP balance
 * 24969: DeFi paused
-* 27536: Only QSR master
 * 27929: Trade too large
 * 31600: Farm already ended
+* 34392: Invalid QSR amount
 * 35499: Only owner
 * 39600: Fee must be 0.01%-1%
 * 40520: Invalid reward rate
 * 41529: Slippage exceeded
 * 42362: Reentrant call
 * 43467: Zero output
+* 46710: Amount too small
 * 48341: Insufficient TON sent
+* 49729: Unauthorized
 * 51358: Farm stake insufficient
 * 52158: Invalid LP amount
 * 52910: Invalid farm period
 * 54751: QSR deposit too large
 * 55678: Zero LP tokens
+* 55849: Cooldown
 * 58957: Invalid depositor
 * 63475: No rewards to claim
 
@@ -264,4 +302,5 @@ Deployable --> BaseTrait
 ```mermaid
 graph TD
 QuasarDeFi
+QuasarDeFi --> QuasarWallet
 ```
