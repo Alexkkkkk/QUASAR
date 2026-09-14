@@ -202,7 +202,7 @@
     <!-- Scripts -->
     <script src="https://unpkg.com/@tonconnect/ui@latest/dist/tonconnect-ui.min.js"></script>
     <script src="config.js"></script>
-    <script src="tonconnect.js"></script>
+    <script type="module" src="tonconnect.js"></script>
     <script>
         // Generate starfield
         const starsContainer = document.getElementById('stars');
@@ -220,12 +220,12 @@
         }
         
         // Initialize TON Connect when DOM ready
-        document.addEventListener('DOMContentLoaded', () => {
+        document.addEventListener('DOMContentLoaded', async () => {
+            if (typeof window.loadDeploymentConfig === 'function') {
+                await window.loadDeploymentConfig();
+            }
             if (typeof window.initTonConnect === 'function') {
                 window.initTonConnect();
-            }
-            if (typeof window.loadDeploymentConfig === 'function') {
-                window.loadDeploymentConfig();
             }
         });
         
@@ -236,7 +236,12 @@
             const slippage = parseFloat(document.getElementById('swap-slippage').value) || 1;
             if (!amount || amount <= 0) { showToast('Enter valid amount', 'error'); return; }
             const amountNano = BigInt(Math.floor(amount * 1e9));
-            const minOut = BigInt(Math.floor(amountNano * BigInt(100 - Math.floor(slippage * 100)) / 100n));
+            const slippageBps = Math.round(slippage * 100);
+            if (!Number.isFinite(slippageBps) || slippageBps < 0 || slippageBps >= 10000) {
+                showToast('Slippage must be between 0% and 100%', 'error');
+                return;
+            }
+            const minOut = amountNano * BigInt(10000 - slippageBps) / 10000n;
             if (direction === 'to-ton') {
                 window.swapToTon(amountNano, minOut);
             } else {
