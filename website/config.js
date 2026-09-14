@@ -1,6 +1,6 @@
 // ═══════════════════════════════════════════════════════════════
 // QUASAR Web3 Config — Contract Addresses & Settings
-// Auto-loads from build/deployment.json or uses fallbacks
+// Auto-loads from build/deployment.json.
 // ═══════════════════════════════════════════════════════════════
 
 const QUASAR_CONFIG = {
@@ -12,7 +12,6 @@ const QUASAR_CONFIG = {
     },
     decimals: 9,
     symbol: 'QSR',
-    // Will be populated from deployment.json
     addresses: {
         master: null,
         defi: null
@@ -30,17 +29,9 @@ async function loadDeploymentConfig() {
             console.log('[QUASAR] Config loaded:', QUASAR_CONFIG.addresses);
         }
     } catch (e) {
-        console.warn('[QUASAR] No deployment.json, using dev placeholders');
-    }
-    // Dev fallbacks
-    if (!QUASAR_CONFIG.addresses.master) {
-        QUASAR_CONFIG.addresses.master = 'EQ...YOUR_QUASAR_MASTER';
-    }
-    if (!QUASAR_CONFIG.addresses.defi) {
-        QUASAR_CONFIG.addresses.defi = 'EQ...YOUR_QUASAR_DEFI';
+        console.warn('[QUASAR] No deployment.json found; transactions are disabled');
     }
 }
 
-// Expose globally
 window.QUASAR_CONFIG = QUASAR_CONFIG;
 window.loadDeploymentConfig = loadDeploymentConfig;
