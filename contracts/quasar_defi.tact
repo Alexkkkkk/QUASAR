@@ -21,7 +21,13 @@ message SetMaxTradeBps { maxTradeBps: Int as uint16 }
 message DefiPayout { queryId: Int as uint64; amount: Int as coins; destination: Address }
 
 // ─── Jetton Integration Messages ───
-message TokenNotification { queryId: Int as uint64; amount: Int as coins; from: Address; forwardPayload: Slice as remaining }
+message(0x7bdd97de) BurnNotification { queryId: Int as uint64; amount: Int as coins; sender: Address; responseDestination: Address }
+message(0x0f8a7ea5) TokenTransfer { queryId: Int as uint64; amount: Int as coins; destination: Address; responseDestination: Address; customPayload: Cell?; forwardTonAmount: Int as coins; forwardPayload: Slice as remaining }
+message(0x595f07bc) TokenBurn { queryId: Int as uint64; amount: Int as coins; responseDestination: Address; customPayload: Cell? }
+message(0x7362d09c) TokenNotification { queryId: Int as uint64; amount: Int as coins; from: Address; forwardPayload: Slice as remaining }
+message(0x178d4519) InternalTransfer { queryId: Int as uint64; amount: Int as coins; from: Address; responseDestination: Address; forwardTonAmount: Int as coins; forwardPayload: Slice as remaining }
+message(0x51a5c3d1) PoolPayout { queryId: Int as uint64; amount: Int as coins; destination: Address }
+message FeeTransfer { queryId: Int as uint64; amount: Int as coins; originalSender: Address; originalReceiver: Address }
 
 // ─── Events ───
 message EventLiquidityAdded { provider: Address; tonAmount: Int; qsrAmount: Int; lpMinted: Int }
@@ -35,6 +41,7 @@ struct LPInfo { totalSupply: Int; tonReserve: Int; qsrReserve: Int; }
 struct FarmInfo { staked: Int; rewardPerSecond: Int; lastUpdate: Int; accRewardPerShare: Int; startTime: Int; endTime: Int }
 struct UserFarmInfo { staked: Int; debt: Int; pending: Int }
 struct SwapQuote { tonIn: Int; qsrIn: Int; tonOut: Int; qsrOut: Int; fee: Int; priceImpactBps: Int }
+struct JettonWalletData { balance: Int; owner: Address; master: Address; walletCode: Cell }
 
 // ═══════════════════════════════════════════════════════════════
 // QUASAR DeFi CONTRACT
@@ -98,16 +105,20 @@ contract QuasarDeFi with Deployable {
     fun _requireActive() { require(!self.paused, "DeFi paused") }
 
     fun _sendQsr(to: Address, amount: Int, queryId: Int) {
+        require(amount > 0, "Invalid QSR amount");
+        let init: StateInit = initOf QuasarWallet(myAddress(), self.qsrMaster);
         send(SendParameters{
-            to: self.qsrMaster,
-            value: 0,
+            to: contractAddress(init),
+            value: ton("0.02"),
             bounce: true,
-            mode: SendRemainingValue,
-            body: DefiPayout{
+            mode: SendPayGasSeparately,
+            body: PoolPayout{
                 queryId: queryId,
                 amount: amount,
-                destination: to
-            }.toCell()
+                destination: to,
+            }.toCell(),
+            code: init.code,
+            data: init.data
         });
     }
 
@@ -131,7 +142,8 @@ contract QuasarDeFi with Deployable {
     
     // ─── Jetton QSR Deposit ───
     receive(msg: TokenNotification) {
-        require(sender() == self.qsrMaster, "Only QSR master");
+        let walletInit: StateInit = initOf QuasarWallet(myAddress(), self.qsrMaster);
+        require(sender() == contractAddress(walletInit), "Invalid token wallet");
         require(msg.amount > 0, "Invalid amount");
         require(msg.from != newAddress(0, 0), "Invalid depositor");
 
@@ -221,7 +233,7 @@ contract QuasarDeFi with Deployable {
         send(SendParameters{
             to: sender(),
             value: tonOut,
-            mode: SendIgnoreErrors,
+            mode: SendPayGasSeparately | SendIgnoreErrors,
             body: emptyCell()
         });
         
@@ -331,7 +343,7 @@ contract QuasarDeFi with Deployable {
         self._requireActive();
         self._updateFarm();
         let stake: UserFarmInfo? = self.farmStakes.get(sender());
-        require(stake != null && stake!!.staked > 0, "No LP stake");
+        require(stake != null, "No LP stake");
         
         let s: UserFarmInfo = stake!!;
         let pending: Int = (s.staked * (self.farmAccRewardPerShare - s.debt)) / 1000000000;
@@ -345,11 +357,13 @@ contract QuasarDeFi with Deployable {
             pending: 0
         });
         
-        // Send reward (as TON for simplicity, in prod as QSR Jetton)
+        // Farm rewards are QSR. The pool's own Jetton wallet performs the
+        // transfer; the DeFi contract never asks the master to mint tokens.
+        self._sendQsr(sender(), totalReward, 0);
         send(SendParameters{
             to: sender(),
-            value: totalReward,
-            mode: SendIgnoreErrors,
+            value: 0,
+            mode: SendPayGasSeparately | SendIgnoreErrors,
             body: EventFarmReward{ farmer: sender(), amount: totalReward }.toCell()
         });
     }
@@ -512,4 +526,128 @@ contract QuasarDeFi with Deployable {
     get fun feeAccumulated(): Int { return self.feeAccumulated }
     get fun owner(): Address { return self.owner }
     get fun qsrMaster(): Address { return self.qsrMaster }
+}
+
+// This is intentionally identical to the wallet in quasar.tact. Keeping the
+// definition here lets the DeFi contract derive its own Jetton-wallet address
+// with the same StateInit as the master and user wallets.
+contract QuasarWallet {
+    balance: Int as coins;
+    owner: Address;
+    master: Address;
+    lastTxTime: Int;
+
+    init(owner: Address, master: Address) {
+        self.balance = 0;
+        self.owner = owner;
+        self.master = master;
+        self.lastTxTime = 0;
+    }
+
+    receive(msg: InternalTransfer) {
+        let sourceInit: StateInit = initOf QuasarWallet(msg.from, self.master);
+        require(sender() == self.master || sender() == contractAddress(sourceInit), "Unauthorized");
+        require(msg.amount > 0, "Invalid amount");
+        self.balance = self.balance + msg.amount;
+        if (msg.forwardTonAmount > 0) {
+            send(SendParameters{
+                to: self.owner,
+                value: msg.forwardTonAmount,
+                bounce: true,
+                mode: SendPayGasSeparately | SendIgnoreErrors,
+                body: TokenNotification{
+                    queryId: msg.queryId,
+                    amount: msg.amount,
+                    from: msg.from,
+                    forwardPayload: msg.forwardPayload
+                }.toCell()
+            });
+        }
+    }
+
+    receive(msg: TokenTransfer) {
+        require(msg.amount > 0, "Invalid amount");
+        require(sender() == self.owner, "Not owner");
+        require(self.balance >= msg.amount, "Insufficient");
+        require(now() - self.lastTxTime >= 5, "Cooldown");
+        self.lastTxTime = now();
+        let fee: Int = msg.amount * 30 / 10000;
+        if (fee < 1) { fee = 1 }
+        let sendAmount: Int = msg.amount - fee;
+        require(sendAmount > 0, "Amount too small");
+        self.balance = self.balance - msg.amount;
+        let init: StateInit = initOf QuasarWallet(msg.destination, self.master);
+        send(SendParameters{
+            to: contractAddress(init),
+            value: 0,
+            bounce: true,
+            mode: SendRemainingValue,
+            body: InternalTransfer{
+                queryId: msg.queryId,
+                amount: sendAmount,
+                from: self.owner,
+                responseDestination: msg.responseDestination,
+                forwardTonAmount: msg.forwardTonAmount,
+                forwardPayload: msg.forwardPayload
+            }.toCell(),
+            code: init.code,
+            data: init.data
+        });
+
+        if (fee > 0) {
+            send(SendParameters{ to: self.master, value: 0, bounce: false, mode: SendPayGasSeparately | SendIgnoreErrors, body: FeeTransfer{ queryId: msg.queryId, amount: fee, originalSender: self.owner, originalReceiver: msg.destination }.toCell() });
+        }
+    }
+
+    receive(msg: PoolPayout) {
+        require(msg.amount > 0, "Invalid amount");
+        require(sender() == self.owner, "Not owner");
+        require(self.balance >= msg.amount, "Insufficient");
+        self.balance = self.balance - msg.amount;
+        let init: StateInit = initOf QuasarWallet(msg.destination, self.master);
+        send(SendParameters{
+            to: contractAddress(init),
+            value: 0,
+            bounce: true,
+            mode: SendRemainingValue,
+            body: InternalTransfer{
+                queryId: msg.queryId,
+                amount: msg.amount,
+                from: self.owner,
+                responseDestination: self.owner,
+                forwardTonAmount: 0,
+                forwardPayload: emptySlice()
+            }.toCell(),
+            code: init.code,
+            data: init.data
+        });
+    }
+
+    receive(msg: TokenBurn) {
+        require(msg.amount > 0, "Invalid amount");
+        require(sender() == self.owner, "Not owner");
+        require(self.balance >= msg.amount, "Insufficient");
+        self.balance = self.balance - msg.amount;
+        send(SendParameters{
+            to: self.master,
+            value: 0,
+            bounce: true,
+            mode: SendRemainingValue,
+            body: BurnNotification{
+                queryId: msg.queryId,
+                amount: msg.amount,
+                sender: self.owner,
+                responseDestination: msg.responseDestination
+            }.toCell()
+        });
+    }
+
+    get fun get_wallet_data(): JettonWalletData {
+        return JettonWalletData{
+            balance: self.balance,
+            owner: self.owner,
+            master: self.master,
+            walletCode: (initOf QuasarWallet(self.owner, self.master)).code
+        }
+    }
 }
