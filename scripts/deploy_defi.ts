@@ -38,15 +38,16 @@ async function deploy() {
 
     const deployment = JSON.parse(fs.readFileSync(deploymentPath, 'utf-8'));
     const qsrMaster = Address.parse(deployment.contracts.master.address);
-    const { QuasarDeFi } = await import('../build/quasar_defi_QuasarDeFi');
+    const { QuasarDeFi } = await import('../build/quasar_defi_QuasarDeFi.js');
     const defi = client.open(await QuasarDeFi.fromInit(wallet.address, qsrMaster));
+    const sender = wallet.sender(client.provider(wallet.address), keyPair.secretKey);
 
     console.log('Deployer:', wallet.address.toString());
     console.log('QuasarMaster:', qsrMaster.toString());
     console.log('QuasarDeFi:', defi.address.toString());
 
     await defi.send(
-        wallet.sender(keyPair.secretKey),
+        sender,
         { value: toNano('0.5') },
         { $$type: 'Deploy', queryId: 0n }
     );
