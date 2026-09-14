@@ -16,6 +16,8 @@ message SwapToQSR { tonAmount: Int as coins; minQsrOut: Int as coins }
 message ClaimFarmRewards { }
 message SetFarmConfig { rewardPerSecond: Int as coins; startTime: Int as uint32; endTime: Int as uint32 }
 message SetFeeBps { feeBps: Int as uint16 }
+message SetPaused { paused: Bool }
+message SetMaxTradeBps { maxTradeBps: Int as uint16 }
 
 // ─── Jetton Integration Messages ───
 message TokenNotification { queryId: Int as uint64; amount: Int as coins; from: Address; forwardPayload: Slice as remaining }
@@ -64,6 +66,8 @@ contract QuasarDeFi with Deployable {
     
     // Safety
     locked: Bool;
+    paused: Bool;
+    maxTradeBps: Int as uint16;
     
     init(owner: Address, qsrMaster: Address) {
         self.owner = owner;
@@ -81,11 +85,15 @@ contract QuasarDeFi with Deployable {
         self.farmAccRewardPerShare = 0;
         self.farmTotalStaked = 0;
         self.locked = false;
+        self.paused = false;
+        self.maxTradeBps = 3000;
     }
     
     // ─── Reentrancy Guard ───
     fun _lock() { require(!self.locked, "Reentrant call"); self.locked = true }
     fun _unlock() { self.locked = false; }
+
+    fun _requireActive() { require(!self.paused, "DeFi paused") }
 
     fun _min(a: Int, b: Int): Int {
         return a < b ? a : b;
@@ -115,9 +123,14 @@ contract QuasarDeFi with Deployable {
     
     // ─── ADD LIQUIDITY ───
     receive(msg: AddLiquidity) {
+        self._requireActive();
         self._lock();
         require(msg.tonAmount > 0 && msg.qsrAmount > 0, "Invalid amounts");
         require(context().value >= msg.tonAmount, "Insufficient TON sent");
+        if (self.lpTotalSupply > 0) {
+            require(msg.tonAmount * 10000 <= self.tonReserve * self.maxTradeBps, "TON deposit too large");
+            require(msg.qsrAmount * 10000 <= self.qsrReserve * self.maxTradeBps, "QSR deposit too large");
+        }
         
         let lpToMint: Int = 0;
         if (self.lpTotalSupply == 0) {
@@ -162,8 +175,10 @@ contract QuasarDeFi with Deployable {
     
     // ─── REMOVE LIQUIDITY ───
     receive(msg: RemoveLiquidity) {
+        self._requireActive();
         self._lock();
         let current: Int? = self.lpBalances.get(sender());
+        require(msg.lpAmount > 0, "Invalid LP amount");
         require(current != null && current!! >= msg.lpAmount, "Insufficient LP balance");
         
         // Calculate proportional output
@@ -210,8 +225,10 @@ contract QuasarDeFi with Deployable {
     
     // ─── SWAP QSR → TON (sell QSR) ───
     receive(msg: SwapToTON) {
+        self._requireActive();
         self._lock();
         require(msg.qsrAmount > 0 && self.qsrReserve > 0, "Invalid swap");
+        require(msg.qsrAmount * 10000 <= self.qsrReserve * self.maxTradeBps, "Trade too large");
         
         // CPMM with fee: tonOut = (qsrIn * tonReserve) / (qsrReserve + qsrIn)
         // Fee is taken from output
@@ -247,9 +264,11 @@ contract QuasarDeFi with Deployable {
     
     // ─── SWAP TON → QSR (buy QSR) ───
     receive(msg: SwapToQSR) {
+        self._requireActive();
         self._lock();
         require(msg.tonAmount > 0 && self.tonReserve > 0, "Invalid swap");
         require(context().value >= msg.tonAmount, "Insufficient TON sent");
+        require(msg.tonAmount * 10000 <= self.tonReserve * self.maxTradeBps, "Trade too large");
         
         // CPMM with fee
         let grossQsrOut: Int = (msg.tonAmount * self.qsrReserve) / (self.tonReserve + msg.tonAmount);
@@ -287,6 +306,7 @@ contract QuasarDeFi with Deployable {
     
     // ─── CLAIM FARM REWARDS ───
     receive(msg: ClaimFarmRewards) {
+        self._requireActive();
         self._updateFarm();
         let stake: UserFarmInfo? = self.farmStakes.get(sender());
         require(stake != null && stake!!.staked > 0, "No LP stake");
@@ -315,25 +335,44 @@ contract QuasarDeFi with Deployable {
     // ─── ADMIN ───
     receive(msg: SetFarmConfig) {
         require(sender() == self.owner, "Only owner");
+        require(msg.rewardPerSecond > 0, "Invalid reward rate");
+        require(msg.endTime > msg.startTime, "Invalid farm period");
+        require(msg.endTime >= now(), "Farm already ended");
+        self._updateFarm();
         self.farmRewardPerSecond = msg.rewardPerSecond;
         self.farmStartTime = msg.startTime;
         self.farmEndTime = msg.endTime;
+        if (self.farmLastUpdate < msg.startTime) {
+            self.farmLastUpdate = msg.startTime;
+        }
     }
     
     receive(msg: SetFeeBps) {
         require(sender() == self.owner, "Only owner");
-        require(msg.feeBps <= 100, "Max 1% fee");
+        require(msg.feeBps > 0 && msg.feeBps <= 100, "Fee must be 0.01%-1%");
         self.feeBps = msg.feeBps;
+    }
+
+    receive(msg: SetPaused) {
+        require(sender() == self.owner, "Only owner");
+        self.paused = msg.paused;
+    }
+
+    receive(msg: SetMaxTradeBps) {
+        require(sender() == self.owner, "Only owner");
+        require(msg.maxTradeBps >= 100 && msg.maxTradeBps <= 5000, "Trade limit 1%-50%");
+        self.maxTradeBps = msg.maxTradeBps;
     }
     
     // ─── INTERNAL: Farm Helpers ───
     fun _updateFarm() {
         if (now() <= self.farmLastUpdate || self.farmTotalStaked == 0) { return }
         let end: Int = self._min(now(), self.farmEndTime);
+        if (end <= self.farmLastUpdate) { return }
         let multiplier: Int = end - self.farmLastUpdate;
         let reward: Int = multiplier * self.farmRewardPerSecond;
         self.farmAccRewardPerShare += (reward * 1000000000) / self.farmTotalStaked;
-        self.farmLastUpdate = now();
+        self.farmLastUpdate = end;
     }
     
     fun _stakeLp(user: Address, amount: Int) {
