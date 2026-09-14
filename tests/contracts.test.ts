@@ -1,12 +1,15 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { Address, beginCell } from '@ton/core';
 import {
     QuasarMaster,
     loadDeploy,
+    loadInternalTransfer,
     loadMint,
     loadTokenNotification,
     storeDeploy,
+    storeInternalTransfer,
     storeMint,
     storeTokenNotification
 } from '../build/quasar_QuasarMaster.js';
@@ -17,11 +20,13 @@ import {
     loadSetPaused,
     loadSetMaxTradeBps,
     loadDefiPayout,
+    loadTokenTransfer,
     storeAddLiquidity,
     storeSwapToTON,
     storeSetPaused,
     storeSetMaxTradeBps,
-    storeDefiPayout
+    storeDefiPayout,
+    storeTokenTransfer
 } from '../build/quasar_defi_QuasarDeFi.js';
 
 const owner = Address.parseRaw(`0:${'00'.repeat(32)}`);
@@ -128,4 +133,42 @@ test('QSR deposit and payout messages preserve their ownership fields', () => {
     assert.equal(parsedNotification.amount, 5_000_000_000n);
     assert.equal(parsedNotification.from.toRawString(), owner.toRawString());
     assert.equal(loadDefiPayout(payout.beginParse()).destination.toRawString(), owner.toRawString());
+});
+
+test('Jetton messages use the TON standard opcodes', () => {
+    const transfer = beginCell()
+        .store(storeTokenTransfer({
+            $$type: 'TokenTransfer',
+            queryId: 1n,
+            amount: 2_000_000_000n,
+            destination: owner,
+            responseDestination: owner,
+            customPayload: null,
+            forwardTonAmount: 0n,
+            forwardPayload: beginCell().endCell().beginParse()
+        }))
+        .endCell();
+    const internal = beginCell()
+        .store(storeInternalTransfer({
+            $$type: 'InternalTransfer',
+            queryId: 2n,
+            amount: 1_000_000_000n,
+            from: owner,
+            responseDestination: owner,
+            forwardTonAmount: 0n,
+            forwardPayload: beginCell().endCell().beginParse()
+        }))
+        .endCell();
+
+    assert.equal(transfer.beginParse().loadUint(32), 0x0f8a7ea5);
+    assert.equal(internal.beginParse().loadUint(32), 0x178d4519);
+    assert.equal(loadTokenTransfer(transfer.beginParse()).amount, 2_000_000_000n);
+    assert.equal(loadInternalTransfer(internal.beginParse()).amount, 1_000_000_000n);
+});
+
+test('DeFi derives the same Jetton wallet code as the master', () => {
+    assert.deepEqual(
+        readFileSync('build/quasar_QuasarWallet.code.boc'),
+        readFileSync('build/quasar_defi_QuasarWallet.code.boc')
+    );
 });
