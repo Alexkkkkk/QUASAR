@@ -37,11 +37,13 @@ message AIEmergencyPause { queryId: Int as uint64; pause: Bool; severity: Int as
 message AIRotateOracle { queryId: Int as uint64; newOracle: Address; reason: String }
 
 // ─── Jetton Messages ───
-message Mint { amount: Int; receiver: Address }
-message BurnNotification { queryId: Int as uint64; amount: Int; sender: Address; responseDestination: Address }
-message TokenTransfer { queryId: Int as uint64; amount: Int as coins; destination: Address; responseDestination: Address; customPayload: Cell?; forwardTonAmount: Int as coins; forwardPayload: Slice as remaining }
-message TokenBurn { queryId: Int as uint64; amount: Int as coins; responseDestination: Address; customPayload: Cell? }
-message TokenNotification { queryId: Int as uint64; amount: Int as coins; from: Address; forwardPayload: Slice as remaining }
+message(0x642b7d07) Mint { amount: Int as coins; receiver: Address }
+message(0x7bdd97de) BurnNotification { queryId: Int as uint64; amount: Int as coins; sender: Address; responseDestination: Address }
+message(0x0f8a7ea5) TokenTransfer { queryId: Int as uint64; amount: Int as coins; destination: Address; responseDestination: Address; customPayload: Cell?; forwardTonAmount: Int as coins; forwardPayload: Slice as remaining }
+message(0x595f07bc) TokenBurn { queryId: Int as uint64; amount: Int as coins; responseDestination: Address; customPayload: Cell? }
+message(0x7362d09c) TokenNotification { queryId: Int as uint64; amount: Int as coins; from: Address; forwardPayload: Slice as remaining }
+message(0x178d4519) InternalTransfer { queryId: Int as uint64; amount: Int as coins; from: Address; responseDestination: Address; forwardTonAmount: Int as coins; forwardPayload: Slice as remaining }
+message(0x51a5c3d1) PoolPayout { queryId: Int as uint64; amount: Int as coins; destination: Address }
 message DefiPayout { queryId: Int as uint64; amount: Int as coins; destination: Address }
 
 // ─── Fee & Buyback Messages ───
@@ -113,6 +115,7 @@ contract QuasarMaster with Deployable {
     owner: Address;
     content: Cell;
     walletCode: Cell;
+    reserveBalance: Int as coins;
     
     // Fee
     feeBps: Int as uint16;
@@ -204,6 +207,7 @@ contract QuasarMaster with Deployable {
         self.owner = owner;
         self.content = content;
         self.walletCode = walletCode;
+        self.reserveBalance = 0;
         
         self.feeBps = 30;
         self.feeBurnShare = 50;
@@ -296,10 +300,23 @@ contract QuasarMaster with Deployable {
     
     fun _checkAiAlive(): Bool { return now() - self.lastHeartbeat <= self.heartbeatTimeout }
     
-    // Unified wallet send helper
-    fun _sendTokens(to: Address, amount: Int, queryId: Int, from: Address) {
+    // Send a standard TEP-74 internal transfer. Minting and reserve payouts
+    // use the same wire format, while reserve accounting stays explicit.
+    fun _sendInternalTransfer(to: Address, amount: Int, queryId: Int, from: Address) {
+        require(amount > 0, "Invalid transfer amount");
         let init: StateInit = initOf QuasarWallet(to, myAddress());
-        send(SendParameters{ to: contractAddress(init), value: 0, bounce: false, mode: SendRemainingValue, body: TokenNotification{ queryId: queryId, amount: amount, from: from, forwardPayload: emptySlice() }.toCell(), code: init.code, data: init.data });
+        send(SendParameters{ to: contractAddress(init), value: 0, bounce: true, mode: SendRemainingValue, body: InternalTransfer{ queryId: queryId, amount: amount, from: from, responseDestination: myAddress(), forwardTonAmount: 0, forwardPayload: emptySlice() }.toCell(), code: init.code, data: init.data });
+    }
+
+    fun _mintTokens(to: Address, amount: Int, queryId: Int) {
+        self._sendInternalTransfer(to, amount, queryId, myAddress());
+    }
+
+    fun _sendTokens(to: Address, amount: Int, queryId: Int, from: Address) {
+        require(amount > 0, "Invalid transfer amount");
+        require(self.reserveBalance >= amount, "Insufficient QSR reserve");
+        self.reserveBalance = self.reserveBalance - amount;
+        self._sendInternalTransfer(to, amount, queryId, from);
     }
     
     // ═══════════════════════════════════════════════════════════
@@ -318,7 +335,7 @@ contract QuasarMaster with Deployable {
         if (self.totalSupply > 0) { require(msg.amount <= maxTx, "Max tx exceeded") }
         
         self.totalSupply = self.totalSupply + msg.amount;
-        self._sendTokens(msg.receiver, msg.amount, 0, self.owner);
+        self._mintTokens(msg.receiver, msg.amount, 0);
         
         send(SendParameters{ to: sender(), value: 0, mode: SendRemainingValue, body: EventMint{ amount: msg.amount, receiver: msg.receiver }.toCell() });
     }
@@ -340,11 +357,12 @@ contract QuasarMaster with Deployable {
     // subsequent Stake message can only consume a deposit from that wallet.
     receive(msg: TokenNotification) {
         require(msg.amount > 0, "Invalid amount");
-        let walletInit: StateInit = initOf QuasarWallet(msg.from, myAddress());
-        require(sender() == contractAddress(walletInit), "Invalid token source");
+        let walletInit: StateInit = initOf QuasarWallet(myAddress(), myAddress());
+        require(sender() == contractAddress(walletInit), "Invalid token wallet");
 
         let pending: Int? = self.pendingQsrDeposits.get(msg.from);
         self.pendingQsrDeposits.set(msg.from, pending == null ? msg.amount : pending!! + msg.amount);
+        self.reserveBalance = self.reserveBalance + msg.amount;
     }
 
     // ═══════════════════════════════════════════════════════════
@@ -357,6 +375,7 @@ contract QuasarMaster with Deployable {
         require(sender() == contractAddress(wInit), "Invalid fee source");
         
         self.totalFeesCollected = self.totalFeesCollected + msg.amount;
+        self.reserveBalance = self.reserveBalance + msg.amount;
         
         let burnAmount: Int = msg.amount * self.feeBurnShare / 100;
         let remaining: Int = msg.amount - burnAmount;
@@ -945,6 +964,8 @@ contract QuasarMaster with Deployable {
     get fun get_jetton_data(): JettonData {
         return JettonData{ totalSupply: self.totalSupply, mintable: self.mintable, adminAddress: self.owner, jettonContent: self.content, jettonWalletCode: self.walletCode }
     }
+
+    get fun get_reserve_balance(): Int { return self.reserveBalance }
     
     get fun get_wallet_address(owner: Address): Address {
         let init: StateInit = initOf QuasarWallet(owner, myAddress());
@@ -1013,9 +1034,29 @@ contract QuasarWallet {
         self.lastTxTime = 0;
     }
     
-    receive(msg: TokenNotification) {
-        require(sender() == self.master, "Unauthorized");
+    receive(msg: InternalTransfer) {
+        let sourceInit: StateInit = initOf QuasarWallet(msg.from, self.master);
+        require(sender() == self.master || sender() == contractAddress(sourceInit), "Unauthorized");
+        require(msg.amount > 0, "Invalid amount");
         self.balance = self.balance + msg.amount;
+
+        // A Jetton wallet notifies the owner contract only when the sender
+        // supplied forward TON. This is the standard deposit hook used by
+        // QuasarMaster and QuasarDeFi.
+        if (msg.forwardTonAmount > 0) {
+            send(SendParameters{
+                to: self.owner,
+                value: msg.forwardTonAmount,
+                bounce: true,
+                mode: SendPayGasSeparately | SendIgnoreErrors,
+                body: TokenNotification{
+                    queryId: msg.queryId,
+                    amount: msg.amount,
+                    from: msg.from,
+                    forwardPayload: msg.forwardPayload
+                }.toCell()
+            });
+        }
     }
     
     receive(msg: TokenTransfer) {
@@ -1028,14 +1069,42 @@ contract QuasarWallet {
         let fee: Int = msg.amount * 30 / 10000;
         if (fee < 1) { fee = 1 }
         let sendAmount: Int = msg.amount - fee;
+        require(sendAmount > 0, "Amount too small");
         self.balance = self.balance - msg.amount;
         
         let init: StateInit = initOf QuasarWallet(msg.destination, self.master);
-        send(SendParameters{ to: contractAddress(init), value: 0, bounce: true, mode: SendRemainingValue, body: TokenNotification{ queryId: msg.queryId, amount: sendAmount, from: self.owner, forwardPayload: msg.forwardPayload }.toCell(), code: init.code, data: init.data });
+        send(SendParameters{ to: contractAddress(init), value: 0, bounce: true, mode: SendRemainingValue, body: InternalTransfer{ queryId: msg.queryId, amount: sendAmount, from: self.owner, responseDestination: msg.responseDestination, forwardTonAmount: msg.forwardTonAmount, forwardPayload: msg.forwardPayload }.toCell(), code: init.code, data: init.data });
         
         if (fee > 0) {
-            send(SendParameters{ to: self.master, value: 0, bounce: false, mode: SendRemainingValue, body: FeeTransfer{ queryId: msg.queryId, amount: fee, originalSender: self.owner, originalReceiver: msg.destination }.toCell() });
+            send(SendParameters{ to: self.master, value: 0, bounce: false, mode: SendPayGasSeparately | SendIgnoreErrors, body: FeeTransfer{ queryId: msg.queryId, amount: fee, originalSender: self.owner, originalReceiver: msg.destination }.toCell() });
         }
+    }
+
+    // Pool payouts are initiated by a contract that owns this wallet. They
+    // bypass the user transfer fee because the pool already applies its AMM
+    // fee and must deliver the quoted amount exactly.
+    receive(msg: PoolPayout) {
+        require(msg.amount > 0, "Invalid amount");
+        require(sender() == self.owner, "Not owner");
+        require(self.balance >= msg.amount, "Insufficient");
+        self.balance = self.balance - msg.amount;
+        let init: StateInit = initOf QuasarWallet(msg.destination, self.master);
+        send(SendParameters{
+            to: contractAddress(init),
+            value: 0,
+            bounce: true,
+            mode: SendRemainingValue,
+            body: InternalTransfer{
+                queryId: msg.queryId,
+                amount: msg.amount,
+                from: self.owner,
+                responseDestination: self.owner,
+                forwardTonAmount: 0,
+                forwardPayload: emptySlice()
+            }.toCell(),
+            code: init.code,
+            data: init.data
+        });
     }
     
     receive(msg: TokenBurn) {
