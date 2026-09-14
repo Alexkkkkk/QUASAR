@@ -1,6 +1,6 @@
 // ═══════════════════════════════════════════════════════════════
 // QUASAR Web3 Config — Contract Addresses & Settings
-// Auto-loads from build/deployment.json.
+// Auto-loads from deployment.json generated beside the website.
 // ═══════════════════════════════════════════════════════════════
 
 const QUASAR_CONFIG = {
@@ -20,12 +20,12 @@ const QUASAR_CONFIG = {
 
 async function loadDeploymentConfig() {
     try {
-        const res = await fetch('./build/deployment.json');
+        const res = await fetch('./deployment.json', { cache: 'no-store' });
         if (res.ok) {
             const data = await res.json();
             QUASAR_CONFIG.addresses.master = data.contracts?.master?.address || null;
             QUASAR_CONFIG.addresses.defi = data.contracts?.defi?.address || null;
-            QUASAR_CONFIG.network = data.network || 'testnet';
+            QUASAR_CONFIG.network = data.network || 'mainnet';
             console.log('[QUASAR] Config loaded:', QUASAR_CONFIG.addresses);
         }
     } catch (e) {
