@@ -1,9 +1,9 @@
 # Tact compilation report
 Contract: QuasarDeFi
-BoC Size: 5068 bytes
+BoC Size: 5881 bytes
 
 ## Structures (Structs and Messages)
-Total structures: 33
+Total structures: 34
 
 ### DataSize
 TL-B: `_ cells:int257 bits:int257 refs:int257 = DataSize`
@@ -93,6 +93,10 @@ Signature: `SetPaused{paused:bool}`
 TL-B: `set_max_trade_bps#dcff684f maxTradeBps:uint16 = SetMaxTradeBps`
 Signature: `SetMaxTradeBps{maxTradeBps:uint16}`
 
+### DefiPayout
+TL-B: `defi_payout#bb8d8491 queryId:uint64 amount:coins destination:address = DefiPayout`
+Signature: `DefiPayout{queryId:uint64,amount:coins,destination:address}`
+
 ### TokenNotification
 TL-B: `token_notification#04ad3783 queryId:uint64 amount:coins from:address forwardPayload:remainder<slice> = TokenNotification`
 Signature: `TokenNotification{queryId:uint64,amount:coins,from:address,forwardPayload:remainder<slice>}`
@@ -134,13 +138,16 @@ TL-B: `_ tonIn:int257 qsrIn:int257 tonOut:int257 qsrOut:int257 fee:int257 priceI
 Signature: `SwapQuote{tonIn:int257,qsrIn:int257,tonOut:int257,qsrOut:int257,fee:int257,priceImpactBps:int257}`
 
 ### QuasarDeFi$Data
-TL-B: `_ owner:address qsrMaster:address lpTotalSupply:coins tonReserve:coins qsrReserve:coins lpBalances:dict<address, int> feeBps:uint16 feeAccumulated:coins farmEnabled:bool farmRewardPerSecond:coins farmStartTime:uint32 farmEndTime:uint32 farmLastUpdate:int257 farmAccRewardPerShare:int257 farmTotalStaked:coins farmStakes:dict<address, ^UserFarmInfo{staked:int257,debt:int257,pending:int257}> locked:bool paused:bool maxTradeBps:uint16 = QuasarDeFi`
-Signature: `QuasarDeFi{owner:address,qsrMaster:address,lpTotalSupply:coins,tonReserve:coins,qsrReserve:coins,lpBalances:dict<address, int>,feeBps:uint16,feeAccumulated:coins,farmEnabled:bool,farmRewardPerSecond:coins,farmStartTime:uint32,farmEndTime:uint32,farmLastUpdate:int257,farmAccRewardPerShare:int257,farmTotalStaked:coins,farmStakes:dict<address, ^UserFarmInfo{staked:int257,debt:int257,pending:int257}>,locked:bool,paused:bool,maxTradeBps:uint16}`
+TL-B: `_ owner:address qsrMaster:address lpTotalSupply:coins tonReserve:coins qsrReserve:coins lpBalances:dict<address, int> pendingQsrDeposits:dict<address, int> feeBps:uint16 feeAccumulated:coins farmEnabled:bool farmRewardPerSecond:coins farmStartTime:uint32 farmEndTime:uint32 farmLastUpdate:int257 farmAccRewardPerShare:int257 farmTotalStaked:coins farmStakes:dict<address, ^UserFarmInfo{staked:int257,debt:int257,pending:int257}> locked:bool paused:bool maxTradeBps:uint16 = QuasarDeFi`
+Signature: `QuasarDeFi{owner:address,qsrMaster:address,lpTotalSupply:coins,tonReserve:coins,qsrReserve:coins,lpBalances:dict<address, int>,pendingQsrDeposits:dict<address, int>,feeBps:uint16,feeAccumulated:coins,farmEnabled:bool,farmRewardPerSecond:coins,farmStartTime:uint32,farmEndTime:uint32,farmLastUpdate:int257,farmAccRewardPerShare:int257,farmTotalStaked:coins,farmStakes:dict<address, ^UserFarmInfo{staked:int257,debt:int257,pending:int257}>,locked:bool,paused:bool,maxTradeBps:uint16}`
 
 ## Get methods
-Total get methods: 12
+Total get methods: 13
 
 ## lpBalance
+Argument: user
+
+## pendingQsrDeposit
 Argument: user
 
 ## poolInfo
@@ -219,7 +226,9 @@ No arguments
 * 12203: Invalid amounts
 * 16323: Insufficient reserve
 * 16729: No LP stake
+* 17062: Invalid amount
 * 19907: Trade limit 1%-50%
+* 20145: Deposit QSR first
 * 22606: Insufficient LP balance
 * 24969: DeFi paused
 * 27536: Only QSR master
@@ -237,6 +246,7 @@ No arguments
 * 52910: Invalid farm period
 * 54751: QSR deposit too large
 * 55678: Zero LP tokens
+* 58957: Invalid depositor
 * 63475: No rewards to claim
 
 ## Trait inheritance diagram
