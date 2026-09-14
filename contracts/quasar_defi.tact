@@ -18,6 +18,7 @@ message SetFarmConfig { rewardPerSecond: Int as coins; startTime: Int as uint32;
 message SetFeeBps { feeBps: Int as uint16 }
 message SetPaused { paused: Bool }
 message SetMaxTradeBps { maxTradeBps: Int as uint16 }
+message DefiPayout { queryId: Int as uint64; amount: Int as coins; destination: Address }
 
 // ─── Jetton Integration Messages ───
 message TokenNotification { queryId: Int as uint64; amount: Int as coins; from: Address; forwardPayload: Slice as remaining }
@@ -49,6 +50,7 @@ contract QuasarDeFi with Deployable {
     tonReserve: Int as coins;
     qsrReserve: Int as coins;
     lpBalances: map<Address, Int>;
+    pendingQsrDeposits: map<Address, Int>;
     
     // AMM Fee (0.30% default = 30 bps)
     feeBps: Int as uint16;
@@ -95,6 +97,20 @@ contract QuasarDeFi with Deployable {
 
     fun _requireActive() { require(!self.paused, "DeFi paused") }
 
+    fun _sendQsr(to: Address, amount: Int, queryId: Int) {
+        send(SendParameters{
+            to: self.qsrMaster,
+            value: 0,
+            bounce: true,
+            mode: SendRemainingValue,
+            body: DefiPayout{
+                queryId: queryId,
+                amount: amount,
+                destination: to
+            }.toCell()
+        });
+    }
+
     fun _min(a: Int, b: Int): Int {
         return a < b ? a : b;
     }
@@ -113,12 +129,14 @@ contract QuasarDeFi with Deployable {
     // ─── Receive TON ───
     receive() { }
     
-    // ─── Jetton QSR Deposit (for liquidity) ───
+    // ─── Jetton QSR Deposit ───
     receive(msg: TokenNotification) {
         require(sender() == self.qsrMaster, "Only QSR master");
-        // QSR received — can be used for swaps or liquidity
-        // In production: track pending deposits per user
-        self.qsrReserve = self.qsrReserve + msg.amount;
+        require(msg.amount > 0, "Invalid amount");
+        require(msg.from != newAddress(0, 0), "Invalid depositor");
+
+        let pending: Int? = self.pendingQsrDeposits.get(msg.from);
+        self.pendingQsrDeposits.set(msg.from, pending == null ? msg.amount : pending!! + msg.amount);
     }
     
     // ─── ADD LIQUIDITY ───
@@ -127,6 +145,8 @@ contract QuasarDeFi with Deployable {
         self._lock();
         require(msg.tonAmount > 0 && msg.qsrAmount > 0, "Invalid amounts");
         require(context().value >= msg.tonAmount, "Insufficient TON sent");
+        let deposited: Int? = self.pendingQsrDeposits.get(sender());
+        require(deposited != null && deposited!! >= msg.qsrAmount, "Deposit QSR first");
         if (self.lpTotalSupply > 0) {
             require(msg.tonAmount * 10000 <= self.tonReserve * self.maxTradeBps, "TON deposit too large");
             require(msg.qsrAmount * 10000 <= self.qsrReserve * self.maxTradeBps, "QSR deposit too large");
@@ -148,6 +168,7 @@ contract QuasarDeFi with Deployable {
         self.tonReserve += msg.tonAmount;
         self.qsrReserve += msg.qsrAmount;
         self.lpTotalSupply += lpToMint;
+        self.pendingQsrDeposits.set(sender(), deposited!! - msg.qsrAmount);
         
         // Credit LP tokens
         let current: Int? = self.lpBalances.get(sender());
@@ -204,8 +225,7 @@ contract QuasarDeFi with Deployable {
             body: emptyCell()
         });
         
-        // Send QSR back via Jetton transfer
-        // In production: send TokenNotification back through qsrMaster
+        self._sendQsr(sender(), qsrOut, 0);
         
         // Emit event
         send(SendParameters{
@@ -229,6 +249,8 @@ contract QuasarDeFi with Deployable {
         self._lock();
         require(msg.qsrAmount > 0 && self.qsrReserve > 0, "Invalid swap");
         require(msg.qsrAmount * 10000 <= self.qsrReserve * self.maxTradeBps, "Trade too large");
+        let deposited: Int? = self.pendingQsrDeposits.get(sender());
+        require(deposited != null && deposited!! >= msg.qsrAmount, "Deposit QSR first");
         
         // CPMM with fee: tonOut = (qsrIn * tonReserve) / (qsrReserve + qsrIn)
         // Fee is taken from output
@@ -243,6 +265,7 @@ contract QuasarDeFi with Deployable {
         self.qsrReserve += msg.qsrAmount;
         self.tonReserve -= tonOut;
         self.feeAccumulated += fee;
+        self.pendingQsrDeposits.set(sender(), deposited!! - msg.qsrAmount);
         
         // Send TON to trader
         send(SendParameters{
@@ -283,8 +306,7 @@ contract QuasarDeFi with Deployable {
         self.qsrReserve -= qsrOut;
         self.feeAccumulated += fee;
         
-        // Send QSR back via Jetton
-        // In production: trigger TokenNotification through qsrMaster
+        self._sendQsr(sender(), qsrOut, 0);
         
         // Emit event
         send(SendParameters{
@@ -411,6 +433,11 @@ contract QuasarDeFi with Deployable {
     // ─── GETTERS ───
     get fun lpBalance(user: Address): Int {
         let b: Int? = self.lpBalances.get(user);
+        return b == null ? 0 : b!!;
+    }
+
+    get fun pendingQsrDeposit(user: Address): Int {
+        let b: Int? = self.pendingQsrDeposits.get(user);
         return b == null ? 0 : b!!;
     }
     
