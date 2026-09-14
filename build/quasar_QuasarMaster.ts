@@ -1,24 +1,133 @@
-import { 
+import {
     Cell,
-    Slice, 
-    Address, 
-    Builder, 
-    beginCell, 
-    ComputeError, 
-    TupleItem, 
-    TupleReader, 
-    Dictionary, 
-    contractAddress, 
-    ContractProvider, 
-    Sender, 
-    Contract, 
-    ContractABI, 
+    Slice,
+    Address,
+    Builder,
+    beginCell,
+    ComputeError,
+    TupleItem,
+    TupleReader,
+    Dictionary,
+    contractAddress,
+    address,
+    ContractProvider,
+    Sender,
+    Contract,
+    ContractABI,
     ABIType,
     ABIGetter,
     ABIReceiver,
     TupleBuilder,
     DictionaryValue
 } from '@ton/core';
+
+export type DataSize = {
+    $$type: 'DataSize';
+    cells: bigint;
+    bits: bigint;
+    refs: bigint;
+}
+
+export function storeDataSize(src: DataSize) {
+    return (builder: Builder) => {
+        const b_0 = builder;
+        b_0.storeInt(src.cells, 257);
+        b_0.storeInt(src.bits, 257);
+        b_0.storeInt(src.refs, 257);
+    };
+}
+
+export function loadDataSize(slice: Slice) {
+    const sc_0 = slice;
+    const _cells = sc_0.loadIntBig(257);
+    const _bits = sc_0.loadIntBig(257);
+    const _refs = sc_0.loadIntBig(257);
+    return { $$type: 'DataSize' as const, cells: _cells, bits: _bits, refs: _refs };
+}
+
+export function loadTupleDataSize(source: TupleReader) {
+    const _cells = source.readBigNumber();
+    const _bits = source.readBigNumber();
+    const _refs = source.readBigNumber();
+    return { $$type: 'DataSize' as const, cells: _cells, bits: _bits, refs: _refs };
+}
+
+export function loadGetterTupleDataSize(source: TupleReader) {
+    const _cells = source.readBigNumber();
+    const _bits = source.readBigNumber();
+    const _refs = source.readBigNumber();
+    return { $$type: 'DataSize' as const, cells: _cells, bits: _bits, refs: _refs };
+}
+
+export function storeTupleDataSize(source: DataSize) {
+    const builder = new TupleBuilder();
+    builder.writeNumber(source.cells);
+    builder.writeNumber(source.bits);
+    builder.writeNumber(source.refs);
+    return builder.build();
+}
+
+export function dictValueParserDataSize(): DictionaryValue<DataSize> {
+    return {
+        serialize: (src, builder) => {
+            builder.storeRef(beginCell().store(storeDataSize(src)).endCell());
+        },
+        parse: (src) => {
+            return loadDataSize(src.loadRef().beginParse());
+        }
+    }
+}
+
+export type SignedBundle = {
+    $$type: 'SignedBundle';
+    signature: Buffer;
+    signedData: Slice;
+}
+
+export function storeSignedBundle(src: SignedBundle) {
+    return (builder: Builder) => {
+        const b_0 = builder;
+        b_0.storeBuffer(src.signature);
+        b_0.storeBuilder(src.signedData.asBuilder());
+    };
+}
+
+export function loadSignedBundle(slice: Slice) {
+    const sc_0 = slice;
+    const _signature = sc_0.loadBuffer(64);
+    const _signedData = sc_0;
+    return { $$type: 'SignedBundle' as const, signature: _signature, signedData: _signedData };
+}
+
+export function loadTupleSignedBundle(source: TupleReader) {
+    const _signature = source.readBuffer();
+    const _signedData = source.readCell().asSlice();
+    return { $$type: 'SignedBundle' as const, signature: _signature, signedData: _signedData };
+}
+
+export function loadGetterTupleSignedBundle(source: TupleReader) {
+    const _signature = source.readBuffer();
+    const _signedData = source.readCell().asSlice();
+    return { $$type: 'SignedBundle' as const, signature: _signature, signedData: _signedData };
+}
+
+export function storeTupleSignedBundle(source: SignedBundle) {
+    const builder = new TupleBuilder();
+    builder.writeBuffer(source.signature);
+    builder.writeSlice(source.signedData.asCell());
+    return builder.build();
+}
+
+export function dictValueParserSignedBundle(): DictionaryValue<SignedBundle> {
+    return {
+        serialize: (src, builder) => {
+            builder.storeRef(beginCell().store(storeSignedBundle(src)).endCell());
+        },
+        parse: (src) => {
+            return loadSignedBundle(src.loadRef().beginParse());
+        }
+    }
+}
 
 export type StateInit = {
     $$type: 'StateInit';
@@ -28,45 +137,327 @@ export type StateInit = {
 
 export function storeStateInit(src: StateInit) {
     return (builder: Builder) => {
-        let b_0 = builder;
+        const b_0 = builder;
         b_0.storeRef(src.code);
         b_0.storeRef(src.data);
     };
 }
 
 export function loadStateInit(slice: Slice) {
-    let sc_0 = slice;
-    let _code = sc_0.loadRef();
-    let _data = sc_0.loadRef();
+    const sc_0 = slice;
+    const _code = sc_0.loadRef();
+    const _data = sc_0.loadRef();
     return { $$type: 'StateInit' as const, code: _code, data: _data };
 }
 
-function loadTupleStateInit(source: TupleReader) {
-    let _code = source.readCell();
-    let _data = source.readCell();
+export function loadTupleStateInit(source: TupleReader) {
+    const _code = source.readCell();
+    const _data = source.readCell();
     return { $$type: 'StateInit' as const, code: _code, data: _data };
 }
 
-function loadGetterTupleStateInit(source: TupleReader) {
-    let _code = source.readCell();
-    let _data = source.readCell();
+export function loadGetterTupleStateInit(source: TupleReader) {
+    const _code = source.readCell();
+    const _data = source.readCell();
     return { $$type: 'StateInit' as const, code: _code, data: _data };
 }
 
-function storeTupleStateInit(source: StateInit) {
-    let builder = new TupleBuilder();
+export function storeTupleStateInit(source: StateInit) {
+    const builder = new TupleBuilder();
     builder.writeCell(source.code);
     builder.writeCell(source.data);
     return builder.build();
 }
 
-function dictValueParserStateInit(): DictionaryValue<StateInit> {
+export function dictValueParserStateInit(): DictionaryValue<StateInit> {
     return {
         serialize: (src, builder) => {
             builder.storeRef(beginCell().store(storeStateInit(src)).endCell());
         },
         parse: (src) => {
             return loadStateInit(src.loadRef().beginParse());
+        }
+    }
+}
+
+export type Context = {
+    $$type: 'Context';
+    bounceable: boolean;
+    sender: Address;
+    value: bigint;
+    raw: Slice;
+}
+
+export function storeContext(src: Context) {
+    return (builder: Builder) => {
+        const b_0 = builder;
+        b_0.storeBit(src.bounceable);
+        b_0.storeAddress(src.sender);
+        b_0.storeInt(src.value, 257);
+        b_0.storeRef(src.raw.asCell());
+    };
+}
+
+export function loadContext(slice: Slice) {
+    const sc_0 = slice;
+    const _bounceable = sc_0.loadBit();
+    const _sender = sc_0.loadAddress();
+    const _value = sc_0.loadIntBig(257);
+    const _raw = sc_0.loadRef().asSlice();
+    return { $$type: 'Context' as const, bounceable: _bounceable, sender: _sender, value: _value, raw: _raw };
+}
+
+export function loadTupleContext(source: TupleReader) {
+    const _bounceable = source.readBoolean();
+    const _sender = source.readAddress();
+    const _value = source.readBigNumber();
+    const _raw = source.readCell().asSlice();
+    return { $$type: 'Context' as const, bounceable: _bounceable, sender: _sender, value: _value, raw: _raw };
+}
+
+export function loadGetterTupleContext(source: TupleReader) {
+    const _bounceable = source.readBoolean();
+    const _sender = source.readAddress();
+    const _value = source.readBigNumber();
+    const _raw = source.readCell().asSlice();
+    return { $$type: 'Context' as const, bounceable: _bounceable, sender: _sender, value: _value, raw: _raw };
+}
+
+export function storeTupleContext(source: Context) {
+    const builder = new TupleBuilder();
+    builder.writeBoolean(source.bounceable);
+    builder.writeAddress(source.sender);
+    builder.writeNumber(source.value);
+    builder.writeSlice(source.raw.asCell());
+    return builder.build();
+}
+
+export function dictValueParserContext(): DictionaryValue<Context> {
+    return {
+        serialize: (src, builder) => {
+            builder.storeRef(beginCell().store(storeContext(src)).endCell());
+        },
+        parse: (src) => {
+            return loadContext(src.loadRef().beginParse());
+        }
+    }
+}
+
+export type SendParameters = {
+    $$type: 'SendParameters';
+    mode: bigint;
+    body: Cell | null;
+    code: Cell | null;
+    data: Cell | null;
+    value: bigint;
+    to: Address;
+    bounce: boolean;
+}
+
+export function storeSendParameters(src: SendParameters) {
+    return (builder: Builder) => {
+        const b_0 = builder;
+        b_0.storeInt(src.mode, 257);
+        if (src.body !== null && src.body !== undefined) { b_0.storeBit(true).storeRef(src.body); } else { b_0.storeBit(false); }
+        if (src.code !== null && src.code !== undefined) { b_0.storeBit(true).storeRef(src.code); } else { b_0.storeBit(false); }
+        if (src.data !== null && src.data !== undefined) { b_0.storeBit(true).storeRef(src.data); } else { b_0.storeBit(false); }
+        b_0.storeInt(src.value, 257);
+        b_0.storeAddress(src.to);
+        b_0.storeBit(src.bounce);
+    };
+}
+
+export function loadSendParameters(slice: Slice) {
+    const sc_0 = slice;
+    const _mode = sc_0.loadIntBig(257);
+    const _body = sc_0.loadBit() ? sc_0.loadRef() : null;
+    const _code = sc_0.loadBit() ? sc_0.loadRef() : null;
+    const _data = sc_0.loadBit() ? sc_0.loadRef() : null;
+    const _value = sc_0.loadIntBig(257);
+    const _to = sc_0.loadAddress();
+    const _bounce = sc_0.loadBit();
+    return { $$type: 'SendParameters' as const, mode: _mode, body: _body, code: _code, data: _data, value: _value, to: _to, bounce: _bounce };
+}
+
+export function loadTupleSendParameters(source: TupleReader) {
+    const _mode = source.readBigNumber();
+    const _body = source.readCellOpt();
+    const _code = source.readCellOpt();
+    const _data = source.readCellOpt();
+    const _value = source.readBigNumber();
+    const _to = source.readAddress();
+    const _bounce = source.readBoolean();
+    return { $$type: 'SendParameters' as const, mode: _mode, body: _body, code: _code, data: _data, value: _value, to: _to, bounce: _bounce };
+}
+
+export function loadGetterTupleSendParameters(source: TupleReader) {
+    const _mode = source.readBigNumber();
+    const _body = source.readCellOpt();
+    const _code = source.readCellOpt();
+    const _data = source.readCellOpt();
+    const _value = source.readBigNumber();
+    const _to = source.readAddress();
+    const _bounce = source.readBoolean();
+    return { $$type: 'SendParameters' as const, mode: _mode, body: _body, code: _code, data: _data, value: _value, to: _to, bounce: _bounce };
+}
+
+export function storeTupleSendParameters(source: SendParameters) {
+    const builder = new TupleBuilder();
+    builder.writeNumber(source.mode);
+    builder.writeCell(source.body);
+    builder.writeCell(source.code);
+    builder.writeCell(source.data);
+    builder.writeNumber(source.value);
+    builder.writeAddress(source.to);
+    builder.writeBoolean(source.bounce);
+    return builder.build();
+}
+
+export function dictValueParserSendParameters(): DictionaryValue<SendParameters> {
+    return {
+        serialize: (src, builder) => {
+            builder.storeRef(beginCell().store(storeSendParameters(src)).endCell());
+        },
+        parse: (src) => {
+            return loadSendParameters(src.loadRef().beginParse());
+        }
+    }
+}
+
+export type MessageParameters = {
+    $$type: 'MessageParameters';
+    mode: bigint;
+    body: Cell | null;
+    value: bigint;
+    to: Address;
+    bounce: boolean;
+}
+
+export function storeMessageParameters(src: MessageParameters) {
+    return (builder: Builder) => {
+        const b_0 = builder;
+        b_0.storeInt(src.mode, 257);
+        if (src.body !== null && src.body !== undefined) { b_0.storeBit(true).storeRef(src.body); } else { b_0.storeBit(false); }
+        b_0.storeInt(src.value, 257);
+        b_0.storeAddress(src.to);
+        b_0.storeBit(src.bounce);
+    };
+}
+
+export function loadMessageParameters(slice: Slice) {
+    const sc_0 = slice;
+    const _mode = sc_0.loadIntBig(257);
+    const _body = sc_0.loadBit() ? sc_0.loadRef() : null;
+    const _value = sc_0.loadIntBig(257);
+    const _to = sc_0.loadAddress();
+    const _bounce = sc_0.loadBit();
+    return { $$type: 'MessageParameters' as const, mode: _mode, body: _body, value: _value, to: _to, bounce: _bounce };
+}
+
+export function loadTupleMessageParameters(source: TupleReader) {
+    const _mode = source.readBigNumber();
+    const _body = source.readCellOpt();
+    const _value = source.readBigNumber();
+    const _to = source.readAddress();
+    const _bounce = source.readBoolean();
+    return { $$type: 'MessageParameters' as const, mode: _mode, body: _body, value: _value, to: _to, bounce: _bounce };
+}
+
+export function loadGetterTupleMessageParameters(source: TupleReader) {
+    const _mode = source.readBigNumber();
+    const _body = source.readCellOpt();
+    const _value = source.readBigNumber();
+    const _to = source.readAddress();
+    const _bounce = source.readBoolean();
+    return { $$type: 'MessageParameters' as const, mode: _mode, body: _body, value: _value, to: _to, bounce: _bounce };
+}
+
+export function storeTupleMessageParameters(source: MessageParameters) {
+    const builder = new TupleBuilder();
+    builder.writeNumber(source.mode);
+    builder.writeCell(source.body);
+    builder.writeNumber(source.value);
+    builder.writeAddress(source.to);
+    builder.writeBoolean(source.bounce);
+    return builder.build();
+}
+
+export function dictValueParserMessageParameters(): DictionaryValue<MessageParameters> {
+    return {
+        serialize: (src, builder) => {
+            builder.storeRef(beginCell().store(storeMessageParameters(src)).endCell());
+        },
+        parse: (src) => {
+            return loadMessageParameters(src.loadRef().beginParse());
+        }
+    }
+}
+
+export type DeployParameters = {
+    $$type: 'DeployParameters';
+    mode: bigint;
+    body: Cell | null;
+    value: bigint;
+    bounce: boolean;
+    init: StateInit;
+}
+
+export function storeDeployParameters(src: DeployParameters) {
+    return (builder: Builder) => {
+        const b_0 = builder;
+        b_0.storeInt(src.mode, 257);
+        if (src.body !== null && src.body !== undefined) { b_0.storeBit(true).storeRef(src.body); } else { b_0.storeBit(false); }
+        b_0.storeInt(src.value, 257);
+        b_0.storeBit(src.bounce);
+        b_0.store(storeStateInit(src.init));
+    };
+}
+
+export function loadDeployParameters(slice: Slice) {
+    const sc_0 = slice;
+    const _mode = sc_0.loadIntBig(257);
+    const _body = sc_0.loadBit() ? sc_0.loadRef() : null;
+    const _value = sc_0.loadIntBig(257);
+    const _bounce = sc_0.loadBit();
+    const _init = loadStateInit(sc_0);
+    return { $$type: 'DeployParameters' as const, mode: _mode, body: _body, value: _value, bounce: _bounce, init: _init };
+}
+
+export function loadTupleDeployParameters(source: TupleReader) {
+    const _mode = source.readBigNumber();
+    const _body = source.readCellOpt();
+    const _value = source.readBigNumber();
+    const _bounce = source.readBoolean();
+    const _init = loadTupleStateInit(source);
+    return { $$type: 'DeployParameters' as const, mode: _mode, body: _body, value: _value, bounce: _bounce, init: _init };
+}
+
+export function loadGetterTupleDeployParameters(source: TupleReader) {
+    const _mode = source.readBigNumber();
+    const _body = source.readCellOpt();
+    const _value = source.readBigNumber();
+    const _bounce = source.readBoolean();
+    const _init = loadGetterTupleStateInit(source);
+    return { $$type: 'DeployParameters' as const, mode: _mode, body: _body, value: _value, bounce: _bounce, init: _init };
+}
+
+export function storeTupleDeployParameters(source: DeployParameters) {
+    const builder = new TupleBuilder();
+    builder.writeNumber(source.mode);
+    builder.writeCell(source.body);
+    builder.writeNumber(source.value);
+    builder.writeBoolean(source.bounce);
+    builder.writeTuple(storeTupleStateInit(source.init));
+    return builder.build();
+}
+
+export function dictValueParserDeployParameters(): DictionaryValue<DeployParameters> {
+    return {
+        serialize: (src, builder) => {
+            builder.storeRef(beginCell().store(storeDeployParameters(src)).endCell());
+        },
+        parse: (src) => {
+            return loadDeployParameters(src.loadRef().beginParse());
         }
     }
 }
@@ -79,39 +470,39 @@ export type StdAddress = {
 
 export function storeStdAddress(src: StdAddress) {
     return (builder: Builder) => {
-        let b_0 = builder;
+        const b_0 = builder;
         b_0.storeInt(src.workchain, 8);
         b_0.storeUint(src.address, 256);
     };
 }
 
 export function loadStdAddress(slice: Slice) {
-    let sc_0 = slice;
-    let _workchain = sc_0.loadIntBig(8);
-    let _address = sc_0.loadUintBig(256);
+    const sc_0 = slice;
+    const _workchain = sc_0.loadIntBig(8);
+    const _address = sc_0.loadUintBig(256);
     return { $$type: 'StdAddress' as const, workchain: _workchain, address: _address };
 }
 
-function loadTupleStdAddress(source: TupleReader) {
-    let _workchain = source.readBigNumber();
-    let _address = source.readBigNumber();
+export function loadTupleStdAddress(source: TupleReader) {
+    const _workchain = source.readBigNumber();
+    const _address = source.readBigNumber();
     return { $$type: 'StdAddress' as const, workchain: _workchain, address: _address };
 }
 
-function loadGetterTupleStdAddress(source: TupleReader) {
-    let _workchain = source.readBigNumber();
-    let _address = source.readBigNumber();
+export function loadGetterTupleStdAddress(source: TupleReader) {
+    const _workchain = source.readBigNumber();
+    const _address = source.readBigNumber();
     return { $$type: 'StdAddress' as const, workchain: _workchain, address: _address };
 }
 
-function storeTupleStdAddress(source: StdAddress) {
-    let builder = new TupleBuilder();
+export function storeTupleStdAddress(source: StdAddress) {
+    const builder = new TupleBuilder();
     builder.writeNumber(source.workchain);
     builder.writeNumber(source.address);
     return builder.build();
 }
 
-function dictValueParserStdAddress(): DictionaryValue<StdAddress> {
+export function dictValueParserStdAddress(): DictionaryValue<StdAddress> {
     return {
         serialize: (src, builder) => {
             builder.storeRef(beginCell().store(storeStdAddress(src)).endCell());
@@ -130,39 +521,39 @@ export type VarAddress = {
 
 export function storeVarAddress(src: VarAddress) {
     return (builder: Builder) => {
-        let b_0 = builder;
+        const b_0 = builder;
         b_0.storeInt(src.workchain, 32);
         b_0.storeRef(src.address.asCell());
     };
 }
 
 export function loadVarAddress(slice: Slice) {
-    let sc_0 = slice;
-    let _workchain = sc_0.loadIntBig(32);
-    let _address = sc_0.loadRef().asSlice();
+    const sc_0 = slice;
+    const _workchain = sc_0.loadIntBig(32);
+    const _address = sc_0.loadRef().asSlice();
     return { $$type: 'VarAddress' as const, workchain: _workchain, address: _address };
 }
 
-function loadTupleVarAddress(source: TupleReader) {
-    let _workchain = source.readBigNumber();
-    let _address = source.readCell().asSlice();
+export function loadTupleVarAddress(source: TupleReader) {
+    const _workchain = source.readBigNumber();
+    const _address = source.readCell().asSlice();
     return { $$type: 'VarAddress' as const, workchain: _workchain, address: _address };
 }
 
-function loadGetterTupleVarAddress(source: TupleReader) {
-    let _workchain = source.readBigNumber();
-    let _address = source.readCell().asSlice();
+export function loadGetterTupleVarAddress(source: TupleReader) {
+    const _workchain = source.readBigNumber();
+    const _address = source.readCell().asSlice();
     return { $$type: 'VarAddress' as const, workchain: _workchain, address: _address };
 }
 
-function storeTupleVarAddress(source: VarAddress) {
-    let builder = new TupleBuilder();
+export function storeTupleVarAddress(source: VarAddress) {
+    const builder = new TupleBuilder();
     builder.writeNumber(source.workchain);
     builder.writeSlice(source.address.asCell());
     return builder.build();
 }
 
-function dictValueParserVarAddress(): DictionaryValue<VarAddress> {
+export function dictValueParserVarAddress(): DictionaryValue<VarAddress> {
     return {
         serialize: (src, builder) => {
             builder.storeRef(beginCell().store(storeVarAddress(src)).endCell());
@@ -173,146 +564,47 @@ function dictValueParserVarAddress(): DictionaryValue<VarAddress> {
     }
 }
 
-export type Context = {
-    $$type: 'Context';
-    bounced: boolean;
-    sender: Address;
-    value: bigint;
-    raw: Slice;
+export type BasechainAddress = {
+    $$type: 'BasechainAddress';
+    hash: bigint | null;
 }
 
-export function storeContext(src: Context) {
+export function storeBasechainAddress(src: BasechainAddress) {
     return (builder: Builder) => {
-        let b_0 = builder;
-        b_0.storeBit(src.bounced);
-        b_0.storeAddress(src.sender);
-        b_0.storeInt(src.value, 257);
-        b_0.storeRef(src.raw.asCell());
+        const b_0 = builder;
+        if (src.hash !== null && src.hash !== undefined) { b_0.storeBit(true).storeInt(src.hash, 257); } else { b_0.storeBit(false); }
     };
 }
 
-export function loadContext(slice: Slice) {
-    let sc_0 = slice;
-    let _bounced = sc_0.loadBit();
-    let _sender = sc_0.loadAddress();
-    let _value = sc_0.loadIntBig(257);
-    let _raw = sc_0.loadRef().asSlice();
-    return { $$type: 'Context' as const, bounced: _bounced, sender: _sender, value: _value, raw: _raw };
+export function loadBasechainAddress(slice: Slice) {
+    const sc_0 = slice;
+    const _hash = sc_0.loadBit() ? sc_0.loadIntBig(257) : null;
+    return { $$type: 'BasechainAddress' as const, hash: _hash };
 }
 
-function loadTupleContext(source: TupleReader) {
-    let _bounced = source.readBoolean();
-    let _sender = source.readAddress();
-    let _value = source.readBigNumber();
-    let _raw = source.readCell().asSlice();
-    return { $$type: 'Context' as const, bounced: _bounced, sender: _sender, value: _value, raw: _raw };
+export function loadTupleBasechainAddress(source: TupleReader) {
+    const _hash = source.readBigNumberOpt();
+    return { $$type: 'BasechainAddress' as const, hash: _hash };
 }
 
-function loadGetterTupleContext(source: TupleReader) {
-    let _bounced = source.readBoolean();
-    let _sender = source.readAddress();
-    let _value = source.readBigNumber();
-    let _raw = source.readCell().asSlice();
-    return { $$type: 'Context' as const, bounced: _bounced, sender: _sender, value: _value, raw: _raw };
+export function loadGetterTupleBasechainAddress(source: TupleReader) {
+    const _hash = source.readBigNumberOpt();
+    return { $$type: 'BasechainAddress' as const, hash: _hash };
 }
 
-function storeTupleContext(source: Context) {
-    let builder = new TupleBuilder();
-    builder.writeBoolean(source.bounced);
-    builder.writeAddress(source.sender);
-    builder.writeNumber(source.value);
-    builder.writeSlice(source.raw.asCell());
+export function storeTupleBasechainAddress(source: BasechainAddress) {
+    const builder = new TupleBuilder();
+    builder.writeNumber(source.hash);
     return builder.build();
 }
 
-function dictValueParserContext(): DictionaryValue<Context> {
+export function dictValueParserBasechainAddress(): DictionaryValue<BasechainAddress> {
     return {
         serialize: (src, builder) => {
-            builder.storeRef(beginCell().store(storeContext(src)).endCell());
+            builder.storeRef(beginCell().store(storeBasechainAddress(src)).endCell());
         },
         parse: (src) => {
-            return loadContext(src.loadRef().beginParse());
-        }
-    }
-}
-
-export type SendParameters = {
-    $$type: 'SendParameters';
-    bounce: boolean;
-    to: Address;
-    value: bigint;
-    mode: bigint;
-    body: Cell | null;
-    code: Cell | null;
-    data: Cell | null;
-}
-
-export function storeSendParameters(src: SendParameters) {
-    return (builder: Builder) => {
-        let b_0 = builder;
-        b_0.storeBit(src.bounce);
-        b_0.storeAddress(src.to);
-        b_0.storeInt(src.value, 257);
-        b_0.storeInt(src.mode, 257);
-        if (src.body !== null && src.body !== undefined) { b_0.storeBit(true).storeRef(src.body); } else { b_0.storeBit(false); }
-        if (src.code !== null && src.code !== undefined) { b_0.storeBit(true).storeRef(src.code); } else { b_0.storeBit(false); }
-        if (src.data !== null && src.data !== undefined) { b_0.storeBit(true).storeRef(src.data); } else { b_0.storeBit(false); }
-    };
-}
-
-export function loadSendParameters(slice: Slice) {
-    let sc_0 = slice;
-    let _bounce = sc_0.loadBit();
-    let _to = sc_0.loadAddress();
-    let _value = sc_0.loadIntBig(257);
-    let _mode = sc_0.loadIntBig(257);
-    let _body = sc_0.loadBit() ? sc_0.loadRef() : null;
-    let _code = sc_0.loadBit() ? sc_0.loadRef() : null;
-    let _data = sc_0.loadBit() ? sc_0.loadRef() : null;
-    return { $$type: 'SendParameters' as const, bounce: _bounce, to: _to, value: _value, mode: _mode, body: _body, code: _code, data: _data };
-}
-
-function loadTupleSendParameters(source: TupleReader) {
-    let _bounce = source.readBoolean();
-    let _to = source.readAddress();
-    let _value = source.readBigNumber();
-    let _mode = source.readBigNumber();
-    let _body = source.readCellOpt();
-    let _code = source.readCellOpt();
-    let _data = source.readCellOpt();
-    return { $$type: 'SendParameters' as const, bounce: _bounce, to: _to, value: _value, mode: _mode, body: _body, code: _code, data: _data };
-}
-
-function loadGetterTupleSendParameters(source: TupleReader) {
-    let _bounce = source.readBoolean();
-    let _to = source.readAddress();
-    let _value = source.readBigNumber();
-    let _mode = source.readBigNumber();
-    let _body = source.readCellOpt();
-    let _code = source.readCellOpt();
-    let _data = source.readCellOpt();
-    return { $$type: 'SendParameters' as const, bounce: _bounce, to: _to, value: _value, mode: _mode, body: _body, code: _code, data: _data };
-}
-
-function storeTupleSendParameters(source: SendParameters) {
-    let builder = new TupleBuilder();
-    builder.writeBoolean(source.bounce);
-    builder.writeAddress(source.to);
-    builder.writeNumber(source.value);
-    builder.writeNumber(source.mode);
-    builder.writeCell(source.body);
-    builder.writeCell(source.code);
-    builder.writeCell(source.data);
-    return builder.build();
-}
-
-function dictValueParserSendParameters(): DictionaryValue<SendParameters> {
-    return {
-        serialize: (src, builder) => {
-            builder.storeRef(beginCell().store(storeSendParameters(src)).endCell());
-        },
-        parse: (src) => {
-            return loadSendParameters(src.loadRef().beginParse());
+            return loadBasechainAddress(src.loadRef().beginParse());
         }
     }
 }
@@ -324,36 +616,36 @@ export type Deploy = {
 
 export function storeDeploy(src: Deploy) {
     return (builder: Builder) => {
-        let b_0 = builder;
+        const b_0 = builder;
         b_0.storeUint(2490013878, 32);
         b_0.storeUint(src.queryId, 64);
     };
 }
 
 export function loadDeploy(slice: Slice) {
-    let sc_0 = slice;
+    const sc_0 = slice;
     if (sc_0.loadUint(32) !== 2490013878) { throw Error('Invalid prefix'); }
-    let _queryId = sc_0.loadUintBig(64);
+    const _queryId = sc_0.loadUintBig(64);
     return { $$type: 'Deploy' as const, queryId: _queryId };
 }
 
-function loadTupleDeploy(source: TupleReader) {
-    let _queryId = source.readBigNumber();
+export function loadTupleDeploy(source: TupleReader) {
+    const _queryId = source.readBigNumber();
     return { $$type: 'Deploy' as const, queryId: _queryId };
 }
 
-function loadGetterTupleDeploy(source: TupleReader) {
-    let _queryId = source.readBigNumber();
+export function loadGetterTupleDeploy(source: TupleReader) {
+    const _queryId = source.readBigNumber();
     return { $$type: 'Deploy' as const, queryId: _queryId };
 }
 
-function storeTupleDeploy(source: Deploy) {
-    let builder = new TupleBuilder();
+export function storeTupleDeploy(source: Deploy) {
+    const builder = new TupleBuilder();
     builder.writeNumber(source.queryId);
     return builder.build();
 }
 
-function dictValueParserDeploy(): DictionaryValue<Deploy> {
+export function dictValueParserDeploy(): DictionaryValue<Deploy> {
     return {
         serialize: (src, builder) => {
             builder.storeRef(beginCell().store(storeDeploy(src)).endCell());
@@ -371,36 +663,36 @@ export type DeployOk = {
 
 export function storeDeployOk(src: DeployOk) {
     return (builder: Builder) => {
-        let b_0 = builder;
+        const b_0 = builder;
         b_0.storeUint(2952335191, 32);
         b_0.storeUint(src.queryId, 64);
     };
 }
 
 export function loadDeployOk(slice: Slice) {
-    let sc_0 = slice;
+    const sc_0 = slice;
     if (sc_0.loadUint(32) !== 2952335191) { throw Error('Invalid prefix'); }
-    let _queryId = sc_0.loadUintBig(64);
+    const _queryId = sc_0.loadUintBig(64);
     return { $$type: 'DeployOk' as const, queryId: _queryId };
 }
 
-function loadTupleDeployOk(source: TupleReader) {
-    let _queryId = source.readBigNumber();
+export function loadTupleDeployOk(source: TupleReader) {
+    const _queryId = source.readBigNumber();
     return { $$type: 'DeployOk' as const, queryId: _queryId };
 }
 
-function loadGetterTupleDeployOk(source: TupleReader) {
-    let _queryId = source.readBigNumber();
+export function loadGetterTupleDeployOk(source: TupleReader) {
+    const _queryId = source.readBigNumber();
     return { $$type: 'DeployOk' as const, queryId: _queryId };
 }
 
-function storeTupleDeployOk(source: DeployOk) {
-    let builder = new TupleBuilder();
+export function storeTupleDeployOk(source: DeployOk) {
+    const builder = new TupleBuilder();
     builder.writeNumber(source.queryId);
     return builder.build();
 }
 
-function dictValueParserDeployOk(): DictionaryValue<DeployOk> {
+export function dictValueParserDeployOk(): DictionaryValue<DeployOk> {
     return {
         serialize: (src, builder) => {
             builder.storeRef(beginCell().store(storeDeployOk(src)).endCell());
@@ -419,7 +711,7 @@ export type FactoryDeploy = {
 
 export function storeFactoryDeploy(src: FactoryDeploy) {
     return (builder: Builder) => {
-        let b_0 = builder;
+        const b_0 = builder;
         b_0.storeUint(1829761339, 32);
         b_0.storeUint(src.queryId, 64);
         b_0.storeAddress(src.cashback);
@@ -427,39 +719,629 @@ export function storeFactoryDeploy(src: FactoryDeploy) {
 }
 
 export function loadFactoryDeploy(slice: Slice) {
-    let sc_0 = slice;
+    const sc_0 = slice;
     if (sc_0.loadUint(32) !== 1829761339) { throw Error('Invalid prefix'); }
-    let _queryId = sc_0.loadUintBig(64);
-    let _cashback = sc_0.loadAddress();
+    const _queryId = sc_0.loadUintBig(64);
+    const _cashback = sc_0.loadAddress();
     return { $$type: 'FactoryDeploy' as const, queryId: _queryId, cashback: _cashback };
 }
 
-function loadTupleFactoryDeploy(source: TupleReader) {
-    let _queryId = source.readBigNumber();
-    let _cashback = source.readAddress();
+export function loadTupleFactoryDeploy(source: TupleReader) {
+    const _queryId = source.readBigNumber();
+    const _cashback = source.readAddress();
     return { $$type: 'FactoryDeploy' as const, queryId: _queryId, cashback: _cashback };
 }
 
-function loadGetterTupleFactoryDeploy(source: TupleReader) {
-    let _queryId = source.readBigNumber();
-    let _cashback = source.readAddress();
+export function loadGetterTupleFactoryDeploy(source: TupleReader) {
+    const _queryId = source.readBigNumber();
+    const _cashback = source.readAddress();
     return { $$type: 'FactoryDeploy' as const, queryId: _queryId, cashback: _cashback };
 }
 
-function storeTupleFactoryDeploy(source: FactoryDeploy) {
-    let builder = new TupleBuilder();
+export function storeTupleFactoryDeploy(source: FactoryDeploy) {
+    const builder = new TupleBuilder();
     builder.writeNumber(source.queryId);
     builder.writeAddress(source.cashback);
     return builder.build();
 }
 
-function dictValueParserFactoryDeploy(): DictionaryValue<FactoryDeploy> {
+export function dictValueParserFactoryDeploy(): DictionaryValue<FactoryDeploy> {
     return {
         serialize: (src, builder) => {
             builder.storeRef(beginCell().store(storeFactoryDeploy(src)).endCell());
         },
         parse: (src) => {
             return loadFactoryDeploy(src.loadRef().beginParse());
+        }
+    }
+}
+
+export type EventMint = {
+    $$type: 'EventMint';
+    amount: bigint;
+    receiver: Address;
+}
+
+export function storeEventMint(src: EventMint) {
+    return (builder: Builder) => {
+        const b_0 = builder;
+        b_0.storeUint(860203922, 32);
+        b_0.storeInt(src.amount, 257);
+        b_0.storeAddress(src.receiver);
+    };
+}
+
+export function loadEventMint(slice: Slice) {
+    const sc_0 = slice;
+    if (sc_0.loadUint(32) !== 860203922) { throw Error('Invalid prefix'); }
+    const _amount = sc_0.loadIntBig(257);
+    const _receiver = sc_0.loadAddress();
+    return { $$type: 'EventMint' as const, amount: _amount, receiver: _receiver };
+}
+
+export function loadTupleEventMint(source: TupleReader) {
+    const _amount = source.readBigNumber();
+    const _receiver = source.readAddress();
+    return { $$type: 'EventMint' as const, amount: _amount, receiver: _receiver };
+}
+
+export function loadGetterTupleEventMint(source: TupleReader) {
+    const _amount = source.readBigNumber();
+    const _receiver = source.readAddress();
+    return { $$type: 'EventMint' as const, amount: _amount, receiver: _receiver };
+}
+
+export function storeTupleEventMint(source: EventMint) {
+    const builder = new TupleBuilder();
+    builder.writeNumber(source.amount);
+    builder.writeAddress(source.receiver);
+    return builder.build();
+}
+
+export function dictValueParserEventMint(): DictionaryValue<EventMint> {
+    return {
+        serialize: (src, builder) => {
+            builder.storeRef(beginCell().store(storeEventMint(src)).endCell());
+        },
+        parse: (src) => {
+            return loadEventMint(src.loadRef().beginParse());
+        }
+    }
+}
+
+export type EventBurn = {
+    $$type: 'EventBurn';
+    amount: bigint;
+    burner: Address;
+}
+
+export function storeEventBurn(src: EventBurn) {
+    return (builder: Builder) => {
+        const b_0 = builder;
+        b_0.storeUint(3532337071, 32);
+        b_0.storeInt(src.amount, 257);
+        b_0.storeAddress(src.burner);
+    };
+}
+
+export function loadEventBurn(slice: Slice) {
+    const sc_0 = slice;
+    if (sc_0.loadUint(32) !== 3532337071) { throw Error('Invalid prefix'); }
+    const _amount = sc_0.loadIntBig(257);
+    const _burner = sc_0.loadAddress();
+    return { $$type: 'EventBurn' as const, amount: _amount, burner: _burner };
+}
+
+export function loadTupleEventBurn(source: TupleReader) {
+    const _amount = source.readBigNumber();
+    const _burner = source.readAddress();
+    return { $$type: 'EventBurn' as const, amount: _amount, burner: _burner };
+}
+
+export function loadGetterTupleEventBurn(source: TupleReader) {
+    const _amount = source.readBigNumber();
+    const _burner = source.readAddress();
+    return { $$type: 'EventBurn' as const, amount: _amount, burner: _burner };
+}
+
+export function storeTupleEventBurn(source: EventBurn) {
+    const builder = new TupleBuilder();
+    builder.writeNumber(source.amount);
+    builder.writeAddress(source.burner);
+    return builder.build();
+}
+
+export function dictValueParserEventBurn(): DictionaryValue<EventBurn> {
+    return {
+        serialize: (src, builder) => {
+            builder.storeRef(beginCell().store(storeEventBurn(src)).endCell());
+        },
+        parse: (src) => {
+            return loadEventBurn(src.loadRef().beginParse());
+        }
+    }
+}
+
+export type EventFeeDistributed = {
+    $$type: 'EventFeeDistributed';
+    totalFee: bigint;
+    burn: bigint;
+    buyback: bigint;
+    lottery: bigint;
+    staking: bigint;
+    referral: bigint;
+    treasury: bigint;
+    defiPool: bigint;
+}
+
+export function storeEventFeeDistributed(src: EventFeeDistributed) {
+    return (builder: Builder) => {
+        const b_0 = builder;
+        b_0.storeUint(3296433968, 32);
+        b_0.storeInt(src.totalFee, 257);
+        b_0.storeInt(src.burn, 257);
+        b_0.storeInt(src.buyback, 257);
+        const b_1 = new Builder();
+        b_1.storeInt(src.lottery, 257);
+        b_1.storeInt(src.staking, 257);
+        b_1.storeInt(src.referral, 257);
+        const b_2 = new Builder();
+        b_2.storeInt(src.treasury, 257);
+        b_2.storeInt(src.defiPool, 257);
+        b_1.storeRef(b_2.endCell());
+        b_0.storeRef(b_1.endCell());
+    };
+}
+
+export function loadEventFeeDistributed(slice: Slice) {
+    const sc_0 = slice;
+    if (sc_0.loadUint(32) !== 3296433968) { throw Error('Invalid prefix'); }
+    const _totalFee = sc_0.loadIntBig(257);
+    const _burn = sc_0.loadIntBig(257);
+    const _buyback = sc_0.loadIntBig(257);
+    const sc_1 = sc_0.loadRef().beginParse();
+    const _lottery = sc_1.loadIntBig(257);
+    const _staking = sc_1.loadIntBig(257);
+    const _referral = sc_1.loadIntBig(257);
+    const sc_2 = sc_1.loadRef().beginParse();
+    const _treasury = sc_2.loadIntBig(257);
+    const _defiPool = sc_2.loadIntBig(257);
+    return { $$type: 'EventFeeDistributed' as const, totalFee: _totalFee, burn: _burn, buyback: _buyback, lottery: _lottery, staking: _staking, referral: _referral, treasury: _treasury, defiPool: _defiPool };
+}
+
+export function loadTupleEventFeeDistributed(source: TupleReader) {
+    const _totalFee = source.readBigNumber();
+    const _burn = source.readBigNumber();
+    const _buyback = source.readBigNumber();
+    const _lottery = source.readBigNumber();
+    const _staking = source.readBigNumber();
+    const _referral = source.readBigNumber();
+    const _treasury = source.readBigNumber();
+    const _defiPool = source.readBigNumber();
+    return { $$type: 'EventFeeDistributed' as const, totalFee: _totalFee, burn: _burn, buyback: _buyback, lottery: _lottery, staking: _staking, referral: _referral, treasury: _treasury, defiPool: _defiPool };
+}
+
+export function loadGetterTupleEventFeeDistributed(source: TupleReader) {
+    const _totalFee = source.readBigNumber();
+    const _burn = source.readBigNumber();
+    const _buyback = source.readBigNumber();
+    const _lottery = source.readBigNumber();
+    const _staking = source.readBigNumber();
+    const _referral = source.readBigNumber();
+    const _treasury = source.readBigNumber();
+    const _defiPool = source.readBigNumber();
+    return { $$type: 'EventFeeDistributed' as const, totalFee: _totalFee, burn: _burn, buyback: _buyback, lottery: _lottery, staking: _staking, referral: _referral, treasury: _treasury, defiPool: _defiPool };
+}
+
+export function storeTupleEventFeeDistributed(source: EventFeeDistributed) {
+    const builder = new TupleBuilder();
+    builder.writeNumber(source.totalFee);
+    builder.writeNumber(source.burn);
+    builder.writeNumber(source.buyback);
+    builder.writeNumber(source.lottery);
+    builder.writeNumber(source.staking);
+    builder.writeNumber(source.referral);
+    builder.writeNumber(source.treasury);
+    builder.writeNumber(source.defiPool);
+    return builder.build();
+}
+
+export function dictValueParserEventFeeDistributed(): DictionaryValue<EventFeeDistributed> {
+    return {
+        serialize: (src, builder) => {
+            builder.storeRef(beginCell().store(storeEventFeeDistributed(src)).endCell());
+        },
+        parse: (src) => {
+            return loadEventFeeDistributed(src.loadRef().beginParse());
+        }
+    }
+}
+
+export type EventBuybackExecuted = {
+    $$type: 'EventBuybackExecuted';
+    tonSpent: bigint;
+    qsrBurned: bigint;
+}
+
+export function storeEventBuybackExecuted(src: EventBuybackExecuted) {
+    return (builder: Builder) => {
+        const b_0 = builder;
+        b_0.storeUint(1890367419, 32);
+        b_0.storeInt(src.tonSpent, 257);
+        b_0.storeInt(src.qsrBurned, 257);
+    };
+}
+
+export function loadEventBuybackExecuted(slice: Slice) {
+    const sc_0 = slice;
+    if (sc_0.loadUint(32) !== 1890367419) { throw Error('Invalid prefix'); }
+    const _tonSpent = sc_0.loadIntBig(257);
+    const _qsrBurned = sc_0.loadIntBig(257);
+    return { $$type: 'EventBuybackExecuted' as const, tonSpent: _tonSpent, qsrBurned: _qsrBurned };
+}
+
+export function loadTupleEventBuybackExecuted(source: TupleReader) {
+    const _tonSpent = source.readBigNumber();
+    const _qsrBurned = source.readBigNumber();
+    return { $$type: 'EventBuybackExecuted' as const, tonSpent: _tonSpent, qsrBurned: _qsrBurned };
+}
+
+export function loadGetterTupleEventBuybackExecuted(source: TupleReader) {
+    const _tonSpent = source.readBigNumber();
+    const _qsrBurned = source.readBigNumber();
+    return { $$type: 'EventBuybackExecuted' as const, tonSpent: _tonSpent, qsrBurned: _qsrBurned };
+}
+
+export function storeTupleEventBuybackExecuted(source: EventBuybackExecuted) {
+    const builder = new TupleBuilder();
+    builder.writeNumber(source.tonSpent);
+    builder.writeNumber(source.qsrBurned);
+    return builder.build();
+}
+
+export function dictValueParserEventBuybackExecuted(): DictionaryValue<EventBuybackExecuted> {
+    return {
+        serialize: (src, builder) => {
+            builder.storeRef(beginCell().store(storeEventBuybackExecuted(src)).endCell());
+        },
+        parse: (src) => {
+            return loadEventBuybackExecuted(src.loadRef().beginParse());
+        }
+    }
+}
+
+export type EventLotteryDrawn = {
+    $$type: 'EventLotteryDrawn';
+    round: bigint;
+    winner: Address;
+    jackpot: bigint;
+}
+
+export function storeEventLotteryDrawn(src: EventLotteryDrawn) {
+    return (builder: Builder) => {
+        const b_0 = builder;
+        b_0.storeUint(1455139578, 32);
+        b_0.storeInt(src.round, 257);
+        b_0.storeAddress(src.winner);
+        b_0.storeInt(src.jackpot, 257);
+    };
+}
+
+export function loadEventLotteryDrawn(slice: Slice) {
+    const sc_0 = slice;
+    if (sc_0.loadUint(32) !== 1455139578) { throw Error('Invalid prefix'); }
+    const _round = sc_0.loadIntBig(257);
+    const _winner = sc_0.loadAddress();
+    const _jackpot = sc_0.loadIntBig(257);
+    return { $$type: 'EventLotteryDrawn' as const, round: _round, winner: _winner, jackpot: _jackpot };
+}
+
+export function loadTupleEventLotteryDrawn(source: TupleReader) {
+    const _round = source.readBigNumber();
+    const _winner = source.readAddress();
+    const _jackpot = source.readBigNumber();
+    return { $$type: 'EventLotteryDrawn' as const, round: _round, winner: _winner, jackpot: _jackpot };
+}
+
+export function loadGetterTupleEventLotteryDrawn(source: TupleReader) {
+    const _round = source.readBigNumber();
+    const _winner = source.readAddress();
+    const _jackpot = source.readBigNumber();
+    return { $$type: 'EventLotteryDrawn' as const, round: _round, winner: _winner, jackpot: _jackpot };
+}
+
+export function storeTupleEventLotteryDrawn(source: EventLotteryDrawn) {
+    const builder = new TupleBuilder();
+    builder.writeNumber(source.round);
+    builder.writeAddress(source.winner);
+    builder.writeNumber(source.jackpot);
+    return builder.build();
+}
+
+export function dictValueParserEventLotteryDrawn(): DictionaryValue<EventLotteryDrawn> {
+    return {
+        serialize: (src, builder) => {
+            builder.storeRef(beginCell().store(storeEventLotteryDrawn(src)).endCell());
+        },
+        parse: (src) => {
+            return loadEventLotteryDrawn(src.loadRef().beginParse());
+        }
+    }
+}
+
+export type EventStake = {
+    $$type: 'EventStake';
+    staker: Address;
+    amount: bigint;
+}
+
+export function storeEventStake(src: EventStake) {
+    return (builder: Builder) => {
+        const b_0 = builder;
+        b_0.storeUint(2899784103, 32);
+        b_0.storeAddress(src.staker);
+        b_0.storeInt(src.amount, 257);
+    };
+}
+
+export function loadEventStake(slice: Slice) {
+    const sc_0 = slice;
+    if (sc_0.loadUint(32) !== 2899784103) { throw Error('Invalid prefix'); }
+    const _staker = sc_0.loadAddress();
+    const _amount = sc_0.loadIntBig(257);
+    return { $$type: 'EventStake' as const, staker: _staker, amount: _amount };
+}
+
+export function loadTupleEventStake(source: TupleReader) {
+    const _staker = source.readAddress();
+    const _amount = source.readBigNumber();
+    return { $$type: 'EventStake' as const, staker: _staker, amount: _amount };
+}
+
+export function loadGetterTupleEventStake(source: TupleReader) {
+    const _staker = source.readAddress();
+    const _amount = source.readBigNumber();
+    return { $$type: 'EventStake' as const, staker: _staker, amount: _amount };
+}
+
+export function storeTupleEventStake(source: EventStake) {
+    const builder = new TupleBuilder();
+    builder.writeAddress(source.staker);
+    builder.writeNumber(source.amount);
+    return builder.build();
+}
+
+export function dictValueParserEventStake(): DictionaryValue<EventStake> {
+    return {
+        serialize: (src, builder) => {
+            builder.storeRef(beginCell().store(storeEventStake(src)).endCell());
+        },
+        parse: (src) => {
+            return loadEventStake(src.loadRef().beginParse());
+        }
+    }
+}
+
+export type EventUnstake = {
+    $$type: 'EventUnstake';
+    staker: Address;
+    amount: bigint;
+}
+
+export function storeEventUnstake(src: EventUnstake) {
+    return (builder: Builder) => {
+        const b_0 = builder;
+        b_0.storeUint(2219162629, 32);
+        b_0.storeAddress(src.staker);
+        b_0.storeInt(src.amount, 257);
+    };
+}
+
+export function loadEventUnstake(slice: Slice) {
+    const sc_0 = slice;
+    if (sc_0.loadUint(32) !== 2219162629) { throw Error('Invalid prefix'); }
+    const _staker = sc_0.loadAddress();
+    const _amount = sc_0.loadIntBig(257);
+    return { $$type: 'EventUnstake' as const, staker: _staker, amount: _amount };
+}
+
+export function loadTupleEventUnstake(source: TupleReader) {
+    const _staker = source.readAddress();
+    const _amount = source.readBigNumber();
+    return { $$type: 'EventUnstake' as const, staker: _staker, amount: _amount };
+}
+
+export function loadGetterTupleEventUnstake(source: TupleReader) {
+    const _staker = source.readAddress();
+    const _amount = source.readBigNumber();
+    return { $$type: 'EventUnstake' as const, staker: _staker, amount: _amount };
+}
+
+export function storeTupleEventUnstake(source: EventUnstake) {
+    const builder = new TupleBuilder();
+    builder.writeAddress(source.staker);
+    builder.writeNumber(source.amount);
+    return builder.build();
+}
+
+export function dictValueParserEventUnstake(): DictionaryValue<EventUnstake> {
+    return {
+        serialize: (src, builder) => {
+            builder.storeRef(beginCell().store(storeEventUnstake(src)).endCell());
+        },
+        parse: (src) => {
+            return loadEventUnstake(src.loadRef().beginParse());
+        }
+    }
+}
+
+export type EventReferralRegistered = {
+    $$type: 'EventReferralRegistered';
+    user: Address;
+    referrer: Address;
+}
+
+export function storeEventReferralRegistered(src: EventReferralRegistered) {
+    return (builder: Builder) => {
+        const b_0 = builder;
+        b_0.storeUint(685454731, 32);
+        b_0.storeAddress(src.user);
+        b_0.storeAddress(src.referrer);
+    };
+}
+
+export function loadEventReferralRegistered(slice: Slice) {
+    const sc_0 = slice;
+    if (sc_0.loadUint(32) !== 685454731) { throw Error('Invalid prefix'); }
+    const _user = sc_0.loadAddress();
+    const _referrer = sc_0.loadAddress();
+    return { $$type: 'EventReferralRegistered' as const, user: _user, referrer: _referrer };
+}
+
+export function loadTupleEventReferralRegistered(source: TupleReader) {
+    const _user = source.readAddress();
+    const _referrer = source.readAddress();
+    return { $$type: 'EventReferralRegistered' as const, user: _user, referrer: _referrer };
+}
+
+export function loadGetterTupleEventReferralRegistered(source: TupleReader) {
+    const _user = source.readAddress();
+    const _referrer = source.readAddress();
+    return { $$type: 'EventReferralRegistered' as const, user: _user, referrer: _referrer };
+}
+
+export function storeTupleEventReferralRegistered(source: EventReferralRegistered) {
+    const builder = new TupleBuilder();
+    builder.writeAddress(source.user);
+    builder.writeAddress(source.referrer);
+    return builder.build();
+}
+
+export function dictValueParserEventReferralRegistered(): DictionaryValue<EventReferralRegistered> {
+    return {
+        serialize: (src, builder) => {
+            builder.storeRef(beginCell().store(storeEventReferralRegistered(src)).endCell());
+        },
+        parse: (src) => {
+            return loadEventReferralRegistered(src.loadRef().beginParse());
+        }
+    }
+}
+
+export type EventVestingClaimed = {
+    $$type: 'EventVestingClaimed';
+    beneficiary: Address;
+    amount: bigint;
+}
+
+export function storeEventVestingClaimed(src: EventVestingClaimed) {
+    return (builder: Builder) => {
+        const b_0 = builder;
+        b_0.storeUint(929365622, 32);
+        b_0.storeAddress(src.beneficiary);
+        b_0.storeInt(src.amount, 257);
+    };
+}
+
+export function loadEventVestingClaimed(slice: Slice) {
+    const sc_0 = slice;
+    if (sc_0.loadUint(32) !== 929365622) { throw Error('Invalid prefix'); }
+    const _beneficiary = sc_0.loadAddress();
+    const _amount = sc_0.loadIntBig(257);
+    return { $$type: 'EventVestingClaimed' as const, beneficiary: _beneficiary, amount: _amount };
+}
+
+export function loadTupleEventVestingClaimed(source: TupleReader) {
+    const _beneficiary = source.readAddress();
+    const _amount = source.readBigNumber();
+    return { $$type: 'EventVestingClaimed' as const, beneficiary: _beneficiary, amount: _amount };
+}
+
+export function loadGetterTupleEventVestingClaimed(source: TupleReader) {
+    const _beneficiary = source.readAddress();
+    const _amount = source.readBigNumber();
+    return { $$type: 'EventVestingClaimed' as const, beneficiary: _beneficiary, amount: _amount };
+}
+
+export function storeTupleEventVestingClaimed(source: EventVestingClaimed) {
+    const builder = new TupleBuilder();
+    builder.writeAddress(source.beneficiary);
+    builder.writeNumber(source.amount);
+    return builder.build();
+}
+
+export function dictValueParserEventVestingClaimed(): DictionaryValue<EventVestingClaimed> {
+    return {
+        serialize: (src, builder) => {
+            builder.storeRef(beginCell().store(storeEventVestingClaimed(src)).endCell());
+        },
+        parse: (src) => {
+            return loadEventVestingClaimed(src.loadRef().beginParse());
+        }
+    }
+}
+
+export type EventAiAction = {
+    $$type: 'EventAiAction';
+    actionId: bigint;
+    actionType: string;
+    oldValue: bigint;
+    newValue: bigint;
+}
+
+export function storeEventAiAction(src: EventAiAction) {
+    return (builder: Builder) => {
+        const b_0 = builder;
+        b_0.storeUint(1580835377, 32);
+        b_0.storeInt(src.actionId, 257);
+        b_0.storeStringRefTail(src.actionType);
+        b_0.storeInt(src.oldValue, 257);
+        b_0.storeInt(src.newValue, 257);
+    };
+}
+
+export function loadEventAiAction(slice: Slice) {
+    const sc_0 = slice;
+    if (sc_0.loadUint(32) !== 1580835377) { throw Error('Invalid prefix'); }
+    const _actionId = sc_0.loadIntBig(257);
+    const _actionType = sc_0.loadStringRefTail();
+    const _oldValue = sc_0.loadIntBig(257);
+    const _newValue = sc_0.loadIntBig(257);
+    return { $$type: 'EventAiAction' as const, actionId: _actionId, actionType: _actionType, oldValue: _oldValue, newValue: _newValue };
+}
+
+export function loadTupleEventAiAction(source: TupleReader) {
+    const _actionId = source.readBigNumber();
+    const _actionType = source.readString();
+    const _oldValue = source.readBigNumber();
+    const _newValue = source.readBigNumber();
+    return { $$type: 'EventAiAction' as const, actionId: _actionId, actionType: _actionType, oldValue: _oldValue, newValue: _newValue };
+}
+
+export function loadGetterTupleEventAiAction(source: TupleReader) {
+    const _actionId = source.readBigNumber();
+    const _actionType = source.readString();
+    const _oldValue = source.readBigNumber();
+    const _newValue = source.readBigNumber();
+    return { $$type: 'EventAiAction' as const, actionId: _actionId, actionType: _actionType, oldValue: _oldValue, newValue: _newValue };
+}
+
+export function storeTupleEventAiAction(source: EventAiAction) {
+    const builder = new TupleBuilder();
+    builder.writeNumber(source.actionId);
+    builder.writeString(source.actionType);
+    builder.writeNumber(source.oldValue);
+    builder.writeNumber(source.newValue);
+    return builder.build();
+}
+
+export function dictValueParserEventAiAction(): DictionaryValue<EventAiAction> {
+    return {
+        serialize: (src, builder) => {
+            builder.storeRef(beginCell().store(storeEventAiAction(src)).endCell());
+        },
+        parse: (src) => {
+            return loadEventAiAction(src.loadRef().beginParse());
         }
     }
 }
@@ -471,36 +1353,36 @@ export type AISetOracle = {
 
 export function storeAISetOracle(src: AISetOracle) {
     return (builder: Builder) => {
-        let b_0 = builder;
+        const b_0 = builder;
         b_0.storeUint(707361075, 32);
         b_0.storeAddress(src.oracleAddress);
     };
 }
 
 export function loadAISetOracle(slice: Slice) {
-    let sc_0 = slice;
+    const sc_0 = slice;
     if (sc_0.loadUint(32) !== 707361075) { throw Error('Invalid prefix'); }
-    let _oracleAddress = sc_0.loadAddress();
+    const _oracleAddress = sc_0.loadAddress();
     return { $$type: 'AISetOracle' as const, oracleAddress: _oracleAddress };
 }
 
-function loadTupleAISetOracle(source: TupleReader) {
-    let _oracleAddress = source.readAddress();
+export function loadTupleAISetOracle(source: TupleReader) {
+    const _oracleAddress = source.readAddress();
     return { $$type: 'AISetOracle' as const, oracleAddress: _oracleAddress };
 }
 
-function loadGetterTupleAISetOracle(source: TupleReader) {
-    let _oracleAddress = source.readAddress();
+export function loadGetterTupleAISetOracle(source: TupleReader) {
+    const _oracleAddress = source.readAddress();
     return { $$type: 'AISetOracle' as const, oracleAddress: _oracleAddress };
 }
 
-function storeTupleAISetOracle(source: AISetOracle) {
-    let builder = new TupleBuilder();
+export function storeTupleAISetOracle(source: AISetOracle) {
+    const builder = new TupleBuilder();
     builder.writeAddress(source.oracleAddress);
     return builder.build();
 }
 
-function dictValueParserAISetOracle(): DictionaryValue<AISetOracle> {
+export function dictValueParserAISetOracle(): DictionaryValue<AISetOracle> {
     return {
         serialize: (src, builder) => {
             builder.storeRef(beginCell().store(storeAISetOracle(src)).endCell());
@@ -518,36 +1400,36 @@ export type AIGrantFullAutonomy = {
 
 export function storeAIGrantFullAutonomy(src: AIGrantFullAutonomy) {
     return (builder: Builder) => {
-        let b_0 = builder;
+        const b_0 = builder;
         b_0.storeUint(3323893351, 32);
         b_0.storeBit(src.enabled);
     };
 }
 
 export function loadAIGrantFullAutonomy(slice: Slice) {
-    let sc_0 = slice;
+    const sc_0 = slice;
     if (sc_0.loadUint(32) !== 3323893351) { throw Error('Invalid prefix'); }
-    let _enabled = sc_0.loadBit();
+    const _enabled = sc_0.loadBit();
     return { $$type: 'AIGrantFullAutonomy' as const, enabled: _enabled };
 }
 
-function loadTupleAIGrantFullAutonomy(source: TupleReader) {
-    let _enabled = source.readBoolean();
+export function loadTupleAIGrantFullAutonomy(source: TupleReader) {
+    const _enabled = source.readBoolean();
     return { $$type: 'AIGrantFullAutonomy' as const, enabled: _enabled };
 }
 
-function loadGetterTupleAIGrantFullAutonomy(source: TupleReader) {
-    let _enabled = source.readBoolean();
+export function loadGetterTupleAIGrantFullAutonomy(source: TupleReader) {
+    const _enabled = source.readBoolean();
     return { $$type: 'AIGrantFullAutonomy' as const, enabled: _enabled };
 }
 
-function storeTupleAIGrantFullAutonomy(source: AIGrantFullAutonomy) {
-    let builder = new TupleBuilder();
+export function storeTupleAIGrantFullAutonomy(source: AIGrantFullAutonomy) {
+    const builder = new TupleBuilder();
     builder.writeBoolean(source.enabled);
     return builder.build();
 }
 
-function dictValueParserAIGrantFullAutonomy(): DictionaryValue<AIGrantFullAutonomy> {
+export function dictValueParserAIGrantFullAutonomy(): DictionaryValue<AIGrantFullAutonomy> {
     return {
         serialize: (src, builder) => {
             builder.storeRef(beginCell().store(storeAIGrantFullAutonomy(src)).endCell());
@@ -566,7 +1448,7 @@ export type AIHeartbeat = {
 
 export function storeAIHeartbeat(src: AIHeartbeat) {
     return (builder: Builder) => {
-        let b_0 = builder;
+        const b_0 = builder;
         b_0.storeUint(2409132733, 32);
         b_0.storeUint(src.queryId, 64);
         b_0.storeStringRefTail(src.status);
@@ -574,33 +1456,33 @@ export function storeAIHeartbeat(src: AIHeartbeat) {
 }
 
 export function loadAIHeartbeat(slice: Slice) {
-    let sc_0 = slice;
+    const sc_0 = slice;
     if (sc_0.loadUint(32) !== 2409132733) { throw Error('Invalid prefix'); }
-    let _queryId = sc_0.loadUintBig(64);
-    let _status = sc_0.loadStringRefTail();
+    const _queryId = sc_0.loadUintBig(64);
+    const _status = sc_0.loadStringRefTail();
     return { $$type: 'AIHeartbeat' as const, queryId: _queryId, status: _status };
 }
 
-function loadTupleAIHeartbeat(source: TupleReader) {
-    let _queryId = source.readBigNumber();
-    let _status = source.readString();
+export function loadTupleAIHeartbeat(source: TupleReader) {
+    const _queryId = source.readBigNumber();
+    const _status = source.readString();
     return { $$type: 'AIHeartbeat' as const, queryId: _queryId, status: _status };
 }
 
-function loadGetterTupleAIHeartbeat(source: TupleReader) {
-    let _queryId = source.readBigNumber();
-    let _status = source.readString();
+export function loadGetterTupleAIHeartbeat(source: TupleReader) {
+    const _queryId = source.readBigNumber();
+    const _status = source.readString();
     return { $$type: 'AIHeartbeat' as const, queryId: _queryId, status: _status };
 }
 
-function storeTupleAIHeartbeat(source: AIHeartbeat) {
-    let builder = new TupleBuilder();
+export function storeTupleAIHeartbeat(source: AIHeartbeat) {
+    const builder = new TupleBuilder();
     builder.writeNumber(source.queryId);
     builder.writeString(source.status);
     return builder.build();
 }
 
-function dictValueParserAIHeartbeat(): DictionaryValue<AIHeartbeat> {
+export function dictValueParserAIHeartbeat(): DictionaryValue<AIHeartbeat> {
     return {
         serialize: (src, builder) => {
             builder.storeRef(beginCell().store(storeAIHeartbeat(src)).endCell());
@@ -621,7 +1503,7 @@ export type AIVetoVote = {
 
 export function storeAIVetoVote(src: AIVetoVote) {
     return (builder: Builder) => {
-        let b_0 = builder;
+        const b_0 = builder;
         b_0.storeUint(2637925553, 32);
         b_0.storeUint(src.actionId, 64);
         b_0.storeAddress(src.voter);
@@ -631,33 +1513,33 @@ export function storeAIVetoVote(src: AIVetoVote) {
 }
 
 export function loadAIVetoVote(slice: Slice) {
-    let sc_0 = slice;
+    const sc_0 = slice;
     if (sc_0.loadUint(32) !== 2637925553) { throw Error('Invalid prefix'); }
-    let _actionId = sc_0.loadUintBig(64);
-    let _voter = sc_0.loadAddress();
-    let _stake = sc_0.loadCoins();
-    let _reason = sc_0.loadStringRefTail();
+    const _actionId = sc_0.loadUintBig(64);
+    const _voter = sc_0.loadAddress();
+    const _stake = sc_0.loadCoins();
+    const _reason = sc_0.loadStringRefTail();
     return { $$type: 'AIVetoVote' as const, actionId: _actionId, voter: _voter, stake: _stake, reason: _reason };
 }
 
-function loadTupleAIVetoVote(source: TupleReader) {
-    let _actionId = source.readBigNumber();
-    let _voter = source.readAddress();
-    let _stake = source.readBigNumber();
-    let _reason = source.readString();
+export function loadTupleAIVetoVote(source: TupleReader) {
+    const _actionId = source.readBigNumber();
+    const _voter = source.readAddress();
+    const _stake = source.readBigNumber();
+    const _reason = source.readString();
     return { $$type: 'AIVetoVote' as const, actionId: _actionId, voter: _voter, stake: _stake, reason: _reason };
 }
 
-function loadGetterTupleAIVetoVote(source: TupleReader) {
-    let _actionId = source.readBigNumber();
-    let _voter = source.readAddress();
-    let _stake = source.readBigNumber();
-    let _reason = source.readString();
+export function loadGetterTupleAIVetoVote(source: TupleReader) {
+    const _actionId = source.readBigNumber();
+    const _voter = source.readAddress();
+    const _stake = source.readBigNumber();
+    const _reason = source.readString();
     return { $$type: 'AIVetoVote' as const, actionId: _actionId, voter: _voter, stake: _stake, reason: _reason };
 }
 
-function storeTupleAIVetoVote(source: AIVetoVote) {
-    let builder = new TupleBuilder();
+export function storeTupleAIVetoVote(source: AIVetoVote) {
+    const builder = new TupleBuilder();
     builder.writeNumber(source.actionId);
     builder.writeAddress(source.voter);
     builder.writeNumber(source.stake);
@@ -665,7 +1547,7 @@ function storeTupleAIVetoVote(source: AIVetoVote) {
     return builder.build();
 }
 
-function dictValueParserAIVetoVote(): DictionaryValue<AIVetoVote> {
+export function dictValueParserAIVetoVote(): DictionaryValue<AIVetoVote> {
     return {
         serialize: (src, builder) => {
             builder.storeRef(beginCell().store(storeAIVetoVote(src)).endCell());
@@ -684,7 +1566,7 @@ export type OwnerOverride = {
 
 export function storeOwnerOverride(src: OwnerOverride) {
     return (builder: Builder) => {
-        let b_0 = builder;
+        const b_0 = builder;
         b_0.storeUint(164764433, 32);
         b_0.storeUint(src.actionId, 64);
         b_0.storeStringRefTail(src.reason);
@@ -692,33 +1574,33 @@ export function storeOwnerOverride(src: OwnerOverride) {
 }
 
 export function loadOwnerOverride(slice: Slice) {
-    let sc_0 = slice;
+    const sc_0 = slice;
     if (sc_0.loadUint(32) !== 164764433) { throw Error('Invalid prefix'); }
-    let _actionId = sc_0.loadUintBig(64);
-    let _reason = sc_0.loadStringRefTail();
+    const _actionId = sc_0.loadUintBig(64);
+    const _reason = sc_0.loadStringRefTail();
     return { $$type: 'OwnerOverride' as const, actionId: _actionId, reason: _reason };
 }
 
-function loadTupleOwnerOverride(source: TupleReader) {
-    let _actionId = source.readBigNumber();
-    let _reason = source.readString();
+export function loadTupleOwnerOverride(source: TupleReader) {
+    const _actionId = source.readBigNumber();
+    const _reason = source.readString();
     return { $$type: 'OwnerOverride' as const, actionId: _actionId, reason: _reason };
 }
 
-function loadGetterTupleOwnerOverride(source: TupleReader) {
-    let _actionId = source.readBigNumber();
-    let _reason = source.readString();
+export function loadGetterTupleOwnerOverride(source: TupleReader) {
+    const _actionId = source.readBigNumber();
+    const _reason = source.readString();
     return { $$type: 'OwnerOverride' as const, actionId: _actionId, reason: _reason };
 }
 
-function storeTupleOwnerOverride(source: OwnerOverride) {
-    let builder = new TupleBuilder();
+export function storeTupleOwnerOverride(source: OwnerOverride) {
+    const builder = new TupleBuilder();
     builder.writeNumber(source.actionId);
     builder.writeString(source.reason);
     return builder.build();
 }
 
-function dictValueParserOwnerOverride(): DictionaryValue<OwnerOverride> {
+export function dictValueParserOwnerOverride(): DictionaryValue<OwnerOverride> {
     return {
         serialize: (src, builder) => {
             builder.storeRef(beginCell().store(storeOwnerOverride(src)).endCell());
@@ -739,7 +1621,7 @@ export type AIRebalance = {
 
 export function storeAIRebalance(src: AIRebalance) {
     return (builder: Builder) => {
-        let b_0 = builder;
+        const b_0 = builder;
         b_0.storeUint(679670248, 32);
         b_0.storeUint(src.queryId, 64);
         b_0.storeUint(src.targetFeeBps, 16);
@@ -749,33 +1631,33 @@ export function storeAIRebalance(src: AIRebalance) {
 }
 
 export function loadAIRebalance(slice: Slice) {
-    let sc_0 = slice;
+    const sc_0 = slice;
     if (sc_0.loadUint(32) !== 679670248) { throw Error('Invalid prefix'); }
-    let _queryId = sc_0.loadUintBig(64);
-    let _targetFeeBps = sc_0.loadUintBig(16);
-    let _targetBurnShare = sc_0.loadUintBig(8);
-    let _recommendation = sc_0.loadStringRefTail();
+    const _queryId = sc_0.loadUintBig(64);
+    const _targetFeeBps = sc_0.loadUintBig(16);
+    const _targetBurnShare = sc_0.loadUintBig(8);
+    const _recommendation = sc_0.loadStringRefTail();
     return { $$type: 'AIRebalance' as const, queryId: _queryId, targetFeeBps: _targetFeeBps, targetBurnShare: _targetBurnShare, recommendation: _recommendation };
 }
 
-function loadTupleAIRebalance(source: TupleReader) {
-    let _queryId = source.readBigNumber();
-    let _targetFeeBps = source.readBigNumber();
-    let _targetBurnShare = source.readBigNumber();
-    let _recommendation = source.readString();
+export function loadTupleAIRebalance(source: TupleReader) {
+    const _queryId = source.readBigNumber();
+    const _targetFeeBps = source.readBigNumber();
+    const _targetBurnShare = source.readBigNumber();
+    const _recommendation = source.readString();
     return { $$type: 'AIRebalance' as const, queryId: _queryId, targetFeeBps: _targetFeeBps, targetBurnShare: _targetBurnShare, recommendation: _recommendation };
 }
 
-function loadGetterTupleAIRebalance(source: TupleReader) {
-    let _queryId = source.readBigNumber();
-    let _targetFeeBps = source.readBigNumber();
-    let _targetBurnShare = source.readBigNumber();
-    let _recommendation = source.readString();
+export function loadGetterTupleAIRebalance(source: TupleReader) {
+    const _queryId = source.readBigNumber();
+    const _targetFeeBps = source.readBigNumber();
+    const _targetBurnShare = source.readBigNumber();
+    const _recommendation = source.readString();
     return { $$type: 'AIRebalance' as const, queryId: _queryId, targetFeeBps: _targetFeeBps, targetBurnShare: _targetBurnShare, recommendation: _recommendation };
 }
 
-function storeTupleAIRebalance(source: AIRebalance) {
-    let builder = new TupleBuilder();
+export function storeTupleAIRebalance(source: AIRebalance) {
+    const builder = new TupleBuilder();
     builder.writeNumber(source.queryId);
     builder.writeNumber(source.targetFeeBps);
     builder.writeNumber(source.targetBurnShare);
@@ -783,7 +1665,7 @@ function storeTupleAIRebalance(source: AIRebalance) {
     return builder.build();
 }
 
-function dictValueParserAIRebalance(): DictionaryValue<AIRebalance> {
+export function dictValueParserAIRebalance(): DictionaryValue<AIRebalance> {
     return {
         serialize: (src, builder) => {
             builder.storeRef(beginCell().store(storeAIRebalance(src)).endCell());
@@ -805,7 +1687,7 @@ export type AIPriceSignal = {
 
 export function storeAIPriceSignal(src: AIPriceSignal) {
     return (builder: Builder) => {
-        let b_0 = builder;
+        const b_0 = builder;
         b_0.storeUint(1763742623, 32);
         b_0.storeUint(src.queryId, 64);
         b_0.storeCoins(src.priceTon);
@@ -816,36 +1698,36 @@ export function storeAIPriceSignal(src: AIPriceSignal) {
 }
 
 export function loadAIPriceSignal(slice: Slice) {
-    let sc_0 = slice;
+    const sc_0 = slice;
     if (sc_0.loadUint(32) !== 1763742623) { throw Error('Invalid prefix'); }
-    let _queryId = sc_0.loadUintBig(64);
-    let _priceTon = sc_0.loadCoins();
-    let _volatility = sc_0.loadUintBig(32);
-    let _sentiment = sc_0.loadIntBig(8);
-    let _action = sc_0.loadUintBig(8);
+    const _queryId = sc_0.loadUintBig(64);
+    const _priceTon = sc_0.loadCoins();
+    const _volatility = sc_0.loadUintBig(32);
+    const _sentiment = sc_0.loadIntBig(8);
+    const _action = sc_0.loadUintBig(8);
     return { $$type: 'AIPriceSignal' as const, queryId: _queryId, priceTon: _priceTon, volatility: _volatility, sentiment: _sentiment, action: _action };
 }
 
-function loadTupleAIPriceSignal(source: TupleReader) {
-    let _queryId = source.readBigNumber();
-    let _priceTon = source.readBigNumber();
-    let _volatility = source.readBigNumber();
-    let _sentiment = source.readBigNumber();
-    let _action = source.readBigNumber();
+export function loadTupleAIPriceSignal(source: TupleReader) {
+    const _queryId = source.readBigNumber();
+    const _priceTon = source.readBigNumber();
+    const _volatility = source.readBigNumber();
+    const _sentiment = source.readBigNumber();
+    const _action = source.readBigNumber();
     return { $$type: 'AIPriceSignal' as const, queryId: _queryId, priceTon: _priceTon, volatility: _volatility, sentiment: _sentiment, action: _action };
 }
 
-function loadGetterTupleAIPriceSignal(source: TupleReader) {
-    let _queryId = source.readBigNumber();
-    let _priceTon = source.readBigNumber();
-    let _volatility = source.readBigNumber();
-    let _sentiment = source.readBigNumber();
-    let _action = source.readBigNumber();
+export function loadGetterTupleAIPriceSignal(source: TupleReader) {
+    const _queryId = source.readBigNumber();
+    const _priceTon = source.readBigNumber();
+    const _volatility = source.readBigNumber();
+    const _sentiment = source.readBigNumber();
+    const _action = source.readBigNumber();
     return { $$type: 'AIPriceSignal' as const, queryId: _queryId, priceTon: _priceTon, volatility: _volatility, sentiment: _sentiment, action: _action };
 }
 
-function storeTupleAIPriceSignal(source: AIPriceSignal) {
-    let builder = new TupleBuilder();
+export function storeTupleAIPriceSignal(source: AIPriceSignal) {
+    const builder = new TupleBuilder();
     builder.writeNumber(source.queryId);
     builder.writeNumber(source.priceTon);
     builder.writeNumber(source.volatility);
@@ -854,7 +1736,7 @@ function storeTupleAIPriceSignal(source: AIPriceSignal) {
     return builder.build();
 }
 
-function dictValueParserAIPriceSignal(): DictionaryValue<AIPriceSignal> {
+export function dictValueParserAIPriceSignal(): DictionaryValue<AIPriceSignal> {
     return {
         serialize: (src, builder) => {
             builder.storeRef(beginCell().store(storeAIPriceSignal(src)).endCell());
@@ -876,7 +1758,7 @@ export type AIAnomalyAlert = {
 
 export function storeAIAnomalyAlert(src: AIAnomalyAlert) {
     return (builder: Builder) => {
-        let b_0 = builder;
+        const b_0 = builder;
         b_0.storeUint(3697509643, 32);
         b_0.storeUint(src.queryId, 64);
         b_0.storeUint(src.severity, 8);
@@ -887,36 +1769,36 @@ export function storeAIAnomalyAlert(src: AIAnomalyAlert) {
 }
 
 export function loadAIAnomalyAlert(slice: Slice) {
-    let sc_0 = slice;
+    const sc_0 = slice;
     if (sc_0.loadUint(32) !== 3697509643) { throw Error('Invalid prefix'); }
-    let _queryId = sc_0.loadUintBig(64);
-    let _severity = sc_0.loadUintBig(8);
-    let _anomalyType = sc_0.loadUintBig(8);
-    let _affectedWallets = sc_0.loadUintBig(32);
-    let _recommendedAction = sc_0.loadStringRefTail();
+    const _queryId = sc_0.loadUintBig(64);
+    const _severity = sc_0.loadUintBig(8);
+    const _anomalyType = sc_0.loadUintBig(8);
+    const _affectedWallets = sc_0.loadUintBig(32);
+    const _recommendedAction = sc_0.loadStringRefTail();
     return { $$type: 'AIAnomalyAlert' as const, queryId: _queryId, severity: _severity, anomalyType: _anomalyType, affectedWallets: _affectedWallets, recommendedAction: _recommendedAction };
 }
 
-function loadTupleAIAnomalyAlert(source: TupleReader) {
-    let _queryId = source.readBigNumber();
-    let _severity = source.readBigNumber();
-    let _anomalyType = source.readBigNumber();
-    let _affectedWallets = source.readBigNumber();
-    let _recommendedAction = source.readString();
+export function loadTupleAIAnomalyAlert(source: TupleReader) {
+    const _queryId = source.readBigNumber();
+    const _severity = source.readBigNumber();
+    const _anomalyType = source.readBigNumber();
+    const _affectedWallets = source.readBigNumber();
+    const _recommendedAction = source.readString();
     return { $$type: 'AIAnomalyAlert' as const, queryId: _queryId, severity: _severity, anomalyType: _anomalyType, affectedWallets: _affectedWallets, recommendedAction: _recommendedAction };
 }
 
-function loadGetterTupleAIAnomalyAlert(source: TupleReader) {
-    let _queryId = source.readBigNumber();
-    let _severity = source.readBigNumber();
-    let _anomalyType = source.readBigNumber();
-    let _affectedWallets = source.readBigNumber();
-    let _recommendedAction = source.readString();
+export function loadGetterTupleAIAnomalyAlert(source: TupleReader) {
+    const _queryId = source.readBigNumber();
+    const _severity = source.readBigNumber();
+    const _anomalyType = source.readBigNumber();
+    const _affectedWallets = source.readBigNumber();
+    const _recommendedAction = source.readString();
     return { $$type: 'AIAnomalyAlert' as const, queryId: _queryId, severity: _severity, anomalyType: _anomalyType, affectedWallets: _affectedWallets, recommendedAction: _recommendedAction };
 }
 
-function storeTupleAIAnomalyAlert(source: AIAnomalyAlert) {
-    let builder = new TupleBuilder();
+export function storeTupleAIAnomalyAlert(source: AIAnomalyAlert) {
+    const builder = new TupleBuilder();
     builder.writeNumber(source.queryId);
     builder.writeNumber(source.severity);
     builder.writeNumber(source.anomalyType);
@@ -925,7 +1807,7 @@ function storeTupleAIAnomalyAlert(source: AIAnomalyAlert) {
     return builder.build();
 }
 
-function dictValueParserAIAnomalyAlert(): DictionaryValue<AIAnomalyAlert> {
+export function dictValueParserAIAnomalyAlert(): DictionaryValue<AIAnomalyAlert> {
     return {
         serialize: (src, builder) => {
             builder.storeRef(beginCell().store(storeAIAnomalyAlert(src)).endCell());
@@ -947,7 +1829,7 @@ export type AIGovernanceProposal = {
 
 export function storeAIGovernanceProposal(src: AIGovernanceProposal) {
     return (builder: Builder) => {
-        let b_0 = builder;
+        const b_0 = builder;
         b_0.storeUint(3633360959, 32);
         b_0.storeUint(src.queryId, 64);
         b_0.storeUint(src.proposalType, 8);
@@ -958,36 +1840,36 @@ export function storeAIGovernanceProposal(src: AIGovernanceProposal) {
 }
 
 export function loadAIGovernanceProposal(slice: Slice) {
-    let sc_0 = slice;
+    const sc_0 = slice;
     if (sc_0.loadUint(32) !== 3633360959) { throw Error('Invalid prefix'); }
-    let _queryId = sc_0.loadUintBig(64);
-    let _proposalType = sc_0.loadUintBig(8);
-    let _newValue = sc_0.loadIntBig(257);
-    let _description = sc_0.loadStringRefTail();
-    let _confidence = sc_0.loadUintBig(8);
+    const _queryId = sc_0.loadUintBig(64);
+    const _proposalType = sc_0.loadUintBig(8);
+    const _newValue = sc_0.loadIntBig(257);
+    const _description = sc_0.loadStringRefTail();
+    const _confidence = sc_0.loadUintBig(8);
     return { $$type: 'AIGovernanceProposal' as const, queryId: _queryId, proposalType: _proposalType, newValue: _newValue, description: _description, confidence: _confidence };
 }
 
-function loadTupleAIGovernanceProposal(source: TupleReader) {
-    let _queryId = source.readBigNumber();
-    let _proposalType = source.readBigNumber();
-    let _newValue = source.readBigNumber();
-    let _description = source.readString();
-    let _confidence = source.readBigNumber();
+export function loadTupleAIGovernanceProposal(source: TupleReader) {
+    const _queryId = source.readBigNumber();
+    const _proposalType = source.readBigNumber();
+    const _newValue = source.readBigNumber();
+    const _description = source.readString();
+    const _confidence = source.readBigNumber();
     return { $$type: 'AIGovernanceProposal' as const, queryId: _queryId, proposalType: _proposalType, newValue: _newValue, description: _description, confidence: _confidence };
 }
 
-function loadGetterTupleAIGovernanceProposal(source: TupleReader) {
-    let _queryId = source.readBigNumber();
-    let _proposalType = source.readBigNumber();
-    let _newValue = source.readBigNumber();
-    let _description = source.readString();
-    let _confidence = source.readBigNumber();
+export function loadGetterTupleAIGovernanceProposal(source: TupleReader) {
+    const _queryId = source.readBigNumber();
+    const _proposalType = source.readBigNumber();
+    const _newValue = source.readBigNumber();
+    const _description = source.readString();
+    const _confidence = source.readBigNumber();
     return { $$type: 'AIGovernanceProposal' as const, queryId: _queryId, proposalType: _proposalType, newValue: _newValue, description: _description, confidence: _confidence };
 }
 
-function storeTupleAIGovernanceProposal(source: AIGovernanceProposal) {
-    let builder = new TupleBuilder();
+export function storeTupleAIGovernanceProposal(source: AIGovernanceProposal) {
+    const builder = new TupleBuilder();
     builder.writeNumber(source.queryId);
     builder.writeNumber(source.proposalType);
     builder.writeNumber(source.newValue);
@@ -996,7 +1878,7 @@ function storeTupleAIGovernanceProposal(source: AIGovernanceProposal) {
     return builder.build();
 }
 
-function dictValueParserAIGovernanceProposal(): DictionaryValue<AIGovernanceProposal> {
+export function dictValueParserAIGovernanceProposal(): DictionaryValue<AIGovernanceProposal> {
     return {
         serialize: (src, builder) => {
             builder.storeRef(beginCell().store(storeAIGovernanceProposal(src)).endCell());
@@ -1016,7 +1898,7 @@ export type AISetFee = {
 
 export function storeAISetFee(src: AISetFee) {
     return (builder: Builder) => {
-        let b_0 = builder;
+        const b_0 = builder;
         b_0.storeUint(400520088, 32);
         b_0.storeUint(src.queryId, 64);
         b_0.storeUint(src.feeBps, 16);
@@ -1025,37 +1907,37 @@ export function storeAISetFee(src: AISetFee) {
 }
 
 export function loadAISetFee(slice: Slice) {
-    let sc_0 = slice;
+    const sc_0 = slice;
     if (sc_0.loadUint(32) !== 400520088) { throw Error('Invalid prefix'); }
-    let _queryId = sc_0.loadUintBig(64);
-    let _feeBps = sc_0.loadUintBig(16);
-    let _reason = sc_0.loadStringRefTail();
+    const _queryId = sc_0.loadUintBig(64);
+    const _feeBps = sc_0.loadUintBig(16);
+    const _reason = sc_0.loadStringRefTail();
     return { $$type: 'AISetFee' as const, queryId: _queryId, feeBps: _feeBps, reason: _reason };
 }
 
-function loadTupleAISetFee(source: TupleReader) {
-    let _queryId = source.readBigNumber();
-    let _feeBps = source.readBigNumber();
-    let _reason = source.readString();
+export function loadTupleAISetFee(source: TupleReader) {
+    const _queryId = source.readBigNumber();
+    const _feeBps = source.readBigNumber();
+    const _reason = source.readString();
     return { $$type: 'AISetFee' as const, queryId: _queryId, feeBps: _feeBps, reason: _reason };
 }
 
-function loadGetterTupleAISetFee(source: TupleReader) {
-    let _queryId = source.readBigNumber();
-    let _feeBps = source.readBigNumber();
-    let _reason = source.readString();
+export function loadGetterTupleAISetFee(source: TupleReader) {
+    const _queryId = source.readBigNumber();
+    const _feeBps = source.readBigNumber();
+    const _reason = source.readString();
     return { $$type: 'AISetFee' as const, queryId: _queryId, feeBps: _feeBps, reason: _reason };
 }
 
-function storeTupleAISetFee(source: AISetFee) {
-    let builder = new TupleBuilder();
+export function storeTupleAISetFee(source: AISetFee) {
+    const builder = new TupleBuilder();
     builder.writeNumber(source.queryId);
     builder.writeNumber(source.feeBps);
     builder.writeString(source.reason);
     return builder.build();
 }
 
-function dictValueParserAISetFee(): DictionaryValue<AISetFee> {
+export function dictValueParserAISetFee(): DictionaryValue<AISetFee> {
     return {
         serialize: (src, builder) => {
             builder.storeRef(beginCell().store(storeAISetFee(src)).endCell());
@@ -1075,7 +1957,7 @@ export type AISetTreasuryDirect = {
 
 export function storeAISetTreasuryDirect(src: AISetTreasuryDirect) {
     return (builder: Builder) => {
-        let b_0 = builder;
+        const b_0 = builder;
         b_0.storeUint(2042225859, 32);
         b_0.storeUint(src.queryId, 64);
         b_0.storeAddress(src.treasury);
@@ -1084,37 +1966,37 @@ export function storeAISetTreasuryDirect(src: AISetTreasuryDirect) {
 }
 
 export function loadAISetTreasuryDirect(slice: Slice) {
-    let sc_0 = slice;
+    const sc_0 = slice;
     if (sc_0.loadUint(32) !== 2042225859) { throw Error('Invalid prefix'); }
-    let _queryId = sc_0.loadUintBig(64);
-    let _treasury = sc_0.loadAddress();
-    let _reason = sc_0.loadStringRefTail();
+    const _queryId = sc_0.loadUintBig(64);
+    const _treasury = sc_0.loadAddress();
+    const _reason = sc_0.loadStringRefTail();
     return { $$type: 'AISetTreasuryDirect' as const, queryId: _queryId, treasury: _treasury, reason: _reason };
 }
 
-function loadTupleAISetTreasuryDirect(source: TupleReader) {
-    let _queryId = source.readBigNumber();
-    let _treasury = source.readAddress();
-    let _reason = source.readString();
+export function loadTupleAISetTreasuryDirect(source: TupleReader) {
+    const _queryId = source.readBigNumber();
+    const _treasury = source.readAddress();
+    const _reason = source.readString();
     return { $$type: 'AISetTreasuryDirect' as const, queryId: _queryId, treasury: _treasury, reason: _reason };
 }
 
-function loadGetterTupleAISetTreasuryDirect(source: TupleReader) {
-    let _queryId = source.readBigNumber();
-    let _treasury = source.readAddress();
-    let _reason = source.readString();
+export function loadGetterTupleAISetTreasuryDirect(source: TupleReader) {
+    const _queryId = source.readBigNumber();
+    const _treasury = source.readAddress();
+    const _reason = source.readString();
     return { $$type: 'AISetTreasuryDirect' as const, queryId: _queryId, treasury: _treasury, reason: _reason };
 }
 
-function storeTupleAISetTreasuryDirect(source: AISetTreasuryDirect) {
-    let builder = new TupleBuilder();
+export function storeTupleAISetTreasuryDirect(source: AISetTreasuryDirect) {
+    const builder = new TupleBuilder();
     builder.writeNumber(source.queryId);
     builder.writeAddress(source.treasury);
     builder.writeString(source.reason);
     return builder.build();
 }
 
-function dictValueParserAISetTreasuryDirect(): DictionaryValue<AISetTreasuryDirect> {
+export function dictValueParserAISetTreasuryDirect(): DictionaryValue<AISetTreasuryDirect> {
     return {
         serialize: (src, builder) => {
             builder.storeRef(beginCell().store(storeAISetTreasuryDirect(src)).endCell());
@@ -1136,7 +2018,7 @@ export type AISetAntiWhale = {
 
 export function storeAISetAntiWhale(src: AISetAntiWhale) {
     return (builder: Builder) => {
-        let b_0 = builder;
+        const b_0 = builder;
         b_0.storeUint(284672247, 32);
         b_0.storeUint(src.queryId, 64);
         b_0.storeUint(src.maxTxBps, 16);
@@ -1147,36 +2029,36 @@ export function storeAISetAntiWhale(src: AISetAntiWhale) {
 }
 
 export function loadAISetAntiWhale(slice: Slice) {
-    let sc_0 = slice;
+    const sc_0 = slice;
     if (sc_0.loadUint(32) !== 284672247) { throw Error('Invalid prefix'); }
-    let _queryId = sc_0.loadUintBig(64);
-    let _maxTxBps = sc_0.loadUintBig(16);
-    let _maxWalletBps = sc_0.loadUintBig(16);
-    let _cooldown = sc_0.loadUintBig(16);
-    let _reason = sc_0.loadStringRefTail();
+    const _queryId = sc_0.loadUintBig(64);
+    const _maxTxBps = sc_0.loadUintBig(16);
+    const _maxWalletBps = sc_0.loadUintBig(16);
+    const _cooldown = sc_0.loadUintBig(16);
+    const _reason = sc_0.loadStringRefTail();
     return { $$type: 'AISetAntiWhale' as const, queryId: _queryId, maxTxBps: _maxTxBps, maxWalletBps: _maxWalletBps, cooldown: _cooldown, reason: _reason };
 }
 
-function loadTupleAISetAntiWhale(source: TupleReader) {
-    let _queryId = source.readBigNumber();
-    let _maxTxBps = source.readBigNumber();
-    let _maxWalletBps = source.readBigNumber();
-    let _cooldown = source.readBigNumber();
-    let _reason = source.readString();
+export function loadTupleAISetAntiWhale(source: TupleReader) {
+    const _queryId = source.readBigNumber();
+    const _maxTxBps = source.readBigNumber();
+    const _maxWalletBps = source.readBigNumber();
+    const _cooldown = source.readBigNumber();
+    const _reason = source.readString();
     return { $$type: 'AISetAntiWhale' as const, queryId: _queryId, maxTxBps: _maxTxBps, maxWalletBps: _maxWalletBps, cooldown: _cooldown, reason: _reason };
 }
 
-function loadGetterTupleAISetAntiWhale(source: TupleReader) {
-    let _queryId = source.readBigNumber();
-    let _maxTxBps = source.readBigNumber();
-    let _maxWalletBps = source.readBigNumber();
-    let _cooldown = source.readBigNumber();
-    let _reason = source.readString();
+export function loadGetterTupleAISetAntiWhale(source: TupleReader) {
+    const _queryId = source.readBigNumber();
+    const _maxTxBps = source.readBigNumber();
+    const _maxWalletBps = source.readBigNumber();
+    const _cooldown = source.readBigNumber();
+    const _reason = source.readString();
     return { $$type: 'AISetAntiWhale' as const, queryId: _queryId, maxTxBps: _maxTxBps, maxWalletBps: _maxWalletBps, cooldown: _cooldown, reason: _reason };
 }
 
-function storeTupleAISetAntiWhale(source: AISetAntiWhale) {
-    let builder = new TupleBuilder();
+export function storeTupleAISetAntiWhale(source: AISetAntiWhale) {
+    const builder = new TupleBuilder();
     builder.writeNumber(source.queryId);
     builder.writeNumber(source.maxTxBps);
     builder.writeNumber(source.maxWalletBps);
@@ -1185,7 +2067,7 @@ function storeTupleAISetAntiWhale(source: AISetAntiWhale) {
     return builder.build();
 }
 
-function dictValueParserAISetAntiWhale(): DictionaryValue<AISetAntiWhale> {
+export function dictValueParserAISetAntiWhale(): DictionaryValue<AISetAntiWhale> {
     return {
         serialize: (src, builder) => {
             builder.storeRef(beginCell().store(storeAISetAntiWhale(src)).endCell());
@@ -1208,7 +2090,7 @@ export type AISetBuybackDirect = {
 
 export function storeAISetBuybackDirect(src: AISetBuybackDirect) {
     return (builder: Builder) => {
-        let b_0 = builder;
+        const b_0 = builder;
         b_0.storeUint(156406141, 32);
         b_0.storeUint(src.queryId, 64);
         b_0.storeBit(src.enabled);
@@ -1220,39 +2102,39 @@ export function storeAISetBuybackDirect(src: AISetBuybackDirect) {
 }
 
 export function loadAISetBuybackDirect(slice: Slice) {
-    let sc_0 = slice;
+    const sc_0 = slice;
     if (sc_0.loadUint(32) !== 156406141) { throw Error('Invalid prefix'); }
-    let _queryId = sc_0.loadUintBig(64);
-    let _enabled = sc_0.loadBit();
-    let _threshold = sc_0.loadCoins();
-    let _cooldown = sc_0.loadUintBig(32);
-    let _burnPercent = sc_0.loadUintBig(8);
-    let _reason = sc_0.loadStringRefTail();
+    const _queryId = sc_0.loadUintBig(64);
+    const _enabled = sc_0.loadBit();
+    const _threshold = sc_0.loadCoins();
+    const _cooldown = sc_0.loadUintBig(32);
+    const _burnPercent = sc_0.loadUintBig(8);
+    const _reason = sc_0.loadStringRefTail();
     return { $$type: 'AISetBuybackDirect' as const, queryId: _queryId, enabled: _enabled, threshold: _threshold, cooldown: _cooldown, burnPercent: _burnPercent, reason: _reason };
 }
 
-function loadTupleAISetBuybackDirect(source: TupleReader) {
-    let _queryId = source.readBigNumber();
-    let _enabled = source.readBoolean();
-    let _threshold = source.readBigNumber();
-    let _cooldown = source.readBigNumber();
-    let _burnPercent = source.readBigNumber();
-    let _reason = source.readString();
+export function loadTupleAISetBuybackDirect(source: TupleReader) {
+    const _queryId = source.readBigNumber();
+    const _enabled = source.readBoolean();
+    const _threshold = source.readBigNumber();
+    const _cooldown = source.readBigNumber();
+    const _burnPercent = source.readBigNumber();
+    const _reason = source.readString();
     return { $$type: 'AISetBuybackDirect' as const, queryId: _queryId, enabled: _enabled, threshold: _threshold, cooldown: _cooldown, burnPercent: _burnPercent, reason: _reason };
 }
 
-function loadGetterTupleAISetBuybackDirect(source: TupleReader) {
-    let _queryId = source.readBigNumber();
-    let _enabled = source.readBoolean();
-    let _threshold = source.readBigNumber();
-    let _cooldown = source.readBigNumber();
-    let _burnPercent = source.readBigNumber();
-    let _reason = source.readString();
+export function loadGetterTupleAISetBuybackDirect(source: TupleReader) {
+    const _queryId = source.readBigNumber();
+    const _enabled = source.readBoolean();
+    const _threshold = source.readBigNumber();
+    const _cooldown = source.readBigNumber();
+    const _burnPercent = source.readBigNumber();
+    const _reason = source.readString();
     return { $$type: 'AISetBuybackDirect' as const, queryId: _queryId, enabled: _enabled, threshold: _threshold, cooldown: _cooldown, burnPercent: _burnPercent, reason: _reason };
 }
 
-function storeTupleAISetBuybackDirect(source: AISetBuybackDirect) {
-    let builder = new TupleBuilder();
+export function storeTupleAISetBuybackDirect(source: AISetBuybackDirect) {
+    const builder = new TupleBuilder();
     builder.writeNumber(source.queryId);
     builder.writeBoolean(source.enabled);
     builder.writeNumber(source.threshold);
@@ -1262,7 +2144,7 @@ function storeTupleAISetBuybackDirect(source: AISetBuybackDirect) {
     return builder.build();
 }
 
-function dictValueParserAISetBuybackDirect(): DictionaryValue<AISetBuybackDirect> {
+export function dictValueParserAISetBuybackDirect(): DictionaryValue<AISetBuybackDirect> {
     return {
         serialize: (src, builder) => {
             builder.storeRef(beginCell().store(storeAISetBuybackDirect(src)).endCell());
@@ -1282,7 +2164,7 @@ export type AIToggleTrading = {
 
 export function storeAIToggleTrading(src: AIToggleTrading) {
     return (builder: Builder) => {
-        let b_0 = builder;
+        const b_0 = builder;
         b_0.storeUint(76600837, 32);
         b_0.storeUint(src.queryId, 64);
         b_0.storeBit(src.enabled);
@@ -1291,37 +2173,37 @@ export function storeAIToggleTrading(src: AIToggleTrading) {
 }
 
 export function loadAIToggleTrading(slice: Slice) {
-    let sc_0 = slice;
+    const sc_0 = slice;
     if (sc_0.loadUint(32) !== 76600837) { throw Error('Invalid prefix'); }
-    let _queryId = sc_0.loadUintBig(64);
-    let _enabled = sc_0.loadBit();
-    let _reason = sc_0.loadStringRefTail();
+    const _queryId = sc_0.loadUintBig(64);
+    const _enabled = sc_0.loadBit();
+    const _reason = sc_0.loadStringRefTail();
     return { $$type: 'AIToggleTrading' as const, queryId: _queryId, enabled: _enabled, reason: _reason };
 }
 
-function loadTupleAIToggleTrading(source: TupleReader) {
-    let _queryId = source.readBigNumber();
-    let _enabled = source.readBoolean();
-    let _reason = source.readString();
+export function loadTupleAIToggleTrading(source: TupleReader) {
+    const _queryId = source.readBigNumber();
+    const _enabled = source.readBoolean();
+    const _reason = source.readString();
     return { $$type: 'AIToggleTrading' as const, queryId: _queryId, enabled: _enabled, reason: _reason };
 }
 
-function loadGetterTupleAIToggleTrading(source: TupleReader) {
-    let _queryId = source.readBigNumber();
-    let _enabled = source.readBoolean();
-    let _reason = source.readString();
+export function loadGetterTupleAIToggleTrading(source: TupleReader) {
+    const _queryId = source.readBigNumber();
+    const _enabled = source.readBoolean();
+    const _reason = source.readString();
     return { $$type: 'AIToggleTrading' as const, queryId: _queryId, enabled: _enabled, reason: _reason };
 }
 
-function storeTupleAIToggleTrading(source: AIToggleTrading) {
-    let builder = new TupleBuilder();
+export function storeTupleAIToggleTrading(source: AIToggleTrading) {
+    const builder = new TupleBuilder();
     builder.writeNumber(source.queryId);
     builder.writeBoolean(source.enabled);
     builder.writeString(source.reason);
     return builder.build();
 }
 
-function dictValueParserAIToggleTrading(): DictionaryValue<AIToggleTrading> {
+export function dictValueParserAIToggleTrading(): DictionaryValue<AIToggleTrading> {
     return {
         serialize: (src, builder) => {
             builder.storeRef(beginCell().store(storeAIToggleTrading(src)).endCell());
@@ -1342,7 +2224,7 @@ export type AIEmergencyPause = {
 
 export function storeAIEmergencyPause(src: AIEmergencyPause) {
     return (builder: Builder) => {
-        let b_0 = builder;
+        const b_0 = builder;
         b_0.storeUint(4117793461, 32);
         b_0.storeUint(src.queryId, 64);
         b_0.storeBit(src.pause);
@@ -1352,33 +2234,33 @@ export function storeAIEmergencyPause(src: AIEmergencyPause) {
 }
 
 export function loadAIEmergencyPause(slice: Slice) {
-    let sc_0 = slice;
+    const sc_0 = slice;
     if (sc_0.loadUint(32) !== 4117793461) { throw Error('Invalid prefix'); }
-    let _queryId = sc_0.loadUintBig(64);
-    let _pause = sc_0.loadBit();
-    let _severity = sc_0.loadUintBig(8);
-    let _reason = sc_0.loadStringRefTail();
+    const _queryId = sc_0.loadUintBig(64);
+    const _pause = sc_0.loadBit();
+    const _severity = sc_0.loadUintBig(8);
+    const _reason = sc_0.loadStringRefTail();
     return { $$type: 'AIEmergencyPause' as const, queryId: _queryId, pause: _pause, severity: _severity, reason: _reason };
 }
 
-function loadTupleAIEmergencyPause(source: TupleReader) {
-    let _queryId = source.readBigNumber();
-    let _pause = source.readBoolean();
-    let _severity = source.readBigNumber();
-    let _reason = source.readString();
+export function loadTupleAIEmergencyPause(source: TupleReader) {
+    const _queryId = source.readBigNumber();
+    const _pause = source.readBoolean();
+    const _severity = source.readBigNumber();
+    const _reason = source.readString();
     return { $$type: 'AIEmergencyPause' as const, queryId: _queryId, pause: _pause, severity: _severity, reason: _reason };
 }
 
-function loadGetterTupleAIEmergencyPause(source: TupleReader) {
-    let _queryId = source.readBigNumber();
-    let _pause = source.readBoolean();
-    let _severity = source.readBigNumber();
-    let _reason = source.readString();
+export function loadGetterTupleAIEmergencyPause(source: TupleReader) {
+    const _queryId = source.readBigNumber();
+    const _pause = source.readBoolean();
+    const _severity = source.readBigNumber();
+    const _reason = source.readString();
     return { $$type: 'AIEmergencyPause' as const, queryId: _queryId, pause: _pause, severity: _severity, reason: _reason };
 }
 
-function storeTupleAIEmergencyPause(source: AIEmergencyPause) {
-    let builder = new TupleBuilder();
+export function storeTupleAIEmergencyPause(source: AIEmergencyPause) {
+    const builder = new TupleBuilder();
     builder.writeNumber(source.queryId);
     builder.writeBoolean(source.pause);
     builder.writeNumber(source.severity);
@@ -1386,7 +2268,7 @@ function storeTupleAIEmergencyPause(source: AIEmergencyPause) {
     return builder.build();
 }
 
-function dictValueParserAIEmergencyPause(): DictionaryValue<AIEmergencyPause> {
+export function dictValueParserAIEmergencyPause(): DictionaryValue<AIEmergencyPause> {
     return {
         serialize: (src, builder) => {
             builder.storeRef(beginCell().store(storeAIEmergencyPause(src)).endCell());
@@ -1406,7 +2288,7 @@ export type AIRotateOracle = {
 
 export function storeAIRotateOracle(src: AIRotateOracle) {
     return (builder: Builder) => {
-        let b_0 = builder;
+        const b_0 = builder;
         b_0.storeUint(800136214, 32);
         b_0.storeUint(src.queryId, 64);
         b_0.storeAddress(src.newOracle);
@@ -1415,37 +2297,37 @@ export function storeAIRotateOracle(src: AIRotateOracle) {
 }
 
 export function loadAIRotateOracle(slice: Slice) {
-    let sc_0 = slice;
+    const sc_0 = slice;
     if (sc_0.loadUint(32) !== 800136214) { throw Error('Invalid prefix'); }
-    let _queryId = sc_0.loadUintBig(64);
-    let _newOracle = sc_0.loadAddress();
-    let _reason = sc_0.loadStringRefTail();
+    const _queryId = sc_0.loadUintBig(64);
+    const _newOracle = sc_0.loadAddress();
+    const _reason = sc_0.loadStringRefTail();
     return { $$type: 'AIRotateOracle' as const, queryId: _queryId, newOracle: _newOracle, reason: _reason };
 }
 
-function loadTupleAIRotateOracle(source: TupleReader) {
-    let _queryId = source.readBigNumber();
-    let _newOracle = source.readAddress();
-    let _reason = source.readString();
+export function loadTupleAIRotateOracle(source: TupleReader) {
+    const _queryId = source.readBigNumber();
+    const _newOracle = source.readAddress();
+    const _reason = source.readString();
     return { $$type: 'AIRotateOracle' as const, queryId: _queryId, newOracle: _newOracle, reason: _reason };
 }
 
-function loadGetterTupleAIRotateOracle(source: TupleReader) {
-    let _queryId = source.readBigNumber();
-    let _newOracle = source.readAddress();
-    let _reason = source.readString();
+export function loadGetterTupleAIRotateOracle(source: TupleReader) {
+    const _queryId = source.readBigNumber();
+    const _newOracle = source.readAddress();
+    const _reason = source.readString();
     return { $$type: 'AIRotateOracle' as const, queryId: _queryId, newOracle: _newOracle, reason: _reason };
 }
 
-function storeTupleAIRotateOracle(source: AIRotateOracle) {
-    let builder = new TupleBuilder();
+export function storeTupleAIRotateOracle(source: AIRotateOracle) {
+    const builder = new TupleBuilder();
     builder.writeNumber(source.queryId);
     builder.writeAddress(source.newOracle);
     builder.writeString(source.reason);
     return builder.build();
 }
 
-function dictValueParserAIRotateOracle(): DictionaryValue<AIRotateOracle> {
+export function dictValueParserAIRotateOracle(): DictionaryValue<AIRotateOracle> {
     return {
         serialize: (src, builder) => {
             builder.storeRef(beginCell().store(storeAIRotateOracle(src)).endCell());
@@ -1464,7 +2346,7 @@ export type Mint = {
 
 export function storeMint(src: Mint) {
     return (builder: Builder) => {
-        let b_0 = builder;
+        const b_0 = builder;
         b_0.storeUint(4235234258, 32);
         b_0.storeInt(src.amount, 257);
         b_0.storeAddress(src.receiver);
@@ -1472,33 +2354,33 @@ export function storeMint(src: Mint) {
 }
 
 export function loadMint(slice: Slice) {
-    let sc_0 = slice;
+    const sc_0 = slice;
     if (sc_0.loadUint(32) !== 4235234258) { throw Error('Invalid prefix'); }
-    let _amount = sc_0.loadIntBig(257);
-    let _receiver = sc_0.loadAddress();
+    const _amount = sc_0.loadIntBig(257);
+    const _receiver = sc_0.loadAddress();
     return { $$type: 'Mint' as const, amount: _amount, receiver: _receiver };
 }
 
-function loadTupleMint(source: TupleReader) {
-    let _amount = source.readBigNumber();
-    let _receiver = source.readAddress();
+export function loadTupleMint(source: TupleReader) {
+    const _amount = source.readBigNumber();
+    const _receiver = source.readAddress();
     return { $$type: 'Mint' as const, amount: _amount, receiver: _receiver };
 }
 
-function loadGetterTupleMint(source: TupleReader) {
-    let _amount = source.readBigNumber();
-    let _receiver = source.readAddress();
+export function loadGetterTupleMint(source: TupleReader) {
+    const _amount = source.readBigNumber();
+    const _receiver = source.readAddress();
     return { $$type: 'Mint' as const, amount: _amount, receiver: _receiver };
 }
 
-function storeTupleMint(source: Mint) {
-    let builder = new TupleBuilder();
+export function storeTupleMint(source: Mint) {
+    const builder = new TupleBuilder();
     builder.writeNumber(source.amount);
     builder.writeAddress(source.receiver);
     return builder.build();
 }
 
-function dictValueParserMint(): DictionaryValue<Mint> {
+export function dictValueParserMint(): DictionaryValue<Mint> {
     return {
         serialize: (src, builder) => {
             builder.storeRef(beginCell().store(storeMint(src)).endCell());
@@ -1519,7 +2401,7 @@ export type BurnNotification = {
 
 export function storeBurnNotification(src: BurnNotification) {
     return (builder: Builder) => {
-        let b_0 = builder;
+        const b_0 = builder;
         b_0.storeUint(3675779274, 32);
         b_0.storeUint(src.queryId, 64);
         b_0.storeInt(src.amount, 257);
@@ -1529,33 +2411,33 @@ export function storeBurnNotification(src: BurnNotification) {
 }
 
 export function loadBurnNotification(slice: Slice) {
-    let sc_0 = slice;
+    const sc_0 = slice;
     if (sc_0.loadUint(32) !== 3675779274) { throw Error('Invalid prefix'); }
-    let _queryId = sc_0.loadUintBig(64);
-    let _amount = sc_0.loadIntBig(257);
-    let _sender = sc_0.loadAddress();
-    let _responseDestination = sc_0.loadAddress();
+    const _queryId = sc_0.loadUintBig(64);
+    const _amount = sc_0.loadIntBig(257);
+    const _sender = sc_0.loadAddress();
+    const _responseDestination = sc_0.loadAddress();
     return { $$type: 'BurnNotification' as const, queryId: _queryId, amount: _amount, sender: _sender, responseDestination: _responseDestination };
 }
 
-function loadTupleBurnNotification(source: TupleReader) {
-    let _queryId = source.readBigNumber();
-    let _amount = source.readBigNumber();
-    let _sender = source.readAddress();
-    let _responseDestination = source.readAddress();
+export function loadTupleBurnNotification(source: TupleReader) {
+    const _queryId = source.readBigNumber();
+    const _amount = source.readBigNumber();
+    const _sender = source.readAddress();
+    const _responseDestination = source.readAddress();
     return { $$type: 'BurnNotification' as const, queryId: _queryId, amount: _amount, sender: _sender, responseDestination: _responseDestination };
 }
 
-function loadGetterTupleBurnNotification(source: TupleReader) {
-    let _queryId = source.readBigNumber();
-    let _amount = source.readBigNumber();
-    let _sender = source.readAddress();
-    let _responseDestination = source.readAddress();
+export function loadGetterTupleBurnNotification(source: TupleReader) {
+    const _queryId = source.readBigNumber();
+    const _amount = source.readBigNumber();
+    const _sender = source.readAddress();
+    const _responseDestination = source.readAddress();
     return { $$type: 'BurnNotification' as const, queryId: _queryId, amount: _amount, sender: _sender, responseDestination: _responseDestination };
 }
 
-function storeTupleBurnNotification(source: BurnNotification) {
-    let builder = new TupleBuilder();
+export function storeTupleBurnNotification(source: BurnNotification) {
+    const builder = new TupleBuilder();
     builder.writeNumber(source.queryId);
     builder.writeNumber(source.amount);
     builder.writeAddress(source.sender);
@@ -1563,7 +2445,7 @@ function storeTupleBurnNotification(source: BurnNotification) {
     return builder.build();
 }
 
-function dictValueParserBurnNotification(): DictionaryValue<BurnNotification> {
+export function dictValueParserBurnNotification(): DictionaryValue<BurnNotification> {
     return {
         serialize: (src, builder) => {
             builder.storeRef(beginCell().store(storeBurnNotification(src)).endCell());
@@ -1587,7 +2469,7 @@ export type TokenTransfer = {
 
 export function storeTokenTransfer(src: TokenTransfer) {
     return (builder: Builder) => {
-        let b_0 = builder;
+        const b_0 = builder;
         b_0.storeUint(2477503806, 32);
         b_0.storeUint(src.queryId, 64);
         b_0.storeCoins(src.amount);
@@ -1600,42 +2482,42 @@ export function storeTokenTransfer(src: TokenTransfer) {
 }
 
 export function loadTokenTransfer(slice: Slice) {
-    let sc_0 = slice;
+    const sc_0 = slice;
     if (sc_0.loadUint(32) !== 2477503806) { throw Error('Invalid prefix'); }
-    let _queryId = sc_0.loadUintBig(64);
-    let _amount = sc_0.loadCoins();
-    let _destination = sc_0.loadAddress();
-    let _responseDestination = sc_0.loadAddress();
-    let _customPayload = sc_0.loadBit() ? sc_0.loadRef() : null;
-    let _forwardTonAmount = sc_0.loadCoins();
-    let _forwardPayload = sc_0;
+    const _queryId = sc_0.loadUintBig(64);
+    const _amount = sc_0.loadCoins();
+    const _destination = sc_0.loadAddress();
+    const _responseDestination = sc_0.loadAddress();
+    const _customPayload = sc_0.loadBit() ? sc_0.loadRef() : null;
+    const _forwardTonAmount = sc_0.loadCoins();
+    const _forwardPayload = sc_0;
     return { $$type: 'TokenTransfer' as const, queryId: _queryId, amount: _amount, destination: _destination, responseDestination: _responseDestination, customPayload: _customPayload, forwardTonAmount: _forwardTonAmount, forwardPayload: _forwardPayload };
 }
 
-function loadTupleTokenTransfer(source: TupleReader) {
-    let _queryId = source.readBigNumber();
-    let _amount = source.readBigNumber();
-    let _destination = source.readAddress();
-    let _responseDestination = source.readAddress();
-    let _customPayload = source.readCellOpt();
-    let _forwardTonAmount = source.readBigNumber();
-    let _forwardPayload = source.readCell().asSlice();
+export function loadTupleTokenTransfer(source: TupleReader) {
+    const _queryId = source.readBigNumber();
+    const _amount = source.readBigNumber();
+    const _destination = source.readAddress();
+    const _responseDestination = source.readAddress();
+    const _customPayload = source.readCellOpt();
+    const _forwardTonAmount = source.readBigNumber();
+    const _forwardPayload = source.readCell().asSlice();
     return { $$type: 'TokenTransfer' as const, queryId: _queryId, amount: _amount, destination: _destination, responseDestination: _responseDestination, customPayload: _customPayload, forwardTonAmount: _forwardTonAmount, forwardPayload: _forwardPayload };
 }
 
-function loadGetterTupleTokenTransfer(source: TupleReader) {
-    let _queryId = source.readBigNumber();
-    let _amount = source.readBigNumber();
-    let _destination = source.readAddress();
-    let _responseDestination = source.readAddress();
-    let _customPayload = source.readCellOpt();
-    let _forwardTonAmount = source.readBigNumber();
-    let _forwardPayload = source.readCell().asSlice();
+export function loadGetterTupleTokenTransfer(source: TupleReader) {
+    const _queryId = source.readBigNumber();
+    const _amount = source.readBigNumber();
+    const _destination = source.readAddress();
+    const _responseDestination = source.readAddress();
+    const _customPayload = source.readCellOpt();
+    const _forwardTonAmount = source.readBigNumber();
+    const _forwardPayload = source.readCell().asSlice();
     return { $$type: 'TokenTransfer' as const, queryId: _queryId, amount: _amount, destination: _destination, responseDestination: _responseDestination, customPayload: _customPayload, forwardTonAmount: _forwardTonAmount, forwardPayload: _forwardPayload };
 }
 
-function storeTupleTokenTransfer(source: TokenTransfer) {
-    let builder = new TupleBuilder();
+export function storeTupleTokenTransfer(source: TokenTransfer) {
+    const builder = new TupleBuilder();
     builder.writeNumber(source.queryId);
     builder.writeNumber(source.amount);
     builder.writeAddress(source.destination);
@@ -1646,7 +2528,7 @@ function storeTupleTokenTransfer(source: TokenTransfer) {
     return builder.build();
 }
 
-function dictValueParserTokenTransfer(): DictionaryValue<TokenTransfer> {
+export function dictValueParserTokenTransfer(): DictionaryValue<TokenTransfer> {
     return {
         serialize: (src, builder) => {
             builder.storeRef(beginCell().store(storeTokenTransfer(src)).endCell());
@@ -1667,7 +2549,7 @@ export type TokenBurn = {
 
 export function storeTokenBurn(src: TokenBurn) {
     return (builder: Builder) => {
-        let b_0 = builder;
+        const b_0 = builder;
         b_0.storeUint(3884065811, 32);
         b_0.storeUint(src.queryId, 64);
         b_0.storeCoins(src.amount);
@@ -1677,33 +2559,33 @@ export function storeTokenBurn(src: TokenBurn) {
 }
 
 export function loadTokenBurn(slice: Slice) {
-    let sc_0 = slice;
+    const sc_0 = slice;
     if (sc_0.loadUint(32) !== 3884065811) { throw Error('Invalid prefix'); }
-    let _queryId = sc_0.loadUintBig(64);
-    let _amount = sc_0.loadCoins();
-    let _responseDestination = sc_0.loadAddress();
-    let _customPayload = sc_0.loadBit() ? sc_0.loadRef() : null;
+    const _queryId = sc_0.loadUintBig(64);
+    const _amount = sc_0.loadCoins();
+    const _responseDestination = sc_0.loadAddress();
+    const _customPayload = sc_0.loadBit() ? sc_0.loadRef() : null;
     return { $$type: 'TokenBurn' as const, queryId: _queryId, amount: _amount, responseDestination: _responseDestination, customPayload: _customPayload };
 }
 
-function loadTupleTokenBurn(source: TupleReader) {
-    let _queryId = source.readBigNumber();
-    let _amount = source.readBigNumber();
-    let _responseDestination = source.readAddress();
-    let _customPayload = source.readCellOpt();
+export function loadTupleTokenBurn(source: TupleReader) {
+    const _queryId = source.readBigNumber();
+    const _amount = source.readBigNumber();
+    const _responseDestination = source.readAddress();
+    const _customPayload = source.readCellOpt();
     return { $$type: 'TokenBurn' as const, queryId: _queryId, amount: _amount, responseDestination: _responseDestination, customPayload: _customPayload };
 }
 
-function loadGetterTupleTokenBurn(source: TupleReader) {
-    let _queryId = source.readBigNumber();
-    let _amount = source.readBigNumber();
-    let _responseDestination = source.readAddress();
-    let _customPayload = source.readCellOpt();
+export function loadGetterTupleTokenBurn(source: TupleReader) {
+    const _queryId = source.readBigNumber();
+    const _amount = source.readBigNumber();
+    const _responseDestination = source.readAddress();
+    const _customPayload = source.readCellOpt();
     return { $$type: 'TokenBurn' as const, queryId: _queryId, amount: _amount, responseDestination: _responseDestination, customPayload: _customPayload };
 }
 
-function storeTupleTokenBurn(source: TokenBurn) {
-    let builder = new TupleBuilder();
+export function storeTupleTokenBurn(source: TokenBurn) {
+    const builder = new TupleBuilder();
     builder.writeNumber(source.queryId);
     builder.writeNumber(source.amount);
     builder.writeAddress(source.responseDestination);
@@ -1711,7 +2593,7 @@ function storeTupleTokenBurn(source: TokenBurn) {
     return builder.build();
 }
 
-function dictValueParserTokenBurn(): DictionaryValue<TokenBurn> {
+export function dictValueParserTokenBurn(): DictionaryValue<TokenBurn> {
     return {
         serialize: (src, builder) => {
             builder.storeRef(beginCell().store(storeTokenBurn(src)).endCell());
@@ -1732,7 +2614,7 @@ export type TokenNotification = {
 
 export function storeTokenNotification(src: TokenNotification) {
     return (builder: Builder) => {
-        let b_0 = builder;
+        const b_0 = builder;
         b_0.storeUint(78460803, 32);
         b_0.storeUint(src.queryId, 64);
         b_0.storeCoins(src.amount);
@@ -1742,33 +2624,33 @@ export function storeTokenNotification(src: TokenNotification) {
 }
 
 export function loadTokenNotification(slice: Slice) {
-    let sc_0 = slice;
+    const sc_0 = slice;
     if (sc_0.loadUint(32) !== 78460803) { throw Error('Invalid prefix'); }
-    let _queryId = sc_0.loadUintBig(64);
-    let _amount = sc_0.loadCoins();
-    let _from = sc_0.loadAddress();
-    let _forwardPayload = sc_0;
+    const _queryId = sc_0.loadUintBig(64);
+    const _amount = sc_0.loadCoins();
+    const _from = sc_0.loadAddress();
+    const _forwardPayload = sc_0;
     return { $$type: 'TokenNotification' as const, queryId: _queryId, amount: _amount, from: _from, forwardPayload: _forwardPayload };
 }
 
-function loadTupleTokenNotification(source: TupleReader) {
-    let _queryId = source.readBigNumber();
-    let _amount = source.readBigNumber();
-    let _from = source.readAddress();
-    let _forwardPayload = source.readCell().asSlice();
+export function loadTupleTokenNotification(source: TupleReader) {
+    const _queryId = source.readBigNumber();
+    const _amount = source.readBigNumber();
+    const _from = source.readAddress();
+    const _forwardPayload = source.readCell().asSlice();
     return { $$type: 'TokenNotification' as const, queryId: _queryId, amount: _amount, from: _from, forwardPayload: _forwardPayload };
 }
 
-function loadGetterTupleTokenNotification(source: TupleReader) {
-    let _queryId = source.readBigNumber();
-    let _amount = source.readBigNumber();
-    let _from = source.readAddress();
-    let _forwardPayload = source.readCell().asSlice();
+export function loadGetterTupleTokenNotification(source: TupleReader) {
+    const _queryId = source.readBigNumber();
+    const _amount = source.readBigNumber();
+    const _from = source.readAddress();
+    const _forwardPayload = source.readCell().asSlice();
     return { $$type: 'TokenNotification' as const, queryId: _queryId, amount: _amount, from: _from, forwardPayload: _forwardPayload };
 }
 
-function storeTupleTokenNotification(source: TokenNotification) {
-    let builder = new TupleBuilder();
+export function storeTupleTokenNotification(source: TokenNotification) {
+    const builder = new TupleBuilder();
     builder.writeNumber(source.queryId);
     builder.writeNumber(source.amount);
     builder.writeAddress(source.from);
@@ -1776,7 +2658,7 @@ function storeTupleTokenNotification(source: TokenNotification) {
     return builder.build();
 }
 
-function dictValueParserTokenNotification(): DictionaryValue<TokenNotification> {
+export function dictValueParserTokenNotification(): DictionaryValue<TokenNotification> {
     return {
         serialize: (src, builder) => {
             builder.storeRef(beginCell().store(storeTokenNotification(src)).endCell());
@@ -1797,7 +2679,7 @@ export type FeeTransfer = {
 
 export function storeFeeTransfer(src: FeeTransfer) {
     return (builder: Builder) => {
-        let b_0 = builder;
+        const b_0 = builder;
         b_0.storeUint(3948052191, 32);
         b_0.storeUint(src.queryId, 64);
         b_0.storeCoins(src.amount);
@@ -1807,33 +2689,33 @@ export function storeFeeTransfer(src: FeeTransfer) {
 }
 
 export function loadFeeTransfer(slice: Slice) {
-    let sc_0 = slice;
+    const sc_0 = slice;
     if (sc_0.loadUint(32) !== 3948052191) { throw Error('Invalid prefix'); }
-    let _queryId = sc_0.loadUintBig(64);
-    let _amount = sc_0.loadCoins();
-    let _originalSender = sc_0.loadAddress();
-    let _originalReceiver = sc_0.loadAddress();
+    const _queryId = sc_0.loadUintBig(64);
+    const _amount = sc_0.loadCoins();
+    const _originalSender = sc_0.loadAddress();
+    const _originalReceiver = sc_0.loadAddress();
     return { $$type: 'FeeTransfer' as const, queryId: _queryId, amount: _amount, originalSender: _originalSender, originalReceiver: _originalReceiver };
 }
 
-function loadTupleFeeTransfer(source: TupleReader) {
-    let _queryId = source.readBigNumber();
-    let _amount = source.readBigNumber();
-    let _originalSender = source.readAddress();
-    let _originalReceiver = source.readAddress();
+export function loadTupleFeeTransfer(source: TupleReader) {
+    const _queryId = source.readBigNumber();
+    const _amount = source.readBigNumber();
+    const _originalSender = source.readAddress();
+    const _originalReceiver = source.readAddress();
     return { $$type: 'FeeTransfer' as const, queryId: _queryId, amount: _amount, originalSender: _originalSender, originalReceiver: _originalReceiver };
 }
 
-function loadGetterTupleFeeTransfer(source: TupleReader) {
-    let _queryId = source.readBigNumber();
-    let _amount = source.readBigNumber();
-    let _originalSender = source.readAddress();
-    let _originalReceiver = source.readAddress();
+export function loadGetterTupleFeeTransfer(source: TupleReader) {
+    const _queryId = source.readBigNumber();
+    const _amount = source.readBigNumber();
+    const _originalSender = source.readAddress();
+    const _originalReceiver = source.readAddress();
     return { $$type: 'FeeTransfer' as const, queryId: _queryId, amount: _amount, originalSender: _originalSender, originalReceiver: _originalReceiver };
 }
 
-function storeTupleFeeTransfer(source: FeeTransfer) {
-    let builder = new TupleBuilder();
+export function storeTupleFeeTransfer(source: FeeTransfer) {
+    const builder = new TupleBuilder();
     builder.writeNumber(source.queryId);
     builder.writeNumber(source.amount);
     builder.writeAddress(source.originalSender);
@@ -1841,7 +2723,7 @@ function storeTupleFeeTransfer(source: FeeTransfer) {
     return builder.build();
 }
 
-function dictValueParserFeeTransfer(): DictionaryValue<FeeTransfer> {
+export function dictValueParserFeeTransfer(): DictionaryValue<FeeTransfer> {
     return {
         serialize: (src, builder) => {
             builder.storeRef(beginCell().store(storeFeeTransfer(src)).endCell());
@@ -1859,36 +2741,36 @@ export type SetTreasury = {
 
 export function storeSetTreasury(src: SetTreasury) {
     return (builder: Builder) => {
-        let b_0 = builder;
+        const b_0 = builder;
         b_0.storeUint(3485887677, 32);
         b_0.storeAddress(src.treasury);
     };
 }
 
 export function loadSetTreasury(slice: Slice) {
-    let sc_0 = slice;
+    const sc_0 = slice;
     if (sc_0.loadUint(32) !== 3485887677) { throw Error('Invalid prefix'); }
-    let _treasury = sc_0.loadAddress();
+    const _treasury = sc_0.loadAddress();
     return { $$type: 'SetTreasury' as const, treasury: _treasury };
 }
 
-function loadTupleSetTreasury(source: TupleReader) {
-    let _treasury = source.readAddress();
+export function loadTupleSetTreasury(source: TupleReader) {
+    const _treasury = source.readAddress();
     return { $$type: 'SetTreasury' as const, treasury: _treasury };
 }
 
-function loadGetterTupleSetTreasury(source: TupleReader) {
-    let _treasury = source.readAddress();
+export function loadGetterTupleSetTreasury(source: TupleReader) {
+    const _treasury = source.readAddress();
     return { $$type: 'SetTreasury' as const, treasury: _treasury };
 }
 
-function storeTupleSetTreasury(source: SetTreasury) {
-    let builder = new TupleBuilder();
+export function storeTupleSetTreasury(source: SetTreasury) {
+    const builder = new TupleBuilder();
     builder.writeAddress(source.treasury);
     return builder.build();
 }
 
-function dictValueParserSetTreasury(): DictionaryValue<SetTreasury> {
+export function dictValueParserSetTreasury(): DictionaryValue<SetTreasury> {
     return {
         serialize: (src, builder) => {
             builder.storeRef(beginCell().store(storeSetTreasury(src)).endCell());
@@ -1910,7 +2792,7 @@ export type SetFeeConfig = {
 
 export function storeSetFeeConfig(src: SetFeeConfig) {
     return (builder: Builder) => {
-        let b_0 = builder;
+        const b_0 = builder;
         b_0.storeUint(1007896360, 32);
         b_0.storeUint(src.feeBps, 16);
         b_0.storeUint(src.burnShare, 8);
@@ -1921,36 +2803,36 @@ export function storeSetFeeConfig(src: SetFeeConfig) {
 }
 
 export function loadSetFeeConfig(slice: Slice) {
-    let sc_0 = slice;
+    const sc_0 = slice;
     if (sc_0.loadUint(32) !== 1007896360) { throw Error('Invalid prefix'); }
-    let _feeBps = sc_0.loadUintBig(16);
-    let _burnShare = sc_0.loadUintBig(8);
-    let _maxTxBps = sc_0.loadUintBig(16);
-    let _maxWalletBps = sc_0.loadUintBig(16);
-    let _cooldown = sc_0.loadUintBig(16);
+    const _feeBps = sc_0.loadUintBig(16);
+    const _burnShare = sc_0.loadUintBig(8);
+    const _maxTxBps = sc_0.loadUintBig(16);
+    const _maxWalletBps = sc_0.loadUintBig(16);
+    const _cooldown = sc_0.loadUintBig(16);
     return { $$type: 'SetFeeConfig' as const, feeBps: _feeBps, burnShare: _burnShare, maxTxBps: _maxTxBps, maxWalletBps: _maxWalletBps, cooldown: _cooldown };
 }
 
-function loadTupleSetFeeConfig(source: TupleReader) {
-    let _feeBps = source.readBigNumber();
-    let _burnShare = source.readBigNumber();
-    let _maxTxBps = source.readBigNumber();
-    let _maxWalletBps = source.readBigNumber();
-    let _cooldown = source.readBigNumber();
+export function loadTupleSetFeeConfig(source: TupleReader) {
+    const _feeBps = source.readBigNumber();
+    const _burnShare = source.readBigNumber();
+    const _maxTxBps = source.readBigNumber();
+    const _maxWalletBps = source.readBigNumber();
+    const _cooldown = source.readBigNumber();
     return { $$type: 'SetFeeConfig' as const, feeBps: _feeBps, burnShare: _burnShare, maxTxBps: _maxTxBps, maxWalletBps: _maxWalletBps, cooldown: _cooldown };
 }
 
-function loadGetterTupleSetFeeConfig(source: TupleReader) {
-    let _feeBps = source.readBigNumber();
-    let _burnShare = source.readBigNumber();
-    let _maxTxBps = source.readBigNumber();
-    let _maxWalletBps = source.readBigNumber();
-    let _cooldown = source.readBigNumber();
+export function loadGetterTupleSetFeeConfig(source: TupleReader) {
+    const _feeBps = source.readBigNumber();
+    const _burnShare = source.readBigNumber();
+    const _maxTxBps = source.readBigNumber();
+    const _maxWalletBps = source.readBigNumber();
+    const _cooldown = source.readBigNumber();
     return { $$type: 'SetFeeConfig' as const, feeBps: _feeBps, burnShare: _burnShare, maxTxBps: _maxTxBps, maxWalletBps: _maxWalletBps, cooldown: _cooldown };
 }
 
-function storeTupleSetFeeConfig(source: SetFeeConfig) {
-    let builder = new TupleBuilder();
+export function storeTupleSetFeeConfig(source: SetFeeConfig) {
+    const builder = new TupleBuilder();
     builder.writeNumber(source.feeBps);
     builder.writeNumber(source.burnShare);
     builder.writeNumber(source.maxTxBps);
@@ -1959,7 +2841,7 @@ function storeTupleSetFeeConfig(source: SetFeeConfig) {
     return builder.build();
 }
 
-function dictValueParserSetFeeConfig(): DictionaryValue<SetFeeConfig> {
+export function dictValueParserSetFeeConfig(): DictionaryValue<SetFeeConfig> {
     return {
         serialize: (src, builder) => {
             builder.storeRef(beginCell().store(storeSetFeeConfig(src)).endCell());
@@ -1977,36 +2859,36 @@ export type ToggleTrading = {
 
 export function storeToggleTrading(src: ToggleTrading) {
     return (builder: Builder) => {
-        let b_0 = builder;
+        const b_0 = builder;
         b_0.storeUint(4051840417, 32);
         b_0.storeBit(src.enabled);
     };
 }
 
 export function loadToggleTrading(slice: Slice) {
-    let sc_0 = slice;
+    const sc_0 = slice;
     if (sc_0.loadUint(32) !== 4051840417) { throw Error('Invalid prefix'); }
-    let _enabled = sc_0.loadBit();
+    const _enabled = sc_0.loadBit();
     return { $$type: 'ToggleTrading' as const, enabled: _enabled };
 }
 
-function loadTupleToggleTrading(source: TupleReader) {
-    let _enabled = source.readBoolean();
+export function loadTupleToggleTrading(source: TupleReader) {
+    const _enabled = source.readBoolean();
     return { $$type: 'ToggleTrading' as const, enabled: _enabled };
 }
 
-function loadGetterTupleToggleTrading(source: TupleReader) {
-    let _enabled = source.readBoolean();
+export function loadGetterTupleToggleTrading(source: TupleReader) {
+    const _enabled = source.readBoolean();
     return { $$type: 'ToggleTrading' as const, enabled: _enabled };
 }
 
-function storeTupleToggleTrading(source: ToggleTrading) {
-    let builder = new TupleBuilder();
+export function storeTupleToggleTrading(source: ToggleTrading) {
+    const builder = new TupleBuilder();
     builder.writeBoolean(source.enabled);
     return builder.build();
 }
 
-function dictValueParserToggleTrading(): DictionaryValue<ToggleTrading> {
+export function dictValueParserToggleTrading(): DictionaryValue<ToggleTrading> {
     return {
         serialize: (src, builder) => {
             builder.storeRef(beginCell().store(storeToggleTrading(src)).endCell());
@@ -2024,36 +2906,36 @@ export type TriggerBuyback = {
 
 export function storeTriggerBuyback(src: TriggerBuyback) {
     return (builder: Builder) => {
-        let b_0 = builder;
+        const b_0 = builder;
         b_0.storeUint(3487694140, 32);
         b_0.storeUint(src.queryId, 64);
     };
 }
 
 export function loadTriggerBuyback(slice: Slice) {
-    let sc_0 = slice;
+    const sc_0 = slice;
     if (sc_0.loadUint(32) !== 3487694140) { throw Error('Invalid prefix'); }
-    let _queryId = sc_0.loadUintBig(64);
+    const _queryId = sc_0.loadUintBig(64);
     return { $$type: 'TriggerBuyback' as const, queryId: _queryId };
 }
 
-function loadTupleTriggerBuyback(source: TupleReader) {
-    let _queryId = source.readBigNumber();
+export function loadTupleTriggerBuyback(source: TupleReader) {
+    const _queryId = source.readBigNumber();
     return { $$type: 'TriggerBuyback' as const, queryId: _queryId };
 }
 
-function loadGetterTupleTriggerBuyback(source: TupleReader) {
-    let _queryId = source.readBigNumber();
+export function loadGetterTupleTriggerBuyback(source: TupleReader) {
+    const _queryId = source.readBigNumber();
     return { $$type: 'TriggerBuyback' as const, queryId: _queryId };
 }
 
-function storeTupleTriggerBuyback(source: TriggerBuyback) {
-    let builder = new TupleBuilder();
+export function storeTupleTriggerBuyback(source: TriggerBuyback) {
+    const builder = new TupleBuilder();
     builder.writeNumber(source.queryId);
     return builder.build();
 }
 
-function dictValueParserTriggerBuyback(): DictionaryValue<TriggerBuyback> {
+export function dictValueParserTriggerBuyback(): DictionaryValue<TriggerBuyback> {
     return {
         serialize: (src, builder) => {
             builder.storeRef(beginCell().store(storeTriggerBuyback(src)).endCell());
@@ -2074,7 +2956,7 @@ export type SetBuybackConfig = {
 
 export function storeSetBuybackConfig(src: SetBuybackConfig) {
     return (builder: Builder) => {
-        let b_0 = builder;
+        const b_0 = builder;
         b_0.storeUint(2209879114, 32);
         b_0.storeBit(src.enabled);
         b_0.storeCoins(src.threshold);
@@ -2084,33 +2966,33 @@ export function storeSetBuybackConfig(src: SetBuybackConfig) {
 }
 
 export function loadSetBuybackConfig(slice: Slice) {
-    let sc_0 = slice;
+    const sc_0 = slice;
     if (sc_0.loadUint(32) !== 2209879114) { throw Error('Invalid prefix'); }
-    let _enabled = sc_0.loadBit();
-    let _threshold = sc_0.loadCoins();
-    let _cooldown = sc_0.loadUintBig(32);
-    let _burnPercent = sc_0.loadUintBig(8);
+    const _enabled = sc_0.loadBit();
+    const _threshold = sc_0.loadCoins();
+    const _cooldown = sc_0.loadUintBig(32);
+    const _burnPercent = sc_0.loadUintBig(8);
     return { $$type: 'SetBuybackConfig' as const, enabled: _enabled, threshold: _threshold, cooldown: _cooldown, burnPercent: _burnPercent };
 }
 
-function loadTupleSetBuybackConfig(source: TupleReader) {
-    let _enabled = source.readBoolean();
-    let _threshold = source.readBigNumber();
-    let _cooldown = source.readBigNumber();
-    let _burnPercent = source.readBigNumber();
+export function loadTupleSetBuybackConfig(source: TupleReader) {
+    const _enabled = source.readBoolean();
+    const _threshold = source.readBigNumber();
+    const _cooldown = source.readBigNumber();
+    const _burnPercent = source.readBigNumber();
     return { $$type: 'SetBuybackConfig' as const, enabled: _enabled, threshold: _threshold, cooldown: _cooldown, burnPercent: _burnPercent };
 }
 
-function loadGetterTupleSetBuybackConfig(source: TupleReader) {
-    let _enabled = source.readBoolean();
-    let _threshold = source.readBigNumber();
-    let _cooldown = source.readBigNumber();
-    let _burnPercent = source.readBigNumber();
+export function loadGetterTupleSetBuybackConfig(source: TupleReader) {
+    const _enabled = source.readBoolean();
+    const _threshold = source.readBigNumber();
+    const _cooldown = source.readBigNumber();
+    const _burnPercent = source.readBigNumber();
     return { $$type: 'SetBuybackConfig' as const, enabled: _enabled, threshold: _threshold, cooldown: _cooldown, burnPercent: _burnPercent };
 }
 
-function storeTupleSetBuybackConfig(source: SetBuybackConfig) {
-    let builder = new TupleBuilder();
+export function storeTupleSetBuybackConfig(source: SetBuybackConfig) {
+    const builder = new TupleBuilder();
     builder.writeBoolean(source.enabled);
     builder.writeNumber(source.threshold);
     builder.writeNumber(source.cooldown);
@@ -2118,13 +3000,107 @@ function storeTupleSetBuybackConfig(source: SetBuybackConfig) {
     return builder.build();
 }
 
-function dictValueParserSetBuybackConfig(): DictionaryValue<SetBuybackConfig> {
+export function dictValueParserSetBuybackConfig(): DictionaryValue<SetBuybackConfig> {
     return {
         serialize: (src, builder) => {
             builder.storeRef(beginCell().store(storeSetBuybackConfig(src)).endCell());
         },
         parse: (src) => {
             return loadSetBuybackConfig(src.loadRef().beginParse());
+        }
+    }
+}
+
+export type SetDefiAddress = {
+    $$type: 'SetDefiAddress';
+    defiAddress: Address;
+}
+
+export function storeSetDefiAddress(src: SetDefiAddress) {
+    return (builder: Builder) => {
+        const b_0 = builder;
+        b_0.storeUint(587306774, 32);
+        b_0.storeAddress(src.defiAddress);
+    };
+}
+
+export function loadSetDefiAddress(slice: Slice) {
+    const sc_0 = slice;
+    if (sc_0.loadUint(32) !== 587306774) { throw Error('Invalid prefix'); }
+    const _defiAddress = sc_0.loadAddress();
+    return { $$type: 'SetDefiAddress' as const, defiAddress: _defiAddress };
+}
+
+export function loadTupleSetDefiAddress(source: TupleReader) {
+    const _defiAddress = source.readAddress();
+    return { $$type: 'SetDefiAddress' as const, defiAddress: _defiAddress };
+}
+
+export function loadGetterTupleSetDefiAddress(source: TupleReader) {
+    const _defiAddress = source.readAddress();
+    return { $$type: 'SetDefiAddress' as const, defiAddress: _defiAddress };
+}
+
+export function storeTupleSetDefiAddress(source: SetDefiAddress) {
+    const builder = new TupleBuilder();
+    builder.writeAddress(source.defiAddress);
+    return builder.build();
+}
+
+export function dictValueParserSetDefiAddress(): DictionaryValue<SetDefiAddress> {
+    return {
+        serialize: (src, builder) => {
+            builder.storeRef(beginCell().store(storeSetDefiAddress(src)).endCell());
+        },
+        parse: (src) => {
+            return loadSetDefiAddress(src.loadRef().beginParse());
+        }
+    }
+}
+
+export type SyncFeeToDefi = {
+    $$type: 'SyncFeeToDefi';
+    amount: bigint;
+}
+
+export function storeSyncFeeToDefi(src: SyncFeeToDefi) {
+    return (builder: Builder) => {
+        const b_0 = builder;
+        b_0.storeUint(94992733, 32);
+        b_0.storeCoins(src.amount);
+    };
+}
+
+export function loadSyncFeeToDefi(slice: Slice) {
+    const sc_0 = slice;
+    if (sc_0.loadUint(32) !== 94992733) { throw Error('Invalid prefix'); }
+    const _amount = sc_0.loadCoins();
+    return { $$type: 'SyncFeeToDefi' as const, amount: _amount };
+}
+
+export function loadTupleSyncFeeToDefi(source: TupleReader) {
+    const _amount = source.readBigNumber();
+    return { $$type: 'SyncFeeToDefi' as const, amount: _amount };
+}
+
+export function loadGetterTupleSyncFeeToDefi(source: TupleReader) {
+    const _amount = source.readBigNumber();
+    return { $$type: 'SyncFeeToDefi' as const, amount: _amount };
+}
+
+export function storeTupleSyncFeeToDefi(source: SyncFeeToDefi) {
+    const builder = new TupleBuilder();
+    builder.writeNumber(source.amount);
+    return builder.build();
+}
+
+export function dictValueParserSyncFeeToDefi(): DictionaryValue<SyncFeeToDefi> {
+    return {
+        serialize: (src, builder) => {
+            builder.storeRef(beginCell().store(storeSyncFeeToDefi(src)).endCell());
+        },
+        parse: (src) => {
+            return loadSyncFeeToDefi(src.loadRef().beginParse());
         }
     }
 }
@@ -2136,36 +3112,36 @@ export type Stake = {
 
 export function storeStake(src: Stake) {
     return (builder: Builder) => {
-        let b_0 = builder;
+        const b_0 = builder;
         b_0.storeUint(3203459332, 32);
         b_0.storeCoins(src.amount);
     };
 }
 
 export function loadStake(slice: Slice) {
-    let sc_0 = slice;
+    const sc_0 = slice;
     if (sc_0.loadUint(32) !== 3203459332) { throw Error('Invalid prefix'); }
-    let _amount = sc_0.loadCoins();
+    const _amount = sc_0.loadCoins();
     return { $$type: 'Stake' as const, amount: _amount };
 }
 
-function loadTupleStake(source: TupleReader) {
-    let _amount = source.readBigNumber();
+export function loadTupleStake(source: TupleReader) {
+    const _amount = source.readBigNumber();
     return { $$type: 'Stake' as const, amount: _amount };
 }
 
-function loadGetterTupleStake(source: TupleReader) {
-    let _amount = source.readBigNumber();
+export function loadGetterTupleStake(source: TupleReader) {
+    const _amount = source.readBigNumber();
     return { $$type: 'Stake' as const, amount: _amount };
 }
 
-function storeTupleStake(source: Stake) {
-    let builder = new TupleBuilder();
+export function storeTupleStake(source: Stake) {
+    const builder = new TupleBuilder();
     builder.writeNumber(source.amount);
     return builder.build();
 }
 
-function dictValueParserStake(): DictionaryValue<Stake> {
+export function dictValueParserStake(): DictionaryValue<Stake> {
     return {
         serialize: (src, builder) => {
             builder.storeRef(beginCell().store(storeStake(src)).endCell());
@@ -2183,36 +3159,36 @@ export type Unstake = {
 
 export function storeUnstake(src: Unstake) {
     return (builder: Builder) => {
-        let b_0 = builder;
+        const b_0 = builder;
         b_0.storeUint(4284693473, 32);
         b_0.storeCoins(src.amount);
     };
 }
 
 export function loadUnstake(slice: Slice) {
-    let sc_0 = slice;
+    const sc_0 = slice;
     if (sc_0.loadUint(32) !== 4284693473) { throw Error('Invalid prefix'); }
-    let _amount = sc_0.loadCoins();
+    const _amount = sc_0.loadCoins();
     return { $$type: 'Unstake' as const, amount: _amount };
 }
 
-function loadTupleUnstake(source: TupleReader) {
-    let _amount = source.readBigNumber();
+export function loadTupleUnstake(source: TupleReader) {
+    const _amount = source.readBigNumber();
     return { $$type: 'Unstake' as const, amount: _amount };
 }
 
-function loadGetterTupleUnstake(source: TupleReader) {
-    let _amount = source.readBigNumber();
+export function loadGetterTupleUnstake(source: TupleReader) {
+    const _amount = source.readBigNumber();
     return { $$type: 'Unstake' as const, amount: _amount };
 }
 
-function storeTupleUnstake(source: Unstake) {
-    let builder = new TupleBuilder();
+export function storeTupleUnstake(source: Unstake) {
+    const builder = new TupleBuilder();
     builder.writeNumber(source.amount);
     return builder.build();
 }
 
-function dictValueParserUnstake(): DictionaryValue<Unstake> {
+export function dictValueParserUnstake(): DictionaryValue<Unstake> {
     return {
         serialize: (src, builder) => {
             builder.storeRef(beginCell().store(storeUnstake(src)).endCell());
@@ -2229,31 +3205,31 @@ export type ClaimRewards = {
 
 export function storeClaimRewards(src: ClaimRewards) {
     return (builder: Builder) => {
-        let b_0 = builder;
+        const b_0 = builder;
         b_0.storeUint(155852668, 32);
     };
 }
 
 export function loadClaimRewards(slice: Slice) {
-    let sc_0 = slice;
+    const sc_0 = slice;
     if (sc_0.loadUint(32) !== 155852668) { throw Error('Invalid prefix'); }
     return { $$type: 'ClaimRewards' as const };
 }
 
-function loadTupleClaimRewards(source: TupleReader) {
+export function loadTupleClaimRewards(source: TupleReader) {
     return { $$type: 'ClaimRewards' as const };
 }
 
-function loadGetterTupleClaimRewards(source: TupleReader) {
+export function loadGetterTupleClaimRewards(source: TupleReader) {
     return { $$type: 'ClaimRewards' as const };
 }
 
-function storeTupleClaimRewards(source: ClaimRewards) {
-    let builder = new TupleBuilder();
+export function storeTupleClaimRewards(source: ClaimRewards) {
+    const builder = new TupleBuilder();
     return builder.build();
 }
 
-function dictValueParserClaimRewards(): DictionaryValue<ClaimRewards> {
+export function dictValueParserClaimRewards(): DictionaryValue<ClaimRewards> {
     return {
         serialize: (src, builder) => {
             builder.storeRef(beginCell().store(storeClaimRewards(src)).endCell());
@@ -2274,7 +3250,7 @@ export type SetStakingConfig = {
 
 export function storeSetStakingConfig(src: SetStakingConfig) {
     return (builder: Builder) => {
-        let b_0 = builder;
+        const b_0 = builder;
         b_0.storeUint(331180850, 32);
         b_0.storeBit(src.enabled);
         b_0.storeUint(src.apyBps, 16);
@@ -2284,33 +3260,33 @@ export function storeSetStakingConfig(src: SetStakingConfig) {
 }
 
 export function loadSetStakingConfig(slice: Slice) {
-    let sc_0 = slice;
+    const sc_0 = slice;
     if (sc_0.loadUint(32) !== 331180850) { throw Error('Invalid prefix'); }
-    let _enabled = sc_0.loadBit();
-    let _apyBps = sc_0.loadUintBig(16);
-    let _minStake = sc_0.loadCoins();
-    let _lockPeriod = sc_0.loadUintBig(32);
+    const _enabled = sc_0.loadBit();
+    const _apyBps = sc_0.loadUintBig(16);
+    const _minStake = sc_0.loadCoins();
+    const _lockPeriod = sc_0.loadUintBig(32);
     return { $$type: 'SetStakingConfig' as const, enabled: _enabled, apyBps: _apyBps, minStake: _minStake, lockPeriod: _lockPeriod };
 }
 
-function loadTupleSetStakingConfig(source: TupleReader) {
-    let _enabled = source.readBoolean();
-    let _apyBps = source.readBigNumber();
-    let _minStake = source.readBigNumber();
-    let _lockPeriod = source.readBigNumber();
+export function loadTupleSetStakingConfig(source: TupleReader) {
+    const _enabled = source.readBoolean();
+    const _apyBps = source.readBigNumber();
+    const _minStake = source.readBigNumber();
+    const _lockPeriod = source.readBigNumber();
     return { $$type: 'SetStakingConfig' as const, enabled: _enabled, apyBps: _apyBps, minStake: _minStake, lockPeriod: _lockPeriod };
 }
 
-function loadGetterTupleSetStakingConfig(source: TupleReader) {
-    let _enabled = source.readBoolean();
-    let _apyBps = source.readBigNumber();
-    let _minStake = source.readBigNumber();
-    let _lockPeriod = source.readBigNumber();
+export function loadGetterTupleSetStakingConfig(source: TupleReader) {
+    const _enabled = source.readBoolean();
+    const _apyBps = source.readBigNumber();
+    const _minStake = source.readBigNumber();
+    const _lockPeriod = source.readBigNumber();
     return { $$type: 'SetStakingConfig' as const, enabled: _enabled, apyBps: _apyBps, minStake: _minStake, lockPeriod: _lockPeriod };
 }
 
-function storeTupleSetStakingConfig(source: SetStakingConfig) {
-    let builder = new TupleBuilder();
+export function storeTupleSetStakingConfig(source: SetStakingConfig) {
+    const builder = new TupleBuilder();
     builder.writeBoolean(source.enabled);
     builder.writeNumber(source.apyBps);
     builder.writeNumber(source.minStake);
@@ -2318,7 +3294,7 @@ function storeTupleSetStakingConfig(source: SetStakingConfig) {
     return builder.build();
 }
 
-function dictValueParserSetStakingConfig(): DictionaryValue<SetStakingConfig> {
+export function dictValueParserSetStakingConfig(): DictionaryValue<SetStakingConfig> {
     return {
         serialize: (src, builder) => {
             builder.storeRef(beginCell().store(storeSetStakingConfig(src)).endCell());
@@ -2336,36 +3312,36 @@ export type RegisterReferral = {
 
 export function storeRegisterReferral(src: RegisterReferral) {
     return (builder: Builder) => {
-        let b_0 = builder;
+        const b_0 = builder;
         b_0.storeUint(3551857443, 32);
         b_0.storeAddress(src.referrer);
     };
 }
 
 export function loadRegisterReferral(slice: Slice) {
-    let sc_0 = slice;
+    const sc_0 = slice;
     if (sc_0.loadUint(32) !== 3551857443) { throw Error('Invalid prefix'); }
-    let _referrer = sc_0.loadAddress();
+    const _referrer = sc_0.loadAddress();
     return { $$type: 'RegisterReferral' as const, referrer: _referrer };
 }
 
-function loadTupleRegisterReferral(source: TupleReader) {
-    let _referrer = source.readAddress();
+export function loadTupleRegisterReferral(source: TupleReader) {
+    const _referrer = source.readAddress();
     return { $$type: 'RegisterReferral' as const, referrer: _referrer };
 }
 
-function loadGetterTupleRegisterReferral(source: TupleReader) {
-    let _referrer = source.readAddress();
+export function loadGetterTupleRegisterReferral(source: TupleReader) {
+    const _referrer = source.readAddress();
     return { $$type: 'RegisterReferral' as const, referrer: _referrer };
 }
 
-function storeTupleRegisterReferral(source: RegisterReferral) {
-    let builder = new TupleBuilder();
+export function storeTupleRegisterReferral(source: RegisterReferral) {
+    const builder = new TupleBuilder();
     builder.writeAddress(source.referrer);
     return builder.build();
 }
 
-function dictValueParserRegisterReferral(): DictionaryValue<RegisterReferral> {
+export function dictValueParserRegisterReferral(): DictionaryValue<RegisterReferral> {
     return {
         serialize: (src, builder) => {
             builder.storeRef(beginCell().store(storeRegisterReferral(src)).endCell());
@@ -2382,31 +3358,31 @@ export type ClaimReferralRewards = {
 
 export function storeClaimReferralRewards(src: ClaimReferralRewards) {
     return (builder: Builder) => {
-        let b_0 = builder;
+        const b_0 = builder;
         b_0.storeUint(3188740785, 32);
     };
 }
 
 export function loadClaimReferralRewards(slice: Slice) {
-    let sc_0 = slice;
+    const sc_0 = slice;
     if (sc_0.loadUint(32) !== 3188740785) { throw Error('Invalid prefix'); }
     return { $$type: 'ClaimReferralRewards' as const };
 }
 
-function loadTupleClaimReferralRewards(source: TupleReader) {
+export function loadTupleClaimReferralRewards(source: TupleReader) {
     return { $$type: 'ClaimReferralRewards' as const };
 }
 
-function loadGetterTupleClaimReferralRewards(source: TupleReader) {
+export function loadGetterTupleClaimReferralRewards(source: TupleReader) {
     return { $$type: 'ClaimReferralRewards' as const };
 }
 
-function storeTupleClaimReferralRewards(source: ClaimReferralRewards) {
-    let builder = new TupleBuilder();
+export function storeTupleClaimReferralRewards(source: ClaimReferralRewards) {
+    const builder = new TupleBuilder();
     return builder.build();
 }
 
-function dictValueParserClaimReferralRewards(): DictionaryValue<ClaimReferralRewards> {
+export function dictValueParserClaimReferralRewards(): DictionaryValue<ClaimReferralRewards> {
     return {
         serialize: (src, builder) => {
             builder.storeRef(beginCell().store(storeClaimReferralRewards(src)).endCell());
@@ -2425,7 +3401,7 @@ export type SetReferralConfig = {
 
 export function storeSetReferralConfig(src: SetReferralConfig) {
     return (builder: Builder) => {
-        let b_0 = builder;
+        const b_0 = builder;
         b_0.storeUint(447783234, 32);
         b_0.storeBit(src.enabled);
         b_0.storeUint(src.rewardBps, 16);
@@ -2433,33 +3409,33 @@ export function storeSetReferralConfig(src: SetReferralConfig) {
 }
 
 export function loadSetReferralConfig(slice: Slice) {
-    let sc_0 = slice;
+    const sc_0 = slice;
     if (sc_0.loadUint(32) !== 447783234) { throw Error('Invalid prefix'); }
-    let _enabled = sc_0.loadBit();
-    let _rewardBps = sc_0.loadUintBig(16);
+    const _enabled = sc_0.loadBit();
+    const _rewardBps = sc_0.loadUintBig(16);
     return { $$type: 'SetReferralConfig' as const, enabled: _enabled, rewardBps: _rewardBps };
 }
 
-function loadTupleSetReferralConfig(source: TupleReader) {
-    let _enabled = source.readBoolean();
-    let _rewardBps = source.readBigNumber();
+export function loadTupleSetReferralConfig(source: TupleReader) {
+    const _enabled = source.readBoolean();
+    const _rewardBps = source.readBigNumber();
     return { $$type: 'SetReferralConfig' as const, enabled: _enabled, rewardBps: _rewardBps };
 }
 
-function loadGetterTupleSetReferralConfig(source: TupleReader) {
-    let _enabled = source.readBoolean();
-    let _rewardBps = source.readBigNumber();
+export function loadGetterTupleSetReferralConfig(source: TupleReader) {
+    const _enabled = source.readBoolean();
+    const _rewardBps = source.readBigNumber();
     return { $$type: 'SetReferralConfig' as const, enabled: _enabled, rewardBps: _rewardBps };
 }
 
-function storeTupleSetReferralConfig(source: SetReferralConfig) {
-    let builder = new TupleBuilder();
+export function storeTupleSetReferralConfig(source: SetReferralConfig) {
+    const builder = new TupleBuilder();
     builder.writeBoolean(source.enabled);
     builder.writeNumber(source.rewardBps);
     return builder.build();
 }
 
-function dictValueParserSetReferralConfig(): DictionaryValue<SetReferralConfig> {
+export function dictValueParserSetReferralConfig(): DictionaryValue<SetReferralConfig> {
     return {
         serialize: (src, builder) => {
             builder.storeRef(beginCell().store(storeSetReferralConfig(src)).endCell());
@@ -2480,7 +3456,7 @@ export type AddVesting = {
 
 export function storeAddVesting(src: AddVesting) {
     return (builder: Builder) => {
-        let b_0 = builder;
+        const b_0 = builder;
         b_0.storeUint(3930012637, 32);
         b_0.storeAddress(src.beneficiary);
         b_0.storeCoins(src.totalAmount);
@@ -2490,33 +3466,33 @@ export function storeAddVesting(src: AddVesting) {
 }
 
 export function loadAddVesting(slice: Slice) {
-    let sc_0 = slice;
+    const sc_0 = slice;
     if (sc_0.loadUint(32) !== 3930012637) { throw Error('Invalid prefix'); }
-    let _beneficiary = sc_0.loadAddress();
-    let _totalAmount = sc_0.loadCoins();
-    let _cliff = sc_0.loadUintBig(32);
-    let _duration = sc_0.loadUintBig(32);
+    const _beneficiary = sc_0.loadAddress();
+    const _totalAmount = sc_0.loadCoins();
+    const _cliff = sc_0.loadUintBig(32);
+    const _duration = sc_0.loadUintBig(32);
     return { $$type: 'AddVesting' as const, beneficiary: _beneficiary, totalAmount: _totalAmount, cliff: _cliff, duration: _duration };
 }
 
-function loadTupleAddVesting(source: TupleReader) {
-    let _beneficiary = source.readAddress();
-    let _totalAmount = source.readBigNumber();
-    let _cliff = source.readBigNumber();
-    let _duration = source.readBigNumber();
+export function loadTupleAddVesting(source: TupleReader) {
+    const _beneficiary = source.readAddress();
+    const _totalAmount = source.readBigNumber();
+    const _cliff = source.readBigNumber();
+    const _duration = source.readBigNumber();
     return { $$type: 'AddVesting' as const, beneficiary: _beneficiary, totalAmount: _totalAmount, cliff: _cliff, duration: _duration };
 }
 
-function loadGetterTupleAddVesting(source: TupleReader) {
-    let _beneficiary = source.readAddress();
-    let _totalAmount = source.readBigNumber();
-    let _cliff = source.readBigNumber();
-    let _duration = source.readBigNumber();
+export function loadGetterTupleAddVesting(source: TupleReader) {
+    const _beneficiary = source.readAddress();
+    const _totalAmount = source.readBigNumber();
+    const _cliff = source.readBigNumber();
+    const _duration = source.readBigNumber();
     return { $$type: 'AddVesting' as const, beneficiary: _beneficiary, totalAmount: _totalAmount, cliff: _cliff, duration: _duration };
 }
 
-function storeTupleAddVesting(source: AddVesting) {
-    let builder = new TupleBuilder();
+export function storeTupleAddVesting(source: AddVesting) {
+    const builder = new TupleBuilder();
     builder.writeAddress(source.beneficiary);
     builder.writeNumber(source.totalAmount);
     builder.writeNumber(source.cliff);
@@ -2524,7 +3500,7 @@ function storeTupleAddVesting(source: AddVesting) {
     return builder.build();
 }
 
-function dictValueParserAddVesting(): DictionaryValue<AddVesting> {
+export function dictValueParserAddVesting(): DictionaryValue<AddVesting> {
     return {
         serialize: (src, builder) => {
             builder.storeRef(beginCell().store(storeAddVesting(src)).endCell());
@@ -2541,31 +3517,31 @@ export type ClaimVested = {
 
 export function storeClaimVested(src: ClaimVested) {
     return (builder: Builder) => {
-        let b_0 = builder;
+        const b_0 = builder;
         b_0.storeUint(4152964106, 32);
     };
 }
 
 export function loadClaimVested(slice: Slice) {
-    let sc_0 = slice;
+    const sc_0 = slice;
     if (sc_0.loadUint(32) !== 4152964106) { throw Error('Invalid prefix'); }
     return { $$type: 'ClaimVested' as const };
 }
 
-function loadTupleClaimVested(source: TupleReader) {
+export function loadTupleClaimVested(source: TupleReader) {
     return { $$type: 'ClaimVested' as const };
 }
 
-function loadGetterTupleClaimVested(source: TupleReader) {
+export function loadGetterTupleClaimVested(source: TupleReader) {
     return { $$type: 'ClaimVested' as const };
 }
 
-function storeTupleClaimVested(source: ClaimVested) {
-    let builder = new TupleBuilder();
+export function storeTupleClaimVested(source: ClaimVested) {
+    const builder = new TupleBuilder();
     return builder.build();
 }
 
-function dictValueParserClaimVested(): DictionaryValue<ClaimVested> {
+export function dictValueParserClaimVested(): DictionaryValue<ClaimVested> {
     return {
         serialize: (src, builder) => {
             builder.storeRef(beginCell().store(storeClaimVested(src)).endCell());
@@ -2583,36 +3559,36 @@ export type TriggerLottery = {
 
 export function storeTriggerLottery(src: TriggerLottery) {
     return (builder: Builder) => {
-        let b_0 = builder;
+        const b_0 = builder;
         b_0.storeUint(2876814287, 32);
         b_0.storeUint(src.queryId, 64);
     };
 }
 
 export function loadTriggerLottery(slice: Slice) {
-    let sc_0 = slice;
+    const sc_0 = slice;
     if (sc_0.loadUint(32) !== 2876814287) { throw Error('Invalid prefix'); }
-    let _queryId = sc_0.loadUintBig(64);
+    const _queryId = sc_0.loadUintBig(64);
     return { $$type: 'TriggerLottery' as const, queryId: _queryId };
 }
 
-function loadTupleTriggerLottery(source: TupleReader) {
-    let _queryId = source.readBigNumber();
+export function loadTupleTriggerLottery(source: TupleReader) {
+    const _queryId = source.readBigNumber();
     return { $$type: 'TriggerLottery' as const, queryId: _queryId };
 }
 
-function loadGetterTupleTriggerLottery(source: TupleReader) {
-    let _queryId = source.readBigNumber();
+export function loadGetterTupleTriggerLottery(source: TupleReader) {
+    const _queryId = source.readBigNumber();
     return { $$type: 'TriggerLottery' as const, queryId: _queryId };
 }
 
-function storeTupleTriggerLottery(source: TriggerLottery) {
-    let builder = new TupleBuilder();
+export function storeTupleTriggerLottery(source: TriggerLottery) {
+    const builder = new TupleBuilder();
     builder.writeNumber(source.queryId);
     return builder.build();
 }
 
-function dictValueParserTriggerLottery(): DictionaryValue<TriggerLottery> {
+export function dictValueParserTriggerLottery(): DictionaryValue<TriggerLottery> {
     return {
         serialize: (src, builder) => {
             builder.storeRef(beginCell().store(storeTriggerLottery(src)).endCell());
@@ -2633,7 +3609,7 @@ export type SetLotteryConfig = {
 
 export function storeSetLotteryConfig(src: SetLotteryConfig) {
     return (builder: Builder) => {
-        let b_0 = builder;
+        const b_0 = builder;
         b_0.storeUint(463535866, 32);
         b_0.storeBit(src.enabled);
         b_0.storeCoins(src.ticketPrice);
@@ -2643,33 +3619,33 @@ export function storeSetLotteryConfig(src: SetLotteryConfig) {
 }
 
 export function loadSetLotteryConfig(slice: Slice) {
-    let sc_0 = slice;
+    const sc_0 = slice;
     if (sc_0.loadUint(32) !== 463535866) { throw Error('Invalid prefix'); }
-    let _enabled = sc_0.loadBit();
-    let _ticketPrice = sc_0.loadCoins();
-    let _drawInterval = sc_0.loadUintBig(32);
-    let _jackpotShare = sc_0.loadUintBig(8);
+    const _enabled = sc_0.loadBit();
+    const _ticketPrice = sc_0.loadCoins();
+    const _drawInterval = sc_0.loadUintBig(32);
+    const _jackpotShare = sc_0.loadUintBig(8);
     return { $$type: 'SetLotteryConfig' as const, enabled: _enabled, ticketPrice: _ticketPrice, drawInterval: _drawInterval, jackpotShare: _jackpotShare };
 }
 
-function loadTupleSetLotteryConfig(source: TupleReader) {
-    let _enabled = source.readBoolean();
-    let _ticketPrice = source.readBigNumber();
-    let _drawInterval = source.readBigNumber();
-    let _jackpotShare = source.readBigNumber();
+export function loadTupleSetLotteryConfig(source: TupleReader) {
+    const _enabled = source.readBoolean();
+    const _ticketPrice = source.readBigNumber();
+    const _drawInterval = source.readBigNumber();
+    const _jackpotShare = source.readBigNumber();
     return { $$type: 'SetLotteryConfig' as const, enabled: _enabled, ticketPrice: _ticketPrice, drawInterval: _drawInterval, jackpotShare: _jackpotShare };
 }
 
-function loadGetterTupleSetLotteryConfig(source: TupleReader) {
-    let _enabled = source.readBoolean();
-    let _ticketPrice = source.readBigNumber();
-    let _drawInterval = source.readBigNumber();
-    let _jackpotShare = source.readBigNumber();
+export function loadGetterTupleSetLotteryConfig(source: TupleReader) {
+    const _enabled = source.readBoolean();
+    const _ticketPrice = source.readBigNumber();
+    const _drawInterval = source.readBigNumber();
+    const _jackpotShare = source.readBigNumber();
     return { $$type: 'SetLotteryConfig' as const, enabled: _enabled, ticketPrice: _ticketPrice, drawInterval: _drawInterval, jackpotShare: _jackpotShare };
 }
 
-function storeTupleSetLotteryConfig(source: SetLotteryConfig) {
-    let builder = new TupleBuilder();
+export function storeTupleSetLotteryConfig(source: SetLotteryConfig) {
+    const builder = new TupleBuilder();
     builder.writeBoolean(source.enabled);
     builder.writeNumber(source.ticketPrice);
     builder.writeNumber(source.drawInterval);
@@ -2677,7 +3653,7 @@ function storeTupleSetLotteryConfig(source: SetLotteryConfig) {
     return builder.build();
 }
 
-function dictValueParserSetLotteryConfig(): DictionaryValue<SetLotteryConfig> {
+export function dictValueParserSetLotteryConfig(): DictionaryValue<SetLotteryConfig> {
     return {
         serialize: (src, builder) => {
             builder.storeRef(beginCell().store(storeSetLotteryConfig(src)).endCell());
@@ -2699,7 +3675,7 @@ export type JettonData = {
 
 export function storeJettonData(src: JettonData) {
     return (builder: Builder) => {
-        let b_0 = builder;
+        const b_0 = builder;
         b_0.storeInt(src.totalSupply, 257);
         b_0.storeBit(src.mintable);
         b_0.storeAddress(src.adminAddress);
@@ -2709,35 +3685,35 @@ export function storeJettonData(src: JettonData) {
 }
 
 export function loadJettonData(slice: Slice) {
-    let sc_0 = slice;
-    let _totalSupply = sc_0.loadIntBig(257);
-    let _mintable = sc_0.loadBit();
-    let _adminAddress = sc_0.loadAddress();
-    let _jettonContent = sc_0.loadRef();
-    let _jettonWalletCode = sc_0.loadRef();
+    const sc_0 = slice;
+    const _totalSupply = sc_0.loadIntBig(257);
+    const _mintable = sc_0.loadBit();
+    const _adminAddress = sc_0.loadAddress();
+    const _jettonContent = sc_0.loadRef();
+    const _jettonWalletCode = sc_0.loadRef();
     return { $$type: 'JettonData' as const, totalSupply: _totalSupply, mintable: _mintable, adminAddress: _adminAddress, jettonContent: _jettonContent, jettonWalletCode: _jettonWalletCode };
 }
 
-function loadTupleJettonData(source: TupleReader) {
-    let _totalSupply = source.readBigNumber();
-    let _mintable = source.readBoolean();
-    let _adminAddress = source.readAddress();
-    let _jettonContent = source.readCell();
-    let _jettonWalletCode = source.readCell();
+export function loadTupleJettonData(source: TupleReader) {
+    const _totalSupply = source.readBigNumber();
+    const _mintable = source.readBoolean();
+    const _adminAddress = source.readAddress();
+    const _jettonContent = source.readCell();
+    const _jettonWalletCode = source.readCell();
     return { $$type: 'JettonData' as const, totalSupply: _totalSupply, mintable: _mintable, adminAddress: _adminAddress, jettonContent: _jettonContent, jettonWalletCode: _jettonWalletCode };
 }
 
-function loadGetterTupleJettonData(source: TupleReader) {
-    let _totalSupply = source.readBigNumber();
-    let _mintable = source.readBoolean();
-    let _adminAddress = source.readAddress();
-    let _jettonContent = source.readCell();
-    let _jettonWalletCode = source.readCell();
+export function loadGetterTupleJettonData(source: TupleReader) {
+    const _totalSupply = source.readBigNumber();
+    const _mintable = source.readBoolean();
+    const _adminAddress = source.readAddress();
+    const _jettonContent = source.readCell();
+    const _jettonWalletCode = source.readCell();
     return { $$type: 'JettonData' as const, totalSupply: _totalSupply, mintable: _mintable, adminAddress: _adminAddress, jettonContent: _jettonContent, jettonWalletCode: _jettonWalletCode };
 }
 
-function storeTupleJettonData(source: JettonData) {
-    let builder = new TupleBuilder();
+export function storeTupleJettonData(source: JettonData) {
+    const builder = new TupleBuilder();
     builder.writeNumber(source.totalSupply);
     builder.writeBoolean(source.mintable);
     builder.writeAddress(source.adminAddress);
@@ -2746,7 +3722,7 @@ function storeTupleJettonData(source: JettonData) {
     return builder.build();
 }
 
-function dictValueParserJettonData(): DictionaryValue<JettonData> {
+export function dictValueParserJettonData(): DictionaryValue<JettonData> {
     return {
         serialize: (src, builder) => {
             builder.storeRef(beginCell().store(storeJettonData(src)).endCell());
@@ -2767,7 +3743,7 @@ export type JettonWalletData = {
 
 export function storeJettonWalletData(src: JettonWalletData) {
     return (builder: Builder) => {
-        let b_0 = builder;
+        const b_0 = builder;
         b_0.storeInt(src.balance, 257);
         b_0.storeAddress(src.owner);
         b_0.storeAddress(src.master);
@@ -2776,32 +3752,32 @@ export function storeJettonWalletData(src: JettonWalletData) {
 }
 
 export function loadJettonWalletData(slice: Slice) {
-    let sc_0 = slice;
-    let _balance = sc_0.loadIntBig(257);
-    let _owner = sc_0.loadAddress();
-    let _master = sc_0.loadAddress();
-    let _walletCode = sc_0.loadRef();
+    const sc_0 = slice;
+    const _balance = sc_0.loadIntBig(257);
+    const _owner = sc_0.loadAddress();
+    const _master = sc_0.loadAddress();
+    const _walletCode = sc_0.loadRef();
     return { $$type: 'JettonWalletData' as const, balance: _balance, owner: _owner, master: _master, walletCode: _walletCode };
 }
 
-function loadTupleJettonWalletData(source: TupleReader) {
-    let _balance = source.readBigNumber();
-    let _owner = source.readAddress();
-    let _master = source.readAddress();
-    let _walletCode = source.readCell();
+export function loadTupleJettonWalletData(source: TupleReader) {
+    const _balance = source.readBigNumber();
+    const _owner = source.readAddress();
+    const _master = source.readAddress();
+    const _walletCode = source.readCell();
     return { $$type: 'JettonWalletData' as const, balance: _balance, owner: _owner, master: _master, walletCode: _walletCode };
 }
 
-function loadGetterTupleJettonWalletData(source: TupleReader) {
-    let _balance = source.readBigNumber();
-    let _owner = source.readAddress();
-    let _master = source.readAddress();
-    let _walletCode = source.readCell();
+export function loadGetterTupleJettonWalletData(source: TupleReader) {
+    const _balance = source.readBigNumber();
+    const _owner = source.readAddress();
+    const _master = source.readAddress();
+    const _walletCode = source.readCell();
     return { $$type: 'JettonWalletData' as const, balance: _balance, owner: _owner, master: _master, walletCode: _walletCode };
 }
 
-function storeTupleJettonWalletData(source: JettonWalletData) {
-    let builder = new TupleBuilder();
+export function storeTupleJettonWalletData(source: JettonWalletData) {
+    const builder = new TupleBuilder();
     builder.writeNumber(source.balance);
     builder.writeAddress(source.owner);
     builder.writeAddress(source.master);
@@ -2809,7 +3785,7 @@ function storeTupleJettonWalletData(source: JettonWalletData) {
     return builder.build();
 }
 
-function dictValueParserJettonWalletData(): DictionaryValue<JettonWalletData> {
+export function dictValueParserJettonWalletData(): DictionaryValue<JettonWalletData> {
     return {
         serialize: (src, builder) => {
             builder.storeRef(beginCell().store(storeJettonWalletData(src)).endCell());
@@ -2836,17 +3812,17 @@ export type AIState = {
 
 export function storeAIState(src: AIState) {
     return (builder: Builder) => {
-        let b_0 = builder;
+        const b_0 = builder;
         b_0.storeAddress(src.oracleAddress);
         b_0.storeBit(src.aiModeEnabled);
         b_0.storeBit(src.fullAutonomy);
         b_0.storeInt(src.lastRebalanceAt, 257);
         b_0.storeInt(src.totalSignalsReceived, 257);
-        let b_1 = new Builder();
+        const b_1 = new Builder();
         b_1.storeInt(src.currentFeeBps, 257);
         b_1.storeInt(src.priceHistoryCount, 257);
         b_1.storeInt(src.anomalyCount, 257);
-        let b_2 = new Builder();
+        const b_2 = new Builder();
         b_2.storeInt(src.lastHeartbeat, 257);
         b_2.storeBit(src.isAlive);
         b_1.storeRef(b_2.endCell());
@@ -2855,52 +3831,52 @@ export function storeAIState(src: AIState) {
 }
 
 export function loadAIState(slice: Slice) {
-    let sc_0 = slice;
-    let _oracleAddress = sc_0.loadAddress();
-    let _aiModeEnabled = sc_0.loadBit();
-    let _fullAutonomy = sc_0.loadBit();
-    let _lastRebalanceAt = sc_0.loadIntBig(257);
-    let _totalSignalsReceived = sc_0.loadIntBig(257);
-    let sc_1 = sc_0.loadRef().beginParse();
-    let _currentFeeBps = sc_1.loadIntBig(257);
-    let _priceHistoryCount = sc_1.loadIntBig(257);
-    let _anomalyCount = sc_1.loadIntBig(257);
-    let sc_2 = sc_1.loadRef().beginParse();
-    let _lastHeartbeat = sc_2.loadIntBig(257);
-    let _isAlive = sc_2.loadBit();
+    const sc_0 = slice;
+    const _oracleAddress = sc_0.loadAddress();
+    const _aiModeEnabled = sc_0.loadBit();
+    const _fullAutonomy = sc_0.loadBit();
+    const _lastRebalanceAt = sc_0.loadIntBig(257);
+    const _totalSignalsReceived = sc_0.loadIntBig(257);
+    const sc_1 = sc_0.loadRef().beginParse();
+    const _currentFeeBps = sc_1.loadIntBig(257);
+    const _priceHistoryCount = sc_1.loadIntBig(257);
+    const _anomalyCount = sc_1.loadIntBig(257);
+    const sc_2 = sc_1.loadRef().beginParse();
+    const _lastHeartbeat = sc_2.loadIntBig(257);
+    const _isAlive = sc_2.loadBit();
     return { $$type: 'AIState' as const, oracleAddress: _oracleAddress, aiModeEnabled: _aiModeEnabled, fullAutonomy: _fullAutonomy, lastRebalanceAt: _lastRebalanceAt, totalSignalsReceived: _totalSignalsReceived, currentFeeBps: _currentFeeBps, priceHistoryCount: _priceHistoryCount, anomalyCount: _anomalyCount, lastHeartbeat: _lastHeartbeat, isAlive: _isAlive };
 }
 
-function loadTupleAIState(source: TupleReader) {
-    let _oracleAddress = source.readAddress();
-    let _aiModeEnabled = source.readBoolean();
-    let _fullAutonomy = source.readBoolean();
-    let _lastRebalanceAt = source.readBigNumber();
-    let _totalSignalsReceived = source.readBigNumber();
-    let _currentFeeBps = source.readBigNumber();
-    let _priceHistoryCount = source.readBigNumber();
-    let _anomalyCount = source.readBigNumber();
-    let _lastHeartbeat = source.readBigNumber();
-    let _isAlive = source.readBoolean();
+export function loadTupleAIState(source: TupleReader) {
+    const _oracleAddress = source.readAddress();
+    const _aiModeEnabled = source.readBoolean();
+    const _fullAutonomy = source.readBoolean();
+    const _lastRebalanceAt = source.readBigNumber();
+    const _totalSignalsReceived = source.readBigNumber();
+    const _currentFeeBps = source.readBigNumber();
+    const _priceHistoryCount = source.readBigNumber();
+    const _anomalyCount = source.readBigNumber();
+    const _lastHeartbeat = source.readBigNumber();
+    const _isAlive = source.readBoolean();
     return { $$type: 'AIState' as const, oracleAddress: _oracleAddress, aiModeEnabled: _aiModeEnabled, fullAutonomy: _fullAutonomy, lastRebalanceAt: _lastRebalanceAt, totalSignalsReceived: _totalSignalsReceived, currentFeeBps: _currentFeeBps, priceHistoryCount: _priceHistoryCount, anomalyCount: _anomalyCount, lastHeartbeat: _lastHeartbeat, isAlive: _isAlive };
 }
 
-function loadGetterTupleAIState(source: TupleReader) {
-    let _oracleAddress = source.readAddress();
-    let _aiModeEnabled = source.readBoolean();
-    let _fullAutonomy = source.readBoolean();
-    let _lastRebalanceAt = source.readBigNumber();
-    let _totalSignalsReceived = source.readBigNumber();
-    let _currentFeeBps = source.readBigNumber();
-    let _priceHistoryCount = source.readBigNumber();
-    let _anomalyCount = source.readBigNumber();
-    let _lastHeartbeat = source.readBigNumber();
-    let _isAlive = source.readBoolean();
+export function loadGetterTupleAIState(source: TupleReader) {
+    const _oracleAddress = source.readAddress();
+    const _aiModeEnabled = source.readBoolean();
+    const _fullAutonomy = source.readBoolean();
+    const _lastRebalanceAt = source.readBigNumber();
+    const _totalSignalsReceived = source.readBigNumber();
+    const _currentFeeBps = source.readBigNumber();
+    const _priceHistoryCount = source.readBigNumber();
+    const _anomalyCount = source.readBigNumber();
+    const _lastHeartbeat = source.readBigNumber();
+    const _isAlive = source.readBoolean();
     return { $$type: 'AIState' as const, oracleAddress: _oracleAddress, aiModeEnabled: _aiModeEnabled, fullAutonomy: _fullAutonomy, lastRebalanceAt: _lastRebalanceAt, totalSignalsReceived: _totalSignalsReceived, currentFeeBps: _currentFeeBps, priceHistoryCount: _priceHistoryCount, anomalyCount: _anomalyCount, lastHeartbeat: _lastHeartbeat, isAlive: _isAlive };
 }
 
-function storeTupleAIState(source: AIState) {
-    let builder = new TupleBuilder();
+export function storeTupleAIState(source: AIState) {
+    const builder = new TupleBuilder();
     builder.writeAddress(source.oracleAddress);
     builder.writeBoolean(source.aiModeEnabled);
     builder.writeBoolean(source.fullAutonomy);
@@ -2914,7 +3890,7 @@ function storeTupleAIState(source: AIState) {
     return builder.build();
 }
 
-function dictValueParserAIState(): DictionaryValue<AIState> {
+export function dictValueParserAIState(): DictionaryValue<AIState> {
     return {
         serialize: (src, builder) => {
             builder.storeRef(beginCell().store(storeAIState(src)).endCell());
@@ -2939,15 +3915,15 @@ export type FeeConfig = {
 
 export function storeFeeConfig(src: FeeConfig) {
     return (builder: Builder) => {
-        let b_0 = builder;
+        const b_0 = builder;
         b_0.storeInt(src.feeBps, 257);
         b_0.storeInt(src.burnShare, 257);
         b_0.storeInt(src.treasuryShare, 257);
-        let b_1 = new Builder();
+        const b_1 = new Builder();
         b_1.storeInt(src.maxTxBps, 257);
         b_1.storeInt(src.maxWalletBps, 257);
         b_1.storeInt(src.cooldown, 257);
-        let b_2 = new Builder();
+        const b_2 = new Builder();
         b_2.storeInt(src.totalBurned, 257);
         b_2.storeInt(src.totalFeesCollected, 257);
         b_1.storeRef(b_2.endCell());
@@ -2956,46 +3932,46 @@ export function storeFeeConfig(src: FeeConfig) {
 }
 
 export function loadFeeConfig(slice: Slice) {
-    let sc_0 = slice;
-    let _feeBps = sc_0.loadIntBig(257);
-    let _burnShare = sc_0.loadIntBig(257);
-    let _treasuryShare = sc_0.loadIntBig(257);
-    let sc_1 = sc_0.loadRef().beginParse();
-    let _maxTxBps = sc_1.loadIntBig(257);
-    let _maxWalletBps = sc_1.loadIntBig(257);
-    let _cooldown = sc_1.loadIntBig(257);
-    let sc_2 = sc_1.loadRef().beginParse();
-    let _totalBurned = sc_2.loadIntBig(257);
-    let _totalFeesCollected = sc_2.loadIntBig(257);
+    const sc_0 = slice;
+    const _feeBps = sc_0.loadIntBig(257);
+    const _burnShare = sc_0.loadIntBig(257);
+    const _treasuryShare = sc_0.loadIntBig(257);
+    const sc_1 = sc_0.loadRef().beginParse();
+    const _maxTxBps = sc_1.loadIntBig(257);
+    const _maxWalletBps = sc_1.loadIntBig(257);
+    const _cooldown = sc_1.loadIntBig(257);
+    const sc_2 = sc_1.loadRef().beginParse();
+    const _totalBurned = sc_2.loadIntBig(257);
+    const _totalFeesCollected = sc_2.loadIntBig(257);
     return { $$type: 'FeeConfig' as const, feeBps: _feeBps, burnShare: _burnShare, treasuryShare: _treasuryShare, maxTxBps: _maxTxBps, maxWalletBps: _maxWalletBps, cooldown: _cooldown, totalBurned: _totalBurned, totalFeesCollected: _totalFeesCollected };
 }
 
-function loadTupleFeeConfig(source: TupleReader) {
-    let _feeBps = source.readBigNumber();
-    let _burnShare = source.readBigNumber();
-    let _treasuryShare = source.readBigNumber();
-    let _maxTxBps = source.readBigNumber();
-    let _maxWalletBps = source.readBigNumber();
-    let _cooldown = source.readBigNumber();
-    let _totalBurned = source.readBigNumber();
-    let _totalFeesCollected = source.readBigNumber();
+export function loadTupleFeeConfig(source: TupleReader) {
+    const _feeBps = source.readBigNumber();
+    const _burnShare = source.readBigNumber();
+    const _treasuryShare = source.readBigNumber();
+    const _maxTxBps = source.readBigNumber();
+    const _maxWalletBps = source.readBigNumber();
+    const _cooldown = source.readBigNumber();
+    const _totalBurned = source.readBigNumber();
+    const _totalFeesCollected = source.readBigNumber();
     return { $$type: 'FeeConfig' as const, feeBps: _feeBps, burnShare: _burnShare, treasuryShare: _treasuryShare, maxTxBps: _maxTxBps, maxWalletBps: _maxWalletBps, cooldown: _cooldown, totalBurned: _totalBurned, totalFeesCollected: _totalFeesCollected };
 }
 
-function loadGetterTupleFeeConfig(source: TupleReader) {
-    let _feeBps = source.readBigNumber();
-    let _burnShare = source.readBigNumber();
-    let _treasuryShare = source.readBigNumber();
-    let _maxTxBps = source.readBigNumber();
-    let _maxWalletBps = source.readBigNumber();
-    let _cooldown = source.readBigNumber();
-    let _totalBurned = source.readBigNumber();
-    let _totalFeesCollected = source.readBigNumber();
+export function loadGetterTupleFeeConfig(source: TupleReader) {
+    const _feeBps = source.readBigNumber();
+    const _burnShare = source.readBigNumber();
+    const _treasuryShare = source.readBigNumber();
+    const _maxTxBps = source.readBigNumber();
+    const _maxWalletBps = source.readBigNumber();
+    const _cooldown = source.readBigNumber();
+    const _totalBurned = source.readBigNumber();
+    const _totalFeesCollected = source.readBigNumber();
     return { $$type: 'FeeConfig' as const, feeBps: _feeBps, burnShare: _burnShare, treasuryShare: _treasuryShare, maxTxBps: _maxTxBps, maxWalletBps: _maxWalletBps, cooldown: _cooldown, totalBurned: _totalBurned, totalFeesCollected: _totalFeesCollected };
 }
 
-function storeTupleFeeConfig(source: FeeConfig) {
-    let builder = new TupleBuilder();
+export function storeTupleFeeConfig(source: FeeConfig) {
+    const builder = new TupleBuilder();
     builder.writeNumber(source.feeBps);
     builder.writeNumber(source.burnShare);
     builder.writeNumber(source.treasuryShare);
@@ -3007,7 +3983,7 @@ function storeTupleFeeConfig(source: FeeConfig) {
     return builder.build();
 }
 
-function dictValueParserFeeConfig(): DictionaryValue<FeeConfig> {
+export function dictValueParserFeeConfig(): DictionaryValue<FeeConfig> {
     return {
         serialize: (src, builder) => {
             builder.storeRef(beginCell().store(storeFeeConfig(src)).endCell());
@@ -3033,16 +4009,16 @@ export type BuybackState = {
 
 export function storeBuybackState(src: BuybackState) {
     return (builder: Builder) => {
-        let b_0 = builder;
+        const b_0 = builder;
         b_0.storeBit(src.enabled);
         b_0.storeInt(src.pool, 257);
         b_0.storeInt(src.threshold, 257);
         b_0.storeInt(src.cooldown, 257);
-        let b_1 = new Builder();
+        const b_1 = new Builder();
         b_1.storeInt(src.burnPercent, 257);
         b_1.storeInt(src.lastBuybackAt, 257);
         b_1.storeInt(src.totalBuybacks, 257);
-        let b_2 = new Builder();
+        const b_2 = new Builder();
         b_2.storeInt(src.totalQsrBurnedViaBuyback, 257);
         b_2.storeInt(src.totalTonSpent, 257);
         b_1.storeRef(b_2.endCell());
@@ -3051,49 +4027,49 @@ export function storeBuybackState(src: BuybackState) {
 }
 
 export function loadBuybackState(slice: Slice) {
-    let sc_0 = slice;
-    let _enabled = sc_0.loadBit();
-    let _pool = sc_0.loadIntBig(257);
-    let _threshold = sc_0.loadIntBig(257);
-    let _cooldown = sc_0.loadIntBig(257);
-    let sc_1 = sc_0.loadRef().beginParse();
-    let _burnPercent = sc_1.loadIntBig(257);
-    let _lastBuybackAt = sc_1.loadIntBig(257);
-    let _totalBuybacks = sc_1.loadIntBig(257);
-    let sc_2 = sc_1.loadRef().beginParse();
-    let _totalQsrBurnedViaBuyback = sc_2.loadIntBig(257);
-    let _totalTonSpent = sc_2.loadIntBig(257);
+    const sc_0 = slice;
+    const _enabled = sc_0.loadBit();
+    const _pool = sc_0.loadIntBig(257);
+    const _threshold = sc_0.loadIntBig(257);
+    const _cooldown = sc_0.loadIntBig(257);
+    const sc_1 = sc_0.loadRef().beginParse();
+    const _burnPercent = sc_1.loadIntBig(257);
+    const _lastBuybackAt = sc_1.loadIntBig(257);
+    const _totalBuybacks = sc_1.loadIntBig(257);
+    const sc_2 = sc_1.loadRef().beginParse();
+    const _totalQsrBurnedViaBuyback = sc_2.loadIntBig(257);
+    const _totalTonSpent = sc_2.loadIntBig(257);
     return { $$type: 'BuybackState' as const, enabled: _enabled, pool: _pool, threshold: _threshold, cooldown: _cooldown, burnPercent: _burnPercent, lastBuybackAt: _lastBuybackAt, totalBuybacks: _totalBuybacks, totalQsrBurnedViaBuyback: _totalQsrBurnedViaBuyback, totalTonSpent: _totalTonSpent };
 }
 
-function loadTupleBuybackState(source: TupleReader) {
-    let _enabled = source.readBoolean();
-    let _pool = source.readBigNumber();
-    let _threshold = source.readBigNumber();
-    let _cooldown = source.readBigNumber();
-    let _burnPercent = source.readBigNumber();
-    let _lastBuybackAt = source.readBigNumber();
-    let _totalBuybacks = source.readBigNumber();
-    let _totalQsrBurnedViaBuyback = source.readBigNumber();
-    let _totalTonSpent = source.readBigNumber();
+export function loadTupleBuybackState(source: TupleReader) {
+    const _enabled = source.readBoolean();
+    const _pool = source.readBigNumber();
+    const _threshold = source.readBigNumber();
+    const _cooldown = source.readBigNumber();
+    const _burnPercent = source.readBigNumber();
+    const _lastBuybackAt = source.readBigNumber();
+    const _totalBuybacks = source.readBigNumber();
+    const _totalQsrBurnedViaBuyback = source.readBigNumber();
+    const _totalTonSpent = source.readBigNumber();
     return { $$type: 'BuybackState' as const, enabled: _enabled, pool: _pool, threshold: _threshold, cooldown: _cooldown, burnPercent: _burnPercent, lastBuybackAt: _lastBuybackAt, totalBuybacks: _totalBuybacks, totalQsrBurnedViaBuyback: _totalQsrBurnedViaBuyback, totalTonSpent: _totalTonSpent };
 }
 
-function loadGetterTupleBuybackState(source: TupleReader) {
-    let _enabled = source.readBoolean();
-    let _pool = source.readBigNumber();
-    let _threshold = source.readBigNumber();
-    let _cooldown = source.readBigNumber();
-    let _burnPercent = source.readBigNumber();
-    let _lastBuybackAt = source.readBigNumber();
-    let _totalBuybacks = source.readBigNumber();
-    let _totalQsrBurnedViaBuyback = source.readBigNumber();
-    let _totalTonSpent = source.readBigNumber();
+export function loadGetterTupleBuybackState(source: TupleReader) {
+    const _enabled = source.readBoolean();
+    const _pool = source.readBigNumber();
+    const _threshold = source.readBigNumber();
+    const _cooldown = source.readBigNumber();
+    const _burnPercent = source.readBigNumber();
+    const _lastBuybackAt = source.readBigNumber();
+    const _totalBuybacks = source.readBigNumber();
+    const _totalQsrBurnedViaBuyback = source.readBigNumber();
+    const _totalTonSpent = source.readBigNumber();
     return { $$type: 'BuybackState' as const, enabled: _enabled, pool: _pool, threshold: _threshold, cooldown: _cooldown, burnPercent: _burnPercent, lastBuybackAt: _lastBuybackAt, totalBuybacks: _totalBuybacks, totalQsrBurnedViaBuyback: _totalQsrBurnedViaBuyback, totalTonSpent: _totalTonSpent };
 }
 
-function storeTupleBuybackState(source: BuybackState) {
-    let builder = new TupleBuilder();
+export function storeTupleBuybackState(source: BuybackState) {
+    const builder = new TupleBuilder();
     builder.writeBoolean(source.enabled);
     builder.writeNumber(source.pool);
     builder.writeNumber(source.threshold);
@@ -3106,7 +4082,7 @@ function storeTupleBuybackState(source: BuybackState) {
     return builder.build();
 }
 
-function dictValueParserBuybackState(): DictionaryValue<BuybackState> {
+export function dictValueParserBuybackState(): DictionaryValue<BuybackState> {
     return {
         serialize: (src, builder) => {
             builder.storeRef(beginCell().store(storeBuybackState(src)).endCell());
@@ -3132,16 +4108,16 @@ export type AutonomyState = {
 
 export function storeAutonomyState(src: AutonomyState) {
     return (builder: Builder) => {
-        let b_0 = builder;
+        const b_0 = builder;
         b_0.storeBit(src.fullAutonomyEnabled);
         b_0.storeInt(src.aiActionCooldown, 257);
         b_0.storeInt(src.lastAiActionTime, 257);
         b_0.storeInt(src.heartbeatTimeout, 257);
-        let b_1 = new Builder();
+        const b_1 = new Builder();
         b_1.storeInt(src.lastHeartbeat, 257);
         b_1.storeInt(src.ownerOverrideWindow, 257);
         b_1.storeInt(src.vetoThresholdBps, 257);
-        let b_2 = new Builder();
+        const b_2 = new Builder();
         b_2.storeInt(src.totalVetoStake, 257);
         b_2.storeInt(src.pendingActions, 257);
         b_1.storeRef(b_2.endCell());
@@ -3150,49 +4126,49 @@ export function storeAutonomyState(src: AutonomyState) {
 }
 
 export function loadAutonomyState(slice: Slice) {
-    let sc_0 = slice;
-    let _fullAutonomyEnabled = sc_0.loadBit();
-    let _aiActionCooldown = sc_0.loadIntBig(257);
-    let _lastAiActionTime = sc_0.loadIntBig(257);
-    let _heartbeatTimeout = sc_0.loadIntBig(257);
-    let sc_1 = sc_0.loadRef().beginParse();
-    let _lastHeartbeat = sc_1.loadIntBig(257);
-    let _ownerOverrideWindow = sc_1.loadIntBig(257);
-    let _vetoThresholdBps = sc_1.loadIntBig(257);
-    let sc_2 = sc_1.loadRef().beginParse();
-    let _totalVetoStake = sc_2.loadIntBig(257);
-    let _pendingActions = sc_2.loadIntBig(257);
+    const sc_0 = slice;
+    const _fullAutonomyEnabled = sc_0.loadBit();
+    const _aiActionCooldown = sc_0.loadIntBig(257);
+    const _lastAiActionTime = sc_0.loadIntBig(257);
+    const _heartbeatTimeout = sc_0.loadIntBig(257);
+    const sc_1 = sc_0.loadRef().beginParse();
+    const _lastHeartbeat = sc_1.loadIntBig(257);
+    const _ownerOverrideWindow = sc_1.loadIntBig(257);
+    const _vetoThresholdBps = sc_1.loadIntBig(257);
+    const sc_2 = sc_1.loadRef().beginParse();
+    const _totalVetoStake = sc_2.loadIntBig(257);
+    const _pendingActions = sc_2.loadIntBig(257);
     return { $$type: 'AutonomyState' as const, fullAutonomyEnabled: _fullAutonomyEnabled, aiActionCooldown: _aiActionCooldown, lastAiActionTime: _lastAiActionTime, heartbeatTimeout: _heartbeatTimeout, lastHeartbeat: _lastHeartbeat, ownerOverrideWindow: _ownerOverrideWindow, vetoThresholdBps: _vetoThresholdBps, totalVetoStake: _totalVetoStake, pendingActions: _pendingActions };
 }
 
-function loadTupleAutonomyState(source: TupleReader) {
-    let _fullAutonomyEnabled = source.readBoolean();
-    let _aiActionCooldown = source.readBigNumber();
-    let _lastAiActionTime = source.readBigNumber();
-    let _heartbeatTimeout = source.readBigNumber();
-    let _lastHeartbeat = source.readBigNumber();
-    let _ownerOverrideWindow = source.readBigNumber();
-    let _vetoThresholdBps = source.readBigNumber();
-    let _totalVetoStake = source.readBigNumber();
-    let _pendingActions = source.readBigNumber();
+export function loadTupleAutonomyState(source: TupleReader) {
+    const _fullAutonomyEnabled = source.readBoolean();
+    const _aiActionCooldown = source.readBigNumber();
+    const _lastAiActionTime = source.readBigNumber();
+    const _heartbeatTimeout = source.readBigNumber();
+    const _lastHeartbeat = source.readBigNumber();
+    const _ownerOverrideWindow = source.readBigNumber();
+    const _vetoThresholdBps = source.readBigNumber();
+    const _totalVetoStake = source.readBigNumber();
+    const _pendingActions = source.readBigNumber();
     return { $$type: 'AutonomyState' as const, fullAutonomyEnabled: _fullAutonomyEnabled, aiActionCooldown: _aiActionCooldown, lastAiActionTime: _lastAiActionTime, heartbeatTimeout: _heartbeatTimeout, lastHeartbeat: _lastHeartbeat, ownerOverrideWindow: _ownerOverrideWindow, vetoThresholdBps: _vetoThresholdBps, totalVetoStake: _totalVetoStake, pendingActions: _pendingActions };
 }
 
-function loadGetterTupleAutonomyState(source: TupleReader) {
-    let _fullAutonomyEnabled = source.readBoolean();
-    let _aiActionCooldown = source.readBigNumber();
-    let _lastAiActionTime = source.readBigNumber();
-    let _heartbeatTimeout = source.readBigNumber();
-    let _lastHeartbeat = source.readBigNumber();
-    let _ownerOverrideWindow = source.readBigNumber();
-    let _vetoThresholdBps = source.readBigNumber();
-    let _totalVetoStake = source.readBigNumber();
-    let _pendingActions = source.readBigNumber();
+export function loadGetterTupleAutonomyState(source: TupleReader) {
+    const _fullAutonomyEnabled = source.readBoolean();
+    const _aiActionCooldown = source.readBigNumber();
+    const _lastAiActionTime = source.readBigNumber();
+    const _heartbeatTimeout = source.readBigNumber();
+    const _lastHeartbeat = source.readBigNumber();
+    const _ownerOverrideWindow = source.readBigNumber();
+    const _vetoThresholdBps = source.readBigNumber();
+    const _totalVetoStake = source.readBigNumber();
+    const _pendingActions = source.readBigNumber();
     return { $$type: 'AutonomyState' as const, fullAutonomyEnabled: _fullAutonomyEnabled, aiActionCooldown: _aiActionCooldown, lastAiActionTime: _lastAiActionTime, heartbeatTimeout: _heartbeatTimeout, lastHeartbeat: _lastHeartbeat, ownerOverrideWindow: _ownerOverrideWindow, vetoThresholdBps: _vetoThresholdBps, totalVetoStake: _totalVetoStake, pendingActions: _pendingActions };
 }
 
-function storeTupleAutonomyState(source: AutonomyState) {
-    let builder = new TupleBuilder();
+export function storeTupleAutonomyState(source: AutonomyState) {
+    const builder = new TupleBuilder();
     builder.writeBoolean(source.fullAutonomyEnabled);
     builder.writeNumber(source.aiActionCooldown);
     builder.writeNumber(source.lastAiActionTime);
@@ -3205,7 +4181,7 @@ function storeTupleAutonomyState(source: AutonomyState) {
     return builder.build();
 }
 
-function dictValueParserAutonomyState(): DictionaryValue<AutonomyState> {
+export function dictValueParserAutonomyState(): DictionaryValue<AutonomyState> {
     return {
         serialize: (src, builder) => {
             builder.storeRef(beginCell().store(storeAutonomyState(src)).endCell());
@@ -3231,12 +4207,12 @@ export type AIActionLog = {
 
 export function storeAIActionLog(src: AIActionLog) {
     return (builder: Builder) => {
-        let b_0 = builder;
+        const b_0 = builder;
         b_0.storeInt(src.actionId, 257);
         b_0.storeInt(src.timestamp, 257);
         b_0.storeStringRefTail(src.actionType);
         b_0.storeInt(src.oldValue, 257);
-        let b_1 = new Builder();
+        const b_1 = new Builder();
         b_1.storeInt(src.newValue, 257);
         b_1.storeStringRefTail(src.reason);
         b_1.storeBit(src.executed);
@@ -3247,48 +4223,48 @@ export function storeAIActionLog(src: AIActionLog) {
 }
 
 export function loadAIActionLog(slice: Slice) {
-    let sc_0 = slice;
-    let _actionId = sc_0.loadIntBig(257);
-    let _timestamp = sc_0.loadIntBig(257);
-    let _actionType = sc_0.loadStringRefTail();
-    let _oldValue = sc_0.loadIntBig(257);
-    let sc_1 = sc_0.loadRef().beginParse();
-    let _newValue = sc_1.loadIntBig(257);
-    let _reason = sc_1.loadStringRefTail();
-    let _executed = sc_1.loadBit();
-    let _vetoed = sc_1.loadBit();
-    let _overridden = sc_1.loadBit();
+    const sc_0 = slice;
+    const _actionId = sc_0.loadIntBig(257);
+    const _timestamp = sc_0.loadIntBig(257);
+    const _actionType = sc_0.loadStringRefTail();
+    const _oldValue = sc_0.loadIntBig(257);
+    const sc_1 = sc_0.loadRef().beginParse();
+    const _newValue = sc_1.loadIntBig(257);
+    const _reason = sc_1.loadStringRefTail();
+    const _executed = sc_1.loadBit();
+    const _vetoed = sc_1.loadBit();
+    const _overridden = sc_1.loadBit();
     return { $$type: 'AIActionLog' as const, actionId: _actionId, timestamp: _timestamp, actionType: _actionType, oldValue: _oldValue, newValue: _newValue, reason: _reason, executed: _executed, vetoed: _vetoed, overridden: _overridden };
 }
 
-function loadTupleAIActionLog(source: TupleReader) {
-    let _actionId = source.readBigNumber();
-    let _timestamp = source.readBigNumber();
-    let _actionType = source.readString();
-    let _oldValue = source.readBigNumber();
-    let _newValue = source.readBigNumber();
-    let _reason = source.readString();
-    let _executed = source.readBoolean();
-    let _vetoed = source.readBoolean();
-    let _overridden = source.readBoolean();
+export function loadTupleAIActionLog(source: TupleReader) {
+    const _actionId = source.readBigNumber();
+    const _timestamp = source.readBigNumber();
+    const _actionType = source.readString();
+    const _oldValue = source.readBigNumber();
+    const _newValue = source.readBigNumber();
+    const _reason = source.readString();
+    const _executed = source.readBoolean();
+    const _vetoed = source.readBoolean();
+    const _overridden = source.readBoolean();
     return { $$type: 'AIActionLog' as const, actionId: _actionId, timestamp: _timestamp, actionType: _actionType, oldValue: _oldValue, newValue: _newValue, reason: _reason, executed: _executed, vetoed: _vetoed, overridden: _overridden };
 }
 
-function loadGetterTupleAIActionLog(source: TupleReader) {
-    let _actionId = source.readBigNumber();
-    let _timestamp = source.readBigNumber();
-    let _actionType = source.readString();
-    let _oldValue = source.readBigNumber();
-    let _newValue = source.readBigNumber();
-    let _reason = source.readString();
-    let _executed = source.readBoolean();
-    let _vetoed = source.readBoolean();
-    let _overridden = source.readBoolean();
+export function loadGetterTupleAIActionLog(source: TupleReader) {
+    const _actionId = source.readBigNumber();
+    const _timestamp = source.readBigNumber();
+    const _actionType = source.readString();
+    const _oldValue = source.readBigNumber();
+    const _newValue = source.readBigNumber();
+    const _reason = source.readString();
+    const _executed = source.readBoolean();
+    const _vetoed = source.readBoolean();
+    const _overridden = source.readBoolean();
     return { $$type: 'AIActionLog' as const, actionId: _actionId, timestamp: _timestamp, actionType: _actionType, oldValue: _oldValue, newValue: _newValue, reason: _reason, executed: _executed, vetoed: _vetoed, overridden: _overridden };
 }
 
-function storeTupleAIActionLog(source: AIActionLog) {
-    let builder = new TupleBuilder();
+export function storeTupleAIActionLog(source: AIActionLog) {
+    const builder = new TupleBuilder();
     builder.writeNumber(source.actionId);
     builder.writeNumber(source.timestamp);
     builder.writeString(source.actionType);
@@ -3301,7 +4277,7 @@ function storeTupleAIActionLog(source: AIActionLog) {
     return builder.build();
 }
 
-function dictValueParserAIActionLog(): DictionaryValue<AIActionLog> {
+export function dictValueParserAIActionLog(): DictionaryValue<AIActionLog> {
     return {
         serialize: (src, builder) => {
             builder.storeRef(beginCell().store(storeAIActionLog(src)).endCell());
@@ -3323,11 +4299,11 @@ export type VetoState = {
 
 export function storeVetoState(src: VetoState) {
     return (builder: Builder) => {
-        let b_0 = builder;
+        const b_0 = builder;
         b_0.storeInt(src.actionId, 257);
         b_0.storeInt(src.totalStake, 257);
         b_0.storeInt(src.vetoCount, 257);
-        let b_1 = new Builder();
+        const b_1 = new Builder();
         b_1.storeInt(src.threshold, 257);
         b_1.storeBit(src.active);
         b_0.storeRef(b_1.endCell());
@@ -3335,36 +4311,36 @@ export function storeVetoState(src: VetoState) {
 }
 
 export function loadVetoState(slice: Slice) {
-    let sc_0 = slice;
-    let _actionId = sc_0.loadIntBig(257);
-    let _totalStake = sc_0.loadIntBig(257);
-    let _vetoCount = sc_0.loadIntBig(257);
-    let sc_1 = sc_0.loadRef().beginParse();
-    let _threshold = sc_1.loadIntBig(257);
-    let _active = sc_1.loadBit();
+    const sc_0 = slice;
+    const _actionId = sc_0.loadIntBig(257);
+    const _totalStake = sc_0.loadIntBig(257);
+    const _vetoCount = sc_0.loadIntBig(257);
+    const sc_1 = sc_0.loadRef().beginParse();
+    const _threshold = sc_1.loadIntBig(257);
+    const _active = sc_1.loadBit();
     return { $$type: 'VetoState' as const, actionId: _actionId, totalStake: _totalStake, vetoCount: _vetoCount, threshold: _threshold, active: _active };
 }
 
-function loadTupleVetoState(source: TupleReader) {
-    let _actionId = source.readBigNumber();
-    let _totalStake = source.readBigNumber();
-    let _vetoCount = source.readBigNumber();
-    let _threshold = source.readBigNumber();
-    let _active = source.readBoolean();
+export function loadTupleVetoState(source: TupleReader) {
+    const _actionId = source.readBigNumber();
+    const _totalStake = source.readBigNumber();
+    const _vetoCount = source.readBigNumber();
+    const _threshold = source.readBigNumber();
+    const _active = source.readBoolean();
     return { $$type: 'VetoState' as const, actionId: _actionId, totalStake: _totalStake, vetoCount: _vetoCount, threshold: _threshold, active: _active };
 }
 
-function loadGetterTupleVetoState(source: TupleReader) {
-    let _actionId = source.readBigNumber();
-    let _totalStake = source.readBigNumber();
-    let _vetoCount = source.readBigNumber();
-    let _threshold = source.readBigNumber();
-    let _active = source.readBoolean();
+export function loadGetterTupleVetoState(source: TupleReader) {
+    const _actionId = source.readBigNumber();
+    const _totalStake = source.readBigNumber();
+    const _vetoCount = source.readBigNumber();
+    const _threshold = source.readBigNumber();
+    const _active = source.readBoolean();
     return { $$type: 'VetoState' as const, actionId: _actionId, totalStake: _totalStake, vetoCount: _vetoCount, threshold: _threshold, active: _active };
 }
 
-function storeTupleVetoState(source: VetoState) {
-    let builder = new TupleBuilder();
+export function storeTupleVetoState(source: VetoState) {
+    const builder = new TupleBuilder();
     builder.writeNumber(source.actionId);
     builder.writeNumber(source.totalStake);
     builder.writeNumber(source.vetoCount);
@@ -3373,7 +4349,7 @@ function storeTupleVetoState(source: VetoState) {
     return builder.build();
 }
 
-function dictValueParserVetoState(): DictionaryValue<VetoState> {
+export function dictValueParserVetoState(): DictionaryValue<VetoState> {
     return {
         serialize: (src, builder) => {
             builder.storeRef(beginCell().store(storeVetoState(src)).endCell());
@@ -3394,7 +4370,7 @@ export type AIRecommendation = {
 
 export function storeAIRecommendation(src: AIRecommendation) {
     return (builder: Builder) => {
-        let b_0 = builder;
+        const b_0 = builder;
         b_0.storeInt(src.timestamp, 257);
         b_0.storeStringRefTail(src.action);
         b_0.storeInt(src.confidence, 257);
@@ -3403,32 +4379,32 @@ export function storeAIRecommendation(src: AIRecommendation) {
 }
 
 export function loadAIRecommendation(slice: Slice) {
-    let sc_0 = slice;
-    let _timestamp = sc_0.loadIntBig(257);
-    let _action = sc_0.loadStringRefTail();
-    let _confidence = sc_0.loadIntBig(257);
-    let _executed = sc_0.loadBit();
+    const sc_0 = slice;
+    const _timestamp = sc_0.loadIntBig(257);
+    const _action = sc_0.loadStringRefTail();
+    const _confidence = sc_0.loadIntBig(257);
+    const _executed = sc_0.loadBit();
     return { $$type: 'AIRecommendation' as const, timestamp: _timestamp, action: _action, confidence: _confidence, executed: _executed };
 }
 
-function loadTupleAIRecommendation(source: TupleReader) {
-    let _timestamp = source.readBigNumber();
-    let _action = source.readString();
-    let _confidence = source.readBigNumber();
-    let _executed = source.readBoolean();
+export function loadTupleAIRecommendation(source: TupleReader) {
+    const _timestamp = source.readBigNumber();
+    const _action = source.readString();
+    const _confidence = source.readBigNumber();
+    const _executed = source.readBoolean();
     return { $$type: 'AIRecommendation' as const, timestamp: _timestamp, action: _action, confidence: _confidence, executed: _executed };
 }
 
-function loadGetterTupleAIRecommendation(source: TupleReader) {
-    let _timestamp = source.readBigNumber();
-    let _action = source.readString();
-    let _confidence = source.readBigNumber();
-    let _executed = source.readBoolean();
+export function loadGetterTupleAIRecommendation(source: TupleReader) {
+    const _timestamp = source.readBigNumber();
+    const _action = source.readString();
+    const _confidence = source.readBigNumber();
+    const _executed = source.readBoolean();
     return { $$type: 'AIRecommendation' as const, timestamp: _timestamp, action: _action, confidence: _confidence, executed: _executed };
 }
 
-function storeTupleAIRecommendation(source: AIRecommendation) {
-    let builder = new TupleBuilder();
+export function storeTupleAIRecommendation(source: AIRecommendation) {
+    const builder = new TupleBuilder();
     builder.writeNumber(source.timestamp);
     builder.writeString(source.action);
     builder.writeNumber(source.confidence);
@@ -3436,7 +4412,7 @@ function storeTupleAIRecommendation(source: AIRecommendation) {
     return builder.build();
 }
 
-function dictValueParserAIRecommendation(): DictionaryValue<AIRecommendation> {
+export function dictValueParserAIRecommendation(): DictionaryValue<AIRecommendation> {
     return {
         serialize: (src, builder) => {
             builder.storeRef(beginCell().store(storeAIRecommendation(src)).endCell());
@@ -3457,44 +4433,44 @@ export type StakeInfo = {
 
 export function storeStakeInfo(src: StakeInfo) {
     return (builder: Builder) => {
-        let b_0 = builder;
+        const b_0 = builder;
         b_0.storeInt(src.amount, 257);
         b_0.storeInt(src.startTime, 257);
         b_0.storeInt(src.lastClaim, 257);
-        let b_1 = new Builder();
+        const b_1 = new Builder();
         b_1.storeInt(src.lockEnd, 257);
         b_0.storeRef(b_1.endCell());
     };
 }
 
 export function loadStakeInfo(slice: Slice) {
-    let sc_0 = slice;
-    let _amount = sc_0.loadIntBig(257);
-    let _startTime = sc_0.loadIntBig(257);
-    let _lastClaim = sc_0.loadIntBig(257);
-    let sc_1 = sc_0.loadRef().beginParse();
-    let _lockEnd = sc_1.loadIntBig(257);
+    const sc_0 = slice;
+    const _amount = sc_0.loadIntBig(257);
+    const _startTime = sc_0.loadIntBig(257);
+    const _lastClaim = sc_0.loadIntBig(257);
+    const sc_1 = sc_0.loadRef().beginParse();
+    const _lockEnd = sc_1.loadIntBig(257);
     return { $$type: 'StakeInfo' as const, amount: _amount, startTime: _startTime, lastClaim: _lastClaim, lockEnd: _lockEnd };
 }
 
-function loadTupleStakeInfo(source: TupleReader) {
-    let _amount = source.readBigNumber();
-    let _startTime = source.readBigNumber();
-    let _lastClaim = source.readBigNumber();
-    let _lockEnd = source.readBigNumber();
+export function loadTupleStakeInfo(source: TupleReader) {
+    const _amount = source.readBigNumber();
+    const _startTime = source.readBigNumber();
+    const _lastClaim = source.readBigNumber();
+    const _lockEnd = source.readBigNumber();
     return { $$type: 'StakeInfo' as const, amount: _amount, startTime: _startTime, lastClaim: _lastClaim, lockEnd: _lockEnd };
 }
 
-function loadGetterTupleStakeInfo(source: TupleReader) {
-    let _amount = source.readBigNumber();
-    let _startTime = source.readBigNumber();
-    let _lastClaim = source.readBigNumber();
-    let _lockEnd = source.readBigNumber();
+export function loadGetterTupleStakeInfo(source: TupleReader) {
+    const _amount = source.readBigNumber();
+    const _startTime = source.readBigNumber();
+    const _lastClaim = source.readBigNumber();
+    const _lockEnd = source.readBigNumber();
     return { $$type: 'StakeInfo' as const, amount: _amount, startTime: _startTime, lastClaim: _lastClaim, lockEnd: _lockEnd };
 }
 
-function storeTupleStakeInfo(source: StakeInfo) {
-    let builder = new TupleBuilder();
+export function storeTupleStakeInfo(source: StakeInfo) {
+    const builder = new TupleBuilder();
     builder.writeNumber(source.amount);
     builder.writeNumber(source.startTime);
     builder.writeNumber(source.lastClaim);
@@ -3502,7 +4478,7 @@ function storeTupleStakeInfo(source: StakeInfo) {
     return builder.build();
 }
 
-function dictValueParserStakeInfo(): DictionaryValue<StakeInfo> {
+export function dictValueParserStakeInfo(): DictionaryValue<StakeInfo> {
     return {
         serialize: (src, builder) => {
             builder.storeRef(beginCell().store(storeStakeInfo(src)).endCell());
@@ -3524,48 +4500,48 @@ export type StakingConfig = {
 
 export function storeStakingConfig(src: StakingConfig) {
     return (builder: Builder) => {
-        let b_0 = builder;
+        const b_0 = builder;
         b_0.storeBit(src.enabled);
         b_0.storeInt(src.apyBps, 257);
         b_0.storeInt(src.minStake, 257);
         b_0.storeInt(src.lockPeriod, 257);
-        let b_1 = new Builder();
+        const b_1 = new Builder();
         b_1.storeInt(src.totalStaked, 257);
         b_0.storeRef(b_1.endCell());
     };
 }
 
 export function loadStakingConfig(slice: Slice) {
-    let sc_0 = slice;
-    let _enabled = sc_0.loadBit();
-    let _apyBps = sc_0.loadIntBig(257);
-    let _minStake = sc_0.loadIntBig(257);
-    let _lockPeriod = sc_0.loadIntBig(257);
-    let sc_1 = sc_0.loadRef().beginParse();
-    let _totalStaked = sc_1.loadIntBig(257);
+    const sc_0 = slice;
+    const _enabled = sc_0.loadBit();
+    const _apyBps = sc_0.loadIntBig(257);
+    const _minStake = sc_0.loadIntBig(257);
+    const _lockPeriod = sc_0.loadIntBig(257);
+    const sc_1 = sc_0.loadRef().beginParse();
+    const _totalStaked = sc_1.loadIntBig(257);
     return { $$type: 'StakingConfig' as const, enabled: _enabled, apyBps: _apyBps, minStake: _minStake, lockPeriod: _lockPeriod, totalStaked: _totalStaked };
 }
 
-function loadTupleStakingConfig(source: TupleReader) {
-    let _enabled = source.readBoolean();
-    let _apyBps = source.readBigNumber();
-    let _minStake = source.readBigNumber();
-    let _lockPeriod = source.readBigNumber();
-    let _totalStaked = source.readBigNumber();
+export function loadTupleStakingConfig(source: TupleReader) {
+    const _enabled = source.readBoolean();
+    const _apyBps = source.readBigNumber();
+    const _minStake = source.readBigNumber();
+    const _lockPeriod = source.readBigNumber();
+    const _totalStaked = source.readBigNumber();
     return { $$type: 'StakingConfig' as const, enabled: _enabled, apyBps: _apyBps, minStake: _minStake, lockPeriod: _lockPeriod, totalStaked: _totalStaked };
 }
 
-function loadGetterTupleStakingConfig(source: TupleReader) {
-    let _enabled = source.readBoolean();
-    let _apyBps = source.readBigNumber();
-    let _minStake = source.readBigNumber();
-    let _lockPeriod = source.readBigNumber();
-    let _totalStaked = source.readBigNumber();
+export function loadGetterTupleStakingConfig(source: TupleReader) {
+    const _enabled = source.readBoolean();
+    const _apyBps = source.readBigNumber();
+    const _minStake = source.readBigNumber();
+    const _lockPeriod = source.readBigNumber();
+    const _totalStaked = source.readBigNumber();
     return { $$type: 'StakingConfig' as const, enabled: _enabled, apyBps: _apyBps, minStake: _minStake, lockPeriod: _lockPeriod, totalStaked: _totalStaked };
 }
 
-function storeTupleStakingConfig(source: StakingConfig) {
-    let builder = new TupleBuilder();
+export function storeTupleStakingConfig(source: StakingConfig) {
+    const builder = new TupleBuilder();
     builder.writeBoolean(source.enabled);
     builder.writeNumber(source.apyBps);
     builder.writeNumber(source.minStake);
@@ -3574,7 +4550,7 @@ function storeTupleStakingConfig(source: StakingConfig) {
     return builder.build();
 }
 
-function dictValueParserStakingConfig(): DictionaryValue<StakingConfig> {
+export function dictValueParserStakingConfig(): DictionaryValue<StakingConfig> {
     return {
         serialize: (src, builder) => {
             builder.storeRef(beginCell().store(storeStakingConfig(src)).endCell());
@@ -3594,7 +4570,7 @@ export type ReferralInfo = {
 
 export function storeReferralInfo(src: ReferralInfo) {
     return (builder: Builder) => {
-        let b_0 = builder;
+        const b_0 = builder;
         b_0.storeAddress(src.referrer);
         b_0.storeInt(src.totalEarned, 257);
         b_0.storeInt(src.totalReferrals, 257);
@@ -3602,36 +4578,36 @@ export function storeReferralInfo(src: ReferralInfo) {
 }
 
 export function loadReferralInfo(slice: Slice) {
-    let sc_0 = slice;
-    let _referrer = sc_0.loadAddress();
-    let _totalEarned = sc_0.loadIntBig(257);
-    let _totalReferrals = sc_0.loadIntBig(257);
+    const sc_0 = slice;
+    const _referrer = sc_0.loadAddress();
+    const _totalEarned = sc_0.loadIntBig(257);
+    const _totalReferrals = sc_0.loadIntBig(257);
     return { $$type: 'ReferralInfo' as const, referrer: _referrer, totalEarned: _totalEarned, totalReferrals: _totalReferrals };
 }
 
-function loadTupleReferralInfo(source: TupleReader) {
-    let _referrer = source.readAddress();
-    let _totalEarned = source.readBigNumber();
-    let _totalReferrals = source.readBigNumber();
+export function loadTupleReferralInfo(source: TupleReader) {
+    const _referrer = source.readAddress();
+    const _totalEarned = source.readBigNumber();
+    const _totalReferrals = source.readBigNumber();
     return { $$type: 'ReferralInfo' as const, referrer: _referrer, totalEarned: _totalEarned, totalReferrals: _totalReferrals };
 }
 
-function loadGetterTupleReferralInfo(source: TupleReader) {
-    let _referrer = source.readAddress();
-    let _totalEarned = source.readBigNumber();
-    let _totalReferrals = source.readBigNumber();
+export function loadGetterTupleReferralInfo(source: TupleReader) {
+    const _referrer = source.readAddress();
+    const _totalEarned = source.readBigNumber();
+    const _totalReferrals = source.readBigNumber();
     return { $$type: 'ReferralInfo' as const, referrer: _referrer, totalEarned: _totalEarned, totalReferrals: _totalReferrals };
 }
 
-function storeTupleReferralInfo(source: ReferralInfo) {
-    let builder = new TupleBuilder();
+export function storeTupleReferralInfo(source: ReferralInfo) {
+    const builder = new TupleBuilder();
     builder.writeAddress(source.referrer);
     builder.writeNumber(source.totalEarned);
     builder.writeNumber(source.totalReferrals);
     return builder.build();
 }
 
-function dictValueParserReferralInfo(): DictionaryValue<ReferralInfo> {
+export function dictValueParserReferralInfo(): DictionaryValue<ReferralInfo> {
     return {
         serialize: (src, builder) => {
             builder.storeRef(beginCell().store(storeReferralInfo(src)).endCell());
@@ -3650,39 +4626,39 @@ export type ReferralConfig = {
 
 export function storeReferralConfig(src: ReferralConfig) {
     return (builder: Builder) => {
-        let b_0 = builder;
+        const b_0 = builder;
         b_0.storeBit(src.enabled);
         b_0.storeInt(src.rewardBps, 257);
     };
 }
 
 export function loadReferralConfig(slice: Slice) {
-    let sc_0 = slice;
-    let _enabled = sc_0.loadBit();
-    let _rewardBps = sc_0.loadIntBig(257);
+    const sc_0 = slice;
+    const _enabled = sc_0.loadBit();
+    const _rewardBps = sc_0.loadIntBig(257);
     return { $$type: 'ReferralConfig' as const, enabled: _enabled, rewardBps: _rewardBps };
 }
 
-function loadTupleReferralConfig(source: TupleReader) {
-    let _enabled = source.readBoolean();
-    let _rewardBps = source.readBigNumber();
+export function loadTupleReferralConfig(source: TupleReader) {
+    const _enabled = source.readBoolean();
+    const _rewardBps = source.readBigNumber();
     return { $$type: 'ReferralConfig' as const, enabled: _enabled, rewardBps: _rewardBps };
 }
 
-function loadGetterTupleReferralConfig(source: TupleReader) {
-    let _enabled = source.readBoolean();
-    let _rewardBps = source.readBigNumber();
+export function loadGetterTupleReferralConfig(source: TupleReader) {
+    const _enabled = source.readBoolean();
+    const _rewardBps = source.readBigNumber();
     return { $$type: 'ReferralConfig' as const, enabled: _enabled, rewardBps: _rewardBps };
 }
 
-function storeTupleReferralConfig(source: ReferralConfig) {
-    let builder = new TupleBuilder();
+export function storeTupleReferralConfig(source: ReferralConfig) {
+    const builder = new TupleBuilder();
     builder.writeBoolean(source.enabled);
     builder.writeNumber(source.rewardBps);
     return builder.build();
 }
 
-function dictValueParserReferralConfig(): DictionaryValue<ReferralConfig> {
+export function dictValueParserReferralConfig(): DictionaryValue<ReferralConfig> {
     return {
         serialize: (src, builder) => {
             builder.storeRef(beginCell().store(storeReferralConfig(src)).endCell());
@@ -3704,11 +4680,11 @@ export type VestingInfo = {
 
 export function storeVestingInfo(src: VestingInfo) {
     return (builder: Builder) => {
-        let b_0 = builder;
+        const b_0 = builder;
         b_0.storeInt(src.totalAmount, 257);
         b_0.storeInt(src.claimed, 257);
         b_0.storeInt(src.startTime, 257);
-        let b_1 = new Builder();
+        const b_1 = new Builder();
         b_1.storeInt(src.cliff, 257);
         b_1.storeInt(src.duration, 257);
         b_0.storeRef(b_1.endCell());
@@ -3716,36 +4692,36 @@ export function storeVestingInfo(src: VestingInfo) {
 }
 
 export function loadVestingInfo(slice: Slice) {
-    let sc_0 = slice;
-    let _totalAmount = sc_0.loadIntBig(257);
-    let _claimed = sc_0.loadIntBig(257);
-    let _startTime = sc_0.loadIntBig(257);
-    let sc_1 = sc_0.loadRef().beginParse();
-    let _cliff = sc_1.loadIntBig(257);
-    let _duration = sc_1.loadIntBig(257);
+    const sc_0 = slice;
+    const _totalAmount = sc_0.loadIntBig(257);
+    const _claimed = sc_0.loadIntBig(257);
+    const _startTime = sc_0.loadIntBig(257);
+    const sc_1 = sc_0.loadRef().beginParse();
+    const _cliff = sc_1.loadIntBig(257);
+    const _duration = sc_1.loadIntBig(257);
     return { $$type: 'VestingInfo' as const, totalAmount: _totalAmount, claimed: _claimed, startTime: _startTime, cliff: _cliff, duration: _duration };
 }
 
-function loadTupleVestingInfo(source: TupleReader) {
-    let _totalAmount = source.readBigNumber();
-    let _claimed = source.readBigNumber();
-    let _startTime = source.readBigNumber();
-    let _cliff = source.readBigNumber();
-    let _duration = source.readBigNumber();
+export function loadTupleVestingInfo(source: TupleReader) {
+    const _totalAmount = source.readBigNumber();
+    const _claimed = source.readBigNumber();
+    const _startTime = source.readBigNumber();
+    const _cliff = source.readBigNumber();
+    const _duration = source.readBigNumber();
     return { $$type: 'VestingInfo' as const, totalAmount: _totalAmount, claimed: _claimed, startTime: _startTime, cliff: _cliff, duration: _duration };
 }
 
-function loadGetterTupleVestingInfo(source: TupleReader) {
-    let _totalAmount = source.readBigNumber();
-    let _claimed = source.readBigNumber();
-    let _startTime = source.readBigNumber();
-    let _cliff = source.readBigNumber();
-    let _duration = source.readBigNumber();
+export function loadGetterTupleVestingInfo(source: TupleReader) {
+    const _totalAmount = source.readBigNumber();
+    const _claimed = source.readBigNumber();
+    const _startTime = source.readBigNumber();
+    const _cliff = source.readBigNumber();
+    const _duration = source.readBigNumber();
     return { $$type: 'VestingInfo' as const, totalAmount: _totalAmount, claimed: _claimed, startTime: _startTime, cliff: _cliff, duration: _duration };
 }
 
-function storeTupleVestingInfo(source: VestingInfo) {
-    let builder = new TupleBuilder();
+export function storeTupleVestingInfo(source: VestingInfo) {
+    const builder = new TupleBuilder();
     builder.writeNumber(source.totalAmount);
     builder.writeNumber(source.claimed);
     builder.writeNumber(source.startTime);
@@ -3754,7 +4730,7 @@ function storeTupleVestingInfo(source: VestingInfo) {
     return builder.build();
 }
 
-function dictValueParserVestingInfo(): DictionaryValue<VestingInfo> {
+export function dictValueParserVestingInfo(): DictionaryValue<VestingInfo> {
     return {
         serialize: (src, builder) => {
             builder.storeRef(beginCell().store(storeVestingInfo(src)).endCell());
@@ -3778,12 +4754,12 @@ export type LotteryConfig = {
 
 export function storeLotteryConfig(src: LotteryConfig) {
     return (builder: Builder) => {
-        let b_0 = builder;
+        const b_0 = builder;
         b_0.storeBit(src.enabled);
         b_0.storeInt(src.ticketPrice, 257);
         b_0.storeInt(src.drawInterval, 257);
         b_0.storeInt(src.jackpotShare, 257);
-        let b_1 = new Builder();
+        const b_1 = new Builder();
         b_1.storeInt(src.currentRound, 257);
         b_1.storeInt(src.lastDraw, 257);
         b_1.storeInt(src.totalJackpot, 257);
@@ -3792,42 +4768,42 @@ export function storeLotteryConfig(src: LotteryConfig) {
 }
 
 export function loadLotteryConfig(slice: Slice) {
-    let sc_0 = slice;
-    let _enabled = sc_0.loadBit();
-    let _ticketPrice = sc_0.loadIntBig(257);
-    let _drawInterval = sc_0.loadIntBig(257);
-    let _jackpotShare = sc_0.loadIntBig(257);
-    let sc_1 = sc_0.loadRef().beginParse();
-    let _currentRound = sc_1.loadIntBig(257);
-    let _lastDraw = sc_1.loadIntBig(257);
-    let _totalJackpot = sc_1.loadIntBig(257);
+    const sc_0 = slice;
+    const _enabled = sc_0.loadBit();
+    const _ticketPrice = sc_0.loadIntBig(257);
+    const _drawInterval = sc_0.loadIntBig(257);
+    const _jackpotShare = sc_0.loadIntBig(257);
+    const sc_1 = sc_0.loadRef().beginParse();
+    const _currentRound = sc_1.loadIntBig(257);
+    const _lastDraw = sc_1.loadIntBig(257);
+    const _totalJackpot = sc_1.loadIntBig(257);
     return { $$type: 'LotteryConfig' as const, enabled: _enabled, ticketPrice: _ticketPrice, drawInterval: _drawInterval, jackpotShare: _jackpotShare, currentRound: _currentRound, lastDraw: _lastDraw, totalJackpot: _totalJackpot };
 }
 
-function loadTupleLotteryConfig(source: TupleReader) {
-    let _enabled = source.readBoolean();
-    let _ticketPrice = source.readBigNumber();
-    let _drawInterval = source.readBigNumber();
-    let _jackpotShare = source.readBigNumber();
-    let _currentRound = source.readBigNumber();
-    let _lastDraw = source.readBigNumber();
-    let _totalJackpot = source.readBigNumber();
+export function loadTupleLotteryConfig(source: TupleReader) {
+    const _enabled = source.readBoolean();
+    const _ticketPrice = source.readBigNumber();
+    const _drawInterval = source.readBigNumber();
+    const _jackpotShare = source.readBigNumber();
+    const _currentRound = source.readBigNumber();
+    const _lastDraw = source.readBigNumber();
+    const _totalJackpot = source.readBigNumber();
     return { $$type: 'LotteryConfig' as const, enabled: _enabled, ticketPrice: _ticketPrice, drawInterval: _drawInterval, jackpotShare: _jackpotShare, currentRound: _currentRound, lastDraw: _lastDraw, totalJackpot: _totalJackpot };
 }
 
-function loadGetterTupleLotteryConfig(source: TupleReader) {
-    let _enabled = source.readBoolean();
-    let _ticketPrice = source.readBigNumber();
-    let _drawInterval = source.readBigNumber();
-    let _jackpotShare = source.readBigNumber();
-    let _currentRound = source.readBigNumber();
-    let _lastDraw = source.readBigNumber();
-    let _totalJackpot = source.readBigNumber();
+export function loadGetterTupleLotteryConfig(source: TupleReader) {
+    const _enabled = source.readBoolean();
+    const _ticketPrice = source.readBigNumber();
+    const _drawInterval = source.readBigNumber();
+    const _jackpotShare = source.readBigNumber();
+    const _currentRound = source.readBigNumber();
+    const _lastDraw = source.readBigNumber();
+    const _totalJackpot = source.readBigNumber();
     return { $$type: 'LotteryConfig' as const, enabled: _enabled, ticketPrice: _ticketPrice, drawInterval: _drawInterval, jackpotShare: _jackpotShare, currentRound: _currentRound, lastDraw: _lastDraw, totalJackpot: _totalJackpot };
 }
 
-function storeTupleLotteryConfig(source: LotteryConfig) {
-    let builder = new TupleBuilder();
+export function storeTupleLotteryConfig(source: LotteryConfig) {
+    const builder = new TupleBuilder();
     builder.writeBoolean(source.enabled);
     builder.writeNumber(source.ticketPrice);
     builder.writeNumber(source.drawInterval);
@@ -3838,7 +4814,7 @@ function storeTupleLotteryConfig(source: LotteryConfig) {
     return builder.build();
 }
 
-function dictValueParserLotteryConfig(): DictionaryValue<LotteryConfig> {
+export function dictValueParserLotteryConfig(): DictionaryValue<LotteryConfig> {
     return {
         serialize: (src, builder) => {
             builder.storeRef(beginCell().store(storeLotteryConfig(src)).endCell());
@@ -3857,39 +4833,39 @@ export type LotteryTicket = {
 
 export function storeLotteryTicket(src: LotteryTicket) {
     return (builder: Builder) => {
-        let b_0 = builder;
+        const b_0 = builder;
         b_0.storeInt(src.round, 257);
         b_0.storeAddress(src.owner);
     };
 }
 
 export function loadLotteryTicket(slice: Slice) {
-    let sc_0 = slice;
-    let _round = sc_0.loadIntBig(257);
-    let _owner = sc_0.loadAddress();
+    const sc_0 = slice;
+    const _round = sc_0.loadIntBig(257);
+    const _owner = sc_0.loadAddress();
     return { $$type: 'LotteryTicket' as const, round: _round, owner: _owner };
 }
 
-function loadTupleLotteryTicket(source: TupleReader) {
-    let _round = source.readBigNumber();
-    let _owner = source.readAddress();
+export function loadTupleLotteryTicket(source: TupleReader) {
+    const _round = source.readBigNumber();
+    const _owner = source.readAddress();
     return { $$type: 'LotteryTicket' as const, round: _round, owner: _owner };
 }
 
-function loadGetterTupleLotteryTicket(source: TupleReader) {
-    let _round = source.readBigNumber();
-    let _owner = source.readAddress();
+export function loadGetterTupleLotteryTicket(source: TupleReader) {
+    const _round = source.readBigNumber();
+    const _owner = source.readAddress();
     return { $$type: 'LotteryTicket' as const, round: _round, owner: _owner };
 }
 
-function storeTupleLotteryTicket(source: LotteryTicket) {
-    let builder = new TupleBuilder();
+export function storeTupleLotteryTicket(source: LotteryTicket) {
+    const builder = new TupleBuilder();
     builder.writeNumber(source.round);
     builder.writeAddress(source.owner);
     return builder.build();
 }
 
-function dictValueParserLotteryTicket(): DictionaryValue<LotteryTicket> {
+export function dictValueParserLotteryTicket(): DictionaryValue<LotteryTicket> {
     return {
         serialize: (src, builder) => {
             builder.storeRef(beginCell().store(storeLotteryTicket(src)).endCell());
@@ -3970,11 +4946,13 @@ export type QuasarMaster$Data = {
     lotteryTickets: Dictionary<bigint, Address>;
     lotteryTicketCount: bigint;
     lotteryWinners: Dictionary<bigint, Address>;
+    defiAddress: Address;
+    defiFeeShareBps: bigint;
 }
 
 export function storeQuasarMaster$Data(src: QuasarMaster$Data) {
     return (builder: Builder) => {
-        let b_0 = builder;
+        const b_0 = builder;
         b_0.storeCoins(src.totalSupply);
         b_0.storeBit(src.mintable);
         b_0.storeAddress(src.owner);
@@ -3990,7 +4968,7 @@ export function storeQuasarMaster$Data(src: QuasarMaster$Data) {
         b_0.storeUint(src.cooldownSeconds, 16);
         b_0.storeBit(src.tradingEnabled);
         b_0.storeBit(src.buybackEnabled);
-        let b_1 = new Builder();
+        const b_1 = new Builder();
         b_1.storeCoins(src.buybackPool);
         b_1.storeCoins(src.buybackThreshold);
         b_1.storeUint(src.buybackCooldown, 32);
@@ -3998,7 +4976,7 @@ export function storeQuasarMaster$Data(src: QuasarMaster$Data) {
         b_1.storeInt(src.lastBuybackTime, 257);
         b_1.storeInt(src.totalBuybacks, 257);
         b_1.storeCoins(src.totalQsrBurnedViaBuyback);
-        let b_2 = new Builder();
+        const b_2 = new Builder();
         b_2.storeCoins(src.totalTonSpentOnBuyback);
         b_2.storeAddress(src.aiOracle);
         b_2.storeBit(src.aiEnabled);
@@ -4007,7 +4985,7 @@ export function storeQuasarMaster$Data(src: QuasarMaster$Data) {
         b_2.storeInt(src.signalCount, 257);
         b_2.storeDict(src.priceHistory, Dictionary.Keys.BigInt(257), Dictionary.Values.BigInt(257));
         b_2.storeDict(src.anomalyLog, Dictionary.Keys.BigInt(257), dictValueParserAIRecommendation());
-        let b_3 = new Builder();
+        const b_3 = new Builder();
         b_3.storeInt(src.anomalyIndex, 257);
         b_3.storeUint(src.minConfidence, 8);
         b_3.storeBit(src.emergencyPause);
@@ -4018,7 +4996,7 @@ export function storeQuasarMaster$Data(src: QuasarMaster$Data) {
         b_3.storeUint(src.ownerOverrideWindow, 32);
         b_3.storeUint(src.vetoThresholdBps, 16);
         b_3.storeDict(src.aiActionLog, Dictionary.Keys.BigInt(257), dictValueParserAIActionLog());
-        let b_4 = new Builder();
+        const b_4 = new Builder();
         b_4.storeInt(src.aiActionIndex, 257);
         b_4.storeDict(src.pendingAiActions, Dictionary.Keys.BigInt(257), Dictionary.Values.BigInt(257));
         b_4.storeDict(src.vetoLog, Dictionary.Keys.BigInt(257), dictValueParserVetoState());
@@ -4032,7 +5010,7 @@ export function storeQuasarMaster$Data(src: QuasarMaster$Data) {
         b_4.storeCoins(src.stakingRewardsPool);
         b_4.storeBit(src.referralEnabled);
         b_4.storeUint(src.referralRewardBps, 16);
-        let b_5 = new Builder();
+        const b_5 = new Builder();
         b_5.storeDict(src.referrals, Dictionary.Keys.Address(), dictValueParserReferralInfo());
         b_5.storeBit(src.vestingEnabled);
         b_5.storeCoins(src.teamAllocation);
@@ -4044,11 +5022,13 @@ export function storeQuasarMaster$Data(src: QuasarMaster$Data) {
         b_5.storeUint(src.lotteryJackpotShare, 8);
         b_5.storeInt(src.lotteryRound, 257);
         b_5.storeInt(src.lotteryLastDraw, 257);
-        let b_6 = new Builder();
+        const b_6 = new Builder();
         b_6.storeCoins(src.lotteryJackpot);
         b_6.storeDict(src.lotteryTickets, Dictionary.Keys.BigInt(257), Dictionary.Values.Address());
         b_6.storeInt(src.lotteryTicketCount, 257);
         b_6.storeDict(src.lotteryWinners, Dictionary.Keys.BigInt(257), Dictionary.Values.Address());
+        b_6.storeAddress(src.defiAddress);
+        b_6.storeUint(src.defiFeeShareBps, 16);
         b_5.storeRef(b_6.endCell());
         b_4.storeRef(b_5.endCell());
         b_3.storeRef(b_4.endCell());
@@ -4059,234 +5039,240 @@ export function storeQuasarMaster$Data(src: QuasarMaster$Data) {
 }
 
 export function loadQuasarMaster$Data(slice: Slice) {
-    let sc_0 = slice;
-    let _totalSupply = sc_0.loadCoins();
-    let _mintable = sc_0.loadBit();
-    let _owner = sc_0.loadAddress();
-    let _content = sc_0.loadRef();
-    let _walletCode = sc_0.loadRef();
-    let _feeBps = sc_0.loadUintBig(16);
-    let _feeBurnShare = sc_0.loadUintBig(8);
-    let _treasury = sc_0.loadAddress();
-    let _totalBurned = sc_0.loadCoins();
-    let _totalFeesCollected = sc_0.loadCoins();
-    let _maxTxBps = sc_0.loadUintBig(16);
-    let _maxWalletBps = sc_0.loadUintBig(16);
-    let _cooldownSeconds = sc_0.loadUintBig(16);
-    let _tradingEnabled = sc_0.loadBit();
-    let _buybackEnabled = sc_0.loadBit();
-    let sc_1 = sc_0.loadRef().beginParse();
-    let _buybackPool = sc_1.loadCoins();
-    let _buybackThreshold = sc_1.loadCoins();
-    let _buybackCooldown = sc_1.loadUintBig(32);
-    let _buybackBurnPercent = sc_1.loadUintBig(8);
-    let _lastBuybackTime = sc_1.loadIntBig(257);
-    let _totalBuybacks = sc_1.loadIntBig(257);
-    let _totalQsrBurnedViaBuyback = sc_1.loadCoins();
-    let sc_2 = sc_1.loadRef().beginParse();
-    let _totalTonSpentOnBuyback = sc_2.loadCoins();
-    let _aiOracle = sc_2.loadAddress();
-    let _aiEnabled = sc_2.loadBit();
-    let _aiFullAutonomy = sc_2.loadBit();
-    let _lastRebalanceTime = sc_2.loadIntBig(257);
-    let _signalCount = sc_2.loadIntBig(257);
-    let _priceHistory = Dictionary.load(Dictionary.Keys.BigInt(257), Dictionary.Values.BigInt(257), sc_2);
-    let _anomalyLog = Dictionary.load(Dictionary.Keys.BigInt(257), dictValueParserAIRecommendation(), sc_2);
-    let sc_3 = sc_2.loadRef().beginParse();
-    let _anomalyIndex = sc_3.loadIntBig(257);
-    let _minConfidence = sc_3.loadUintBig(8);
-    let _emergencyPause = sc_3.loadBit();
-    let _aiActionCooldown = sc_3.loadUintBig(32);
-    let _lastAiActionTime = sc_3.loadIntBig(257);
-    let _heartbeatTimeout = sc_3.loadUintBig(32);
-    let _lastHeartbeat = sc_3.loadIntBig(257);
-    let _ownerOverrideWindow = sc_3.loadUintBig(32);
-    let _vetoThresholdBps = sc_3.loadUintBig(16);
-    let _aiActionLog = Dictionary.load(Dictionary.Keys.BigInt(257), dictValueParserAIActionLog(), sc_3);
-    let sc_4 = sc_3.loadRef().beginParse();
-    let _aiActionIndex = sc_4.loadIntBig(257);
-    let _pendingAiActions = Dictionary.load(Dictionary.Keys.BigInt(257), Dictionary.Values.BigInt(257), sc_4);
-    let _vetoLog = Dictionary.load(Dictionary.Keys.BigInt(257), dictValueParserVetoState(), sc_4);
-    let _totalVetoStake = sc_4.loadCoins();
-    let _stakingEnabled = sc_4.loadBit();
-    let _stakingApyBps = sc_4.loadUintBig(16);
-    let _stakingMinStake = sc_4.loadCoins();
-    let _stakingLockPeriod = sc_4.loadUintBig(32);
-    let _stakers = Dictionary.load(Dictionary.Keys.Address(), dictValueParserStakeInfo(), sc_4);
-    let _totalStaked = sc_4.loadCoins();
-    let _stakingRewardsPool = sc_4.loadCoins();
-    let _referralEnabled = sc_4.loadBit();
-    let _referralRewardBps = sc_4.loadUintBig(16);
-    let sc_5 = sc_4.loadRef().beginParse();
-    let _referrals = Dictionary.load(Dictionary.Keys.Address(), dictValueParserReferralInfo(), sc_5);
-    let _vestingEnabled = sc_5.loadBit();
-    let _teamAllocation = sc_5.loadCoins();
-    let _teamClaimed = sc_5.loadCoins();
-    let _vestingSchedules = Dictionary.load(Dictionary.Keys.Address(), dictValueParserVestingInfo(), sc_5);
-    let _lotteryEnabled = sc_5.loadBit();
-    let _lotteryTicketPrice = sc_5.loadCoins();
-    let _lotteryDrawInterval = sc_5.loadUintBig(32);
-    let _lotteryJackpotShare = sc_5.loadUintBig(8);
-    let _lotteryRound = sc_5.loadIntBig(257);
-    let _lotteryLastDraw = sc_5.loadIntBig(257);
-    let sc_6 = sc_5.loadRef().beginParse();
-    let _lotteryJackpot = sc_6.loadCoins();
-    let _lotteryTickets = Dictionary.load(Dictionary.Keys.BigInt(257), Dictionary.Values.Address(), sc_6);
-    let _lotteryTicketCount = sc_6.loadIntBig(257);
-    let _lotteryWinners = Dictionary.load(Dictionary.Keys.BigInt(257), Dictionary.Values.Address(), sc_6);
-    return { $$type: 'QuasarMaster$Data' as const, totalSupply: _totalSupply, mintable: _mintable, owner: _owner, content: _content, walletCode: _walletCode, feeBps: _feeBps, feeBurnShare: _feeBurnShare, treasury: _treasury, totalBurned: _totalBurned, totalFeesCollected: _totalFeesCollected, maxTxBps: _maxTxBps, maxWalletBps: _maxWalletBps, cooldownSeconds: _cooldownSeconds, tradingEnabled: _tradingEnabled, buybackEnabled: _buybackEnabled, buybackPool: _buybackPool, buybackThreshold: _buybackThreshold, buybackCooldown: _buybackCooldown, buybackBurnPercent: _buybackBurnPercent, lastBuybackTime: _lastBuybackTime, totalBuybacks: _totalBuybacks, totalQsrBurnedViaBuyback: _totalQsrBurnedViaBuyback, totalTonSpentOnBuyback: _totalTonSpentOnBuyback, aiOracle: _aiOracle, aiEnabled: _aiEnabled, aiFullAutonomy: _aiFullAutonomy, lastRebalanceTime: _lastRebalanceTime, signalCount: _signalCount, priceHistory: _priceHistory, anomalyLog: _anomalyLog, anomalyIndex: _anomalyIndex, minConfidence: _minConfidence, emergencyPause: _emergencyPause, aiActionCooldown: _aiActionCooldown, lastAiActionTime: _lastAiActionTime, heartbeatTimeout: _heartbeatTimeout, lastHeartbeat: _lastHeartbeat, ownerOverrideWindow: _ownerOverrideWindow, vetoThresholdBps: _vetoThresholdBps, aiActionLog: _aiActionLog, aiActionIndex: _aiActionIndex, pendingAiActions: _pendingAiActions, vetoLog: _vetoLog, totalVetoStake: _totalVetoStake, stakingEnabled: _stakingEnabled, stakingApyBps: _stakingApyBps, stakingMinStake: _stakingMinStake, stakingLockPeriod: _stakingLockPeriod, stakers: _stakers, totalStaked: _totalStaked, stakingRewardsPool: _stakingRewardsPool, referralEnabled: _referralEnabled, referralRewardBps: _referralRewardBps, referrals: _referrals, vestingEnabled: _vestingEnabled, teamAllocation: _teamAllocation, teamClaimed: _teamClaimed, vestingSchedules: _vestingSchedules, lotteryEnabled: _lotteryEnabled, lotteryTicketPrice: _lotteryTicketPrice, lotteryDrawInterval: _lotteryDrawInterval, lotteryJackpotShare: _lotteryJackpotShare, lotteryRound: _lotteryRound, lotteryLastDraw: _lotteryLastDraw, lotteryJackpot: _lotteryJackpot, lotteryTickets: _lotteryTickets, lotteryTicketCount: _lotteryTicketCount, lotteryWinners: _lotteryWinners };
+    const sc_0 = slice;
+    const _totalSupply = sc_0.loadCoins();
+    const _mintable = sc_0.loadBit();
+    const _owner = sc_0.loadAddress();
+    const _content = sc_0.loadRef();
+    const _walletCode = sc_0.loadRef();
+    const _feeBps = sc_0.loadUintBig(16);
+    const _feeBurnShare = sc_0.loadUintBig(8);
+    const _treasury = sc_0.loadAddress();
+    const _totalBurned = sc_0.loadCoins();
+    const _totalFeesCollected = sc_0.loadCoins();
+    const _maxTxBps = sc_0.loadUintBig(16);
+    const _maxWalletBps = sc_0.loadUintBig(16);
+    const _cooldownSeconds = sc_0.loadUintBig(16);
+    const _tradingEnabled = sc_0.loadBit();
+    const _buybackEnabled = sc_0.loadBit();
+    const sc_1 = sc_0.loadRef().beginParse();
+    const _buybackPool = sc_1.loadCoins();
+    const _buybackThreshold = sc_1.loadCoins();
+    const _buybackCooldown = sc_1.loadUintBig(32);
+    const _buybackBurnPercent = sc_1.loadUintBig(8);
+    const _lastBuybackTime = sc_1.loadIntBig(257);
+    const _totalBuybacks = sc_1.loadIntBig(257);
+    const _totalQsrBurnedViaBuyback = sc_1.loadCoins();
+    const sc_2 = sc_1.loadRef().beginParse();
+    const _totalTonSpentOnBuyback = sc_2.loadCoins();
+    const _aiOracle = sc_2.loadAddress();
+    const _aiEnabled = sc_2.loadBit();
+    const _aiFullAutonomy = sc_2.loadBit();
+    const _lastRebalanceTime = sc_2.loadIntBig(257);
+    const _signalCount = sc_2.loadIntBig(257);
+    const _priceHistory = Dictionary.load(Dictionary.Keys.BigInt(257), Dictionary.Values.BigInt(257), sc_2);
+    const _anomalyLog = Dictionary.load(Dictionary.Keys.BigInt(257), dictValueParserAIRecommendation(), sc_2);
+    const sc_3 = sc_2.loadRef().beginParse();
+    const _anomalyIndex = sc_3.loadIntBig(257);
+    const _minConfidence = sc_3.loadUintBig(8);
+    const _emergencyPause = sc_3.loadBit();
+    const _aiActionCooldown = sc_3.loadUintBig(32);
+    const _lastAiActionTime = sc_3.loadIntBig(257);
+    const _heartbeatTimeout = sc_3.loadUintBig(32);
+    const _lastHeartbeat = sc_3.loadIntBig(257);
+    const _ownerOverrideWindow = sc_3.loadUintBig(32);
+    const _vetoThresholdBps = sc_3.loadUintBig(16);
+    const _aiActionLog = Dictionary.load(Dictionary.Keys.BigInt(257), dictValueParserAIActionLog(), sc_3);
+    const sc_4 = sc_3.loadRef().beginParse();
+    const _aiActionIndex = sc_4.loadIntBig(257);
+    const _pendingAiActions = Dictionary.load(Dictionary.Keys.BigInt(257), Dictionary.Values.BigInt(257), sc_4);
+    const _vetoLog = Dictionary.load(Dictionary.Keys.BigInt(257), dictValueParserVetoState(), sc_4);
+    const _totalVetoStake = sc_4.loadCoins();
+    const _stakingEnabled = sc_4.loadBit();
+    const _stakingApyBps = sc_4.loadUintBig(16);
+    const _stakingMinStake = sc_4.loadCoins();
+    const _stakingLockPeriod = sc_4.loadUintBig(32);
+    const _stakers = Dictionary.load(Dictionary.Keys.Address(), dictValueParserStakeInfo(), sc_4);
+    const _totalStaked = sc_4.loadCoins();
+    const _stakingRewardsPool = sc_4.loadCoins();
+    const _referralEnabled = sc_4.loadBit();
+    const _referralRewardBps = sc_4.loadUintBig(16);
+    const sc_5 = sc_4.loadRef().beginParse();
+    const _referrals = Dictionary.load(Dictionary.Keys.Address(), dictValueParserReferralInfo(), sc_5);
+    const _vestingEnabled = sc_5.loadBit();
+    const _teamAllocation = sc_5.loadCoins();
+    const _teamClaimed = sc_5.loadCoins();
+    const _vestingSchedules = Dictionary.load(Dictionary.Keys.Address(), dictValueParserVestingInfo(), sc_5);
+    const _lotteryEnabled = sc_5.loadBit();
+    const _lotteryTicketPrice = sc_5.loadCoins();
+    const _lotteryDrawInterval = sc_5.loadUintBig(32);
+    const _lotteryJackpotShare = sc_5.loadUintBig(8);
+    const _lotteryRound = sc_5.loadIntBig(257);
+    const _lotteryLastDraw = sc_5.loadIntBig(257);
+    const sc_6 = sc_5.loadRef().beginParse();
+    const _lotteryJackpot = sc_6.loadCoins();
+    const _lotteryTickets = Dictionary.load(Dictionary.Keys.BigInt(257), Dictionary.Values.Address(), sc_6);
+    const _lotteryTicketCount = sc_6.loadIntBig(257);
+    const _lotteryWinners = Dictionary.load(Dictionary.Keys.BigInt(257), Dictionary.Values.Address(), sc_6);
+    const _defiAddress = sc_6.loadAddress();
+    const _defiFeeShareBps = sc_6.loadUintBig(16);
+    return { $$type: 'QuasarMaster$Data' as const, totalSupply: _totalSupply, mintable: _mintable, owner: _owner, content: _content, walletCode: _walletCode, feeBps: _feeBps, feeBurnShare: _feeBurnShare, treasury: _treasury, totalBurned: _totalBurned, totalFeesCollected: _totalFeesCollected, maxTxBps: _maxTxBps, maxWalletBps: _maxWalletBps, cooldownSeconds: _cooldownSeconds, tradingEnabled: _tradingEnabled, buybackEnabled: _buybackEnabled, buybackPool: _buybackPool, buybackThreshold: _buybackThreshold, buybackCooldown: _buybackCooldown, buybackBurnPercent: _buybackBurnPercent, lastBuybackTime: _lastBuybackTime, totalBuybacks: _totalBuybacks, totalQsrBurnedViaBuyback: _totalQsrBurnedViaBuyback, totalTonSpentOnBuyback: _totalTonSpentOnBuyback, aiOracle: _aiOracle, aiEnabled: _aiEnabled, aiFullAutonomy: _aiFullAutonomy, lastRebalanceTime: _lastRebalanceTime, signalCount: _signalCount, priceHistory: _priceHistory, anomalyLog: _anomalyLog, anomalyIndex: _anomalyIndex, minConfidence: _minConfidence, emergencyPause: _emergencyPause, aiActionCooldown: _aiActionCooldown, lastAiActionTime: _lastAiActionTime, heartbeatTimeout: _heartbeatTimeout, lastHeartbeat: _lastHeartbeat, ownerOverrideWindow: _ownerOverrideWindow, vetoThresholdBps: _vetoThresholdBps, aiActionLog: _aiActionLog, aiActionIndex: _aiActionIndex, pendingAiActions: _pendingAiActions, vetoLog: _vetoLog, totalVetoStake: _totalVetoStake, stakingEnabled: _stakingEnabled, stakingApyBps: _stakingApyBps, stakingMinStake: _stakingMinStake, stakingLockPeriod: _stakingLockPeriod, stakers: _stakers, totalStaked: _totalStaked, stakingRewardsPool: _stakingRewardsPool, referralEnabled: _referralEnabled, referralRewardBps: _referralRewardBps, referrals: _referrals, vestingEnabled: _vestingEnabled, teamAllocation: _teamAllocation, teamClaimed: _teamClaimed, vestingSchedules: _vestingSchedules, lotteryEnabled: _lotteryEnabled, lotteryTicketPrice: _lotteryTicketPrice, lotteryDrawInterval: _lotteryDrawInterval, lotteryJackpotShare: _lotteryJackpotShare, lotteryRound: _lotteryRound, lotteryLastDraw: _lotteryLastDraw, lotteryJackpot: _lotteryJackpot, lotteryTickets: _lotteryTickets, lotteryTicketCount: _lotteryTicketCount, lotteryWinners: _lotteryWinners, defiAddress: _defiAddress, defiFeeShareBps: _defiFeeShareBps };
 }
 
-function loadTupleQuasarMaster$Data(source: TupleReader) {
-    let _totalSupply = source.readBigNumber();
-    let _mintable = source.readBoolean();
-    let _owner = source.readAddress();
-    let _content = source.readCell();
-    let _walletCode = source.readCell();
-    let _feeBps = source.readBigNumber();
-    let _feeBurnShare = source.readBigNumber();
-    let _treasury = source.readAddress();
-    let _totalBurned = source.readBigNumber();
-    let _totalFeesCollected = source.readBigNumber();
-    let _maxTxBps = source.readBigNumber();
-    let _maxWalletBps = source.readBigNumber();
-    let _cooldownSeconds = source.readBigNumber();
-    let _tradingEnabled = source.readBoolean();
+export function loadTupleQuasarMaster$Data(source: TupleReader) {
+    const _totalSupply = source.readBigNumber();
+    const _mintable = source.readBoolean();
+    const _owner = source.readAddress();
+    const _content = source.readCell();
+    const _walletCode = source.readCell();
+    const _feeBps = source.readBigNumber();
+    const _feeBurnShare = source.readBigNumber();
+    const _treasury = source.readAddress();
+    const _totalBurned = source.readBigNumber();
+    const _totalFeesCollected = source.readBigNumber();
+    const _maxTxBps = source.readBigNumber();
+    const _maxWalletBps = source.readBigNumber();
+    const _cooldownSeconds = source.readBigNumber();
+    const _tradingEnabled = source.readBoolean();
     source = source.readTuple();
-    let _buybackEnabled = source.readBoolean();
-    let _buybackPool = source.readBigNumber();
-    let _buybackThreshold = source.readBigNumber();
-    let _buybackCooldown = source.readBigNumber();
-    let _buybackBurnPercent = source.readBigNumber();
-    let _lastBuybackTime = source.readBigNumber();
-    let _totalBuybacks = source.readBigNumber();
-    let _totalQsrBurnedViaBuyback = source.readBigNumber();
-    let _totalTonSpentOnBuyback = source.readBigNumber();
-    let _aiOracle = source.readAddress();
-    let _aiEnabled = source.readBoolean();
-    let _aiFullAutonomy = source.readBoolean();
-    let _lastRebalanceTime = source.readBigNumber();
-    let _signalCount = source.readBigNumber();
+    const _buybackEnabled = source.readBoolean();
+    const _buybackPool = source.readBigNumber();
+    const _buybackThreshold = source.readBigNumber();
+    const _buybackCooldown = source.readBigNumber();
+    const _buybackBurnPercent = source.readBigNumber();
+    const _lastBuybackTime = source.readBigNumber();
+    const _totalBuybacks = source.readBigNumber();
+    const _totalQsrBurnedViaBuyback = source.readBigNumber();
+    const _totalTonSpentOnBuyback = source.readBigNumber();
+    const _aiOracle = source.readAddress();
+    const _aiEnabled = source.readBoolean();
+    const _aiFullAutonomy = source.readBoolean();
+    const _lastRebalanceTime = source.readBigNumber();
+    const _signalCount = source.readBigNumber();
     source = source.readTuple();
-    let _priceHistory = Dictionary.loadDirect(Dictionary.Keys.BigInt(257), Dictionary.Values.BigInt(257), source.readCellOpt());
-    let _anomalyLog = Dictionary.loadDirect(Dictionary.Keys.BigInt(257), dictValueParserAIRecommendation(), source.readCellOpt());
-    let _anomalyIndex = source.readBigNumber();
-    let _minConfidence = source.readBigNumber();
-    let _emergencyPause = source.readBoolean();
-    let _aiActionCooldown = source.readBigNumber();
-    let _lastAiActionTime = source.readBigNumber();
-    let _heartbeatTimeout = source.readBigNumber();
-    let _lastHeartbeat = source.readBigNumber();
-    let _ownerOverrideWindow = source.readBigNumber();
-    let _vetoThresholdBps = source.readBigNumber();
-    let _aiActionLog = Dictionary.loadDirect(Dictionary.Keys.BigInt(257), dictValueParserAIActionLog(), source.readCellOpt());
-    let _aiActionIndex = source.readBigNumber();
-    let _pendingAiActions = Dictionary.loadDirect(Dictionary.Keys.BigInt(257), Dictionary.Values.BigInt(257), source.readCellOpt());
+    const _priceHistory = Dictionary.loadDirect(Dictionary.Keys.BigInt(257), Dictionary.Values.BigInt(257), source.readCellOpt());
+    const _anomalyLog = Dictionary.loadDirect(Dictionary.Keys.BigInt(257), dictValueParserAIRecommendation(), source.readCellOpt());
+    const _anomalyIndex = source.readBigNumber();
+    const _minConfidence = source.readBigNumber();
+    const _emergencyPause = source.readBoolean();
+    const _aiActionCooldown = source.readBigNumber();
+    const _lastAiActionTime = source.readBigNumber();
+    const _heartbeatTimeout = source.readBigNumber();
+    const _lastHeartbeat = source.readBigNumber();
+    const _ownerOverrideWindow = source.readBigNumber();
+    const _vetoThresholdBps = source.readBigNumber();
+    const _aiActionLog = Dictionary.loadDirect(Dictionary.Keys.BigInt(257), dictValueParserAIActionLog(), source.readCellOpt());
+    const _aiActionIndex = source.readBigNumber();
+    const _pendingAiActions = Dictionary.loadDirect(Dictionary.Keys.BigInt(257), Dictionary.Values.BigInt(257), source.readCellOpt());
     source = source.readTuple();
-    let _vetoLog = Dictionary.loadDirect(Dictionary.Keys.BigInt(257), dictValueParserVetoState(), source.readCellOpt());
-    let _totalVetoStake = source.readBigNumber();
-    let _stakingEnabled = source.readBoolean();
-    let _stakingApyBps = source.readBigNumber();
-    let _stakingMinStake = source.readBigNumber();
-    let _stakingLockPeriod = source.readBigNumber();
-    let _stakers = Dictionary.loadDirect(Dictionary.Keys.Address(), dictValueParserStakeInfo(), source.readCellOpt());
-    let _totalStaked = source.readBigNumber();
-    let _stakingRewardsPool = source.readBigNumber();
-    let _referralEnabled = source.readBoolean();
-    let _referralRewardBps = source.readBigNumber();
-    let _referrals = Dictionary.loadDirect(Dictionary.Keys.Address(), dictValueParserReferralInfo(), source.readCellOpt());
-    let _vestingEnabled = source.readBoolean();
-    let _teamAllocation = source.readBigNumber();
+    const _vetoLog = Dictionary.loadDirect(Dictionary.Keys.BigInt(257), dictValueParserVetoState(), source.readCellOpt());
+    const _totalVetoStake = source.readBigNumber();
+    const _stakingEnabled = source.readBoolean();
+    const _stakingApyBps = source.readBigNumber();
+    const _stakingMinStake = source.readBigNumber();
+    const _stakingLockPeriod = source.readBigNumber();
+    const _stakers = Dictionary.loadDirect(Dictionary.Keys.Address(), dictValueParserStakeInfo(), source.readCellOpt());
+    const _totalStaked = source.readBigNumber();
+    const _stakingRewardsPool = source.readBigNumber();
+    const _referralEnabled = source.readBoolean();
+    const _referralRewardBps = source.readBigNumber();
+    const _referrals = Dictionary.loadDirect(Dictionary.Keys.Address(), dictValueParserReferralInfo(), source.readCellOpt());
+    const _vestingEnabled = source.readBoolean();
+    const _teamAllocation = source.readBigNumber();
     source = source.readTuple();
-    let _teamClaimed = source.readBigNumber();
-    let _vestingSchedules = Dictionary.loadDirect(Dictionary.Keys.Address(), dictValueParserVestingInfo(), source.readCellOpt());
-    let _lotteryEnabled = source.readBoolean();
-    let _lotteryTicketPrice = source.readBigNumber();
-    let _lotteryDrawInterval = source.readBigNumber();
-    let _lotteryJackpotShare = source.readBigNumber();
-    let _lotteryRound = source.readBigNumber();
-    let _lotteryLastDraw = source.readBigNumber();
-    let _lotteryJackpot = source.readBigNumber();
-    let _lotteryTickets = Dictionary.loadDirect(Dictionary.Keys.BigInt(257), Dictionary.Values.Address(), source.readCellOpt());
-    let _lotteryTicketCount = source.readBigNumber();
-    let _lotteryWinners = Dictionary.loadDirect(Dictionary.Keys.BigInt(257), Dictionary.Values.Address(), source.readCellOpt());
-    return { $$type: 'QuasarMaster$Data' as const, totalSupply: _totalSupply, mintable: _mintable, owner: _owner, content: _content, walletCode: _walletCode, feeBps: _feeBps, feeBurnShare: _feeBurnShare, treasury: _treasury, totalBurned: _totalBurned, totalFeesCollected: _totalFeesCollected, maxTxBps: _maxTxBps, maxWalletBps: _maxWalletBps, cooldownSeconds: _cooldownSeconds, tradingEnabled: _tradingEnabled, buybackEnabled: _buybackEnabled, buybackPool: _buybackPool, buybackThreshold: _buybackThreshold, buybackCooldown: _buybackCooldown, buybackBurnPercent: _buybackBurnPercent, lastBuybackTime: _lastBuybackTime, totalBuybacks: _totalBuybacks, totalQsrBurnedViaBuyback: _totalQsrBurnedViaBuyback, totalTonSpentOnBuyback: _totalTonSpentOnBuyback, aiOracle: _aiOracle, aiEnabled: _aiEnabled, aiFullAutonomy: _aiFullAutonomy, lastRebalanceTime: _lastRebalanceTime, signalCount: _signalCount, priceHistory: _priceHistory, anomalyLog: _anomalyLog, anomalyIndex: _anomalyIndex, minConfidence: _minConfidence, emergencyPause: _emergencyPause, aiActionCooldown: _aiActionCooldown, lastAiActionTime: _lastAiActionTime, heartbeatTimeout: _heartbeatTimeout, lastHeartbeat: _lastHeartbeat, ownerOverrideWindow: _ownerOverrideWindow, vetoThresholdBps: _vetoThresholdBps, aiActionLog: _aiActionLog, aiActionIndex: _aiActionIndex, pendingAiActions: _pendingAiActions, vetoLog: _vetoLog, totalVetoStake: _totalVetoStake, stakingEnabled: _stakingEnabled, stakingApyBps: _stakingApyBps, stakingMinStake: _stakingMinStake, stakingLockPeriod: _stakingLockPeriod, stakers: _stakers, totalStaked: _totalStaked, stakingRewardsPool: _stakingRewardsPool, referralEnabled: _referralEnabled, referralRewardBps: _referralRewardBps, referrals: _referrals, vestingEnabled: _vestingEnabled, teamAllocation: _teamAllocation, teamClaimed: _teamClaimed, vestingSchedules: _vestingSchedules, lotteryEnabled: _lotteryEnabled, lotteryTicketPrice: _lotteryTicketPrice, lotteryDrawInterval: _lotteryDrawInterval, lotteryJackpotShare: _lotteryJackpotShare, lotteryRound: _lotteryRound, lotteryLastDraw: _lotteryLastDraw, lotteryJackpot: _lotteryJackpot, lotteryTickets: _lotteryTickets, lotteryTicketCount: _lotteryTicketCount, lotteryWinners: _lotteryWinners };
+    const _teamClaimed = source.readBigNumber();
+    const _vestingSchedules = Dictionary.loadDirect(Dictionary.Keys.Address(), dictValueParserVestingInfo(), source.readCellOpt());
+    const _lotteryEnabled = source.readBoolean();
+    const _lotteryTicketPrice = source.readBigNumber();
+    const _lotteryDrawInterval = source.readBigNumber();
+    const _lotteryJackpotShare = source.readBigNumber();
+    const _lotteryRound = source.readBigNumber();
+    const _lotteryLastDraw = source.readBigNumber();
+    const _lotteryJackpot = source.readBigNumber();
+    const _lotteryTickets = Dictionary.loadDirect(Dictionary.Keys.BigInt(257), Dictionary.Values.Address(), source.readCellOpt());
+    const _lotteryTicketCount = source.readBigNumber();
+    const _lotteryWinners = Dictionary.loadDirect(Dictionary.Keys.BigInt(257), Dictionary.Values.Address(), source.readCellOpt());
+    const _defiAddress = source.readAddress();
+    const _defiFeeShareBps = source.readBigNumber();
+    return { $$type: 'QuasarMaster$Data' as const, totalSupply: _totalSupply, mintable: _mintable, owner: _owner, content: _content, walletCode: _walletCode, feeBps: _feeBps, feeBurnShare: _feeBurnShare, treasury: _treasury, totalBurned: _totalBurned, totalFeesCollected: _totalFeesCollected, maxTxBps: _maxTxBps, maxWalletBps: _maxWalletBps, cooldownSeconds: _cooldownSeconds, tradingEnabled: _tradingEnabled, buybackEnabled: _buybackEnabled, buybackPool: _buybackPool, buybackThreshold: _buybackThreshold, buybackCooldown: _buybackCooldown, buybackBurnPercent: _buybackBurnPercent, lastBuybackTime: _lastBuybackTime, totalBuybacks: _totalBuybacks, totalQsrBurnedViaBuyback: _totalQsrBurnedViaBuyback, totalTonSpentOnBuyback: _totalTonSpentOnBuyback, aiOracle: _aiOracle, aiEnabled: _aiEnabled, aiFullAutonomy: _aiFullAutonomy, lastRebalanceTime: _lastRebalanceTime, signalCount: _signalCount, priceHistory: _priceHistory, anomalyLog: _anomalyLog, anomalyIndex: _anomalyIndex, minConfidence: _minConfidence, emergencyPause: _emergencyPause, aiActionCooldown: _aiActionCooldown, lastAiActionTime: _lastAiActionTime, heartbeatTimeout: _heartbeatTimeout, lastHeartbeat: _lastHeartbeat, ownerOverrideWindow: _ownerOverrideWindow, vetoThresholdBps: _vetoThresholdBps, aiActionLog: _aiActionLog, aiActionIndex: _aiActionIndex, pendingAiActions: _pendingAiActions, vetoLog: _vetoLog, totalVetoStake: _totalVetoStake, stakingEnabled: _stakingEnabled, stakingApyBps: _stakingApyBps, stakingMinStake: _stakingMinStake, stakingLockPeriod: _stakingLockPeriod, stakers: _stakers, totalStaked: _totalStaked, stakingRewardsPool: _stakingRewardsPool, referralEnabled: _referralEnabled, referralRewardBps: _referralRewardBps, referrals: _referrals, vestingEnabled: _vestingEnabled, teamAllocation: _teamAllocation, teamClaimed: _teamClaimed, vestingSchedules: _vestingSchedules, lotteryEnabled: _lotteryEnabled, lotteryTicketPrice: _lotteryTicketPrice, lotteryDrawInterval: _lotteryDrawInterval, lotteryJackpotShare: _lotteryJackpotShare, lotteryRound: _lotteryRound, lotteryLastDraw: _lotteryLastDraw, lotteryJackpot: _lotteryJackpot, lotteryTickets: _lotteryTickets, lotteryTicketCount: _lotteryTicketCount, lotteryWinners: _lotteryWinners, defiAddress: _defiAddress, defiFeeShareBps: _defiFeeShareBps };
 }
 
-function loadGetterTupleQuasarMaster$Data(source: TupleReader) {
-    let _totalSupply = source.readBigNumber();
-    let _mintable = source.readBoolean();
-    let _owner = source.readAddress();
-    let _content = source.readCell();
-    let _walletCode = source.readCell();
-    let _feeBps = source.readBigNumber();
-    let _feeBurnShare = source.readBigNumber();
-    let _treasury = source.readAddress();
-    let _totalBurned = source.readBigNumber();
-    let _totalFeesCollected = source.readBigNumber();
-    let _maxTxBps = source.readBigNumber();
-    let _maxWalletBps = source.readBigNumber();
-    let _cooldownSeconds = source.readBigNumber();
-    let _tradingEnabled = source.readBoolean();
-    let _buybackEnabled = source.readBoolean();
-    let _buybackPool = source.readBigNumber();
-    let _buybackThreshold = source.readBigNumber();
-    let _buybackCooldown = source.readBigNumber();
-    let _buybackBurnPercent = source.readBigNumber();
-    let _lastBuybackTime = source.readBigNumber();
-    let _totalBuybacks = source.readBigNumber();
-    let _totalQsrBurnedViaBuyback = source.readBigNumber();
-    let _totalTonSpentOnBuyback = source.readBigNumber();
-    let _aiOracle = source.readAddress();
-    let _aiEnabled = source.readBoolean();
-    let _aiFullAutonomy = source.readBoolean();
-    let _lastRebalanceTime = source.readBigNumber();
-    let _signalCount = source.readBigNumber();
-    let _priceHistory = Dictionary.loadDirect(Dictionary.Keys.BigInt(257), Dictionary.Values.BigInt(257), source.readCellOpt());
-    let _anomalyLog = Dictionary.loadDirect(Dictionary.Keys.BigInt(257), dictValueParserAIRecommendation(), source.readCellOpt());
-    let _anomalyIndex = source.readBigNumber();
-    let _minConfidence = source.readBigNumber();
-    let _emergencyPause = source.readBoolean();
-    let _aiActionCooldown = source.readBigNumber();
-    let _lastAiActionTime = source.readBigNumber();
-    let _heartbeatTimeout = source.readBigNumber();
-    let _lastHeartbeat = source.readBigNumber();
-    let _ownerOverrideWindow = source.readBigNumber();
-    let _vetoThresholdBps = source.readBigNumber();
-    let _aiActionLog = Dictionary.loadDirect(Dictionary.Keys.BigInt(257), dictValueParserAIActionLog(), source.readCellOpt());
-    let _aiActionIndex = source.readBigNumber();
-    let _pendingAiActions = Dictionary.loadDirect(Dictionary.Keys.BigInt(257), Dictionary.Values.BigInt(257), source.readCellOpt());
-    let _vetoLog = Dictionary.loadDirect(Dictionary.Keys.BigInt(257), dictValueParserVetoState(), source.readCellOpt());
-    let _totalVetoStake = source.readBigNumber();
-    let _stakingEnabled = source.readBoolean();
-    let _stakingApyBps = source.readBigNumber();
-    let _stakingMinStake = source.readBigNumber();
-    let _stakingLockPeriod = source.readBigNumber();
-    let _stakers = Dictionary.loadDirect(Dictionary.Keys.Address(), dictValueParserStakeInfo(), source.readCellOpt());
-    let _totalStaked = source.readBigNumber();
-    let _stakingRewardsPool = source.readBigNumber();
-    let _referralEnabled = source.readBoolean();
-    let _referralRewardBps = source.readBigNumber();
-    let _referrals = Dictionary.loadDirect(Dictionary.Keys.Address(), dictValueParserReferralInfo(), source.readCellOpt());
-    let _vestingEnabled = source.readBoolean();
-    let _teamAllocation = source.readBigNumber();
-    let _teamClaimed = source.readBigNumber();
-    let _vestingSchedules = Dictionary.loadDirect(Dictionary.Keys.Address(), dictValueParserVestingInfo(), source.readCellOpt());
-    let _lotteryEnabled = source.readBoolean();
-    let _lotteryTicketPrice = source.readBigNumber();
-    let _lotteryDrawInterval = source.readBigNumber();
-    let _lotteryJackpotShare = source.readBigNumber();
-    let _lotteryRound = source.readBigNumber();
-    let _lotteryLastDraw = source.readBigNumber();
-    let _lotteryJackpot = source.readBigNumber();
-    let _lotteryTickets = Dictionary.loadDirect(Dictionary.Keys.BigInt(257), Dictionary.Values.Address(), source.readCellOpt());
-    let _lotteryTicketCount = source.readBigNumber();
-    let _lotteryWinners = Dictionary.loadDirect(Dictionary.Keys.BigInt(257), Dictionary.Values.Address(), source.readCellOpt());
-    return { $$type: 'QuasarMaster$Data' as const, totalSupply: _totalSupply, mintable: _mintable, owner: _owner, content: _content, walletCode: _walletCode, feeBps: _feeBps, feeBurnShare: _feeBurnShare, treasury: _treasury, totalBurned: _totalBurned, totalFeesCollected: _totalFeesCollected, maxTxBps: _maxTxBps, maxWalletBps: _maxWalletBps, cooldownSeconds: _cooldownSeconds, tradingEnabled: _tradingEnabled, buybackEnabled: _buybackEnabled, buybackPool: _buybackPool, buybackThreshold: _buybackThreshold, buybackCooldown: _buybackCooldown, buybackBurnPercent: _buybackBurnPercent, lastBuybackTime: _lastBuybackTime, totalBuybacks: _totalBuybacks, totalQsrBurnedViaBuyback: _totalQsrBurnedViaBuyback, totalTonSpentOnBuyback: _totalTonSpentOnBuyback, aiOracle: _aiOracle, aiEnabled: _aiEnabled, aiFullAutonomy: _aiFullAutonomy, lastRebalanceTime: _lastRebalanceTime, signalCount: _signalCount, priceHistory: _priceHistory, anomalyLog: _anomalyLog, anomalyIndex: _anomalyIndex, minConfidence: _minConfidence, emergencyPause: _emergencyPause, aiActionCooldown: _aiActionCooldown, lastAiActionTime: _lastAiActionTime, heartbeatTimeout: _heartbeatTimeout, lastHeartbeat: _lastHeartbeat, ownerOverrideWindow: _ownerOverrideWindow, vetoThresholdBps: _vetoThresholdBps, aiActionLog: _aiActionLog, aiActionIndex: _aiActionIndex, pendingAiActions: _pendingAiActions, vetoLog: _vetoLog, totalVetoStake: _totalVetoStake, stakingEnabled: _stakingEnabled, stakingApyBps: _stakingApyBps, stakingMinStake: _stakingMinStake, stakingLockPeriod: _stakingLockPeriod, stakers: _stakers, totalStaked: _totalStaked, stakingRewardsPool: _stakingRewardsPool, referralEnabled: _referralEnabled, referralRewardBps: _referralRewardBps, referrals: _referrals, vestingEnabled: _vestingEnabled, teamAllocation: _teamAllocation, teamClaimed: _teamClaimed, vestingSchedules: _vestingSchedules, lotteryEnabled: _lotteryEnabled, lotteryTicketPrice: _lotteryTicketPrice, lotteryDrawInterval: _lotteryDrawInterval, lotteryJackpotShare: _lotteryJackpotShare, lotteryRound: _lotteryRound, lotteryLastDraw: _lotteryLastDraw, lotteryJackpot: _lotteryJackpot, lotteryTickets: _lotteryTickets, lotteryTicketCount: _lotteryTicketCount, lotteryWinners: _lotteryWinners };
+export function loadGetterTupleQuasarMaster$Data(source: TupleReader) {
+    const _totalSupply = source.readBigNumber();
+    const _mintable = source.readBoolean();
+    const _owner = source.readAddress();
+    const _content = source.readCell();
+    const _walletCode = source.readCell();
+    const _feeBps = source.readBigNumber();
+    const _feeBurnShare = source.readBigNumber();
+    const _treasury = source.readAddress();
+    const _totalBurned = source.readBigNumber();
+    const _totalFeesCollected = source.readBigNumber();
+    const _maxTxBps = source.readBigNumber();
+    const _maxWalletBps = source.readBigNumber();
+    const _cooldownSeconds = source.readBigNumber();
+    const _tradingEnabled = source.readBoolean();
+    const _buybackEnabled = source.readBoolean();
+    const _buybackPool = source.readBigNumber();
+    const _buybackThreshold = source.readBigNumber();
+    const _buybackCooldown = source.readBigNumber();
+    const _buybackBurnPercent = source.readBigNumber();
+    const _lastBuybackTime = source.readBigNumber();
+    const _totalBuybacks = source.readBigNumber();
+    const _totalQsrBurnedViaBuyback = source.readBigNumber();
+    const _totalTonSpentOnBuyback = source.readBigNumber();
+    const _aiOracle = source.readAddress();
+    const _aiEnabled = source.readBoolean();
+    const _aiFullAutonomy = source.readBoolean();
+    const _lastRebalanceTime = source.readBigNumber();
+    const _signalCount = source.readBigNumber();
+    const _priceHistory = Dictionary.loadDirect(Dictionary.Keys.BigInt(257), Dictionary.Values.BigInt(257), source.readCellOpt());
+    const _anomalyLog = Dictionary.loadDirect(Dictionary.Keys.BigInt(257), dictValueParserAIRecommendation(), source.readCellOpt());
+    const _anomalyIndex = source.readBigNumber();
+    const _minConfidence = source.readBigNumber();
+    const _emergencyPause = source.readBoolean();
+    const _aiActionCooldown = source.readBigNumber();
+    const _lastAiActionTime = source.readBigNumber();
+    const _heartbeatTimeout = source.readBigNumber();
+    const _lastHeartbeat = source.readBigNumber();
+    const _ownerOverrideWindow = source.readBigNumber();
+    const _vetoThresholdBps = source.readBigNumber();
+    const _aiActionLog = Dictionary.loadDirect(Dictionary.Keys.BigInt(257), dictValueParserAIActionLog(), source.readCellOpt());
+    const _aiActionIndex = source.readBigNumber();
+    const _pendingAiActions = Dictionary.loadDirect(Dictionary.Keys.BigInt(257), Dictionary.Values.BigInt(257), source.readCellOpt());
+    const _vetoLog = Dictionary.loadDirect(Dictionary.Keys.BigInt(257), dictValueParserVetoState(), source.readCellOpt());
+    const _totalVetoStake = source.readBigNumber();
+    const _stakingEnabled = source.readBoolean();
+    const _stakingApyBps = source.readBigNumber();
+    const _stakingMinStake = source.readBigNumber();
+    const _stakingLockPeriod = source.readBigNumber();
+    const _stakers = Dictionary.loadDirect(Dictionary.Keys.Address(), dictValueParserStakeInfo(), source.readCellOpt());
+    const _totalStaked = source.readBigNumber();
+    const _stakingRewardsPool = source.readBigNumber();
+    const _referralEnabled = source.readBoolean();
+    const _referralRewardBps = source.readBigNumber();
+    const _referrals = Dictionary.loadDirect(Dictionary.Keys.Address(), dictValueParserReferralInfo(), source.readCellOpt());
+    const _vestingEnabled = source.readBoolean();
+    const _teamAllocation = source.readBigNumber();
+    const _teamClaimed = source.readBigNumber();
+    const _vestingSchedules = Dictionary.loadDirect(Dictionary.Keys.Address(), dictValueParserVestingInfo(), source.readCellOpt());
+    const _lotteryEnabled = source.readBoolean();
+    const _lotteryTicketPrice = source.readBigNumber();
+    const _lotteryDrawInterval = source.readBigNumber();
+    const _lotteryJackpotShare = source.readBigNumber();
+    const _lotteryRound = source.readBigNumber();
+    const _lotteryLastDraw = source.readBigNumber();
+    const _lotteryJackpot = source.readBigNumber();
+    const _lotteryTickets = Dictionary.loadDirect(Dictionary.Keys.BigInt(257), Dictionary.Values.Address(), source.readCellOpt());
+    const _lotteryTicketCount = source.readBigNumber();
+    const _lotteryWinners = Dictionary.loadDirect(Dictionary.Keys.BigInt(257), Dictionary.Values.Address(), source.readCellOpt());
+    const _defiAddress = source.readAddress();
+    const _defiFeeShareBps = source.readBigNumber();
+    return { $$type: 'QuasarMaster$Data' as const, totalSupply: _totalSupply, mintable: _mintable, owner: _owner, content: _content, walletCode: _walletCode, feeBps: _feeBps, feeBurnShare: _feeBurnShare, treasury: _treasury, totalBurned: _totalBurned, totalFeesCollected: _totalFeesCollected, maxTxBps: _maxTxBps, maxWalletBps: _maxWalletBps, cooldownSeconds: _cooldownSeconds, tradingEnabled: _tradingEnabled, buybackEnabled: _buybackEnabled, buybackPool: _buybackPool, buybackThreshold: _buybackThreshold, buybackCooldown: _buybackCooldown, buybackBurnPercent: _buybackBurnPercent, lastBuybackTime: _lastBuybackTime, totalBuybacks: _totalBuybacks, totalQsrBurnedViaBuyback: _totalQsrBurnedViaBuyback, totalTonSpentOnBuyback: _totalTonSpentOnBuyback, aiOracle: _aiOracle, aiEnabled: _aiEnabled, aiFullAutonomy: _aiFullAutonomy, lastRebalanceTime: _lastRebalanceTime, signalCount: _signalCount, priceHistory: _priceHistory, anomalyLog: _anomalyLog, anomalyIndex: _anomalyIndex, minConfidence: _minConfidence, emergencyPause: _emergencyPause, aiActionCooldown: _aiActionCooldown, lastAiActionTime: _lastAiActionTime, heartbeatTimeout: _heartbeatTimeout, lastHeartbeat: _lastHeartbeat, ownerOverrideWindow: _ownerOverrideWindow, vetoThresholdBps: _vetoThresholdBps, aiActionLog: _aiActionLog, aiActionIndex: _aiActionIndex, pendingAiActions: _pendingAiActions, vetoLog: _vetoLog, totalVetoStake: _totalVetoStake, stakingEnabled: _stakingEnabled, stakingApyBps: _stakingApyBps, stakingMinStake: _stakingMinStake, stakingLockPeriod: _stakingLockPeriod, stakers: _stakers, totalStaked: _totalStaked, stakingRewardsPool: _stakingRewardsPool, referralEnabled: _referralEnabled, referralRewardBps: _referralRewardBps, referrals: _referrals, vestingEnabled: _vestingEnabled, teamAllocation: _teamAllocation, teamClaimed: _teamClaimed, vestingSchedules: _vestingSchedules, lotteryEnabled: _lotteryEnabled, lotteryTicketPrice: _lotteryTicketPrice, lotteryDrawInterval: _lotteryDrawInterval, lotteryJackpotShare: _lotteryJackpotShare, lotteryRound: _lotteryRound, lotteryLastDraw: _lotteryLastDraw, lotteryJackpot: _lotteryJackpot, lotteryTickets: _lotteryTickets, lotteryTicketCount: _lotteryTicketCount, lotteryWinners: _lotteryWinners, defiAddress: _defiAddress, defiFeeShareBps: _defiFeeShareBps };
 }
 
-function storeTupleQuasarMaster$Data(source: QuasarMaster$Data) {
-    let builder = new TupleBuilder();
+export function storeTupleQuasarMaster$Data(source: QuasarMaster$Data) {
+    const builder = new TupleBuilder();
     builder.writeNumber(source.totalSupply);
     builder.writeBoolean(source.mintable);
     builder.writeAddress(source.owner);
@@ -4355,10 +5341,12 @@ function storeTupleQuasarMaster$Data(source: QuasarMaster$Data) {
     builder.writeCell(source.lotteryTickets.size > 0 ? beginCell().storeDictDirect(source.lotteryTickets, Dictionary.Keys.BigInt(257), Dictionary.Values.Address()).endCell() : null);
     builder.writeNumber(source.lotteryTicketCount);
     builder.writeCell(source.lotteryWinners.size > 0 ? beginCell().storeDictDirect(source.lotteryWinners, Dictionary.Keys.BigInt(257), Dictionary.Values.Address()).endCell() : null);
+    builder.writeAddress(source.defiAddress);
+    builder.writeNumber(source.defiFeeShareBps);
     return builder.build();
 }
 
-function dictValueParserQuasarMaster$Data(): DictionaryValue<QuasarMaster$Data> {
+export function dictValueParserQuasarMaster$Data(): DictionaryValue<QuasarMaster$Data> {
     return {
         serialize: (src, builder) => {
             builder.storeRef(beginCell().store(storeQuasarMaster$Data(src)).endCell());
@@ -4379,7 +5367,7 @@ export type QuasarWallet$Data = {
 
 export function storeQuasarWallet$Data(src: QuasarWallet$Data) {
     return (builder: Builder) => {
-        let b_0 = builder;
+        const b_0 = builder;
         b_0.storeCoins(src.balance);
         b_0.storeAddress(src.owner);
         b_0.storeAddress(src.master);
@@ -4388,32 +5376,32 @@ export function storeQuasarWallet$Data(src: QuasarWallet$Data) {
 }
 
 export function loadQuasarWallet$Data(slice: Slice) {
-    let sc_0 = slice;
-    let _balance = sc_0.loadCoins();
-    let _owner = sc_0.loadAddress();
-    let _master = sc_0.loadAddress();
-    let _lastTxTime = sc_0.loadIntBig(257);
+    const sc_0 = slice;
+    const _balance = sc_0.loadCoins();
+    const _owner = sc_0.loadAddress();
+    const _master = sc_0.loadAddress();
+    const _lastTxTime = sc_0.loadIntBig(257);
     return { $$type: 'QuasarWallet$Data' as const, balance: _balance, owner: _owner, master: _master, lastTxTime: _lastTxTime };
 }
 
-function loadTupleQuasarWallet$Data(source: TupleReader) {
-    let _balance = source.readBigNumber();
-    let _owner = source.readAddress();
-    let _master = source.readAddress();
-    let _lastTxTime = source.readBigNumber();
+export function loadTupleQuasarWallet$Data(source: TupleReader) {
+    const _balance = source.readBigNumber();
+    const _owner = source.readAddress();
+    const _master = source.readAddress();
+    const _lastTxTime = source.readBigNumber();
     return { $$type: 'QuasarWallet$Data' as const, balance: _balance, owner: _owner, master: _master, lastTxTime: _lastTxTime };
 }
 
-function loadGetterTupleQuasarWallet$Data(source: TupleReader) {
-    let _balance = source.readBigNumber();
-    let _owner = source.readAddress();
-    let _master = source.readAddress();
-    let _lastTxTime = source.readBigNumber();
+export function loadGetterTupleQuasarWallet$Data(source: TupleReader) {
+    const _balance = source.readBigNumber();
+    const _owner = source.readAddress();
+    const _master = source.readAddress();
+    const _lastTxTime = source.readBigNumber();
     return { $$type: 'QuasarWallet$Data' as const, balance: _balance, owner: _owner, master: _master, lastTxTime: _lastTxTime };
 }
 
-function storeTupleQuasarWallet$Data(source: QuasarWallet$Data) {
-    let builder = new TupleBuilder();
+export function storeTupleQuasarWallet$Data(source: QuasarWallet$Data) {
+    const builder = new TupleBuilder();
     builder.writeNumber(source.balance);
     builder.writeAddress(source.owner);
     builder.writeAddress(source.master);
@@ -4421,7 +5409,7 @@ function storeTupleQuasarWallet$Data(source: QuasarWallet$Data) {
     return builder.build();
 }
 
-function dictValueParserQuasarWallet$Data(): DictionaryValue<QuasarWallet$Data> {
+export function dictValueParserQuasarWallet$Data(): DictionaryValue<QuasarWallet$Data> {
     return {
         serialize: (src, builder) => {
             builder.storeRef(beginCell().store(storeQuasarWallet$Data(src)).endCell());
@@ -4441,7 +5429,7 @@ function dictValueParserQuasarWallet$Data(): DictionaryValue<QuasarWallet$Data> 
 
 function initQuasarMaster_init_args(src: QuasarMaster_init_args) {
     return (builder: Builder) => {
-        let b_0 = builder;
+        const b_0 = builder;
         b_0.storeAddress(src.owner);
         b_0.storeRef(src.content);
         b_0.storeRef(src.walletCode);
@@ -4449,111 +5437,224 @@ function initQuasarMaster_init_args(src: QuasarMaster_init_args) {
 }
 
 async function QuasarMaster_init(owner: Address, content: Cell, walletCode: Cell) {
-    const __code = Cell.fromBase64('te6ccgICAUgAAQAAdtUAAAEU/wD0pBP0vPLICwABAgFiAAIAAwLw0AHQ0wMBcbCjAfpAASDXSYEBC7ry4Igg1wsKIIEE/7ry0ImDCbry4IhUUFMDbwT4YQL4Yts8EUMRRRFDEUIRRBFCEUERQxFBEUARQhFAET8RQRE/ET4RQBE+ET0RPxE9ETwRPhE8ETsRPRE7EToRPBE6ETkROxE5ATwAEwIBIAAEAAUCASAABgAHAgEgAAoACwIBIADvAPACASAACAAJAgFIAQEBAgIBIAEKAQsCASABFAEVAgEgAAwADQIBIAEeAR8CASAADgAPAvmyM/bPBFDEUQRQxFCEUMRQhFBEUIRQRFAEUERQBE/EUARPxE+ET8RPhE9ET4RPRE8ET0RPBE7ETwROxE6ETsROhE5EToRORE4ETkROBE3ETgRNxE2ETcRNhE1ETYRNRE0ETURNBEzETQRMxEyETMRMhExETIRMREwETERMIAE8ABACASABLAEtAfwRLxEwES8RLhEvES4RLREuES0RLBEtESwRKxEsESsRKhErESoRKREqESkRKBEpESgRJxEoEScRJhEnESYRJREmESURJBElESQRIxEkESMRIhEjESIRIREiESERIBEhESARHxEgER8RHhEfER4RHREeER0RHBEdERwRGxEcERsAEQHkERoRGxEaERkRGhEZERgRGREYERcRGBEXERYRFxEWERURFhEVERQRFREUERMRFBETERIRExESEREREhERERAREREQDxEQD1UO2zxXEF8PVxBfD1cQXw9XEF8PbEEgbpIwbZkgbvLQgG8kbwTiIG6SMG3eABIAXIEBAVYoAln0DW+hkjBt3yBukjBtjhfQgQEB1wDUAdABgQEB1wDSAFUwbBRvBOIB/BE4EToROBE3ETkRNxE2ETgRNhE1ETcRNRE0ETYRNBEzETURMxEyETQRMhExETMRMREwETIRMBEvETERLxEuETARLhEtES8RLREsES4RLBErES0RKxEqESwRKhEpESsRKREoESoRKBEnESkRJxEmESgRJhElEScRJREkESYRJAAUAfgRIxElESMRIhEkESIRIREjESERIBEiESARHxEhER8RHhEgER4RHREfER0RHBEeERwRGxEdERsRGhEcERoRGREbERkRGBEaERgRFxEZERcRFhEYERYRFREXERURFBEWERQRExEVERMREhEUERIRERETEREREBESERAPEREPABUCFg4REA5VHds88uCCABYAFwTq7aLt+wGSMH/gcCHXScIflTAg1wsf3iCCEPxwi9K6jrgw0x8BghD8cIvSuvLggYEBAdcA+kABINdJgQELuvLgiCDXCwoggQT/uvLQiYMJuvLgiBJsEts8f+AgghDbF/DKuuMCIIIQ61J+37rjAiCCEM/h/Ty6ABgAGQAaABsB9Mj4QwHMfwHKABFEEUMRQhFBEUARPxE+ET0RPBE7EToRORE4ETcRNhE1ETQRMxEyETERMBEvES4RLREsESsRKhEpESgRJxEmESURJBEjESIRIREgER8RHhEdERwRGxEaERkRGBEXERYRFREUERMREhERERBV4Ns8ye1UACICnoIA6EFWJrPy9IIA38xWOfL0gTjG+EJWRQHHBfL0gTSmVkXy9FZFVjyogScQqQRWRsIAmSKCAJ20Arvy9JEw4hFFIaD4Q/goEgERRwHbPFwBGwAcAbIw0x8BghDbF/DKuvLggdM/gQEB1wD6QAEg10mBAQu68uCIINcLCiCBBP+68tCJgwm68uCIAfpAASDXSYEBC7ry4Igg1wsKIIEE/7ry0ImDCbry4IgUQzBsFAAeAbIw0x8BghDrUn7fuvLggdM/+gD6QAEg10mBAQu68uCIINcLCiCBBP+68tCJgwm68uCIAfpAASDXSYEBC7ry4Igg1wsKIIEE/7ry0ImDCbry4IgUQzBsFNs8fwAmBP6OtDDTHwGCEM/h/Ty68uCB0z8BMYFjLlY38vSBfCpWNlY2vvL0ggDaKfgjVjOhVjW+8vTbPH/gIIIQvvDpBLqOlTDTHwGCEL7w6QS68uCB+gABMds8f+AgghD/Yzvhuo6VMNMfAYIQ/2M74bry4IH6AAEx2zx/4CCCEAlKH3y6ALkANwA4ADkBnHBZyHABywFzAcsBcAHLABLMzMn5AMhyAcsBcAHLABLKB8v/ydAg10mBAQu68uCIINcLCiCBBP+68tCJgwm68uCIcHCAQCLIydBBgFZKAQAdAYTIVTCCEAStN4NQBcsfE8s/AfoCASDXSYEBC7ry4Igg1wsKIIEE/7ry0ImDCbry4IjPFgHPFskQNkBVBBBGEEXbPDAA5QPKM/hD+CgS2zwBgSh7AnBZyHABywFzAcsBcAHLABLMzMn5AMhyAcsBcAHLABLKB8v/ydAg10mBAQu68uCIINcLCiCBBP+68tCJgwm68uCI+ELHBfL0ARFFAaGJVkXHBbOSV0TjDX8BGwAfACAAQ4AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABACJHBwgECIBBFIBBAkECNtbds8MAAhAOUAJgAAAABFeGNlc3MgcmV0dXJuZWQB9gERRAERQ/oCARFBAcoAARE/INdJgQELuvLgiCDXCwoggQT/uvLQiYMJuvLgiM8WARE9AcwRO8jMARE6AcsPARE4AcsHARE2INdJgQELuvLgiCDXCwoggQT/uvLQiYMJuvLgiM8WARE0+gIBETL6AgERMAHLDwERLgHLDwAjAfwBESwByw8BESoBygABESgBygABESb6AgERJPoCAREiAcsfAREgAcsHER7IgQEBzwABER0BgQEBzwABERv6AgERGfoCyAERGCDXSYEBC7ry4Igg1wsKIIEE/7ry0ImDCbry4IjPFgERFgHKAAERFAHKAAEREgGBAQHPAAEREAEAJAH6gQEBzwAe9AAc9AAKyIEBAc8AGcsHF8oAFcsfE4EBAc8Ayx+BAQHPAMsfyw/0AALIgQEBzwAT9AAT9ABQA/oCE8oAE8sPUAT6AhTLHxT0AFAF+gJQBfoCFcoAFcsPBcj0ABbKAFAG+gJQBvoCFvQAFsoAUAb6AhbLHxbLBxYAJQBogQEBzwAXgQEBzwDIUAj6Ahj0ABmBAQHPABf0AMlQBMzJWMzJUAPMyVAEzMlYzMlYzMkBzAL2MPhD+ChSINs8AYEuPAJwWchwAcsBcwHLAXABywASzMzJ+QDIcgHLAXABywASygfL/8nQINdJgQELuvLgiCDXCwoggQT/uvLQiYMJuvLgiPhCxwXy9BE9IaAhVkGogGSpBFMgoSCnD4BkqQQhpw+AZKkEIqcKgGSpBFEyARsAJwL8oSGhI6EkwgCOEBFLJKEBEUMBBKADEUoDEUKRNOIhwgCSVjyRcOKUETsBoJ0hwgCUUDOgApEx4hE64lY6wgCRL5Fw4pQROhmgn1Y6wgCVEToSoAGSVzriCOIowgCSVhyRcOKWAREWAQigmyjCAJIIoJE44hEV4lYU4wBWFcIAACgAKQHCVhKBAQtWQFn0C2+hkjBt3yBukjBtjjHQ+kABINdJgQELuvLgiCDXCwoggQT/uvLQiYMJuvLgiAGBAQHXAIEBAdcAVSBsE28D4iBus46QI1YVqIEnEKkEIMIAkVvjDZEw4gAqBPSOKY0IYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABFZBxwWzkXDiklcV4w0sk1EbvpIxcOKOGhSBAQFSQhE+IG6VMFn0WjCUQTP0FOICpEATklc84lY2lVY1VjW+kXDimPgjVjKhVjS+kXDi4wAqkXDjDQAtAC4ALwAwAuIRF1YXoSEgbvLQgG8jgQELJSBu8tCAbyNbA1YcoEQEyFUgWiDXSYEBC7ry4Igg1wsKIIEE/7ry0ImDCbry4IjPFhKBAQHPAIEBAc8AyQMRFwMgbpUwWfRZMJRBM/QT4vhDAiBu8tCAbyNb+CgQI9s8XAEbACsBpnBZyHABywFzAcsBcAHLABLMzMn5AMhyAcsBcAHLABLKB8v/ydAg10mBAQu68uCIINcLCiCBBP+68tCJgwm68uCIcHCAQMjJ0CsCAREeAVZHAREfACwBmMhVMIIQBK03g1AFyx8Tyz8B+gIBINdJgQELuvLgiCDXCwoggQT/uvLQiYMJuvLgiM8WAc8WyRA2RUADERwDWRBGEEXbPDAREhEVERIA5QK6+EP4KFZCAds8XHBZyHABywFzAcsBcAHLABLMzMn5AMhyAcsBcAHLABLKB8v/ydAg10mBAQu68uCIINcLCiCBBP+68tCJgwm68uCIcHCAQMjJ0CoCAREdAVZGAREeARsAMQH8EUMRRBFDEUIRRBFCEUERRBFBEUARRBFAET8RRBE/ET4RRBE+ET0RRBE9ETwRRBE8ETsRRBE7EToRRBE6ETkRRBE5ETgRRBE4ETcRRBE3ETYRRBE2ETURRBE1ETQRRBE0ETMRRBEzETIRRBEyETERRBExETARRBEwES8RRBEvADIADPgjJqEpvgEckyLCAJFw4o6C2zyRMOIAaAGMyFUwghAErTeDUAXLHxPLPwH6AgEg10mBAQu68uCIINcLCiCBBP+68tCJgwm68uCIzxYBzxbJEDZFQAMRGwNZEEYQRds8MADlAfwRLhFEES4RLRFEES0RLBFEESwRKxFEESsRKhFEESoRKRFEESkRKBFEESgRJxFEEScRJhFEESYRJRFEESURJBFEESQRIxFEESMRIhFEESIRIRFEESERIBFEESARHxFEER8RHhFEER4RHRFEER0RHBFEERwRGxFEERsRGhFEERoAMwL2ERkRRBEZERgRRBEYERcRRBEXERYRRBEWERURRBEVERQRRBEUERMRRBETERIRRBESERERRBERERARRBEQDxFEDw4RRA4NEUQNDBFEDAsRRAsKEUQKCRFECRFECAcGVUBWRNs8EUMRRBFDEUIRQxFCEUERQhFBEUARQRFAALkANAH8ET8RQBE/ET4RPxE+ET0RPhE9ETwRPRE8ETsRPBE7EToROxE6ETkROhE5ETgRORE4ETcROBE3ETYRNxE2ETURNhE1ETQRNRE0ETMRNBEzETIRMxEyETERMhExETARMREwES8RMBEvES4RLxEuES0RLhEtESwRLREsESsRLBErADUB/BEqESsRKhEpESoRKREoESkRKBEnESgRJxEmEScRJhElESYRJREkESURJBEjESQRIxEiESMRIhEhESIRIREgESERIBEfESARHxEeER8RHhEdER4RHREcER0RHBEbERwRGxEaERsRGhEZERoRGREYERkRGBEXERgRFxEWERcRFgA2AFQRFREWERURFBEVERQRExEUERMREhETERIRERESEREREBERERAPERAPVQ4B9IIAqsdWGfL0gWYsIVYYvvL0+EJWFYEBCyJZ9AtvoZIwbd8gbpIwbY4g0IEBAdcAgQEB1wCBAQHXANQB0IEBAdcAMBRDMGwUbwTicPgjVhmgIm6zjhZbICBu8tCAbyRfAwEgbvLQgG8kbDEBkTLiEUMRRxFDEUIRRhFCADoB7PhCVhWBAQsiWfQLb6GSMG3fIG6SMG2OINCBAQHXAIEBAdcAgQEB1wDUAdCBAQHXADAUQzBsFG8E4oFt0yFus/L0gVL9ISBu8tCAbyRfAyS+8vSBYoP4IyIgbvLQgG8kbDG+8vQRQxFGEUMRQhFFEUIRQRFEEUEAQgTqjpMw0x8BghAJSh98uvLggW0x2zx/4CCCEBO9azK6jjgw0x8BghATvWsyuvLggdIA0w/6ANMfVTBsFFcYVxhXGFcYggCKq/hCVkMBxwXy9IFkbVYrs/L0f+AgghDTtQsjuuMCIIIQGrChQrrjAiCCEOo/O926AE4ATwBQAFEB/BFBEUURQRFAEUQRQBE/EUcRPxE+EUYRPhE9EUURPRE8EUQRPBE7EUcROxE6EUYROhE5EUURORE4EUQROBE3EUcRNxE2EUYRNhE1EUURNRE0EUQRNBEzEUcRMxEyEUYRMhExEUURMREwEUQRMBEvEUcRLxEuEUYRLhEtEUURLQA7AfwRLBFEESwRKxFHESsRKhFGESoRKRFFESkRKBFEESgRJxFHEScRJhFGESYRJRFFESURJBFEESQRIxFHESMRIhFGESIRIRFFESERIBFEESARHxFHER8RHhFGER4RHRFFER0RHBFEERwRGxFHERsRGhFGERoRGRFFERkRGBFEERgAPAL6ERcRRxEXERYRRhEWERURRREVERQRRBEUERMRRxETERIRRhESERERRRERERARRBEQDxFHDw4RRg4NEUUNDBFEDAsRRwsKEUYKCRFFCQgRRAgHEUcHBhFGBgURRQUEEUQEAxFHAwIRRgIBEUUBEURWRts8IMIAlFYSIb6RcOIAVAA9A+qPYBESVhKh+EP4KFZJAds8XHBZyHABywFzAcsBcAHLABLMzMn5AMhyAcsBcAHLABLKB8v/ydAg10mBAQu68uCIINcLCiCBBP+68tCJgwm68uCIcHCAQCL4KMjJ0BAjAhEbApEw4oEBCxFFVkig+CNY+CMBEUgBGwBHAD4B/shVMFA0gQEBzwCBAQHPAIEBAc8AAciBAQHPAMkBzMkDERMDAhFEAgERRgEgbpUwWfRZMJRBM/QT4hFEH6ARPxFDET8RPhFCET4RPRFBET0RPBFAETwROxE/ETsROhE+EToRORE9ETkROBE8ETgRNxE7ETcRNhE6ETYRNRE5ETUAPwH8ETQROBE0ETMRNxEzETIRNhEyETERNRExETARNBEwES8RMxEvES4RMhEuES0RMREtESwRMBEsESsRLxErESoRLhEqESkRLREpESgRLBEoEScRKxEnESYRKhEmESURKRElESQRKBEkESMRJxEjESIRJhEiESERJREhESARJBEgAEAB/BEfESMRHxEeESIRHhEdESERHREcESARHBEbER8RGxEaER4RGhEZER0RGREYERwRGBEXERsRFxEWERoRFhEVERkRFREUERgRFBETERcRExESERYREhERERUREREQERQREBESDRERDQwREAwQvxCuEJ0QjBB7EGoQWRBIEDdGUABBAAREAAH8EUARRhFAET8RRRE/ET4RRBE+ET0RRhE9ETwRRRE8ETsRRBE7EToRRhE6ETkRRRE5ETgRRBE4ETcRRhE3ETYRRRE2ETURRBE1ETQRRhE0ETMRRREzETIRRBEyETERRhExETARRREwES8RRBEvES4RRhEuES0RRREtESwRRBEsAEMB/BErEUYRKxEqEUURKhEpEUQRKREoEUYRKBEnEUURJxEmEUQRJhElEUYRJREkEUURJBEjEUQRIxEiEUYRIhEhEUURIREgEUQRIBEfEUYRHxEeEUURHhEdEUQRHREcEUYRHBEbEUURGxEaEUQRGhEZEUYRGREYEUURGBEXEUQRFwBEA/oRFhFGERYRFRFFERURFBFEERQRExFGERMREhFFERIRERFEEREREBFGERAPEUUPDhFEDg0RRg0MEUUMCxFECwoRRgoJEUUJCBFECAcRRgcGEUUGBRFEBQQRRgQDEUUDAhFEAgERRgERRVZG2zwgwgCUVhIhvpFw4pEw4w1WRQBUAEUARgLAERJWEqH4Q/goVkkB2zxccFnIcAHLAXMBywFwAcsAEszMyfkAyHIBywFwAcsAEsoHy//J0CDXSYEBC7ry4Igg1wsKIIEE/7ry0ImDCbry4IhwcIBAIvgoyMnQECMCERsCARsARwPcIG7y0IBvJF8DVkWhIMIAjkowV0WBAQttIG6SMG2OJiBu8tCAbyTIVTBQNIEBAc8AgQEBzwCBAQHPAAHIgQEBzwDJAczJ4gIRFAJWRwEgbpUwWfRZMJRBM/QT4uMNERFWQ6H4Q/goEgERRwHbPFwASAEbAEkBjMhVMIIQBK03g1AFyx8Tyz8B+gIBINdJgQELuvLgiCDXCwoggQT/uvLQiYMJuvLgiM8WAc8WyRA2RUADERgDWRBGEEXbPDAA5QC0gQELVkcgbvLQgG8kECNfA/gjEUkgbvLQgG8kbDESARFJAchVMFA0gQEBzwCBAQHPAIEBAc8AAciBAQHPAMkBzMkCERQCARFGAVZHASBulTBZ9FkwlEEz9BPiAaJwWchwAcsBcwHLAXABywASzMzJ+QDIcgHLAXABywASygfL/8nQINdJgQELuvLgiCDXCwoggQT/uvLQiYMJuvLgiHBwgEAi+CjIydAQIwIRSwIASgL4yFUwghAErTeDUAXLHxPLPwH6AgEg10mBAQu68uCIINcLCiCBBP+68tCJgwm68uCIzxYBzxbJEDZFQAMRSANZEEYQRds8MBFAEUMRQBE/EUIRPxE+EUERPhE9EUARPRE8ET8RPBE7ET4ROxE6ET0ROhE5ETwRORE4ETsROADlAEsB/BE3EToRNxE2ETkRNhE1ETgRNRE0ETcRNBEzETYRMxEyETURMhExETQRMREwETMRMBEvETIRLxEuETERLhEtETARLREsES8RLBErES4RKxEqES0RKhEpESwRKREoESsRKBEnESoRJxEmESkRJhElESgRJREkEScRJBEjESYRIwBMAfwRIhElESIRIREkESERIBEjESARHxEiER8RHhEhER4RHREgER0RHBEfERwRGxEeERsRGhEdERoRGREcERkRGBEbERgRFxEaERcRFhEZERYRFREYERURFBEXERQRExEWERMREhEVERIREREUEREPERMPDxESDw4REQ4NERANEM8ATQAEVSsB9jD4QhFDEUQRQxFCEUQRQhFBEUQRQRFAEUQRQBE/EUQRPxE+EUQRPhE9EUQRPRE8EUQRPBE7EUQROxE6EUQROhE5EUQRORE4EUQROBE3EUQRNxE2EUQRNhE1EUQRNRE0EUQRNBEzEUQRMxEyEUQRMhExEUQRMREwEUQRMABSAWIw0x8BghDTtQsjuvLggfpAASDXSYEBC7ry4Igg1wsKIIEE/7ry0ImDCbry4Igx2zx/AFsAXjDTHwGCEBqwoUK68uCB0gDTD1lsElcRVxGCAIqr+EJWQwHHBfL0gWRtViuz8vR/BNyOuzDTHwGCEOo/O9268uCB+kABINdJgQELuvLgiCDXCwoggQT/uvLQiYMJuvLgiAH6ANMf0x9VMGwU2zx/4CCCEPeJNAq6jpMw0x8BghD3iTQKuvLggW0x2zx/4CCCEKt4s8+64wIgghAboP76ugBfAGAAYQBiAfwRLxFEES8RLhFEES4RLRFEES0RLBFEESwRKxFEESsRKhFEESoRKRFEESkRKBFEESgRJxFEEScRJhFEESYRJRFEESURJBFEESQRIxFEESMRIhFEESIRIRFEESERIBFEESARHxFEER8RHhFEER4RHRFEER0RHBFEERwRGxFEERsAUwL8ERoRRBEaERkRRBEZERgRRBEYERcRRBEXERYRRBEWERURRBEVERQRRBEUERMRRBETERIRRBESERERRBERERARRBEQDxFEDw4RRA4NEUQNDBFEDAsRRAsKEUQKCRFECRFECAcGVUBWRNs8ggDhuCHCAPL0ggCciFYTIr7y9BESAFQAVQDegQELVhUCWfQLb6GSMG3fIG6SMG2OINCBAQHXAIEBAdcAgQEB1wDUAdCBAQHXADAUQzBsFG8E4iBukjBw4PgjISBu8tCAbyQTXwOhASBu8tCAbyRfA1YYqIEnEKkEAaiCCeEzgKkEIFYTvJMwVhHeA5xWEqFWFIEBC1ZHWfQLb6GSMG3fIG6SMG2OINCBAQHXAIEBAdcAgQEB1wDUAdCBAQHXADAUQzBsFG8E4iBus5Ew4w34Q/goEgERRwHbPFwAVgEbAFcAvIEBCyEgbvLQgG8kXwMiIG7y0IBvJBAjXwP4IwQgbvLQgG8kbDFBMBTIVTBQNIEBAc8AgQEBzwCBAQHPAAHIgQEBzwDJAczJAhEWAlZHASBulTBZ9FkwlEEz9BPiERQBonBZyHABywFzAcsBcAHLABLMzMn5AMhyAcsBcAHLABLKB8v/ydAg10mBAQu68uCIINcLCiCBBP+68tCJgwm68uCIcHCAQCL4KMjJ0BAjAhEaAgBYAvjIVTCCEAStN4NQBcsfE8s/AfoCASDXSYEBC7ry4Igg1wsKIIEE/7ry0ImDCbry4IjPFgHPFskQNkVAAxEXA1kQRhBF2zwwEUIRQxFCEUERQhFBEUARQRFAET8RQBE/ET4RPxE+ET0RPhE9ETwRPRE8ETsRPBE7EToROxE6AOUAWQH8ETkROhE5ETgRORE4ETcROBE3ETYRNxE2ETURNhE1ETQRNRE0ETMRNBEzETIRMxEyETERMhExETARMREwES8RMBEvES4RLxEuES0RLhEtESwRLREsESsRLBErESoRKxEqESkRKhEpESgRKREoEScRKBEnESYRJxEmESURJhElAFoA/BEkESURJBEjESQRIxEiESMRIhEhESIRIREgESERIBEfESARHxEeER8RHhEdER4RHREcER0RHBEbERwRGxEaERsRGhEZERoRGREYERkRGBEXERgRFxEWERcRFhEVERYRFREUERURFBETERQRExESERMREhERERIREQ8REA9VDgHaggCr+1YS8vSBEE34QiLHBbPy9IEBC/hCVhFZWfQLb6GSMG3fIG6SMG2OMdD6QAEg10mBAQu68uCIINcLCiCBBP+68tCJgwm68uCIAYEBAdcAgQEB1wBVIGwTbwPigVJtAW7y9IEBC/hCcFRTAABcAZ7IVSBaINdJgQELuvLgiCDXCwoggQT/uvLQiYMJuvLgiM8WEoEBAc8AgQEBzwDJAxESAyBulTBZ9FkwlEEz9BPiIIEBC1YRWfQLb6GSMG3fAF0BgiBukjBtjjHQ+kABINdJgQELuvLgiCDXCwoggQT/uvLQiYMJuvLgiAGBAQHXAIEBAdcAVSBsE28D4iBus5IwP+MNAF4AzIEBCyEgbvLQgG8jWyIgbvLQgG8jMDEDIG7y0IBvI2whpEEwyFUgWiDXSYEBC7ry4Igg1wsKIIEE/7ry0ImDCbry4IjPFhKBAQHPAIEBAc8AyUEwARERASBulTBZ9FkwlEEz9BPiDgG4ggCKq/hCVkcBxwXy9IIAoIYvgQELJln0C2+hkjBt3yBukjBtjijQgQEB1wCBAQHXAIEBAdcA1AHQgQEB1wCBAQHXADAQJRAkECNsFW8F4m7y9IEBC3D4IyVBNBUAYwH0MPhCK4EBCyJZ9AtvoZIwbd8gbpIwbY4o0IEBAdcAgQEB1wCBAQHXANQB0IEBAdcAgQEB1wAwECUQJBAjbBVvBeKBdiUhbrPy9IIAzRH4IyIgbvLQgG8lECRfBCMgbvLQgG8lFF8EoL7y9PgjISBu8tCAbyUQJF8EoSEAZAFcMNMfAYIQq3izz7ry4IHTPwExggCyJSvy9CLCAPLlkYIApWT4IyehKr7y9Ns8fwBoA/6ONDDTHwGCEBug/vq68uCB0gD6ANMf0wdVMGwUOjo6OoIAiqv4QlZDAccF8vSBZG1WK7Py9H/gIIIQxh6WZ7qOKTDTHwGCEMYelme68uCB0gABMVcrggCKq/hCVkMBxwXy9FYqk39XLN5/4CCCEI+Ycr264wIgghD1cIq1uuMCAGoAawBsAHjIVUBQRYEBAc8AEoEBAc8AgQEBzwAByIEBAc8AEoEBAc8AyQHMyRA+QeAgbpUwWfRZMJRBM/QT4lDboAwB9CBu8tCAbyVsQVIQvJswICBu8tCAbyVsQd4hIG7y0IBvJV8EAaghIG7y0IBvJWxBqQQhIG7y0IBvJRA0XwShggCu/yHCAPL0gQELIiBu8tCAbyVfBCMgbvLQgG8lEDRfBCOgJCBu8tCAbyUQJF8EJSBu8tCAbyUUXwQGAGUCpCBu8tCAbyVsQRA0QTAWyFVAUEWBAQHPABKBAQHPAIEBAc8AAciBAQHPABKBAQHPAMkBzMlO4FIwIG6VMFn0WTCUQTP0E+JR3KD4Q/goQTDbPFwBGwBmAaJwWchwAcsBcwHLAXABywASzMzJ+QDIcgHLAXABywASygfL/8nQINdJgQELuvLgiCDXCwoggQT/uvLQiYMJuvLgiHBwgEAi+CjIydAQIwIRFAIAZwGQyFUwghAErTeDUAXLHxPLPwH6AgEg10mBAQu68uCIINcLCiCBBP+68tCJgwm68uCIzxYBzxbJEDZFQAMREQNZEEYQRds8MBCrAOUC9iLAAJEw4PgjI6kIgQEBJQJZ9AxvoZIwbd8gbpFb4DMzNFMlqIBkqQRRM6H4QyIgbvLQgPgo2zxccFnIcAHLAXMBywFwAcsAEszMyfkAyHIBywFwAcsAEsoHy//J0CDXSYEBC7ry4Igg1wsKIIEE/7ry0ImDCbry4IhwcAEbAGkB6IBA+CjIydAQOhAryFUwghAErTeDUAXLHxPLPwH6AgEg10mBAQu68uCIINcLCiCBBP+68tCJgwm68uCIzxYBzxbJRlAQRxA4QHgQRhBF2zwwgQEBAiBu8tCAQzBSQCBulTBZ9FowlEEz9BTiAqT4I1ptWHABAOUAVDDTHwGCEI+Ycr268uCB0z/UAdASbBJbVx+BCd74QlYtAccF8vT4IxEffwE+MNMfAYIQ9XCKtbry4IHTP9IA0wfUAdAUQzBsFNs8fwBtBPwgghAX33OYuo6cMNMfAYIQF99zmLry4IHTP9MP1AHQQzBsE9s8f+AgghB5ueTDuo66MNMfAYIQebnkw7ry4IHTP/pAASDXSYEBC7ry4Igg1wsKIIEE/7ry0ImDCbry4IgB1AHQQzBsE9s8f+AgghAQ98D3uuMCIIIQCVKRfboAdAB1AHYAdwHyMxFDEUYRQxFCEUURQhFBEUQRQRFAEUYRQBE/EUURPxE+EUQRPhE9EUYRPRE8EUURPBE7EUQROxE6EUYROhE5EUURORE4EUQROBE3EUYRNxE2EUURNhE1EUQRNRE0EUYRNBEzEUURMxEyEUQRMhExEUYRMREwEUURMABuAfwRLxFEES8RLhFGES4RLRFFES0RLBFEESwRKxFGESsRKhFFESoRKRFEESkRKBFGESgRJxFFEScRJhFEESYRJRFGESURJBFFESQRIxFEESMRIhFGESIRIRFFESERIBFEESARHxFGER8RHhFFER4RHRFEER0RHBFGERwRGxFFERsAbwH8ERoRRBEaERkRRhEZERgRRREYERcRRBEXERYRRhEWERURRREVERQRRBEUERMRRhETERIRRRESERERRBERERARRhEQDxFFDw4RRA4NEUYNDBFFDAsRRAsKEUYKCRFFCQgRRAgHEUYHBhFFBgURRAUEEUYEAxFFAwIRRAIBEUYBAHAC+hFF2zxXI1c1VkSOF39wEUXAA59XPFc8cFdAgGQRPIBaETzen1dDggDPElYo8vRwfxFEAeKL5FbWVyZ2VuY3lQYXVzZYcBFHkXGSVkbiEUQRRxFEEUMRRhFDEUIRRRFCEUERRBFBEUARQxFAET8RQhE/ET4RQRE+ET0RQBE9AMgAcQH8ETwRPxE8ETsRPhE7EToRPRE6ETkRPBE5ETgROxE4ETYRORE2ETUROBE1ETQRNxE0ETMRNhEzETIRNREyETERNBExETARMxEwES8RMhEvES4RMREuES0RMBEtESwRLxEsESsRLhErESoRLREqESkRLBEpESgRKxEoEScRKhEnAHIB+BEmESkRJhElESgRJQIRJwIRIxEmESMRIhElESIRIREkESERIBEjESARHxEiER8RHhEhER4RHREgER0RHBEfERwRGxEeERsRGhEdERoRGREcERkRGBEbERgRFxEaERcRFhEZERYRFREYERURFBEXERQRExEWERMREhEVERIAcwFmERERFBERERARExEQDxESDw4REQ4NERANEM8QvhCtEJwQixB6EGkQWBBHXiNQA0QU2zwwAKUB8jIRQxFFEUMRQhFEEUIRQRFFEUERQBFEEUARPxFFET8RPhFEET4RPRFFET0RPBFEETwROxFFETsROhFEEToRORFFETkROBFEETgRNxFFETcRNhFEETYRNRFFETURNBFEETQRMxFFETMRMhFEETIRMRFFETERMBFEETAAeAHyMhFDEUURQxFCEUQRQhFBEUURQRFAEUQRQBE/EUURPxE+EUQRPhE9EUURPRE8EUQRPBE7EUUROxE6EUQROhE5EUURORE4EUQROBE3EUURNxE2EUQRNhE1EUURNRE0EUQRNBEzEUURMxEyEUQRMhExEUURMREwEUQRMAB+AUQw0x8BghAQ98D3uvLggdM/0w/TD9MP1AHQFRRDMGwV2zx/AIQEdI8IMNs8bBbbPH/gIIIQBJDWBbqOnDDTHwGCEASQ1gW68uCB0z/SANQB0EMwbBPbPH/gIIIQL7EcFroAiwCMAI0AjgH8ES8RRREvES4RRBEuES0RRREtESwRRBEsESsRRRErESoRRBEqESkRRREpESgRRBEoEScRRREnESYRRBEmESURRRElESQRRBEkESMRRREjESIRRBEiESERRREhESARRBEgER8RRREfER4RRBEeER0RRREdERwRRBEcERsRRREbAHkB/BEaEUQRGhEZEUURGREYEUQRGBEXEUURFxEWEUQRFhEVEUURFREUEUQRFBETEUURExESEUQREhEREUUREREQEUQREA8RRQ8OEUQODRFFDQwRRAwLEUULChFECgkRRQkIEUQIBxFFBwYRRAYFEUUFBBFEBAMRRQMCEUQCARFFAQB6A/QRRNs82zyCAJVTVkXBZZRWRcIJkXDi8vRWRItlNldEZlZYEUURRxFFEUQRRhFEEUMRRRFDEUIRRBFCEUERQxFBARFCARE/EUERPxE+EUARPhE9ET8RPRE8ET4RPBE7ET0ROxE6ETwROhE5ETsRORE4EToROBE3ETkRNwDIAKIAewH8ETYROBE2ETURNxE1ETQRNhE0ETMRNREzETIRNBEyETERMxExETARMhEwES8RMREvES4RMBEuES0RLxEtESwRLhEsESsRLRErESoRLBEqESkRKxEpESgRKhEoEScRKREnESYRKBEmESURJxElESQRJhEkESMRJREjESIRJBEiAHwB/BEhESMRIREgESIRIBEfESERHxEeESARHhEdER8RHREcER4RHBEbER0RGxEaERwRGhEZERsRGREYERoRGBEXERkRFxEWERgRFhEVERcRFREUERYRFBETERURExESERQREhERERMREREQERIREA8REQ8OERAOEN8QzhC9EKwQmwB9ASIQihB5EGgQVxBGEDVEE9s8MAClAfwRLxFFES8RLhFEES4RLRFFES0RLBFEESwRKxFFESsRKhFEESoRKRFFESkRKBFEESgRJxFFEScRJhFEESYRJRFFESURJBFEESQRIxFFESMRIhFEESIRIRFFESERIBFEESARHxFFER8RHhFEER4RHRFFER0RHBFEERwRGxFFERsAfwH8ERoRRBEaERkRRREZERgRRBEYERcRRREXERYRRBEWERURRREVERQRRBEUERMRRRETERIRRBESERERRRERERARRBEQDxFFDw4RRA4NEUUNDBFEDAsRRQsKEUQKCRFFCQgRRAgHEUUHBhFEBgURRQUEEUQEAxFFAwIRRAIBEUUBAIAD9BFE2zzbPFc8ggDiD40IYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABFZFxwWz8vSLtTZXRUcmVhc3VyeYEUMRRRFDEUIRRBFCEUERQxFBEUARQhFAET8RQRE/ET4RQBE+ET0RPxE9ETsRPRE7EToRPBE6AMgAogCBAfwRORE7ETkROBE6ETgRNxE5ETcRNhE4ETYRNRE3ETURNBE2ETQRMxE1ETMRMhE0ETIRMREzETERMBEyETARLxExES8RLhEwES4RLREvES0RLBEuESwRKxEtESsRKhEsESoRKRErESkRKBEqESgRJxEpEScRJhEoESYRJREnESUAggH8ESQRJhEkESMRJREjESIRJBEiESERIxEhESARIhEgER8RIREfER4RIBEeER0RHxEdERwRHhEcERsRHREbERoRHBEaERkRGxEZERgRGhEYERcRGREXERYRGBEWERURFxEVERQRFhEUERMRFRETERIRFBESERERExERERAREhEQAIMBUA8REQ8OERAOEN8QzhC9EKwQmxCKEHkQaBBXEEYQNUQAcFAEcQHbPDAApQHyNBFDEUcRQxFCEUYRQhFBEUURQRFAEUQRQBE/EUcRPxE+EUYRPhE9EUURPRE8EUQRPBE7EUcROxE6EUYROhE5EUURORE4EUQROBE3EUcRNxE2EUYRNhE1EUURNRE0EUQRNBEzEUcRMxEyEUYRMhExEUURMREwEUQRMACFAfwRLxFHES8RLhFGES4RLRFFES0RLBFEESwRKxFHESsRKhFGESoRKRFFESkRKBFEESgRJxFHEScRJhFGESYRJRFFESURJBFEESQRIxFHESMRIhFGESIRIRFFESERIBFEESARHxFHER8RHhFGER4RHRFFER0RHBFEERwRGxFHERsAhgH8ERoRRhEaERkRRREZERgRRBEYERcRRxEXERYRRhEWERURRREVERQRRBEUERMRRxETERIRRhESERERRRERERARRBEQDxFHDw4RRg4NEUUNDBFEDAsRRwsKEUYKCRFFCQgRRAgHEUcHBhFGBgURRQUEEUQEAxFHAwIRRgIBEUUBAIcD+BFE2zzbPFc3VzdXN4IAhtxWRIEB9LuWVkOBA+i7kXDillZCgQEsu5Fw4vL0VkOLxTZXRBbnRpV2hhbGWBFCEUYRQhFBEUURQRFAEUQRQBE/EUMRPxE+EUIRPhE9EUERPRE8EUARPBE7ET8ROxE6ET4ROhE5ET0ROQERPAEAyACiAIgB9AEROwEBEToBETURORE1ETQROBE0ETMRNxEzETIRNhEyETERNRExETARNBEwES8RMxEvES4RMhEuES0RMREtESwRMBEsESsRLxErESoRLhEqESkRLREpESgRLBEoEScRKxEnESYRKhEmESURKRElESQRKBEkESMRJxEjAIkB/BEiESYRIhEhESURIREgESQRIBEfESMRHxEeESIRHhEdESERHREcESARHBEbER8RGxEaER4RGhEZER0RGREYERwRGBEXERsRFxEWERoRFhEVERkRFREUERgRFBETERcRExESERYREhERERUREREQERQREA8REw8OERIODRERDQCKAUYMERAMEL8QrhCdEIwQexBqEFkQSBA3ECYQRRA0QBNwAts8MAClAD7THwGCEAlSkX268uCB0z/SAPoA0x/TB9QB0BYVFEMwAfI1EUMRSBFDEUIRRxFCEUERRhFBEUARRRFAET8RRBE/ET4RSBE+ET0RRxE9ETwRRhE8ETsRRRE7EToRRBE6ETkRSBE5ETgRRxE4ETcRRhE3ETYRRRE2ETURRBE1ETQRSBE0ETMRRxEzETIRRhEyETERRRExETARRBEwAI8B8jIRQxFFEUMRQhFEEUIRQRFFEUERQBFEEUARPxFFET8RPhFEET4RPRFFET0RPBFEETwROxFFETsROhFEEToRORFFETkROBFEETgRNxFFETcRNhFEETYRNRFFETURNBFEETQRMxFFETMRMhFEETIRMRFFETERMBFEETAAlQTyjrow0x8BghAvsRwWuvLggdM/+kABINdJgQELuvLgiCDXCwoggQT/uvLQiYMJuvLgiAHUAdBDMGwT2zx/4CCCECopeTO64wIgghAogvHouo6fMNMfAYIQKILx6Lry4IHTP9MP0wfUAdAUQzBsFNs8f+AgghBpIJOfugCbAJwAnQCeAfwRLxFIES8RLhFHES4RLRFGES0RLBFFESwRKxFEESsRKhFIESoRKRFHESkRKBFGESgRJxFFEScRJhFEESYRJRFIESURJBFHESQRIxFGESMRIhFFESIRIRFEESERIBFIESARHxFHER8RHhFGER4RHRFFER0RHBFEERwRGxFIERsAkAH8ERoRRxEaERkRRhEZERgRRREYERcRRBEXERYRSBEWERURRxEVERQRRhEUERMRRRETERIRRBESERERSBERERARRxEQDxFGDw4RRQ4NEUQNDBFIDAsRRwsKEUYKCRFFCQgRRAgHEUgHBhFHBgURRgUEEUUEAxFEAwIRSAIBEUcBAJED+hFG2zzbPFcxVzFXMVcyVkCLpTZXRCdXliYWNrhwEUORcZJWQuIRQhFHEUIRQRFGEUERQBFFEUARPxFEET8RPhFDET4RPRFCET0RPBFBETwROxFAETsROhE/EToRORE+ETkROBE9ETgRNxE8ETcRNhE7ETYRNRE6ETUCETkCAMgAogCSAfwRMxE4ETMRMxE3ETMRMxE2ETMRMxE1ETMRLxE0ES8RLhEzES4RLREyES0RLBExESwRKxEwESsRKhEvESoRKREuESkRKBEtESgRJxEsEScRJhErESYRJREqESURJBEpESQRIxEoESMRIhEnESIRIREmESERIBElESARHxEkER8AkwH8ER4RIxEeER0RIhEdERwRIREcERsRIBEbERoRHxEaERkRHhEZERgRHREYERcRHBEXERYRGxEWERURGhEVERQRGREUERMRGBETERIRFxESERERFhERERARFREQDxEUDw4REw4NERINDBERDAsREAsQrxCeEI0QfBBrEFoQSRA4AJQBFBBWEEVQAwTbPDAApQH8ES8RRREvES4RRBEuES0RRREtESwRRBEsESsRRRErESoRRBEqESkRRREpESgRRBEoEScRRREnESYRRBEmESURRRElESQRRBEkESMRRREjESIRRBEiESERRREhESARRBEgER8RRREfER4RRBEeER0RRREdERwRRBEcERsRRREbAJYB/BEaEUQRGhEZEUURGREYEUQRGBEXEUURFxEWEUQRFhEVEUURFREUEUQRFBETEUURExESEUQREhEREUUREREQEUQREA8RRQ8OEUQODRFFDQwRRAwLEUULChFECgkRRQkIEUQIBxFFBwYRRAYFEUUFBBFEBAMRRQMCEUQCARFFAQCXA/QRRNs82zxXNlZDi9VG9nZ2xlVHJhZGluZ4cBFGkXGSVkXiEUURRxFFEUQRRhFEEUMRRRFDEUIRRBFCEUERQxFBEUARQhFAET8RQRE/ET4RQBE+ET0RPxE9ETwRPhE8ETsRPRE7EToRPBE6ETkROxE5AhE6AhE3ETkRNwDIAKIAmAH8ETYROBE2ETURNxE1ETQRNhE0ETMRNREzETIRNBEyETERMxExETARMhEwES8RMREvES4RMBEuES0RLxEtESwRLhEsESsRLRErESoRLBEqESkRKxEpESgRKhEoEScRKREnESYRKBEmESURJxElESQRJhEkESMRJREjESIRJBEiAJkB/BEhESMRIREgESIRIBEfESERHxEeESARHhEdER8RHREcER4RHBEbER0RGxEaERwRGhEZERsRGREYERoRGBEXERkRFxEWERgRFhEVERcRFREUERYRFBETERURExESERQREhERERMREREQERIREA8REQ8OERAOEN8QzhC9EKwQmwCaASAQihB5EGgQVxBGUAMF2zwwAKUB8jIRQxFFEUMRQhFEEUIRQRFFEUERQBFEEUARPxFFET8RPhFEET4RPRFFET0RPBFEETwROxFFETsROhFEEToRORFFETkROBFEETgRNxFFETcRNhFEETYRNRFFETURNBFEETQRMxFFETMRMhFEETIRMRFFETERMBFEETAAnwCSMNMfAYIQKil5M7ry4IH6QAEg10mBAQu68uCIINcLCiCBBP+68tCJgwm68uCIMVcsVyyCAIqr+EJWQgHHBfL0ESoRKxEqfxErfwHyMxFDEUYRQxFCEUURQhFBEUQRQRFAEUYRQBE/EUURPxE+EUQRPhE9EUYRPRE8EUURPBE7EUQROxE6EUYROhE5EUURORE4EUQROBE3EUYRNxE2EUURNhE1EUQRNRE0EUYRNBEzEUURMxEyEUQRMhExEUYRMREwEUURMACmBP6OnzDTHwGCEGkgk5+68uCB0z/6ANMf0gfTB1VAbBXbPH/gIIIQ3GOFC7qOojDTHwGCENxjhQu68uCB0z/TB9MH0x/UAdAVFEMwbBXbPH/gIIIQ2JCwP7qOpDDTHwGCENiQsD+68uCB0z/TB4EBAdcA1AHQAdMHVUBsFds8f+AgAKwArQCuAK8B/BEvEUURLxEuEUQRLhEtEUURLREsEUQRLBErEUURKxEqEUQRKhEpEUURKREoEUQRKBEnEUURJxEmEUQRJhElEUURJREkEUQRJBEjEUURIxEiEUQRIhEhEUURIREgEUQRIBEfEUURHxEeEUQRHhEdEUURHREcEUQRHBEbEUURGwCgAfwRGhFEERoRGRFFERkRGBFEERgRFxFFERcRFhFEERYRFRFFERURFBFEERQRExFFERMREhFEERIRERFFEREREBFEERAPEUUPDhFEDg0RRQ0MEUQMCxFFCwoRRAoJEUUJCBFECAcRRQcGEUQGBRFFBQQRRAQDEUUDAhFEAgERRQEAoQP8EUTbPNs8VyyCAM8SViry9IvFJvdGF0ZU9yYWNsZYEUMRRRFDEUIRRBFCEUERQxFBEUARQhFAET8RQRE/ET4RQBE+ET0RPxE9ETwRPhE8ETsRPRE7EToRPBE6ETkROxE5ETgROhE4ETcRORE3ETYROBE2ETURNxE1ETQRNhE0AMgAogCjACRWKp6CAN/k+CNWI6FWJL7y9N4B/BEzETURMxEyETQRMhExETMRMREwETIRMBEvETERLxEuETARLhEtES8RLRErES0RKxEqESwRKhEpESsRKREoESoRKBEnESkRJxEmESgRJhElEScRJREkESYRJBEjESURIxEiESQRIhEhESMRIREgESIRIBEfESERHxEeESARHgCkAfgRHREfER0RHBEeERwRGxEdERsRGhEcERoRGREbERkRGBEaERgRFxEZERcRFhEYERYRFREXERURFBEWERQRExEVERMREhEUERIRERETEREREBESERAPEREPDhEQDhDfEM4QvRCsEJsQihB5EGgQVxBGEDVEAHBQBHEB2zwwAKUBzFclgQEBVh9EFPgjRBQRJ39wcMhVgNs8yQIRHQIBESIBVhwBIG6VMFn0WjCUQTP0FeKBAQH4IyEDERwDVh1ZIW6VW1n0WjCYyAHPAEEz9ELiVhqk+CMRIhEbER0RGwERHAECERsCAQDcAfwRLxFEES8RLhFGES4RLRFFES0RLBFEESwRKxFGESsRKhFFESoRKRFEESkRKBFGESgRJxFFEScRJhFEESYRJRFGESURJBFFESQRIxFEESMRIhFGESIRIRFFESERIBFEESARHxFGER8RHhFFER4RHRFEER0RHBFGERwRGxFFERsApwH8ERoRRBEaERkRRhEZERgRRREYERcRRBEXERYRRhEWERURRREVERQRRBEUERMRRhETERIRRRESERERRBERERARRhEQDxFFDw4RRA4NEUYNDBFFDAsRRAsKEUYKCRFFCQgRRAgHEUYHBhFFBgURRAUEEUYEAxFFAwIRRAIBEUYBAKgC/BFF2zxXKVc8VzyCAOhBViGz8vSCAPIZVkTCCZRWRMFlkXDilFZDwWWRcOLy9PgjESakgQEB+CMBEUSAZH/IVTBQNIEBAc8AyFjPFskBzIEBAc8AygDJAhElAgERQwFWJAEgbpUwWfRaMJRBM/QV4hEipBFAEUMRQBE/EUIRPwDIAKkB/BE+EUERPhE9EUARPRE8ET8RPBE9ET4RPRE8ET0RPBE5ETwRORE4ETsROBE3EToRNxE2ETkRNhE1ETgRNRE0ETcRNBEzETYRMxEyETURMhExETQRMREwETMRMBEvETIRLxEuETERLhEtETARLREsES8RLBErES4RKxEqES0RKgCqAfQRKREsESkRKBErESgRJxEqEScRJREpESURJxEoEScRJBEnESQRIhEmESIRJREhESQRIREgESMRIBEfESIRHxEeESERHhEdESARHREcER8RHBEbER4RGxEaER0RGhEZERwRGREYERsRGBEXERoRFxEWERkRFhEVERgRFQCrAIYRFBEXERQRExEWERMREhEVERIREREUEREREBETERAPERIPDhERDg0REA0QzxC+EK0QnBCLEHoQaRBYEEcQNkAVUDMEAfARQxFIEUMRQhFHEUIRQRFGEUERQBFFEUARPxFEET8RPhFIET4RPRFHET0RPBFGETwROxFFETsROhFEEToRORFIETkROBFHETgRNxFGETcRNhFFETYRNRFEETURNBFIETQRMxFHETMRMhFGETIRMRFFETERMBFEETAAsAH0NFsRQxFFEUMRQhFEEUIRQRFFEUERQBFEEUARPxFFET8RPhFEET4RPRFFET0RPBFEETwROxFFETsROhFEEToRORFFETkROBFEETgRNxFFETcRNhFEETYRNRFFETURNBFEETQRMxFFETMRMhFEETIRMRFFETERMBFEETAAvgHyNBFDEUcRQxFCEUYRQhFBEUURQRFAEUQRQBE/EUcRPxE+EUYRPhE9EUURPRE8EUQRPBE7EUcROxE6EUYROhE5EUURORE4EUQROBE3EUcRNxE2EUYRNhE1EUURNRE0EUQRNBEzEUcRMxEyEUYRMhExEUURMREwEUQRMADFBPqCEJ07jLG6jr0w0x8BghCdO4yxuvLggdM/+kABINdJgQELuvLgiCDXCwoggQT/uvLQiYMJuvLgiAH6ANQB0BRDMGwU2zx/4CCCEAnSGxG6jpkw0x8BghAJ0hsRuvLggdM/1AHQEmwS2zx/4CCCEM/GbL264wIgghA8E0cougDNAM4AzwDQAfwRLxFIES8RLhFHES4RLRFGES0RLBFFESwRKxFEESsRKhFIESoRKRFHESkRKBFGESgRJxFFEScRJhFEESYRJRFIESURJBFHESQRIxFGESMRIhFFESIRIRFEESERIBFIESARHxFHER8RHhFGER4RHRFFER0RHBFEERwRGxFIERsAsQH8ERoRRxEaERkRRhEZERgRRREYERcRRBEXERYRSBEWERURRxEVERQRRhEUERMRRRETERIRRBESERERSBERERARRxEQDxFGDw4RRQ4NEUQNDBFIDAsRRwsKEUYKCRFFCQgRRAgHEUgHBhFHBgURRgUEEUUEAxFEAwIRSAIBEUcBALID/hFG2zwRKKSBAQH4IyEEESoEQTABEUcBIW6VW1n0WjCYyAHPAEEz9ELiVkXAApYRR4ETiLyTV0dw4o4QVztWO8EylIAyVzzegEYRO95WRMADlFZFwlCRcOKOFlc7Vz9WOsIUlIAUVzvegCh/EUABETveVkTAAZRWRcHOkXDi4wAAyACzALQAElc7cFdAgFAROwL4EUTAAZQRRMHik1dEcOKSVjGRcOKVVjBWML6RcOKY+CNWLaFWL76RcOKSV0HjDRE+EUMRPhE9EUIRPRE8EUERPBE7EUAROxE6ET8ROhE5ET4RORE4ET0ROBE3ETwRNxE2ETsRNhE1EToRNRE0ETkRNBEzETgRMxEyETcRMgC1ALYB/BE/EUQRPxE+EUMRPhE9EUIRPRE8EUERPBE7EUAROxE6ET8ROhE5ET4RORE4ET0ROBE3ETwRNxE2ETsRNhE1EToRNRE0ETkRNBEzETgRMxEyETcRMhExETYRMREwETURMBEvETQRLxEuETMRLhEtETIRLREsETERLBErETARKwC3AfwRMRE2ETERMBE1ETARLxE0ES8RLhEzES4RLREyES0RLBExESwRKxEwESsRKhEvESoRKREuESkRKBEtESgRJxEsEScRJhErESYRJREqESURJBEpESQRJhEoESYRJREnESURIREmESERIBElESARHxEkER8RHhEjER4RHREiER0AvQH8ESoRLxEqESkRLhEpESgRLREoEScRLBEnESYRKxEmESURKhElEScRKREnESYRKBEmESIRJxEiESERJhEhESARJREgER8RJBEfER4RIxEeER0RIhEdERwRIREcERsRIBEbERoRHxEaERkRHhEZERgRHREYERcRHBEXERYRGxEWALgC9BEVERoRFREUERkRFBETERgRExESERcREhERERYREREQERUREA8RFA8OERMODRESDQwREQwLERALEK8QnhCNEHwQaxBaEEkQOEcVQBRQY9s8EScRQxEnAxFCAwIRQQIEEUAEESgRPxEoEScRPhEnAxE9AwIRPAIEETsEALkAugL0VzFwVjWBA+ioVkWAZKkEUhC8lzBWRIBkqQTeIMIAjhkRRVZFoRE9VkWgETBWRaARPRFFET0RMBE93hEvVjagETGk+CMicIBAyIIQmZmZmQHLHwERNwHLPwEROvoCAREy+gLJVkUEAxEyAwIROQIRNQEQJBAjbW3bPDAA5QC7AfwRKBE6ESgRJxE5EScDETgDAhE3AgQRNgQRKBE1ESgRJxE0EScDETMDAhEyAgQRMQQRKBEwESgRJxEvEScDES4DAhEtAgQRLAQRKBErESgRJxEqEScDESkDAhEoAgQRJwQCESYCBBElBAMRJAMRIwERIgECESECBBEgBAMRHwMAvAAYETARNBEwES0RLxEtAIoRHgERHQECERwCBBEbBAMRGgMRGQERGAECERcCBBEWBAMRFQMRFAEREwECERICBBERBAMREANN7xBMEDtImhBHEDZERRMA0hEcESERHBEbESARGxEaER8RGhEZER4RGREYER0RGBEXERwRFxEWERsRFhEVERoRFREUERkRFBETERgRExESERcREhERERYREREQERUREA8RFA8OERMODRESDQwREQwLERALEK9VSUQwEgH8ES8RRREvES4RRBEuES0RRREtESwRRBEsESsRRRErESoRRBEqESkRRREpESgRRBEoEScRRREnESYRRBEmESURRRElESQRRBEkESMRRREjESIRRBEiESERRREhESARRBEgER8RRREfER4RRBEeER0RRREdERwRRBEcERsRRREbAL8B/BEaEUQRGhEZEUURGREYEUQRGBEXEUURFxEWEUQRFhEVEUURFREUEUQRFBETEUURExESEUQREhEREUUREREQEUQREA8RRQ8OEUQODRFFDQwRRAwLEUULChFECgkRRQkIEUQIBxFFBwYRRAYFEUUFBBFEBAMRRQMCEUQCARFFAQDAA/gRRNs8gQEB+CMBEUeAZHDIVTBQNIEBAc8AyFjPFskBzIEBAc8AygDJAhEnAgERRgFWJgEgbpUwWfRaMJRBM/QV4hEkpFZDwAOOKhFDwAKcVzsRO6YUETuAPBE73gQRQgQDEUADAhE8AgEROwERNAQRIQRVIOMNEUERQxFBAMgAwQDCACZXIlc0VzpXOlc9Vz5/cHCAZIBaAfQCEUICET8RQRE/ET4RQBE+ET0RPxE9ARE+ARE9EToRPBE6ETkROxE5ETgROhE4ETcRORE3ETYROBE2ETURNxE1AxE2AxEzETURMxEyETQRMhExETMRMREwETIRMBEvETERLxEuETARLhEtES8RLREsES4RLBErES0RKwDDAfgRKhEsESoRKRErESkRKBEqESgRJxEpEScRJhEoESYRJREnESURIxEmESMRIRElESERIhEkESIEESMEESARIhEgER8RIREfER4RIBEeER0RHxEdERwRHhEcERsRHREbERoRHBEaERkRGxEZERgRGhEYERcRGREXERYRGBEWAMQAhhEVERcRFREUERYRFBETERURExESERQREhERERMREREQERIREA8REQ8OERAOEN8QzhC9EKwQmxCKEHkQaBBXRlATREAB/BEvEUcRLxEuEUYRLhEtEUURLREsEUQRLBErEUcRKxEqEUYRKhEpEUURKREoEUQRKBEnEUcRJxEmEUYRJhElEUURJREkEUQRJBEjEUcRIxEiEUYRIhEhEUURIREgEUQRIBEfEUcRHxEeEUYRHhEdEUURHREcEUQRHBEbEUcRGwDGAfwRGhFGERoRGRFFERkRGBFEERgRFxFHERcRFhFGERYRFRFFERURFBFEERQRExFHERMREhFGERIRERFFEREREBFEERAPEUcPDhFGDg0RRQ0MEUQMCxFHCwoRRgoJEUUJCBFECAcRRwcGEUYGBRFFBQQRRAQDEUcDAhFGAgERRQEAxwP6EUTbPIIA0SBWSFYmvvL0ESikVkbAAZRXPldF4w6BAQH4IwIBEUQBEUd/yFUwUDSBAQHPAMhYzxbJAcyBAQHPAMoAyQIRJAIBEUIBViMBIG6VMFn0WjCUQTP0FeIRIaQRPxFDET8RPhFCET4RPRFBET0RPBFAETwROxE/ETsAyADJAMoAKIIAzND4QlYuAccF8vSBUdBWLPL0AOxWRsAClFc9V0WOXlZGwAOONFcsV0VwARFEyHIBywFwAcsAEsoHy//J0CDXSYEBC7ry4Igg1wsKIIEE/7ry0ImDCbry4IiOFxFGwASYVzIRMRFDETGSV0TiEUMRRBEq4hE7EUMROxEqETviETwRQxE8ETsRPBE7AfwRPRE+ET0RORE9ETkROBE8ETgRNxE7ETcRNhE6ETYRNRE5ETURNBE4ETQRMxE3ETMRMhE2ETIRMRE1ETERMBE0ETARLxEzES8RLhEyES4RLRExES0RLBEwESwRKxEvESsRKhEuESoRKREtESkRKBEsESgRJxErEScRJhEqESYAywH0ESURKRElESYRKBEmESMRJxEjESERJhEhESURIBEkESARHxEjER8RHhEiER4RHREhER0RHBEgERwRGxEfERsRGhEeERoRGREdERkRGBEcERgRFxEbERcRFhEaERYRFREZERURFBEYERQRExEXERMREhEWERIREREVEREAzABaERARFBEQDxETDw4REg4NERENDBEQDBC/EK4QnRCMEHsQahBZEEgQN0ZQRAMCAvAwMVYegQEBI1n0DW+hkjBt3yBukjBtjofQ2zxsGW8J4oFjviFus/L0gRiGISBu8tCAbykYXwizmyEgbvLQgG8pbIGzkXDi8vQRQhFGEUIRQRFFEUERQBFEEUARPxFDET8RPhFGET4RPRFFET0RPBFEETwROxFDETsA9gDRAuwwggCKq/hCVkQBxwXy9FYdgQEBIln0DW+hkjBt3yBukjBtjofQ2zxsGW8J4oFjviFus/L0EUIRRRFCEUERRBFBEUARQxFAET8RRRE/ET4RRBE+ET0RQxE9ETwRRRE8ETsRRBE7EToRQxE6ETkRRRE5ETgRRBE4APYA2QCMMNMfAYIQz8Zsvbry4IH6QAEg10mBAQu68uCIINcLCiCBBP+68tCJgwm68uCIMVc9ggCKq/hCVkMBxwXy9IFkbVYrs/L0fwL0jmww0x8BghA8E0couvLggdMP0wfTD9MP0w9VQGwVVzxXPFc8Vz9XP4IAiqv4QlZDAccF8vSBZG1WK7Py9IIAhtxWP8FllFY+wWWRcOKWVjqBAfS7kXDillY5gQPou5Fw4pZWOIEBLLuRcOLy9H/gIIIQ8YItobrjAiAA4QDiAfwROhFGEToRORFFETkROBFEETgRNxFDETcRNhFGETYRNRFFETURNBFEETQRMxFDETMRMhFGETIRMRFFETERMBFEETARLxFDES8RLhFGES4RLRFFES0RLBFEESwRKxFDESsRKhFGESoRKRFFESkRKBFEESgRJxFDEScRJhFGESYA0gH8ESURRRElESQRRBEkESMRQxEjESIRRhEiESERRREhESARRBEgER8RQxEfER4RRhEeER0RRREdERwRRBEcERsRQxEbERoRRhEaERkRRREZERgRRBEYERcRQxEXERYRRhEWERURRREVERQRRBEUERMRQxETERIRRhESERERRRERANMCxhEQEUQREA8RQw8OEUYODRFFDQwRRAwLEUMLChFGCgkRRQkIEUQIBxFDBwYRRgYFEUUFBBFEBAMRQwMCEUYCARFFARFEgSLUEURWR9s8ARFFAfL0VhiBAQFWSFn0DW+hkjBt3wElANQB2iBukjBtjiXQgQEB1wCBAQHXAIEBAdcA1AHQgQEB1wDSADAQJRAkECNsFW8F4nBTAW6zjhpbICBu8tCAbyUQNF8EASBu8tCAbyUQJF8EAZEy4lZHoFZEVh+ogScQqQSBAQEDpFMhuVZLVEQwUkAA1QL+yFVAUEWBAQHPABKBAQHPAIEBAc8AAciBAQHPABLKAMkBzMkCERwCE1ZKASBulTBZ9FowlEEz9BXiERoBvpkCEUYCV0RXRDDjDRE/EUMRPxE+EUIRPhE9EUERPRE8EUARPBE7ET8ROxE6ET4ROhE5ET0RORE4ETwROBE3ETsRNwDWANcBlhFEIG7y0IBvKVsQVhBGEDYQJoEBAUd3f3DIVYDbPMkDERwDEgERRwEgbpUwWfRaMJRBM/QV4gERFQERQ6ARGBFDERgRGBFCERgRFADcAfwRNhE6ETYRNRE5ETURNBE4ETQRMxE3ETMRMhE2ETIRMRE1ETERMBE0ETARLxEzES8RLhEyES4RLRExES0RLBEwESwRKxEvESsRKhEuESoRKREtESkRKBEsESgRJxErEScRJhEqESYRJREpESURJBEoESQRIxEnESMRIhEmESIA2AD8ESERJREhESARJBEgER8RIxEfER4RIhEeER0RIREdERwRIBEcERsRHxEbERoRHhEaERkRHREZERgRHBEYERcRGxEXERYRGhEWERURGREVERQRGBEUERMRFxETERIRFhESERERFRERERARFBEQDxETDw4REg4NERENDBEQDFU7AfwRNxFDETcRNhFFETYRNRFEETURNBFDETQRMxFFETMRMhFEETIRMRFDETERMBFFETARLxFEES8RLhFDES4RLRFFES0RLBFEESwRKxFDESsRKhFFESoRKRFEESkRKBFDESgRJxFFEScRJhFEESYRJRFDESURJBFFESQRIxFEESMA2gH8ESIRQxEiESERRREhESARRBEgER8RQxEfER4RRREeER0RRBEdERwRQxEcERsRRREbERoRRBEaERkRQxEZERgRRREYERcRRBEXERYRQxEWERURRREVERQRRBEUERMRQxETERIRRRESERERRBERERARQxEQDxFFDw4RRA4NEUMNANsD9AwRRQwLEUQLChFDCgkRRQkIEUQIBxFDBwYRRQYFEUQFBBFDBAMRRQMCEUQCARFDARFFgSLUEUVWRNs8ARFGAfL0gVnFVkYgbvLQgG8pbIGz8vQRRSBu8tCAbykwEEcQNoEBAX8nUVoFEEpaGshVgNs8yQMRHgMBEUYBASUA3ADdAG5QiYEBAc8AFoEBAc8AyFAFzxbJUATMEoEBAc8AAciBAQHPAMhQA88WyVjMEsoAEsoAEsoAyQHMAf4gbpUwWfRaMJRBM/QV4otlNldEZlZYVkQB+QEB+QG6lFc9V0KONIvVRvZ2dsZVRyYWRpbmeAERRAH5AQH5AbqaVzQRGcMAETMRGZJXGuIRGRFBERkRGRE7ERniEUARQxFAET8RQhE/ET4RQRE+ET0RQBE9ETwRPxE8ERkRPhEZAN4B/BE6ET0ROhE5ETwRORE4ETsROBE3EToRNxE2ETkRNhE1ETgRNRE0ETcRNBEzETYRMxEyETURMhExETQRMREwETMRMBEvETIRLxEuETERLhEtETARLREsES8RLBErES4RKxEqES0RKhEpESwRKREoESsRKBEnESoRJxEmESkRJgDfAfwRJREoESURJBEnESQRIxEmESMRIhElESIRIREkESERIBEjESARHxEiER8RHhEhER4RHREgER0RHBEfERwRGxEeERsRGhEdERoRGhEcERoRGBEbERgRFxEaERcRFhEZERYRFREYERURFBEXERQRExEWERMREhEVERIREREUEREA4AAuERARExEQDxESDw4REQ4NERANEM9VKxIAVDDTHwGCEPGCLaG68uCB0gABMVc3ggCKq/hCVkMBxwXy9IFkbVYrs/L0fwL4ghCDuBRKuo44MNMfAYIQg7gUSrry4IHSAPoA0x/TB1UwbBRXNVc1VzVXNoIAiqv4QlZDAccF8vSBZG1WK7Py9H/gIIIQlGqYtrqOqDDTHwGCEJRqmLa68uCB0z8BMcgBghCv+Q9XWMsfyz/J+EIBcG3bPH/gwACRMOMNcADjAOQBPG1tIm6zmVsgbvLQgG8iAZEy4hAkcAMEgEJQI9s8MADlAtj5ASCC8OW19yQgrYUDCHOhxBPzJTZZGJ4yUwluvY2XRGULQom9uo4VMFdCgTjG+EJWQgHHBfL0cBFCf9sx4CCC8IeCQDfwAVaPHrE28h5doQLQ7DOcOKeYgt3M/8xzi7Jiuo6GMNs8f9sx4CAA5wDoAcrIcQHKAVAHAcoAcAHKAlAFINdJgQELuvLgiCDXCwoggQT/uvLQiYMJuvLgiM8WUAP6AnABymgjbrORf5MkbrPilzMzAXABygDjDSFus5x/AcoAASBu8tCAAcyVMXABygDiyQH7CADmAJh/AcoAyHABygBwAcoAJG6znX8BygAEIG7y0IBQBMyWNANwAcoA4iRus51/AcoABCBu8tCAUATMljQDcAHKAOJwAcoAAn8BygACyVjMAfKCAIqr+EJWQwHHBfL0EUIRQxFCEUERQxFBEUARQxFAET8RQxE/ET4RQxE+ET0RQxE9ETwRQxE8ETsRQxE7EToRQxE6ETkRQxE5ETgRQxE4ETcRQxE3ETYRQxE2ETURQxE1ETQRQxE0ETMRQxEzETIRQxEyETERQxExAOkBzoLwbI9E9F/ttM3+1N6NsUqlsTrVXUMPdZ0GaSELdMSP49+6jhwwVyNXNYIAiqv4QlZBAccF8vRwfxE2AREjf9sx4ILwbI/r7ZDhY52eM9RJ5gmNtY8RAYBI5Y7JIcylHimy+ue64wIA7gH8ETARQxEwES8RQxEvES4RQxEuES0RQxEtESwRQxEsESsRQxErESoRQxEqESkRQxEpESgRQxEoEScRQxEnESYRQxEmESURQxElESQRQxEkESMRQxEjESIRQxEiESERQxEhESARQxEgER8RQxEfER4RQxEeER0RQxEdERwRQxEcAOoC+hEbEUMRGxEaEUMRGhEZEUMRGREYEUMRGBEXEUMRFxEWEUMRFhEVEUMRFREUEUMRFBETEUMRExESEUMREhEREUMREREQEUMREA8RQw8OEUMODRFDDQwRQwwLEUMLChFDCgkRQwkRQwgHBlVAgWj0EUTbPFckVypXKlcqESCzATQA6wH4ARFBAfL0cHBWPhFBEUIRQRFAEUERQBE/EUARPxE+ET8RPhE9ET4RPRE8ET0RPBE7ETwROxE6ETsROhE5EToRORE4ETkROBE3ETgRNxE2ETcRNhE1ETYRNRE0ETURNBEzETQRMxEyETMRMhExETIRMREwETERMBEvETARLwDsAfYRLhEvES4RLREuES0RLBEtESwRKxEsAhEqAgERKQERJxEoEScRJhEnESYRJREmESURJBElESQRIxEkESMRIhEjESJwESMRIREiESERIBEhESARHxEgER8RHhEfER4RHREeER0RHBEdERwRGxEcERsRGhEbERoRGREaERkA7QCkERgRGREYERcRGBEXERYRFxEWERURFhEVERQRFREUERMRFBETERIRExESEREREhERERAREREQDxEQDxDvEN4QzRC8EKsQmhCJEHgQZxBWFBVDMAA8ggCKq/hCVkMBxwXy9IIArpdWK7Py9BErsxErf9sxAgEgAPEA8gIBagD6APsC+bLZNs8EUMRRBFDEUIRQxFCEUERQhFBEUARQRFAET8RQBE/ET4RPxE+ET0RPhE9ETwRPRE8ETsRPBE7EToROxE6ETkROhE5ETgRORE4ETcROBE3ETYRNxE2ETURNhE1ETQRNRE0ETMRNBEzETIRMxEyETERMhExETARMREwgATwA8wL5s/X2zwRQxFEEUMRQhFDEUIRQRFCEUERQBFBEUARPxFAET8RPhE/ET4RPRE+ET0RPBE9ETwROxE8ETsROhE7EToRORE6ETkROBE5ETgRNxE4ETcRNhE3ETYRNRE2ETURNBE1ETQRMxE0ETMRMhEzETIRMREyETERMBExETCABPAD3AfwRLxEwES8RLhEvES4RLREuES0RLBEtESwRKxEsESsRKhErESoRKREqESkRKBEpESgRJxEoEScRJhEnESYRJREmESURJBElESQRIxEkESMRIhEjESIRIREiESERIBEhESARHxEgER8RHhEfER4RHREeER0RHBEdERwRGxEcERsA9AHkERoRGxEaERkRGhEZERgRGREYERcRGBEXERYRFxEWERURFhEVERQRFREUERMRFBETERIRExESEREREhERERAREREQDxEQD1UO2zxXEF8PVxBfD1cQXw9XEF8PbEEgbpIwbZkgbvLQgG8pbwniIG6SMG3eAPUBPIEBAVYeAln0DW+hkjBt3yBukjBtjofQ2zxsGW8J4gD2AFyBAQHXAIEBAdcA1AHQAYEBAdcA1AHQgQEB1wDUAdAB0gDSANIAMBBZEFgQVxBWAfwRLxEwES8RLhEvES4RLREuES0RLBEtESwRKxEsESsRKhErESoRKREqESkRKBEpESgRJxEoEScRJhEnESYRJREmESURJBElESQRIxEkESMRIhEjESIRIREiESERIBEhESARHxEgER8RHhEfER4RHREeER0RHBEdERwRGxEcERsA+AG4ERoRGxEaERkRGhEZERgRGREYERcRGBEXERYRFxEWERURFhEVERQRFREUERMRFBETERIRExESEREREhERERAREREQDxEQD1UO2zxXEF8PVxBfD1cQXw9XEF8PbEEA+QAugQEBIFYqUDNBM/QMb6GUAdcAMJJbbeICIKlk2zzbPGznbOds52znbMcBPAD8AvSpCiDXSYEBC7ry4Igg1wsKIIEE/7ry0ImDCbry4IjbPBFDEUQRQxFCEUMRQhFBEUIRQRFAEUERQBE/EUARPxE+ET8RPhE9ET4RPRE8ET0RPBE7ETwROxE6ETsROhE5EToRORE4ETkROBE3ETgRNxE2ETcRNhE1ETYRNQE8AP0ADlR5h1R5hykB/BE0ETURNBEzETQRMxEyETMRMhExETIRMREwETERMBEvETARLxEuES8RLhEtES4RLREsES0RLBErESwRKxEqESsRKhEpESoRKREoESkRKBEnESgRJxEmEScRJhElESYRJREkESURJBEjESQRIxEiESMRIhEhESIRIREgESERIAD+AvQRHxEgER8RHhEfER4RHREeER0RHBEdERwRGxEcERsRGhEbERoRGREaERkRGBEZERgRFxEYERcRFhEXERYRFREWERURFBEVERQRExEUERMREhETERIRERESEREREBERERAPERAPVQ7bPFcQXw9XEF8PVxBfD1cQXw9sQQD/AQAAfIEBCywCWfQLb6GSMG3fIG6SMG2OKNCBAQHXAIEBAdcAgQEB1wDUAdCBAQHXAIEBAdcAMBAlECQQI2wVbwXiACwgbpIwbZkgbvLQgG8lbwXiIG6SMG3eAgEgAQMBBAL5r05tngihiKIIoYihCKGIoQigiKEIoIigCKCIoAifiKAIn4ifCJ+InwieiJ8InoieCJ6IngidiJ4InYidCJ2InQiciJ0InIicCJyInAibiJwIm4ibCJuImwiaiJsImoiaCJqImgiZiJoImYiZCJmImQiYiJkImIiYCJiImEABPAEHAjCr7ds82zxXEF8PVxBfD1cQXw9XEF8PbEEBPAEFAiyrBts82zxsmWyZbJlsmWyZbJlsmWxZATwBBgAEVjYAJFYqViNWI1YjViNWI1YjVh9WIwH8ES8RMBEvES4RLxEuES0RLhEtESwRLREsESsRLBErESoRKxEqESkRKhEpESgRKREoEScRKBEnESYRJxEmESURJhElESQRJREkESMRJBEjESIRIxEiESERIhEhESARIREgER8RIBEfER4RHxEeER0RHhEdERwRHREcERsRHBEbAQgBuBEaERsRGhEZERoRGREYERkRGBEXERgRFxEWERcRFhEVERYRFREUERURFBETERQRExESERMREhERERIREREQEREREA8REA9VDts8VxBfD1cQXw9XEF8PVxBfD2xBAQkAHIEBASICWfQMb6GSMG3fAgEgAQwBDQIxsN62zzbPFcQXw9XEF8PVxBfD1cQXw9sQYAE8ARMCLa117Z5tnjZENkQ2RDZENkQ2RDZENmRAATwBDgL1rcEQa6TAgIXdeXBEEGuFhRBAgn/deWhEwYTdeXBEbZ4IoYiiCKGIoQihiKEIoIihCKCIoAigiKAIn4igCJ+InwifiJ8InoifCJ6IngieiJ4InYieCJ2InQidiJ0InIidCJyInAiciJwIm4icCJuImwibiJsImoibCJrAATwBDwAqgGRWPqFWPwFWPwFWPFY8VjxWQVZBAfwRNBE1ETQRMxE0ETMRMhEzETIRMREyETERMBExETARLxEwES8RLhEvES4RLREuES0RLBEtESwRKxEsESsRKhErESoRKREqESkRKBEpESgRJxEoEScRJhEnESYRJREmESURJBElESQRIxEkESMRIhEjESIRIREiESERIBEhESABEAL0ER8RIBEfER4RHxEeER0RHhEdERwRHREcERsRHBEbERoRGxEaERkRGhEZERgRGREYERcRGBEXERYRFxEWERURFhEVERQRFREUERMRFBETERIRExESEREREhERERAREREQDxEQD1UO2zxXEF8PVxBfD1cQXw9XEF8PbEEBEQESAJCBAQtWEAJZ9AtvoZIwbd8gbpIwbY4x0PpAASDXSYEBC7ry4Igg1wsKIIEE/7ry0ImDCbry4IgBgQEB1wCBAQHXAFUgbBNvA+IALCBukjBtmSBu8tCAbyNvA+IgbpIwbd4ABFYjAgFYARYBFwIxtuKbZ5tniuIL4eriC+Hq4gvh6uIL4e2IMAE8AR0C9a28kGukwICF3XlwRBBrhYUQQIJ/3XloRMGE3XlwRG2eCKGIogihiKEIoYihCKCIoQigiKAIoIigCJ+IoAifiJ8In4ifCJ6InwieiJ4InoieCJ2IngidiJ0InYidCJyInQiciJwInIicCJuInAibiJsIm4ibCJqImwiawAE8ARgCIa8W7Z5tnjZ6tnq2erZ6tkLAATwBHAH8ETQRNRE0ETMRNBEzETIRMxEyETERMhExETARMREwES8RMBEvES4RLxEuES0RLhEtESwRLREsESsRLBErESoRKxEqESkRKhEpESgRKREoEScRKBEnESYRJxEmESURJhElESQRJREkESMRJBEjESIRIxEiESERIhEhESARIREgARkB9BEfESARHxEeER8RHhEdER4RHREcER0RHBEbERwRGxEaERsRGhEZERoRGREYERkRGBEXERgRFxEWERcRFhEVERYRFREUERURFBETERQRExESERMREhERERIREREQEREREA8REA9VDts8VxBfD1cQXw9XEF8PVxBfD2xBARoBkPhD+CgS2zxwWchwAcsBcwHLAXABywASzMzJ+QDIcgHLAXABywASygfL/8nQINdJgQELuvLgiCDXCwoggQT/uvLQiYMJuvLgiAEbANYC0PQEMG0BgW6jAYAQ9A9vofLghwGBbqMiAoAQ9BfIAcj0AMkBzHABygBAA1kg10mBAQu68uCIINcLCiCBBP+68tCJgwm68uCIzxYBINdJgQELuvLgiCDXCwoggQT/uvLQiYMJuvLgiM8WyQAUVkNWQ1ZDVkNWQwEE2zwBNAIBIAEgASECASABJgEnABGtX3aiaGkAAMAC+awN7Z4IoYiiCKGIoQihiKEIoIihCKCIoAigiKAIn4igCJ+InwifiJ8InoifCJ6IngieiJ4InYieCJ2InQidiJ0InIidCJyInAiciJwIm4icCJuImwibiJsImoibCJqImgiaiJoImYiaCJmImQiZiJkImIiZCJiImAiYiJhAATwBIgH8ES8RMBEvES4RLxEuES0RLhEtESwRLREsESsRLBErESoRKxEqESkRKhEpESgRKREoEScRKBEnESYRJxEmESURJhElESQRJREkESMRJBEjESIRIxEiESERIhEhESARIREgER8RIBEfER4RHxEeER0RHhEdERwRHREcERsRHBEbASMBuBEaERsRGhEZERoRGREYERkRGBEXERgRFxEWERcRFhEVERYRFREUERURFBETERQRExESERMREhERERIREREQEREREA8REA9VDts8VxBfD1cQXw9XEF8PVxBfD2xBASQBBNs8ASUAUoEBASBWHVAzQTP0DG+hlAHXADCSW23iIG6SMHDg+CMBIG7y0IChVh+5Ai2v3O2ebZ42TLZMtky2TLZMtky2TLYswAE8ASgC+a68bZ4IoYiiCKGIoQihiKEIoIihCKCIoAigiKAIn4igCJ+InwifiJ8InoifCJ6IngieiJ4InYieCJ2InQidiJ0InIidCJyInAiciJwIm4icCJuImwibiJsImoibCJqImgiaiJoImYiaCJmImQiZiJkImIiZCJiImAiYiJhAATwBKQAkVjVWNVY1VjVWNVY1VjVWNVY1AfwRLxEwES8RLhEvES4RLREuES0RLBEtESwRKxEsESsRKhErESoRKREqESkRKBEpESgRJxEoEScRJhEnESYRJREmESURJBElESQRIxEkESMRIhEjESIRIREiESERIBEhESARHxEgER8RHhEfER4RHREeER0RHBEdERwRGxEcERsBKgHkERoRGxEaERkRGhEZERgRGREYERcRGBEXERYRFxEWERURFhEVERQRFREUERMRFBETERIRExESEREREhERERAREREQDxEQD1UO2zxXEF8PVxBfD1cQXw9XEF8PbEEgbpIwbZkgbvLQgG8lbwXiIG6SMG3eASsAeIEBAVYbAln0DW+hkjBt3yBukjBtjiXQgQEB1wCBAQHXAIEBAdcA1AHQgQEB1wDSADAQJRAkECNsFW8F4gIBZgEuAS8CIa2/7Z5tnjZ6tnq2erZ6tkLAATwBPQIno8ts82zxsqmyqbKpsqmyqbKpsioBPAEwAvOhDINdJgQELuvLgiCDXCwoggQT/uvLQiYMJuvLgiNs8EUMRRBFDEUIRQxFCEUERQhFBEUARQRFAET8RQBE/ET4RPxE+ET0RPhE9ETwRPRE8ETsRPBE7EToROxE6ETkROhE5ETgRORE4ETcROBE3ETYRNxE2ETURNhE1gE8ATgB8FYsVixWLFYsVixWQ1YuVixWJxFDEUwRQxFCEUsRQhFBEUoRQRFAEUkRQBE/EUgRPxE+EUcRPhE9EUYRPRE8EUURPBE7EUQROxE6EUwROhE5EUsRORE4EUoROBE3EUkRNxE2EUgRNhE1EUcRNRE0EUYRNBEzEUURMwExAfwRMhFEETIRMRFMETERMBFLETARLxFKES8RLhFJES4RLRFIES0RLBFHESwRKxFGESsRKhFFESoRKRFEESkRKBFMESgRJxFLEScRJhFKESYRJRFJESURJBFIESQRIxFHESMRIhFGESIRIRFFESERIBFEESARHxFMER8RHhFLER4BMgH4ER0RShEdERwRSREcERsRSBEbERoRRxEaERkRRhEZERgRRREYERcRRBEXERYRTBEWERURSxEVERQRShEUERMRSRETERIRSBESERERRxERERARRhEQDxFFDw4RRA4NEUwNDBFLDAsRSgsKEUkKCRFICQgRRwgHEUYHBhFFBgEzAvwFEUQFBBFMBAMRSwMCEUoCARFJARFI2zwJEUgJCBFHCAcRRgcGEUUGBRFNBQQRTAQDEUsDAhFKAgERSQERRBFNEUQRQxFMEUMRQhFLEUIRQRFKEUERQBFJEUARPxFIET8RPhFHET4RPRFGET0RPBFFETwROxFEETsROhFDEToBNAE1ABD4I1YgoVYhuwH8ETkRQhE5ETgRQRE4ETcRQBE3ETYRPxE2ETURPhE1ETQRPRE0ETMRPBEzETIROxEyETEROhExETAROREwES8ROBEvES4RNxEuES0RNhEtESwRNREsESsRNBErESoRMxEqESkRMhEpESgRMREoEScRMBEnESYRLxEmESURLhElATYB/BEkES0RJBEjESwRIxEiESsRIhEhESoRIREgESkRIBEfESgRHxEeEScRHhEdESYRHREcESURHBEbESQRGxEaESMRGhEZESIRGREYESERGBEXESARFxEWER8RFhEVER4RFREUER0RFBETERwRExESERsREhERERoREREQERkREAE3ADAPERgPDhEXDg0RFg0MERUMCxEUCwoREwoB/BE0ETURNBEzETQRMxEyETMRMhExETIRMREwETERMBEvETARLxEuES8RLhEtES4RLREsES0RLBErESwRKxEqESsRKhEpESoRKREoESkRKBEnESgRJxEmEScRJhElESYRJREkESURJBEjESQRIxEiESMRIhEhESIRIREgESERIAE5AvQRHxEgER8RHhEfER4RHREeER0RHBEdERwRGxEcERsRGhEbERoRGREaERkRGBEZERgRFxEYERcRFhEXERYRFREWERURFBEVERQRExEUERMREhETERIRERESEREREBERERAPERAPVQ7bPFcQXw9XEF8PVxBfD1cQXw9sQQE6ATsAboEBC1YVAln0C2+hkjBt3yBukjBtjiDQgQEB1wCBAQHXAIEBAdcA1AHQgQEB1wAwFEMwbBRvBOIALCBukjBtmSBu8tCAbyRvBOIgbpIwbd4CgO1E0NQB+GPSAAHjAvgo1wsKgwm68uCJ+kABINdJgQELuvLgiCDXCwoggQT/uvLQiYMJuvLgiAHU1FUgA9FY2zwBPgE/ABRWF1YXVhdWF1YWAvjbPFdEEUIRQxFCEUERQhFBEUARQRFAET8RQBE/ET4RPxE+ET0RPhE9ETwRPRE8ETsRPBE7EToROxE6ETkROhE5ETgRORE4ETcROBE3ETYRNxE2ETURNhE1ETQRNRE0ETMRNBEzETIRMxEyETERMhExETARMREwES8RMBEvAUABQQHubW1tbW1tbW1tbXB/LoAegDJWEVNVgGSBASyAD39/JYISVAvkAIEOEFR3IlMAcHBUciKAS3CBVGAjgggJOoD4I4IBUYCBA+hTRH+BB9CCGBdIdugAgggnjQBTRH9WGn9TM3+CEDuaygBWEFYtcfgjU2YRNhFDETYBRQHu+gDSAPpAASDXSYEBC7ry4Igg1wsKIIEE/7ry0ImDCbry4IgB1NQB0NTTD9MH+kABINdJgQELuvLgiCDXCwoggQT/uvLQiYMJuvLgiAH6APoA0w/TD9MP0gDSAPoA+gDTH9MH1DDQgQEB1wCBAQHXAPoA+gDUMNABQgH8ES4RLxEuES0RLhEtESwRLREsESsRLBErESoRKxEqESkRKhEpESgRKREoEScRKBEnESYRJxEmESURJhElESQRJREkESMRJBEjESIRIxEiESERIhEhESARIREgER8RIBEfER4RHxEeER0RHhEdERwRHREcERsRHBEbERoRGxEaAUQB/vpAASDXSYEBC7ry4Igg1wsKIIEE/7ry0ImDCbry4IgB0gDSAIEBAdcAgQEB1wD0BPQE1DDQgQEB1wDTB9IA0x+BAQHXANMfgQEB1wDTH9MP9ATUMNCBAQHXAPQE9AT6ANIA0w/6ANMf9AT6APoA0gDTD9Qw0PQE0gD6APoA9AQBQwBy0gD6ANMf0weBAQHXAIEBAdcA1DDQ+gD0BIEBAdcA9AQwEUARRBFAEUARQxFAEUARQhFAEUARQRFAAIQRGREaERkRGBEZERgRFxEYERcRFhEXERYRFREWERURFBEVERQRExEUERMREhETERIRERESEREREBERERAPERAPVQ4B/BE1EUIRNRE0EUERNBE1EUARNRE0ET8RNBEzET4RMxEyET0RMhExETwRMREwETsRMBEvEToRLxEuETkRLhEtETgRLREsETcRLBErETYRKxEqETURKhEpETQRKREoETMRKBEnETIRJxEmETERJhElETARJREkES8RJBEjES4RIwFGAfwRIhEtESIRKxEsESsRIRErESERIBEqESARHxEpER8RHhEoER4RIBEnESARHxEmER8RHRElER0RHBEkERwRGxEjERsRGhEiERoRGREhERkRGBEgERgRFxEfERcRFhEeERYRFREdERURFhEcERYRFBEbERQRGBEaERgRFxEZERcBRwCOERMRGBETERIRFxESERERFhERERARFREQDxEUDxEQERMREA4REg4NERENDBEQDBC/EN4QrRCcEIsQihB5EGgQVxBGEDVEAwI=');
-    const __system = Cell.fromBase64('te6cckICAWAAAQAAe6AAAAEBwAABAgEgAAIAFwEFv3UcAAMBFP8A9KQT9LzyyAsABAIBYgAFABADetAB0NMDAXGwowH6QAEg10mBAQu68uCIINcLCiCBBP+68tCJgwm68uCIVFBTA28E+GEC+GLbPFUT2zzy4IIAEgAGAA8D9gGSMH/gcCHXScIflTAg1wsf3iCCEAStN4O6jkww0x8BghAErTeDuvLggdM/+gD6QAEg10mBAQu68uCIINcLCiCBBP+68tCJgwm68uCIVBMDECNsFBAjXwOCAMJB+EJSQMcF8vQUoAN/4CCCEJOrtT66jwgw2zxsF9s8fwAHAAgADADG0x8BghCTq7U+uvLggdM/+gD6QAEg10mBAQu68uCIINcLCiCBBP+68tCJgwm68uCIAfpAASDXSYEBC7ry4Igg1wsKIIEE/7ry0ImDCbry4IgB0gABkdSSbQHi+gBRZhYVFEMwAoJsMYE4xvhCUoDHBfL0gSHUU4O+8vSCANop+CNQBqHCBBXy9PgjIqcegScQqQQgwQGSMHHeUzChUJSh+ENTN9s8XAEpAAkBlHBZyHABywFzAcsBcAHLABLMzMn5AMhyAcsBcAHLABLKB8v/ydAg10mBAQu68uCIINcLCiCBBP+68tCJgwm68uCIcH+AQFRKoFLtAAoCnshVMIIQBK03g1AFyx8Tyz8B+gIBINdJgQELuvLgiCDXCwoggQT/uvLQiYMJuvLgiM8WAc8WyUZQEEoQOECoEEYQRds8MCbCAJMwNTDjDQMA5wALAdBwcFQUh4BABMhVMIIQ61J+31AFyx8Tyz8B+gIBINdJgQELuvLgiCDXCwoggQT/uvLQiYMJuvLgiM8WASDXSYEBC7ry4Igg1wsKIIEE/7ry0ImDCbry4IjPFsklBANIiBAkECNtbds8MADnAZzgghDngiQTuo7B0x8BghDngiQTuvLggdM/+gD6QAEg10mBAQu68uCIINcLCiCBBP+68tCJgwm68uCIAdIAAZHUkm0B4lUwbBTbPH/gMHAADQHyMIE4xvhCUnDHBfL0gSHUU3K+8vRRYaFwf1QUN4BACshVMIIQ2xfwylAFyx8Tyz+BAQHPAAEg10mBAQu68uCIINcLCiCBBP+68tCJgwm68uCIzxYBINdJgQELuvLgiCDXCwoggQT/uvLQiYMJuvLgiM8WySUEQxNQiAAOARIQJBAjbW3bPDAA5wCqyPhDAcx/AcoAVTBQQ/oCASDXSYEBC7ry4Igg1wsKIIEE/7ry0ImDCbry4IjPFlgg10mBAQu68uCIINcLCiCBBP+68tCJgwm68uCIzxaBAQHPAMntVAIBIAARABYCEb/YFtnm2eNiJAASABUBxu1E0NQB+GPSAAGOS/oA+kABINdJgQELuvLgiCDXCwoggQT/uvLQiYMJuvLgiAH6QAEg10mBAQu68uCIINcLCiCBBP+68tCJgwm68uCIAYEBAdcAVTBsFOD4KNcLCoMJuvLgiQATAYr6QAEg10mBAQu68uCIINcLCiCBBP+68tCJgwm68uCIAfpAASDXSYEBC7ry4Igg1wsKIIEE/7ry0ImDCbry4IgSAtEB2zwAFAAIcFQSIgEW+ENd2zwwVGRAUkABKQARvhX3aiaGkAAMAQW9u0QAGAEU/wD0pBP0vPLICwAZAgFiABoA9wLw0AHQ0wMBcbCjAfpAASDXSYEBC7ry4Igg1wsKIIEE/7ry0ImDCbry4IhUUFMDbwT4YQL4Yts8EUMRRRFDEUIRRBFCEUERQxFBEUARQhFAET8RQRE/ET4RQBE+ET0RPxE9ETwRPhE8ETsRPRE7EToRPBE6ETkROxE5AVQAGwH8ETgROhE4ETcRORE3ETYROBE2ETURNxE1ETQRNhE0ETMRNREzETIRNBEyETERMxExETARMhEwES8RMREvES4RMBEuES0RLxEtESwRLhEsESsRLRErESoRLBEqESkRKxEpESgRKhEoEScRKREnESYRKBEmESURJxElESQRJhEkABwB+BEjESURIxEiESQRIhEhESMRIREgESIRIBEfESERHxEeESARHhEdER8RHREcER4RHBEbER0RGxEaERwRGhEZERsRGREYERoRGBEXERkRFxEWERgRFhEVERcRFREUERYRFBETERURExESERQREhERERMREREQERIREA8REQ8AHQIWDhEQDlUd2zzy4IIAHgDyBOrtou37AZIwf+BwIddJwh+VMCDXCx/eIIIQ/HCL0rqOuDDTHwGCEPxwi9K68uCBgQEB1wD6QAEg10mBAQu68uCIINcLCiCBBP+68tCJgwm68uCIEmwS2zx/4CCCENsX8Mq64wIgghDrUn7fuuMCIIIQz+H9PLoAHwAiACcAOQKeggDoQVYms/L0ggDfzFY58vSBOMb4QlZFAccF8vSBNKZWRfL0VkVWPKiBJxCpBFZGwgCZIoIAnbQCu/L0kTDiEUUhoPhD+CgSARFHAds8XAEpACABnHBZyHABywFzAcsBcAHLABLMzMn5AMhyAcsBcAHLABLKB8v/ydAg10mBAQu68uCIINcLCiCBBP+68tCJgwm68uCIcHCAQCLIydBBgFZKAQAhAYTIVTCCEAStN4NQBcsfE8s/AfoCASDXSYEBC7ry4Igg1wsKIIEE/7ry0ImDCbry4IjPFgHPFskQNkBVBBBGEEXbPDAA5wGyMNMfAYIQ2xfwyrry4IHTP4EBAdcA+kABINdJgQELuvLgiCDXCwoggQT/uvLQiYMJuvLgiAH6QAEg10mBAQu68uCIINcLCiCBBP+68tCJgwm68uCIFEMwbBQAIwPKM/hD+CgS2zwBgSh7AnBZyHABywFzAcsBcAHLABLMzMn5AMhyAcsBcAHLABLKB8v/ydAg10mBAQu68uCIINcLCiCBBP+68tCJgwm68uCI+ELHBfL0ARFFAaGJVkXHBbOSV0TjDX8BKQAkACUAQ4AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABACJHBwgECIBBFIBBAkECNtbds8MAAmAOcAJgAAAABFeGNlc3MgcmV0dXJuZWQBsjDTHwGCEOtSft+68uCB0z/6APpAASDXSYEBC7ry4Igg1wsKIIEE/7ry0ImDCbry4IgB+kABINdJgQELuvLgiCDXCwoggQT/uvLQiYMJuvLgiBRDMGwU2zx/ACgC9jD4Q/goUiDbPAGBLjwCcFnIcAHLAXMBywFwAcsAEszMyfkAyHIBywFwAcsAEsoHy//J0CDXSYEBC7ry4Igg1wsKIIEE/7ry0ImDCbry4Ij4QscF8vQRPSGgIVZBqIBkqQRTIKEgpw+AZKkEIacPgGSpBCKnCoBkqQRRMgEpACkC/KEhoSOhJMIAjhARSyShARFDAQSgAxFKAxFCkTTiIcIAklY8kXDilBE7AaCdIcIAlFAzoAKRMeIROuJWOsIAkS+RcOKUEToZoJ9WOsIAlRE6EqABklc64gjiKMIAklYckXDilgERFgEIoJsowgCSCKCROOIRFeJWFOMAVhXCAAAqAC4BwlYSgQELVkBZ9AtvoZIwbd8gbpIwbY4x0PpAASDXSYEBC7ry4Igg1wsKIIEE/7ry0ImDCbry4IgBgQEB1wCBAQHXAFUgbBNvA+IgbrOOkCNWFaiBJxCpBCDCAJFb4w2RMOIAKwLiERdWF6EhIG7y0IBvI4EBCyUgbvLQgG8jWwNWHKBEBMhVIFog10mBAQu68uCIINcLCiCBBP+68tCJgwm68uCIzxYSgQEBzwCBAQHPAMkDERcDIG6VMFn0WTCUQTP0E+L4QwIgbvLQgG8jW/goECPbPFwBKQAsAaZwWchwAcsBcwHLAXABywASzMzJ+QDIcgHLAXABywASygfL/8nQINdJgQELuvLgiCDXCwoggQT/uvLQiYMJuvLgiHBwgEDIydArAgERHgFWRwERHwAtAZjIVTCCEAStN4NQBcsfE8s/AfoCASDXSYEBC7ry4Igg1wsKIIEE/7ry0ImDCbry4IjPFgHPFskQNkVAAxEcA1kQRhBF2zwwERIRFRESAOcE9I4pjQhgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEVkHHBbORcOKSVxXjDSyTURu+kjFw4o4aFIEBAVJCET4gbpUwWfRaMJRBM/QU4gKkQBOSVzziVjaVVjVWNb6RcOKY+CNWMqFWNL6RcOLjACqRcOMNAC8AMQA3ADgCuvhD+ChWQgHbPFxwWchwAcsBcwHLAXABywASzMzJ+QDIcgHLAXABywASygfL/8nQINdJgQELuvLgiCDXCwoggQT/uvLQiYMJuvLgiHBwgEDIydAqAgERHQFWRgERHgEpADABjMhVMIIQBK03g1AFyx8Tyz8B+gIBINdJgQELuvLgiCDXCwoggQT/uvLQiYMJuvLgiM8WAc8WyRA2RUADERsDWRBGEEXbPDAA5wH8EUMRRBFDEUIRRBFCEUERRBFBEUARRBFAET8RRBE/ET4RRBE+ET0RRBE9ETwRRBE8ETsRRBE7EToRRBE6ETkRRBE5ETgRRBE4ETcRRBE3ETYRRBE2ETURRBE1ETQRRBE0ETMRRBEzETIRRBEyETERRBExETARRBEwES8RRBEvADIB/BEuEUQRLhEtEUQRLREsEUQRLBErEUQRKxEqEUQRKhEpEUQRKREoEUQRKBEnEUQRJxEmEUQRJhElEUQRJREkEUQRJBEjEUQRIxEiEUQRIhEhEUQRIREgEUQRIBEfEUQRHxEeEUQRHhEdEUQRHREcEUQRHBEbEUQRGxEaEUQRGgAzAvYRGRFEERkRGBFEERgRFxFEERcRFhFEERYRFRFEERURFBFEERQRExFEERMREhFEERIRERFEEREREBFEERAPEUQPDhFEDg0RRA0MEUQMCxFECwoRRAoJEUQJEUQIBwZVQFZE2zwRQxFEEUMRQhFDEUIRQRFCEUERQBFBEUAAuAA0AfwRPxFAET8RPhE/ET4RPRE+ET0RPBE9ETwROxE8ETsROhE7EToRORE6ETkROBE5ETgRNxE4ETcRNhE3ETYRNRE2ETURNBE1ETQRMxE0ETMRMhEzETIRMREyETERMBExETARLxEwES8RLhEvES4RLREuES0RLBEtESwRKxEsESsANQH8ESoRKxEqESkRKhEpESgRKREoEScRKBEnESYRJxEmESURJhElESQRJREkESMRJBEjESIRIxEiESERIhEhESARIREgER8RIBEfER4RHxEeER0RHhEdERwRHREcERsRHBEbERoRGxEaERkRGhEZERgRGREYERcRGBEXERYRFxEWADYAVBEVERYRFREUERURFBETERQRExESERMREhERERIREREQEREREA8REA9VDgAM+CMmoSm+ARyTIsIAkXDijoLbPJEw4gBqBP6OtDDTHwGCEM/h/Ty68uCB0z8BMYFjLlY38vSBfCpWNlY2vvL0ggDaKfgjVjOhVjW+8vTbPH/gIIIQvvDpBLqOlTDTHwGCEL7w6QS68uCB+gABMds8f+AgghD/Yzvhuo6VMNMfAYIQ/2M74bry4IH6AAEx2zx/4CCCEAlKH3y6ALgAOgBDAFAB9IIAqsdWGfL0gWYsIVYYvvL0+EJWFYEBCyJZ9AtvoZIwbd8gbpIwbY4g0IEBAdcAgQEB1wCBAQHXANQB0IEBAdcAMBRDMGwUbwTicPgjVhmgIm6zjhZbICBu8tCAbyRfAwEgbvLQgG8kbDEBkTLiEUMRRxFDEUIRRhFCADsB/BFBEUURQRFAEUQRQBE/EUcRPxE+EUYRPhE9EUURPRE8EUQRPBE7EUcROxE6EUYROhE5EUURORE4EUQROBE3EUcRNxE2EUYRNhE1EUURNRE0EUQRNBEzEUcRMxEyEUYRMhExEUURMREwEUQRMBEvEUcRLxEuEUYRLhEtEUURLQA8AfwRLBFEESwRKxFHESsRKhFGESoRKRFFESkRKBFEESgRJxFHEScRJhFGESYRJRFFESURJBFEESQRIxFHESMRIhFGESIRIRFFESERIBFEESARHxFHER8RHhFGER4RHRFFER0RHBFEERwRGxFHERsRGhFGERoRGRFFERkRGBFEERgAPQL6ERcRRxEXERYRRhEWERURRREVERQRRBEUERMRRxETERIRRhESERERRRERERARRBEQDxFHDw4RRg4NEUUNDBFEDAsRRwsKEUYKCRFFCQgRRAgHEUcHBhFGBgURRQUEEUQEAxFHAwIRRgIBEUUBEURWRts8IMIAlFYSIb6RcOIAVAA+A+qPYBESVhKh+EP4KFZJAds8XHBZyHABywFzAcsBcAHLABLMzMn5AMhyAcsBcAHLABLKB8v/ydAg10mBAQu68uCIINcLCiCBBP+68tCJgwm68uCIcHCAQCL4KMjJ0BAjAhEbApEw4oEBCxFFVkig+CNY+CMBEUgBKQBIAD8B/shVMFA0gQEBzwCBAQHPAIEBAc8AAciBAQHPAMkBzMkDERMDAhFEAgERRgEgbpUwWfRZMJRBM/QT4hFEH6ARPxFDET8RPhFCET4RPRFBET0RPBFAETwROxE/ETsROhE+EToRORE9ETkROBE8ETgRNxE7ETcRNhE6ETYRNRE5ETUAQAH8ETQROBE0ETMRNxEzETIRNhEyETERNRExETARNBEwES8RMxEvES4RMhEuES0RMREtESwRMBEsESsRLxErESoRLhEqESkRLREpESgRLBEoEScRKxEnESYRKhEmESURKRElESQRKBEkESMRJxEjESIRJhEiESERJREhESARJBEgAEEB/BEfESMRHxEeESIRHhEdESERHREcESARHBEbER8RGxEaER4RGhEZER0RGREYERwRGBEXERsRFxEWERoRFhEVERkRFREUERgRFBETERcRExESERYREhERERUREREQERQREBESDRERDQwREAwQvxCuEJ0QjBB7EGoQWRBIEDdGUABCAAREAAHs+EJWFYEBCyJZ9AtvoZIwbd8gbpIwbY4g0IEBAdcAgQEB1wCBAQHXANQB0IEBAdcAMBRDMGwUbwTigW3TIW6z8vSBUv0hIG7y0IBvJF8DJL7y9IFig/gjIiBu8tCAbyRsMb7y9BFDEUYRQxFCEUURQhFBEUQRQQBEAfwRQBFGEUARPxFFET8RPhFEET4RPRFGET0RPBFFETwROxFEETsROhFGEToRORFFETkROBFEETgRNxFGETcRNhFFETYRNRFEETURNBFGETQRMxFFETMRMhFEETIRMRFGETERMBFFETARLxFEES8RLhFGES4RLRFFES0RLBFEESwARQH8ESsRRhErESoRRREqESkRRBEpESgRRhEoEScRRREnESYRRBEmESURRhElESQRRREkESMRRBEjESIRRhEiESERRREhESARRBEgER8RRhEfER4RRREeER0RRBEdERwRRhEcERsRRREbERoRRBEaERkRRhEZERgRRREYERcRRBEXAEYD+hEWEUYRFhEVEUURFREUEUQRFBETEUYRExESEUUREhEREUQREREQEUYREA8RRQ8OEUQODRFGDQwRRQwLEUQLChFGCgkRRQkIEUQIBxFGBwYRRQYFEUQFBBFGBAMRRQMCEUQCARFGARFFVkbbPCDCAJRWEiG+kXDikTDjDVZFAFQARwBJAsARElYSofhD+ChWSQHbPFxwWchwAcsBcwHLAXABywASzMzJ+QDIcgHLAXABywASygfL/8nQINdJgQELuvLgiCDXCwoggQT/uvLQiYMJuvLgiHBwgEAi+CjIydAQIwIRGwIBKQBIAYzIVTCCEAStN4NQBcsfE8s/AfoCASDXSYEBC7ry4Igg1wsKIIEE/7ry0ImDCbry4IjPFgHPFskQNkVAAxEYA1kQRhBF2zwwAOcD3CBu8tCAbyRfA1ZFoSDCAI5KMFdFgQELbSBukjBtjiYgbvLQgG8kyFUwUDSBAQHPAIEBAc8AgQEBzwAByIEBAc8AyQHMyeICERQCVkcBIG6VMFn0WTCUQTP0E+LjDRERVkOh+EP4KBIBEUcB2zxcAEoBKQBLALSBAQtWRyBu8tCAbyQQI18D+CMRSSBu8tCAbyRsMRIBEUkByFUwUDSBAQHPAIEBAc8AgQEBzwAByIEBAc8AyQHMyQIRFAIBEUYBVkcBIG6VMFn0WTCUQTP0E+IBonBZyHABywFzAcsBcAHLABLMzMn5AMhyAcsBcAHLABLKB8v/ydAg10mBAQu68uCIINcLCiCBBP+68tCJgwm68uCIcHCAQCL4KMjJ0BAjAhFLAgBMAvjIVTCCEAStN4NQBcsfE8s/AfoCASDXSYEBC7ry4Igg1wsKIIEE/7ry0ImDCbry4IjPFgHPFskQNkVAAxFIA1kQRhBF2zwwEUARQxFAET8RQhE/ET4RQRE+ET0RQBE9ETwRPxE8ETsRPhE7EToRPRE6ETkRPBE5ETgROxE4AOcATQH8ETcROhE3ETYRORE2ETUROBE1ETQRNxE0ETMRNhEzETIRNREyETERNBExETARMxEwES8RMhEvES4RMREuES0RMBEtESwRLxEsESsRLhErESoRLREqESkRLBEpESgRKxEoEScRKhEnESYRKREmESURKBElESQRJxEkESMRJhEjAE4B/BEiESURIhEhESQRIREgESMRIBEfESIRHxEeESERHhEdESARHREcER8RHBEbER4RGxEaER0RGhEZERwRGREYERsRGBEXERoRFxEWERkRFhEVERgRFREUERcRFBETERYRExESERUREhERERQREQ8REw8PERIPDhERDg0REA0QzwBPAARVKwTqjpMw0x8BghAJSh98uvLggW0x2zx/4CCCEBO9azK6jjgw0x8BghATvWsyuvLggdIA0w/6ANMfVTBsFFcYVxhXGFcYggCKq/hCVkMBxwXy9IFkbVYrs/L0f+AgghDTtQsjuuMCIIIQGrChQrrjAiCCEOo/O926AFEAWwBgAGEB9jD4QhFDEUQRQxFCEUQRQhFBEUQRQRFAEUQRQBE/EUQRPxE+EUQRPhE9EUQRPRE8EUQRPBE7EUQROxE6EUQROhE5EUQRORE4EUQROBE3EUQRNxE2EUQRNhE1EUQRNRE0EUQRNBEzEUQRMxEyEUQRMhExEUQRMREwEUQRMABSAfwRLxFEES8RLhFEES4RLRFEES0RLBFEESwRKxFEESsRKhFEESoRKRFEESkRKBFEESgRJxFEEScRJhFEESYRJRFEESURJBFEESQRIxFEESMRIhFEESIRIRFEESERIBFEESARHxFEER8RHhFEER4RHRFEER0RHBFEERwRGxFEERsAUwL8ERoRRBEaERkRRBEZERgRRBEYERcRRBEXERYRRBEWERURRBEVERQRRBEUERMRRBETERIRRBESERERRBERERARRBEQDxFEDw4RRA4NEUQNDBFEDAsRRAsKEUQKCRFECRFECAcGVUBWRNs8ggDhuCHCAPL0ggCciFYTIr7y9BESAFQAVQDegQELVhUCWfQLb6GSMG3fIG6SMG2OINCBAQHXAIEBAdcAgQEB1wDUAdCBAQHXADAUQzBsFG8E4iBukjBw4PgjISBu8tCAbyQTXwOhASBu8tCAbyRfA1YYqIEnEKkEAaiCCeEzgKkEIFYTvJMwVhHeA5xWEqFWFIEBC1ZHWfQLb6GSMG3fIG6SMG2OINCBAQHXAIEBAdcAgQEB1wDUAdCBAQHXADAUQzBsFG8E4iBus5Ew4w34Q/goEgERRwHbPFwAVgEpAFcAvIEBCyEgbvLQgG8kXwMiIG7y0IBvJBAjXwP4IwQgbvLQgG8kbDFBMBTIVTBQNIEBAc8AgQEBzwCBAQHPAAHIgQEBzwDJAczJAhEWAlZHASBulTBZ9FkwlEEz9BPiERQBonBZyHABywFzAcsBcAHLABLMzMn5AMhyAcsBcAHLABLKB8v/ydAg10mBAQu68uCIINcLCiCBBP+68tCJgwm68uCIcHCAQCL4KMjJ0BAjAhEaAgBYAvjIVTCCEAStN4NQBcsfE8s/AfoCASDXSYEBC7ry4Igg1wsKIIEE/7ry0ImDCbry4IjPFgHPFskQNkVAAxEXA1kQRhBF2zwwEUIRQxFCEUERQhFBEUARQRFAET8RQBE/ET4RPxE+ET0RPhE9ETwRPRE8ETsRPBE7EToROxE6AOcAWQH8ETkROhE5ETgRORE4ETcROBE3ETYRNxE2ETURNhE1ETQRNRE0ETMRNBEzETIRMxEyETERMhExETARMREwES8RMBEvES4RLxEuES0RLhEtESwRLREsESsRLBErESoRKxEqESkRKhEpESgRKREoEScRKBEnESYRJxEmESURJhElAFoA/BEkESURJBEjESQRIxEiESMRIhEhESIRIREgESERIBEfESARHxEeER8RHhEdER4RHREcER0RHBEbERwRGxEaERsRGhEZERoRGREYERkRGBEXERgRFxEWERcRFhEVERYRFREUERURFBETERQRExESERMREhERERIREQ8REA9VDgFiMNMfAYIQ07ULI7ry4IH6QAEg10mBAQu68uCIINcLCiCBBP+68tCJgwm68uCIMds8fwBcAdqCAKv7VhLy9IEQTfhCIscFs/L0gQEL+EJWEVlZ9AtvoZIwbd8gbpIwbY4x0PpAASDXSYEBC7ry4Igg1wsKIIEE/7ry0ImDCbry4IgBgQEB1wCBAQHXAFUgbBNvA+KBUm0BbvL0gQEL+EJwVFMAAF0BnshVIFog10mBAQu68uCIINcLCiCBBP+68tCJgwm68uCIzxYSgQEBzwCBAQHPAMkDERIDIG6VMFn0WTCUQTP0E+IggQELVhFZ9AtvoZIwbd8AXgGCIG6SMG2OMdD6QAEg10mBAQu68uCIINcLCiCBBP+68tCJgwm68uCIAYEBAdcAgQEB1wBVIGwTbwPiIG6zkjA/4w0AXwDMgQELISBu8tCAbyNbIiBu8tCAbyMwMQMgbvLQgG8jbCGkQTDIVSBaINdJgQELuvLgiCDXCwoggQT/uvLQiYMJuvLgiM8WEoEBAc8AgQEBzwDJQTABEREBIG6VMFn0WTCUQTP0E+IOAF4w0x8BghAasKFCuvLggdIA0w9ZbBJXEVcRggCKq/hCVkMBxwXy9IFkbVYrs/L0fwTcjrsw0x8BghDqPzvduvLggfpAASDXSYEBC7ry4Igg1wsKIIEE/7ry0ImDCbry4IgB+gDTH9MfVTBsFNs8f+AgghD3iTQKuo6TMNMfAYIQ94k0Crry4IFtMds8f+AgghCreLPPuuMCIIIQG6D++roAYgBkAGkAbAG4ggCKq/hCVkcBxwXy9IIAoIYvgQELJln0C2+hkjBt3yBukjBtjijQgQEB1wCBAQHXAIEBAdcA1AHQgQEB1wCBAQHXADAQJRAkECNsFW8F4m7y9IEBC3D4IyVBNBUAYwB4yFVAUEWBAQHPABKBAQHPAIEBAc8AAciBAQHPABKBAQHPAMkBzMkQPkHgIG6VMFn0WTCUQTP0E+JQ26AMAfQw+EIrgQELIln0C2+hkjBt3yBukjBtjijQgQEB1wCBAQHXAIEBAdcA1AHQgQEB1wCBAQHXADAQJRAkECNsFW8F4oF2JSFus/L0ggDNEfgjIiBu8tCAbyUQJF8EIyBu8tCAbyUUXwSgvvL0+CMhIG7y0IBvJRAkXwShIQBlAfQgbvLQgG8lbEFSELybMCAgbvLQgG8lbEHeISBu8tCAbyVfBAGoISBu8tCAbyVsQakEISBu8tCAbyUQNF8EoYIArv8hwgDy9IEBCyIgbvLQgG8lXwQjIG7y0IBvJRA0XwQjoCQgbvLQgG8lECRfBCUgbvLQgG8lFF8EBgBmAqQgbvLQgG8lbEEQNEEwFshVQFBFgQEBzwASgQEBzwCBAQHPAAHIgQEBzwASgQEBzwDJAczJTuBSMCBulTBZ9FkwlEEz9BPiUdyg+EP4KEEw2zxcASkAZwGicFnIcAHLAXMBywFwAcsAEszMyfkAyHIBywFwAcsAEsoHy//J0CDXSYEBC7ry4Igg1wsKIIEE/7ry0ImDCbry4IhwcIBAIvgoyMnQECMCERQCAGgBkMhVMIIQBK03g1AFyx8Tyz8B+gIBINdJgQELuvLgiCDXCwoggQT/uvLQiYMJuvLgiM8WAc8WyRA2RUADEREDWRBGEEXbPDAQqwDnAVww0x8BghCreLPPuvLggdM/ATGCALIlK/L0IsIA8uWRggClZPgjJ6EqvvL02zx/AGoC9iLAAJEw4PgjI6kIgQEBJQJZ9AxvoZIwbd8gbpFb4DMzNFMlqIBkqQRRM6H4QyIgbvLQgPgo2zxccFnIcAHLAXMBywFwAcsAEszMyfkAyHIBywFwAcsAEsoHy//J0CDXSYEBC7ry4Igg1wsKIIEE/7ry0ImDCbry4IhwcAEpAGsB6IBA+CjIydAQOhAryFUwghAErTeDUAXLHxPLPwH6AgEg10mBAQu68uCIINcLCiCBBP+68tCJgwm68uCIzxYBzxbJRlAQRxA4QHgQRhBF2zwwgQEBAiBu8tCAQzBSQCBulTBZ9FowlEEz9BTiAqT4I1ptWHABAOcD/o40MNMfAYIQG6D++rry4IHSAPoA0x/TB1UwbBQ6Ojo6ggCKq/hCVkMBxwXy9IFkbVYrs/L0f+AgghDGHpZnuo4pMNMfAYIQxh6WZ7ry4IHSAAExVyuCAIqr+EJWQwHHBfL0ViqTf1cs3n/gIIIQj5hyvbrjAiCCEPVwirW64wIAbQBuAHYAVDDTHwGCEI+Ycr268uCB0z/UAdASbBJbVx+BCd74QlYtAccF8vT4IxEffwE+MNMfAYIQ9XCKtbry4IHTP9IA0wfUAdAUQzBsFNs8fwBvAfIzEUMRRhFDEUIRRRFCEUERRBFBEUARRhFAET8RRRE/ET4RRBE+ET0RRhE9ETwRRRE8ETsRRBE7EToRRhE6ETkRRRE5ETgRRBE4ETcRRhE3ETYRRRE2ETURRBE1ETQRRhE0ETMRRREzETIRRBEyETERRhExETARRREwAHAB/BEvEUQRLxEuEUYRLhEtEUURLREsEUQRLBErEUYRKxEqEUURKhEpEUQRKREoEUYRKBEnEUURJxEmEUQRJhElEUYRJREkEUURJBEjEUQRIxEiEUYRIhEhEUURIREgEUQRIBEfEUYRHxEeEUURHhEdEUQRHREcEUYRHBEbEUURGwBxAfwRGhFEERoRGRFGERkRGBFFERgRFxFEERcRFhFGERYRFRFFERURFBFEERQRExFGERMREhFFERIRERFEEREREBFGERAPEUUPDhFEDg0RRg0MEUUMCxFECwoRRgoJEUUJCBFECAcRRgcGEUUGBRFEBQQRRgQDEUUDAhFEAgERRgEAcgL6EUXbPFcjVzVWRI4Xf3ARRcADn1c8VzxwV0CAZBE8gFoRPN6fV0OCAM8SVijy9HB/EUQB4ovkVtZXJnZW5jeVBhdXNlhwEUeRcZJWRuIRRBFHEUQRQxFGEUMRQhFFEUIRQRFEEUERQBFDEUARPxFCET8RPhFBET4RPRFAET0AygBzAfwRPBE/ETwROxE+ETsROhE9EToRORE8ETkROBE7ETgRNhE5ETYRNRE4ETURNBE3ETQRMxE2ETMRMhE1ETIRMRE0ETERMBEzETARLxEyES8RLhExES4RLREwES0RLBEvESwRKxEuESsRKhEtESoRKREsESkRKBErESgRJxEqEScAdAH4ESYRKREmESURKBElAhEnAhEjESYRIxEiESURIhEhESQRIREgESMRIBEfESIRHxEeESERHhEdESARHREcER8RHBEbER4RGxEaER0RGhEZERwRGREYERsRGBEXERoRFxEWERkRFhEVERgRFREUERcRFBETERYRExESERUREgB1AWYREREUEREREBETERAPERIPDhERDg0REA0QzxC+EK0QnBCLEHoQaRBYEEdeI1ADRBTbPDAApQT8IIIQF99zmLqOnDDTHwGCEBffc5i68uCB0z/TD9QB0EMwbBPbPH/gIIIQebnkw7qOujDTHwGCEHm55MO68uCB0z/6QAEg10mBAQu68uCIINcLCiCBBP+68tCJgwm68uCIAdQB0EMwbBPbPH/gIIIQEPfA97rjAiCCEAlSkX26AHcAfgCFAI0B8jIRQxFFEUMRQhFEEUIRQRFFEUERQBFEEUARPxFFET8RPhFEET4RPRFFET0RPBFEETwROxFFETsROhFEEToRORFFETkROBFEETgRNxFFETcRNhFEETYRNRFFETURNBFEETQRMxFFETMRMhFEETIRMRFFETERMBFEETAAeAH8ES8RRREvES4RRBEuES0RRREtESwRRBEsESsRRRErESoRRBEqESkRRREpESgRRBEoEScRRREnESYRRBEmESURRRElESQRRBEkESMRRREjESIRRBEiESERRREhESARRBEgER8RRREfER4RRBEeER0RRREdERwRRBEcERsRRREbAHkB/BEaEUQRGhEZEUURGREYEUQRGBEXEUURFxEWEUQRFhEVEUURFREUEUQRFBETEUURExESEUQREhEREUUREREQEUQREA8RRQ8OEUQODRFFDQwRRAwLEUULChFECgkRRQkIEUQIBxFFBwYRRAYFEUUFBBFEBAMRRQMCEUQCARFFAQB6A/QRRNs82zyCAJVTVkXBZZRWRcIJkXDi8vRWRItlNldEZlZYEUURRxFFEUQRRhFEEUMRRRFDEUIRRBFCEUERQxFBARFCARE/EUERPxE+EUARPhE9ET8RPRE8ET4RPBE7ET0ROxE6ETwROhE5ETsRORE4EToROBE3ETkRNwDKAKIAewH8ETYROBE2ETURNxE1ETQRNhE0ETMRNREzETIRNBEyETERMxExETARMhEwES8RMREvES4RMBEuES0RLxEtESwRLhEsESsRLRErESoRLBEqESkRKxEpESgRKhEoEScRKREnESYRKBEmESURJxElESQRJhEkESMRJREjESIRJBEiAHwB/BEhESMRIREgESIRIBEfESERHxEeESARHhEdER8RHREcER4RHBEbER0RGxEaERwRGhEZERsRGREYERoRGBEXERkRFxEWERgRFhEVERcRFREUERYRFBETERURExESERQREhERERMREREQERIREA8REQ8OERAOEN8QzhC9EKwQmwB9ASIQihB5EGgQVxBGEDVEE9s8MAClAfIyEUMRRRFDEUIRRBFCEUERRRFBEUARRBFAET8RRRE/ET4RRBE+ET0RRRE9ETwRRBE8ETsRRRE7EToRRBE6ETkRRRE5ETgRRBE4ETcRRRE3ETYRRBE2ETURRRE1ETQRRBE0ETMRRREzETIRRBEyETERRRExETARRBEwAH8B/BEvEUURLxEuEUQRLhEtEUURLREsEUQRLBErEUURKxEqEUQRKhEpEUURKREoEUQRKBEnEUURJxEmEUQRJhElEUURJREkEUQRJBEjEUURIxEiEUQRIhEhEUURIREgEUQRIBEfEUURHxEeEUQRHhEdEUURHREcEUQRHBEbEUURGwCAAfwRGhFEERoRGRFFERkRGBFEERgRFxFFERcRFhFEERYRFRFFERURFBFEERQRExFFERMREhFEERIRERFFEREREBFEERAPEUUPDhFEDg0RRQ0MEUQMCxFFCwoRRAoJEUUJCBFECAcRRQcGEUQGBRFFBQQRRAQDEUUDAhFEAgERRQEAgQP0EUTbPNs8VzyCAOIPjQhgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEVkXHBbPy9Iu1NldFRyZWFzdXJ5gRQxFFEUMRQhFEEUIRQRFDEUERQBFCEUARPxFBET8RPhFAET4RPRE/ET0ROxE9ETsROhE8EToAygCiAIIB/BE5ETsRORE4EToROBE3ETkRNxE2ETgRNhE1ETcRNRE0ETYRNBEzETURMxEyETQRMhExETMRMREwETIRMBEvETERLxEuETARLhEtES8RLREsES4RLBErES0RKxEqESwRKhEpESsRKREoESoRKBEnESkRJxEmESgRJhElEScRJQCDAfwRJBEmESQRIxElESMRIhEkESIRIREjESERIBEiESARHxEhER8RHhEgER4RHREfER0RHBEeERwRGxEdERsRGhEcERoRGREbERkRGBEaERgRFxEZERcRFhEYERYRFREXERURFBEWERQRExEVERMREhEUERIRERETEREREBESERAAhAFQDxERDw4REA4Q3xDOEL0QrBCbEIoQeRBoEFcQRhA1RABwUARxAds8MAClAUQw0x8BghAQ98D3uvLggdM/0w/TD9MP1AHQFRRDMGwV2zx/AIYB8jQRQxFHEUMRQhFGEUIRQRFFEUERQBFEEUARPxFHET8RPhFGET4RPRFFET0RPBFEETwROxFHETsROhFGEToRORFFETkROBFEETgRNxFHETcRNhFGETYRNRFFETURNBFEETQRMxFHETMRMhFGETIRMRFFETERMBFEETAAhwH8ES8RRxEvES4RRhEuES0RRREtESwRRBEsESsRRxErESoRRhEqESkRRREpESgRRBEoEScRRxEnESYRRhEmESURRRElESQRRBEkESMRRxEjESIRRhEiESERRREhESARRBEgER8RRxEfER4RRhEeER0RRREdERwRRBEcERsRRxEbAIgB/BEaEUYRGhEZEUURGREYEUQRGBEXEUcRFxEWEUYRFhEVEUURFREUEUQRFBETEUcRExESEUYREhEREUUREREQEUQREA8RRw8OEUYODRFFDQwRRAwLEUcLChFGCgkRRQkIEUQIBxFHBwYRRgYFEUUFBBFEBAMRRwMCEUYCARFFAQCJA/gRRNs82zxXN1c3VzeCAIbcVkSBAfS7llZDgQPou5Fw4pZWQoEBLLuRcOLy9FZDi8U2V0QW50aVdoYWxlgRQhFGEUIRQRFFEUERQBFEEUARPxFDET8RPhFCET4RPRFBET0RPBFAETwROxE/ETsROhE+EToRORE9ETkBETwBAMoAogCKAfQBETsBARE6ARE1ETkRNRE0ETgRNBEzETcRMxEyETYRMhExETURMREwETQRMBEvETMRLxEuETIRLhEtETERLREsETARLBErES8RKxEqES4RKhEpES0RKREoESwRKBEnESsRJxEmESoRJhElESkRJREkESgRJBEjEScRIwCLAfwRIhEmESIRIRElESERIBEkESARHxEjER8RHhEiER4RHREhER0RHBEgERwRGxEfERsRGhEeERoRGREdERkRGBEcERgRFxEbERcRFhEaERYRFREZERURFBEYERQRExEXERMREhEWERIREREVEREREBEUERAPERMPDhESDg0REQ0AjAFGDBEQDBC/EK4QnRCMEHsQahBZEEgQNxAmEEUQNEATcALbPDAApQR0jwgw2zxsFts8f+AgghAEkNYFuo6cMNMfAYIQBJDWBbry4IHTP9IA1AHQQzBsE9s8f+AgghAvsRwWugCOAI8AlgCdAD7THwGCEAlSkX268uCB0z/SAPoA0x/TB9QB0BYVFEMwAfI1EUMRSBFDEUIRRxFCEUERRhFBEUARRRFAET8RRBE/ET4RSBE+ET0RRxE9ETwRRhE8ETsRRRE7EToRRBE6ETkRSBE5ETgRRxE4ETcRRhE3ETYRRRE2ETURRBE1ETQRSBE0ETMRRxEzETIRRhEyETERRRExETARRBEwAJAB/BEvEUgRLxEuEUcRLhEtEUYRLREsEUURLBErEUQRKxEqEUgRKhEpEUcRKREoEUYRKBEnEUURJxEmEUQRJhElEUgRJREkEUcRJBEjEUYRIxEiEUURIhEhEUQRIREgEUgRIBEfEUcRHxEeEUYRHhEdEUURHREcEUQRHBEbEUgRGwCRAfwRGhFHERoRGRFGERkRGBFFERgRFxFEERcRFhFIERYRFRFHERURFBFGERQRExFFERMREhFEERIRERFIEREREBFHERAPEUYPDhFFDg0RRA0MEUgMCxFHCwoRRgoJEUUJCBFECAcRSAcGEUcGBRFGBQQRRQQDEUQDAhFIAgERRwEAkgP6EUbbPNs8VzFXMVcxVzJWQIulNldEJ1eWJhY2uHARQ5FxklZC4hFCEUcRQhFBEUYRQRFAEUURQBE/EUQRPxE+EUMRPhE9EUIRPRE8EUERPBE7EUAROxE6ET8ROhE5ET4RORE4ET0ROBE3ETwRNxE2ETsRNhE1EToRNQIROQIAygCiAJMB/BEzETgRMxEzETcRMxEzETYRMxEzETURMxEvETQRLxEuETMRLhEtETIRLREsETERLBErETARKxEqES8RKhEpES4RKREoES0RKBEnESwRJxEmESsRJhElESoRJREkESkRJBEjESgRIxEiEScRIhEhESYRIREgESURIBEfESQRHwCUAfwRHhEjER4RHREiER0RHBEhERwRGxEgERsRGhEfERoRGREeERkRGBEdERgRFxEcERcRFhEbERYRFREaERURFBEZERQRExEYERMREhEXERIREREWEREREBEVERAPERQPDhETDg0REg0MEREMCxEQCxCvEJ4QjRB8EGsQWhBJEDgAlQEUEFYQRVADBNs8MAClAfIyEUMRRRFDEUIRRBFCEUERRRFBEUARRBFAET8RRRE/ET4RRBE+ET0RRRE9ETwRRBE8ETsRRRE7EToRRBE6ETkRRRE5ETgRRBE4ETcRRRE3ETYRRBE2ETURRRE1ETQRRBE0ETMRRREzETIRRBEyETERRRExETARRBEwAJcB/BEvEUURLxEuEUQRLhEtEUURLREsEUQRLBErEUURKxEqEUQRKhEpEUURKREoEUQRKBEnEUURJxEmEUQRJhElEUURJREkEUQRJBEjEUURIxEiEUQRIhEhEUURIREgEUQRIBEfEUURHxEeEUQRHhEdEUURHREcEUQRHBEbEUURGwCYAfwRGhFEERoRGRFFERkRGBFEERgRFxFFERcRFhFEERYRFRFFERURFBFEERQRExFFERMREhFEERIRERFFEREREBFEERAPEUUPDhFEDg0RRQ0MEUQMCxFFCwoRRAoJEUUJCBFECAcRRQcGEUQGBRFFBQQRRAQDEUUDAhFEAgERRQEAmQP0EUTbPNs8VzZWQ4vVRvZ2dsZVRyYWRpbmeHARRpFxklZF4hFFEUcRRRFEEUYRRBFDEUURQxFCEUQRQhFBEUMRQRFAEUIRQBE/EUERPxE+EUARPhE9ET8RPRE8ET4RPBE7ET0ROxE6ETwROhE5ETsROQIROgIRNxE5ETcAygCiAJoB/BE2ETgRNhE1ETcRNRE0ETYRNBEzETURMxEyETQRMhExETMRMREwETIRMBEvETERLxEuETARLhEtES8RLREsES4RLBErES0RKxEqESwRKhEpESsRKREoESoRKBEnESkRJxEmESgRJhElEScRJREkESYRJBEjESURIxEiESQRIgCbAfwRIREjESERIBEiESARHxEhER8RHhEgER4RHREfER0RHBEeERwRGxEdERsRGhEcERoRGREbERkRGBEaERgRFxEZERcRFhEYERYRFREXERURFBEWERQRExEVERMREhEUERIRERETEREREBESERAPEREPDhEQDhDfEM4QvRCsEJsAnAEgEIoQeRBoEFcQRlADBds8MAClBPKOujDTHwGCEC+xHBa68uCB0z/6QAEg10mBAQu68uCIINcLCiCBBP+68tCJgwm68uCIAdQB0EMwbBPbPH/gIIIQKil5M7rjAiCCECiC8ei6jp8w0x8BghAogvHouvLggdM/0w/TB9QB0BRDMGwU2zx/4CCCEGkgk5+6AJ4ApgCnAK4B8jIRQxFFEUMRQhFEEUIRQRFFEUERQBFEEUARPxFFET8RPhFEET4RPRFFET0RPBFEETwROxFFETsROhFEEToRORFFETkROBFEETgRNxFFETcRNhFEETYRNRFFETURNBFEETQRMxFFETMRMhFEETIRMRFFETERMBFEETAAnwH8ES8RRREvES4RRBEuES0RRREtESwRRBEsESsRRRErESoRRBEqESkRRREpESgRRBEoEScRRREnESYRRBEmESURRRElESQRRBEkESMRRREjESIRRBEiESERRREhESARRBEgER8RRREfER4RRBEeER0RRREdERwRRBEcERsRRREbAKAB/BEaEUQRGhEZEUURGREYEUQRGBEXEUURFxEWEUQRFhEVEUURFREUEUQRFBETEUURExESEUQREhEREUUREREQEUQREA8RRQ8OEUQODRFFDQwRRAwLEUULChFECgkRRQkIEUQIBxFFBwYRRAYFEUUFBBFEBAMRRQMCEUQCARFFAQChA/wRRNs82zxXLIIAzxJWKvL0i8Um90YXRlT3JhY2xlgRQxFFEUMRQhFEEUIRQRFDEUERQBFCEUARPxFBET8RPhFAET4RPRE/ET0RPBE+ETwROxE9ETsROhE8EToRORE7ETkROBE6ETgRNxE5ETcRNhE4ETYRNRE3ETURNBE2ETQAygCiAKMAJFYqnoIA3+T4I1YjoVYkvvL03gH8ETMRNREzETIRNBEyETERMxExETARMhEwES8RMREvES4RMBEuES0RLxEtESsRLRErESoRLBEqESkRKxEpESgRKhEoEScRKREnESYRKBEmESURJxElESQRJhEkESMRJREjESIRJBEiESERIxEhESARIhEgER8RIREfER4RIBEeAKQB+BEdER8RHREcER4RHBEbER0RGxEaERwRGhEZERsRGREYERoRGBEXERkRFxEWERgRFhEVERcRFREUERYRFBETERURExESERQREhERERMREREQERIREA8REQ8OERAOEN8QzhC9EKwQmxCKEHkQaBBXEEYQNUQAcFAEcQHbPDAApQHMVyWBAQFWH0QU+CNEFBEnf3BwyFWA2zzJAhEdAgERIgFWHAEgbpUwWfRaMJRBM/QV4oEBAfgjIQMRHANWHVkhbpVbWfRaMJjIAc8AQTP0QuJWGqT4IxEiERsRHREbAREcAQIRGwIBAN0AkjDTHwGCECopeTO68uCB+kABINdJgQELuvLgiCDXCwoggQT/uvLQiYMJuvLgiDFXLFcsggCKq/hCVkIBxwXy9BEqESsRKn8RK38B8jMRQxFGEUMRQhFFEUIRQRFEEUERQBFGEUARPxFFET8RPhFEET4RPRFGET0RPBFFETwROxFEETsROhFGEToRORFFETkROBFEETgRNxFGETcRNhFFETYRNRFEETURNBFGETQRMxFFETMRMhFEETIRMRFGETERMBFFETAAqAH8ES8RRBEvES4RRhEuES0RRREtESwRRBEsESsRRhErESoRRREqESkRRBEpESgRRhEoEScRRREnESYRRBEmESURRhElESQRRREkESMRRBEjESIRRhEiESERRREhESARRBEgER8RRhEfER4RRREeER0RRBEdERwRRhEcERsRRREbAKkB/BEaEUQRGhEZEUYRGREYEUURGBEXEUQRFxEWEUYRFhEVEUURFREUEUQRFBETEUYRExESEUUREhEREUQREREQEUYREA8RRQ8OEUQODRFGDQwRRQwLEUQLChFGCgkRRQkIEUQIBxFGBwYRRQYFEUQFBBFGBAMRRQMCEUQCARFGAQCqAvwRRds8VylXPFc8ggDoQVYhs/L0ggDyGVZEwgmUVkTBZZFw4pRWQ8FlkXDi8vT4IxEmpIEBAfgjARFEgGR/yFUwUDSBAQHPAMhYzxbJAcyBAQHPAMoAyQIRJQIBEUMBViQBIG6VMFn0WjCUQTP0FeIRIqQRQBFDEUARPxFCET8AygCrAfwRPhFBET4RPRFAET0RPBE/ETwRPRE+ET0RPBE9ETwRORE8ETkROBE7ETgRNxE6ETcRNhE5ETYRNRE4ETURNBE3ETQRMxE2ETMRMhE1ETIRMRE0ETERMBEzETARLxEyES8RLhExES4RLREwES0RLBEvESwRKxEuESsRKhEtESoArAH0ESkRLBEpESgRKxEoEScRKhEnESURKRElEScRKBEnESQRJxEkESIRJhEiESURIREkESERIBEjESARHxEiER8RHhEhER4RHREgER0RHBEfERwRGxEeERsRGhEdERoRGREcERkRGBEbERgRFxEaERcRFhEZERYRFREYERUArQCGERQRFxEUERMRFhETERIRFRESERERFBERERARExEQDxESDw4REQ4NERANEM8QvhCtEJwQixB6EGkQWBBHEDZAFVAzBAT+jp8w0x8BghBpIJOfuvLggdM/+gDTH9IH0wdVQGwV2zx/4CCCENxjhQu6jqIw0x8BghDcY4ULuvLggdM/0wfTB9Mf1AHQFRRDMGwV2zx/4CCCENiQsD+6jqQw0x8BghDYkLA/uvLggdM/0weBAQHXANQB0AHTB1VAbBXbPH/gIACvAL4AxgDPAfARQxFIEUMRQhFHEUIRQRFGEUERQBFFEUARPxFEET8RPhFIET4RPRFHET0RPBFGETwROxFFETsROhFEEToRORFIETkROBFHETgRNxFGETcRNhFFETYRNRFEETURNBFIETQRMxFHETMRMhFGETIRMRFFETERMBFEETAAsAH8ES8RSBEvES4RRxEuES0RRhEtESwRRREsESsRRBErESoRSBEqESkRRxEpESgRRhEoEScRRREnESYRRBEmESURSBElESQRRxEkESMRRhEjESIRRREiESERRBEhESARSBEgER8RRxEfER4RRhEeER0RRREdERwRRBEcERsRSBEbALEB/BEaEUcRGhEZEUYRGREYEUURGBEXEUQRFxEWEUgRFhEVEUcRFREUEUYRFBETEUURExESEUQREhEREUgREREQEUcREA8RRg8OEUUODRFEDQwRSAwLEUcLChFGCgkRRQkIEUQIBxFIBwYRRwYFEUYFBBFFBAMRRAMCEUgCARFHAQCyA/4RRts8ESikgQEB+CMhBBEqBEEwARFHASFulVtZ9FowmMgBzwBBM/RC4lZFwAKWEUeBE4i8k1dHcOKOEFc7VjvBMpSAMlc83oBGETveVkTAA5RWRcJQkXDijhZXO1c/VjrCFJSAFFc73oAofxFAARE73lZEwAGUVkXBzpFw4uMAAMoAswC0ABJXO3BXQIBQETsC+BFEwAGUEUTB4pNXRHDiklYxkXDilVYwVjC+kXDimPgjVi2hVi++kXDikldB4w0RPhFDET4RPRFCET0RPBFBETwROxFAETsROhE/EToRORE+ETkROBE9ETgRNxE8ETcRNhE7ETYRNRE6ETURNBE5ETQRMxE4ETMRMhE3ETIAtQC8AfwRPxFEET8RPhFDET4RPRFCET0RPBFBETwROxFAETsROhE/EToRORE+ETkROBE9ETgRNxE8ETcRNhE7ETYRNRE6ETURNBE5ETQRMxE4ETMRMhE3ETIRMRE2ETERMBE1ETARLxE0ES8RLhEzES4RLREyES0RLBExESwRKxEwESsAtgH8ESoRLxEqESkRLhEpESgRLREoEScRLBEnESYRKxEmESURKhElEScRKREnESYRKBEmESIRJxEiESERJhEhESARJREgER8RJBEfER4RIxEeER0RIhEdERwRIREcERsRIBEbERoRHxEaERkRHhEZERgRHREYERcRHBEXERYRGxEWALcC9BEVERoRFREUERkRFBETERgRExESERcREhERERYREREQERUREA8RFA8OERMODRESDQwREQwLERALEK8QnhCNEHwQaxBaEEkQOEcVQBRQY9s8EScRQxEnAxFCAwIRQQIEEUAEESgRPxEoEScRPhEnAxE9AwIRPAIEETsEALgAugL0VzFwVjWBA+ioVkWAZKkEUhC8lzBWRIBkqQTeIMIAjhkRRVZFoRE9VkWgETBWRaARPRFFET0RMBE93hEvVjagETGk+CMicIBAyIIQmZmZmQHLHwERNwHLPwEROvoCAREy+gLJVkUEAxEyAwIROQIRNQEQJBAjbW3bPDAA5wC5ABgRMBE0ETARLREvES0B/BEoEToRKBEnETkRJwMROAMCETcCBBE2BBEoETURKBEnETQRJwMRMwMCETICBBExBBEoETARKBEnES8RJwMRLgMCES0CBBEsBBEoESsRKBEnESoRJwMRKQMCESgCBBEnBAIRJgIEESUEAxEkAxEjAREiAQIRIQIEESAEAxEfAwC7AIoRHgERHQECERwCBBEbBAMRGgMRGQERGAECERcCBBEWBAMRFQMRFAEREwECERICBBERBAMREANN7xBMEDtImhBHEDZERRMB/BExETYRMREwETURMBEvETQRLxEuETMRLhEtETIRLREsETERLBErETARKxEqES8RKhEpES4RKREoES0RKBEnESwRJxEmESsRJhElESoRJREkESkRJBEmESgRJhElEScRJREhESYRIREgESURIBEfESQRHxEeESMRHhEdESIRHQC9ANIRHBEhERwRGxEgERsRGhEfERoRGREeERkRGBEdERgRFxEcERcRFhEbERYRFREaERURFBEZERQRExEYERMREhEXERIREREWEREREBEVERAPERQPDhETDg0REg0MEREMCxEQCxCvVUlEMBIB9DRbEUMRRRFDEUIRRBFCEUERRRFBEUARRBFAET8RRRE/ET4RRBE+ET0RRRE9ETwRRBE8ETsRRRE7EToRRBE6ETkRRRE5ETgRRBE4ETcRRRE3ETYRRBE2ETURRRE1ETQRRBE0ETMRRREzETIRRBEyETERRRExETARRBEwAL8B/BEvEUURLxEuEUQRLhEtEUURLREsEUQRLBErEUURKxEqEUQRKhEpEUURKREoEUQRKBEnEUURJxEmEUQRJhElEUURJREkEUQRJBEjEUURIxEiEUQRIhEhEUURIREgEUQRIBEfEUURHxEeEUQRHhEdEUURHREcEUQRHBEbEUURGwDAAfwRGhFEERoRGRFFERkRGBFEERgRFxFFERcRFhFEERYRFRFFERURFBFEERQRExFFERMREhFEERIRERFFEREREBFEERAPEUUPDhFEDg0RRQ0MEUQMCxFFCwoRRAoJEUUJCBFECAcRRQcGEUQGBRFFBQQRRAQDEUUDAhFEAgERRQEAwQP4EUTbPIEBAfgjARFHgGRwyFUwUDSBAQHPAMhYzxbJAcyBAQHPAMoAyQIRJwIBEUYBViYBIG6VMFn0WjCUQTP0FeIRJKRWQ8ADjioRQ8ACnFc7ETumFBE7gDwRO94EEUIEAxFAAwIRPAIBETsBETQEESEEVSDjDRFBEUMRQQDKAMIAwwAmVyJXNFc6VzpXPVc+f3BwgGSAWgH0AhFCAhE/EUERPxE+EUARPhE9ET8RPQERPgERPRE6ETwROhE5ETsRORE4EToROBE3ETkRNxE2ETgRNhE1ETcRNQMRNgMRMxE1ETMRMhE0ETIRMREzETERMBEyETARLxExES8RLhEwES4RLREvES0RLBEuESwRKxEtESsAxAH4ESoRLBEqESkRKxEpESgRKhEoEScRKREnESYRKBEmESURJxElESMRJhEjESERJREhESIRJBEiBBEjBBEgESIRIBEfESERHxEeESARHhEdER8RHREcER4RHBEbER0RGxEaERwRGhEZERsRGREYERoRGBEXERkRFxEWERgRFgDFAIYRFREXERURFBEWERQRExEVERMREhEUERIRERETEREREBESERAPEREPDhEQDhDfEM4QvRCsEJsQihB5EGgQV0ZQE0RAAfI0EUMRRxFDEUIRRhFCEUERRRFBEUARRBFAET8RRxE/ET4RRhE+ET0RRRE9ETwRRBE8ETsRRxE7EToRRhE6ETkRRRE5ETgRRBE4ETcRRxE3ETYRRhE2ETURRRE1ETQRRBE0ETMRRxEzETIRRhEyETERRRExETARRBEwAMcB/BEvEUcRLxEuEUYRLhEtEUURLREsEUQRLBErEUcRKxEqEUYRKhEpEUURKREoEUQRKBEnEUcRJxEmEUYRJhElEUURJREkEUQRJBEjEUcRIxEiEUYRIhEhEUURIREgEUQRIBEfEUcRHxEeEUYRHhEdEUURHREcEUQRHBEbEUcRGwDIAfwRGhFGERoRGRFFERkRGBFEERgRFxFHERcRFhFGERYRFRFFERURFBFEERQRExFHERMREhFGERIRERFFEREREBFEERAPEUcPDhFGDg0RRQ0MEUQMCxFHCwoRRgoJEUUJCBFECAcRRwcGEUYGBRFFBQQRRAQDEUcDAhFGAgERRQEAyQP6EUTbPIIA0SBWSFYmvvL0ESikVkbAAZRXPldF4w6BAQH4IwIBEUQBEUd/yFUwUDSBAQHPAMhYzxbJAcyBAQHPAMoAyQIRJAIBEUIBViMBIG6VMFn0WjCUQTP0FeIRIaQRPxFDET8RPhFCET4RPRFBET0RPBFAETwROxE/ETsAygDLAMwAKIIAzND4QlYuAccF8vSBUdBWLPL0AOxWRsAClFc9V0WOXlZGwAOONFcsV0VwARFEyHIBywFwAcsAEsoHy//J0CDXSYEBC7ry4Igg1wsKIIEE/7ry0ImDCbry4IiOFxFGwASYVzIRMRFDETGSV0TiEUMRRBEq4hE7EUMROxEqETviETwRQxE8ETsRPBE7AfwRPRE+ET0RORE9ETkROBE8ETgRNxE7ETcRNhE6ETYRNRE5ETURNBE4ETQRMxE3ETMRMhE2ETIRMRE1ETERMBE0ETARLxEzES8RLhEyES4RLRExES0RLBEwESwRKxEvESsRKhEuESoRKREtESkRKBEsESgRJxErEScRJhEqESYAzQH0ESURKRElESYRKBEmESMRJxEjESERJhEhESURIBEkESARHxEjER8RHhEiER4RHREhER0RHBEgERwRGxEfERsRGhEeERoRGREdERkRGBEcERgRFxEbERcRFhEaERYRFREZERURFBEYERQRExEXERMREhEWERIREREVEREAzgBaERARFBEQDxETDw4REg4NERENDBEQDBC/EK4QnRCMEHsQahBZEEgQN0ZQRAMCBPqCEJ07jLG6jr0w0x8BghCdO4yxuvLggdM/+kABINdJgQELuvLgiCDXCwoggQT/uvLQiYMJuvLgiAH6ANQB0BRDMGwU2zx/4CCCEAnSGxG6jpkw0x8BghAJ0hsRuvLggdM/1AHQEmwS2zx/4CCCEM/GbL264wIgghA8E0cougDQANkA4gDjAvAwMVYegQEBI1n0DW+hkjBt3yBukjBtjofQ2zxsGW8J4oFjviFus/L0gRiGISBu8tCAbykYXwizmyEgbvLQgG8pbIGzkXDi8vQRQhFGEUIRQRFFEUERQBFEEUARPxFDET8RPhFGET4RPRFFET0RPBFEETwROxFDETsA/wDRAfwROhFGEToRORFFETkROBFEETgRNxFDETcRNhFGETYRNRFFETURNBFEETQRMxFDETMRMhFGETIRMRFFETERMBFEETARLxFDES8RLhFGES4RLRFFES0RLBFEESwRKxFDESsRKhFGESoRKRFFESkRKBFEESgRJxFDEScRJhFGESYA0gH8ESURRRElESQRRBEkESMRQxEjESIRRhEiESERRREhESARRBEgER8RQxEfER4RRhEeER0RRREdERwRRBEcERsRQxEbERoRRhEaERkRRREZERgRRBEYERcRQxEXERYRRhEWERURRREVERQRRBEUERMRQxETERIRRhESERERRRERANMCxhEQEUQREA8RQw8OEUYODRFFDQwRRAwLEUMLChFGCgkRRQkIEUQIBxFDBwYRRgYFEUUFBBFEBAMRQwMCEUYCARFFARFEgSLUEURWR9s8ARFFAfL0VhiBAQFWSFn0DW+hkjBt3wE2ANQB2iBukjBtjiXQgQEB1wCBAQHXAIEBAdcA1AHQgQEB1wDSADAQJRAkECNsFW8F4nBTAW6zjhpbICBu8tCAbyUQNF8EASBu8tCAbyUQJF8EAZEy4lZHoFZEVh+ogScQqQSBAQEDpFMhuVZLVEQwUkAA1QL+yFVAUEWBAQHPABKBAQHPAIEBAc8AAciBAQHPABLKAMkBzMkCERwCE1ZKASBulTBZ9FowlEEz9BXiERoBvpkCEUYCV0RXRDDjDRE/EUMRPxE+EUIRPhE9EUERPRE8EUARPBE7ET8ROxE6ET4ROhE5ET0RORE4ETwROBE3ETsRNwDWANcBlhFEIG7y0IBvKVsQVhBGEDYQJoEBAUd3f3DIVYDbPMkDERwDEgERRwEgbpUwWfRaMJRBM/QV4gERFQERQ6ARGBFDERgRGBFCERgRFADdAfwRNhE6ETYRNRE5ETURNBE4ETQRMxE3ETMRMhE2ETIRMRE1ETERMBE0ETARLxEzES8RLhEyES4RLRExES0RLBEwESwRKxEvESsRKhEuESoRKREtESkRKBEsESgRJxErEScRJhEqESYRJREpESURJBEoESQRIxEnESMRIhEmESIA2AD8ESERJREhESARJBEgER8RIxEfER4RIhEeER0RIREdERwRIBEcERsRHxEbERoRHhEaERkRHREZERgRHBEYERcRGxEXERYRGhEWERURGREVERQRGBEUERMRFxETERIRFhESERERFRERERARFBEQDxETDw4REg4NERENDBEQDFU7AuwwggCKq/hCVkQBxwXy9FYdgQEBIln0DW+hkjBt3yBukjBtjofQ2zxsGW8J4oFjviFus/L0EUIRRRFCEUERRBFBEUARQxFAET8RRRE/ET4RRBE+ET0RQxE9ETwRRRE8ETsRRBE7EToRQxE6ETkRRRE5ETgRRBE4AP8A2gH8ETcRQxE3ETYRRRE2ETURRBE1ETQRQxE0ETMRRREzETIRRBEyETERQxExETARRREwES8RRBEvES4RQxEuES0RRREtESwRRBEsESsRQxErESoRRREqESkRRBEpESgRQxEoEScRRREnESYRRBEmESURQxElESQRRREkESMRRBEjANsB/BEiEUMRIhEhEUURIREgEUQRIBEfEUMRHxEeEUURHhEdEUQRHREcEUMRHBEbEUURGxEaEUQRGhEZEUMRGREYEUURGBEXEUQRFxEWEUMRFhEVEUURFREUEUQRFBETEUMRExESEUUREhEREUQREREQEUMREA8RRQ8OEUQODRFDDQDcA/QMEUUMCxFECwoRQwoJEUUJCBFECAcRQwcGEUUGBRFEBQQRQwQDEUUDAhFEAgERQwERRYEi1BFFVkTbPAERRgHy9IFZxVZGIG7y0IBvKWyBs/L0EUUgbvLQgG8pMBBHEDaBAQF/J1FaBRBKWhrIVYDbPMkDER4DARFGAQE2AN0A3gBuUImBAQHPABaBAQHPAMhQBc8WyVAEzBKBAQHPAAHIgQEBzwDIUAPPFslYzBLKABLKABLKAMkBzAH+IG6VMFn0WjCUQTP0FeKLZTZXRGZWWFZEAfkBAfkBupRXPVdCjjSL1Ub2dnbGVUcmFkaW5ngBEUQB+QEB+QG6mlc0ERnDABEzERmSVxriERkRQREZERkROxEZ4hFAEUMRQBE/EUIRPxE+EUERPhE9EUARPRE8ET8RPBEZET4RGQDfAfwROhE9EToRORE8ETkROBE7ETgRNxE6ETcRNhE5ETYRNRE4ETURNBE3ETQRMxE2ETMRMhE1ETIRMRE0ETERMBEzETARLxEyES8RLhExES4RLREwES0RLBEvESwRKxEuESsRKhEtESoRKREsESkRKBErESgRJxEqEScRJhEpESYA4AH8ESURKBElESQRJxEkESMRJhEjESIRJREiESERJBEhESARIxEgER8RIhEfER4RIREeER0RIBEdERwRHxEcERsRHhEbERoRHREaERoRHBEaERgRGxEYERcRGhEXERYRGREWERURGBEVERQRFxEUERMRFhETERIRFRESERERFBERAOEALhEQERMREA8REg8OEREODREQDRDPVSsSAIww0x8BghDPxmy9uvLggfpAASDXSYEBC7ry4Igg1wsKIIEE/7ry0ImDCbry4IgxVz2CAIqr+EJWQwHHBfL0gWRtViuz8vR/AvSObDDTHwGCEDwTRyi68uCB0w/TB9MP0w/TD1VAbBVXPFc8VzxXP1c/ggCKq/hCVkMBxwXy9IFkbVYrs/L0ggCG3FY/wWWUVj7BZZFw4pZWOoEB9LuRcOKWVjmBA+i7kXDillY4gQEsu5Fw4vL0f+AgghDxgi2huuMCIADkAOUAVDDTHwGCEPGCLaG68uCB0gABMVc3ggCKq/hCVkMBxwXy9IFkbVYrs/L0fwL4ghCDuBRKuo44MNMfAYIQg7gUSrry4IHSAPoA0x/TB1UwbBRXNVc1VzVXNoIAiqv4QlZDAccF8vSBZG1WK7Py9H/gIIIQlGqYtrqOqDDTHwGCEJRqmLa68uCB0z8BMcgBghCv+Q9XWMsfyz/J+EIBcG3bPH/gwACRMOMNcADmAOkBPG1tIm6zmVsgbvLQgG8iAZEy4hAkcAMEgEJQI9s8MADnAcrIcQHKAVAHAcoAcAHKAlAFINdJgQELuvLgiCDXCwoggQT/uvLQiYMJuvLgiM8WUAP6AnABymgjbrORf5MkbrPilzMzAXABygDjDSFus5x/AcoAASBu8tCAAcyVMXABygDiyQH7CADoAJh/AcoAyHABygBwAcoAJG6znX8BygAEIG7y0IBQBMyWNANwAcoA4iRus51/AcoABCBu8tCAUATMljQDcAHKAOJwAcoAAn8BygACyVjMAtj5ASCC8OW19yQgrYUDCHOhxBPzJTZZGJ4yUwluvY2XRGULQom9uo4VMFdCgTjG+EJWQgHHBfL0cBFCf9sx4CCC8IeCQDfwAVaPHrE28h5doQLQ7DOcOKeYgt3M/8xzi7Jiuo6GMNs8f9sx4CAA6gDwAfKCAIqr+EJWQwHHBfL0EUIRQxFCEUERQxFBEUARQxFAET8RQxE/ET4RQxE+ET0RQxE9ETwRQxE8ETsRQxE7EToRQxE6ETkRQxE5ETgRQxE4ETcRQxE3ETYRQxE2ETURQxE1ETQRQxE0ETMRQxEzETIRQxEyETERQxExAOsB/BEwEUMRMBEvEUMRLxEuEUMRLhEtEUMRLREsEUMRLBErEUMRKxEqEUMRKhEpEUMRKREoEUMRKBEnEUMRJxEmEUMRJhElEUMRJREkEUMRJBEjEUMRIxEiEUMRIhEhEUMRIREgEUMRIBEfEUMRHxEeEUMRHhEdEUMRHREcEUMRHADsAvoRGxFDERsRGhFDERoRGRFDERkRGBFDERgRFxFDERcRFhFDERYRFRFDERURFBFDERQRExFDERMREhFDERIRERFDEREREBFDERAPEUMPDhFDDg0RQw0MEUMMCxFDCwoRQwoJEUMJEUMIBwZVQIFo9BFE2zxXJFcqVypXKhEgswFKAO0B+AERQQHy9HBwVj4RQRFCEUERQBFBEUARPxFAET8RPhE/ET4RPRE+ET0RPBE9ETwROxE8ETsROhE7EToRORE6ETkROBE5ETgRNxE4ETcRNhE3ETYRNRE2ETURNBE1ETQRMxE0ETMRMhEzETIRMREyETERMBExETARLxEwES8A7gH2ES4RLxEuES0RLhEtESwRLREsESsRLAIRKgIBESkBEScRKBEnESYRJxEmESURJhElESQRJREkESMRJBEjESIRIxEicBEjESERIhEhESARIREgER8RIBEfER4RHxEeER0RHhEdERwRHREcERsRHBEbERoRGxEaERkRGhEZAO8ApBEYERkRGBEXERgRFxEWERcRFhEVERYRFREUERURFBETERQRExESERMREhERERIREREQEREREA8REA8Q7xDeEM0QvBCrEJoQiRB4EGcQVhQVQzABzoLwbI9E9F/ttM3+1N6NsUqlsTrVXUMPdZ0GaSELdMSP49+6jhwwVyNXNYIAiqv4QlZBAccF8vRwfxE2AREjf9sx4ILwbI/r7ZDhY52eM9RJ5gmNtY8RAYBI5Y7JIcylHimy+ue64wIA8QA8ggCKq/hCVkMBxwXy9IIArpdWK7Py9BErsxErf9sxAfTI+EMBzH8BygARRBFDEUIRQRFAET8RPhE9ETwROxE6ETkROBE3ETYRNRE0ETMRMhExETARLxEuES0RLBErESoRKREoEScRJhElESQRIxEiESERIBEfER4RHREcERsRGhEZERgRFxEWERURFBETERIREREQVeDbPMntVADzAfYBEUQBEUP6AgERQQHKAAERPyDXSYEBC7ry4Igg1wsKIIEE/7ry0ImDCbry4IjPFgERPQHMETvIzAEROgHLDwEROAHLBwERNiDXSYEBC7ry4Igg1wsKIIEE/7ry0ImDCbry4IjPFgERNPoCAREy+gIBETAByw8BES4Byw8A9AH8AREsAcsPAREqAcoAAREoAcoAAREm+gIBEST6AgERIgHLHwERIAHLBxEeyIEBAc8AAREdAYEBAc8AAREb+gIBERn6AsgBERgg10mBAQu68uCIINcLCiCBBP+68tCJgwm68uCIzxYBERYBygABERQBygABERIBgQEBzwABERABAPUB+oEBAc8AHvQAHPQACsiBAQHPABnLBxfKABXLHxOBAQHPAMsfgQEBzwDLH8sP9AACyIEBAc8AE/QAE/QAUAP6AhPKABPLD1AE+gIUyx8U9ABQBfoCUAX6AhXKABXLDwXI9AAWygBQBvoCUAb6Ahb0ABbKAFAG+gIWyx8WywcWAPYAaIEBAc8AF4EBAc8AyFAI+gIY9AAZgQEBzwAX9ADJUATMyVjMyVADzMlQBMzJWMzJWMzJAcwCASAA+AEiAgEgAPkBDAIBIAD6AQQCASAA+wEAAvmy2TbPBFDEUQRQxFCEUMRQhFBEUIRQRFAEUERQBE/EUARPxE+ET8RPhE9ET4RPRE8ET0RPBE7ETwROxE6ETsROhE5EToRORE4ETkROBE3ETgRNxE2ETcRNhE1ETYRNRE0ETURNBEzETQRMxEyETMRMhExETIRMREwETERMIAFUAPwB/BEvETARLxEuES8RLhEtES4RLREsES0RLBErESwRKxEqESsRKhEpESoRKREoESkRKBEnESgRJxEmEScRJhElESYRJREkESURJBEjESQRIxEiESMRIhEhESIRIREgESERIBEfESARHxEeER8RHhEdER4RHREcER0RHBEbERwRGwD9AeQRGhEbERoRGREaERkRGBEZERgRFxEYERcRFhEXERYRFREWERURFBEVERQRExEUERMREhETERIRERESEREREBERERAPERAPVQ7bPFcQXw9XEF8PVxBfD1cQXw9sQSBukjBtmSBu8tCAbylvCeIgbpIwbd4A/gE8gQEBVh4CWfQNb6GSMG3fIG6SMG2Oh9DbPGwZbwniAP8AXIEBAdcAgQEB1wDUAdABgQEB1wDUAdCBAQHXANQB0AHSANIA0gAwEFkQWBBXEFYC+bP19s8EUMRRBFDEUIRQxFCEUERQhFBEUARQRFAET8RQBE/ET4RPxE+ET0RPhE9ETwRPRE8ETsRPBE7EToROxE6ETkROhE5ETgRORE4ETcROBE3ETYRNxE2ETURNhE1ETQRNRE0ETMRNBEzETIRMxEyETERMhExETARMREwgAVQBAQH8ES8RMBEvES4RLxEuES0RLhEtESwRLREsESsRLBErESoRKxEqESkRKhEpESgRKREoEScRKBEnESYRJxEmESURJhElESQRJREkESMRJBEjESIRIxEiESERIhEhESARIREgER8RIBEfER4RHxEeER0RHhEdERwRHREcERsRHBEbAQIBuBEaERsRGhEZERoRGREYERkRGBEXERgRFxEWERcRFhEVERYRFREUERURFBETERQRExESERMREhERERIREREQEREREA8REA9VDts8VxBfD1cQXw9XEF8PVxBfD2xBAQMALoEBASBWKlAzQTP0DG+hlAHXADCSW23iAgFqAQUBBwIgqWTbPNs8bOds52znbOdsxwFUAQYADlR5h1R5hykC9KkKINdJgQELuvLgiCDXCwoggQT/uvLQiYMJuvLgiNs8EUMRRBFDEUIRQxFCEUERQhFBEUARQRFAET8RQBE/ET4RPxE+ET0RPhE9ETwRPRE8ETsRPBE7EToROxE6ETkROhE5ETgRORE4ETcROBE3ETYRNxE2ETURNhE1AVQBCAH8ETQRNRE0ETMRNBEzETIRMxEyETERMhExETARMREwES8RMBEvES4RLxEuES0RLhEtESwRLREsESsRLBErESoRKxEqESkRKhEpESgRKREoEScRKBEnESYRJxEmESURJhElESQRJREkESMRJBEjESIRIxEiESERIhEhESARIREgAQkC9BEfESARHxEeER8RHhEdER4RHREcER0RHBEbERwRGxEaERsRGhEZERoRGREYERkRGBEXERgRFxEWERcRFhEVERYRFREUERURFBETERQRExESERMREhERERIREREQEREREA8REA9VDts8VxBfD1cQXw9XEF8PVxBfD2xBAQoBCwB8gQELLAJZ9AtvoZIwbd8gbpIwbY4o0IEBAdcAgQEB1wCBAQHXANQB0IEBAdcAgQEB1wAwECUQJBAjbBVvBeIALCBukjBtmSBu8tCAbyVvBeIgbpIwbd4CASABDQEXAgFIAQ4BEwIBIAEPARECMKvt2zzbPFcQXw9XEF8PVxBfD1cQXw9sQQFUARAABFY2AiyrBts82zxsmWyZbJlsmWyZbJlsmWxZAVQBEgAkVipWI1YjViNWI1YjViNWH1YjAvmvTm2eCKGIogihiKEIoYihCKCIoQigiKAIoIigCJ+IoAifiJ8In4ifCJ6InwieiJ4InoieCJ2IngidiJ0InYidCJyInQiciJwInIicCJuInAibiJsIm4ibCJqImwiaiJoImoiaCJmImgiZiJkImYiZCJiImQiYiJgImIiYQAFUARQB/BEvETARLxEuES8RLhEtES4RLREsES0RLBErESwRKxEqESsRKhEpESoRKREoESkRKBEnESgRJxEmEScRJhElESYRJREkESURJBEjESQRIxEiESMRIhEhESIRIREgESERIBEfESARHxEeER8RHhEdER4RHREcER0RHBEbERwRGwEVAbgRGhEbERoRGREaERkRGBEZERgRFxEYERcRFhEXERYRFREWERURFBEVERQRExEUERMREhETERIRERESEREREBERERAPERAPVQ7bPFcQXw9XEF8PVxBfD1cQXw9sQQEWAByBAQEiAln0DG+hkjBt3wIBIAEYASACASABGQEbAi2tde2ebZ42RDZENkQ2RDZENkQ2RDZkQAFUARoAKoBkVj6hVj8BVj8BVjxWPFY8VkFWQQL1rcEQa6TAgIXdeXBEEGuFhRBAgn/deWhEwYTdeXBEbZ4IoYiiCKGIoQihiKEIoIihCKCIoAigiKAIn4igCJ+InwifiJ8InoifCJ6IngieiJ4InYieCJ2InQidiJ0InIidCJyInAiciJwIm4icCJuImwibiJsImoibCJrAAVQBHAH8ETQRNRE0ETMRNBEzETIRMxEyETERMhExETARMREwES8RMBEvES4RLxEuES0RLhEtESwRLREsESsRLBErESoRKxEqESkRKhEpESgRKREoEScRKBEnESYRJxEmESURJhElESQRJREkESMRJBEjESIRIxEiESERIhEhESARIREgAR0C9BEfESARHxEeER8RHhEdER4RHREcER0RHBEbERwRGxEaERsRGhEZERoRGREYERkRGBEXERgRFxEWERcRFhEVERYRFREUERURFBETERQRExESERMREhERERIREREQEREREA8REA9VDts8VxBfD1cQXw9XEF8PVxBfD2xBAR4BHwCQgQELVhACWfQLb6GSMG3fIG6SMG2OMdD6QAEg10mBAQu68uCIINcLCiCBBP+68tCJgwm68uCIAYEBAdcAgQEB1wBVIGwTbwPiACwgbpIwbZkgbvLQgG8jbwPiIG6SMG3eAjGw3rbPNs8VxBfD1cQXw9XEF8PVxBfD2xBgAVQBIQAEViMCASABIwEuAgEgASQBLAIBWAElASoC9a28kGukwICF3XlwRBBrhYUQQIJ/3XloRMGE3XlwRG2eCKGIogihiKEIoYihCKCIoQigiKAIoIigCJ+IoAifiJ8In4ifCJ6InwieiJ4InoieCJ2IngidiJ0InYidCJyInQiciJwInIicCJuInAibiJsIm4ibCJqImwiawAFUASYB/BE0ETURNBEzETQRMxEyETMRMhExETIRMREwETERMBEvETARLxEuES8RLhEtES4RLREsES0RLBErESwRKxEqESsRKhEpESoRKREoESkRKBEnESgRJxEmEScRJhElESYRJREkESURJBEjESQRIxEiESMRIhEhESIRIREgESERIAEnAfQRHxEgER8RHhEfER4RHREeER0RHBEdERwRGxEcERsRGhEbERoRGREaERkRGBEZERgRFxEYERcRFhEXERYRFREWERURFBEVERQRExEUERMREhETERIRERESEREREBERERAPERAPVQ7bPFcQXw9XEF8PVxBfD1cQXw9sQQEoAZD4Q/goEts8cFnIcAHLAXMBywFwAcsAEszMyfkAyHIBywFwAcsAEsoHy//J0CDXSYEBC7ry4Igg1wsKIIEE/7ry0ImDCbry4IgBKQDWAtD0BDBtAYFuowGAEPQPb6Hy4IcBgW6jIgKAEPQXyAHI9ADJAcxwAcoAQANZINdJgQELuvLgiCDXCwoggQT/uvLQiYMJuvLgiM8WASDXSYEBC7ry4Igg1wsKIIEE/7ry0ImDCbry4IjPFskCIa8W7Z5tnjZ6tnq2erZ6tkLAAVQBKwAUVkNWQ1ZDVkNWQwIxtuKbZ5tniuIL4eriC+Hq4gvh6uIL4e2IMAFUAS0BBNs8AUoCASABLwE+AgEgATABNwIBIAExATIAEa1fdqJoaQAAwAL5rA3tngihiKIIoYihCKGIoQigiKEIoIigCKCIoAifiKAIn4ifCJ+InwieiJ8InoieCJ6IngidiJ4InYidCJ2InQiciJ0InIicCJyInAibiJwIm4ibCJuImwiaiJsImoiaCJqImgiZiJoImYiZCJmImQiYiJkImIiYCJiImEABVAEzAfwRLxEwES8RLhEvES4RLREuES0RLBEtESwRKxEsESsRKhErESoRKREqESkRKBEpESgRJxEoEScRJhEnESYRJREmESURJBElESQRIxEkESMRIhEjESIRIREiESERIBEhESARHxEgER8RHhEfER4RHREeER0RHBEdERwRGxEcERsBNAG4ERoRGxEaERkRGhEZERgRGREYERcRGBEXERYRFxEWERURFhEVERQRFREUERMRFBETERIRExESEREREhERERAREREQDxEQD1UO2zxXEF8PVxBfD1cQXw9XEF8PbEEBNQEE2zwBNgBSgQEBIFYdUDNBM/QMb6GUAdcAMJJbbeIgbpIwcOD4IwEgbvLQgKFWH7kCASABOAE6Ai2v3O2ebZ42TLZMtky2TLZMtky2TLYswAFUATkAJFY1VjVWNVY1VjVWNVY1VjVWNQL5rrxtngihiKIIoYihCKGIoQigiKEIoIigCKCIoAifiKAIn4ifCJ+InwieiJ8InoieCJ6IngidiJ4InYidCJ2InQiciJ0InIicCJyInAibiJwIm4ibCJuImwiaiJsImoiaCJqImgiZiJoImYiZCJmImQiYiJkImIiYCJiImEABVAE7AfwRLxEwES8RLhEvES4RLREuES0RLBEtESwRKxEsESsRKhErESoRKREqESkRKBEpESgRJxEoEScRJhEnESYRJREmESURJBElESQRIxEkESMRIhEjESIRIREiESERIBEhESARHxEgER8RHhEfER4RHREeER0RHBEdERwRGxEcERsBPAHkERoRGxEaERkRGhEZERgRGREYERcRGBEXERYRFxEWERURFhEVERQRFREUERMRFBETERIRExESEREREhERERAREREQDxEQD1UO2zxXEF8PVxBfD1cQXw9XEF8PbEEgbpIwbZkgbvLQgG8lbwXiIG6SMG3eAT0AeIEBAVYbAln0DW+hkjBt3yBukjBtjiXQgQEB1wCBAQHXAIEBAdcA1AHQgQEB1wDSADAQJRAkECNsFW8F4gIBIAE/AUMC+bIz9s8EUMRRBFDEUIRQxFCEUERQhFBEUARQRFAET8RQBE/ET4RPxE+ET0RPhE9ETwRPRE8ETsRPBE7EToROxE6ETkROhE5ETgRORE4ETcROBE3ETYRNxE2ETURNhE1ETQRNRE0ETMRNBEzETIRMxEyETERMhExETARMREwgAVQBQAH8ES8RMBEvES4RLxEuES0RLhEtESwRLREsESsRLBErESoRKxEqESkRKhEpESgRKREoEScRKBEnESYRJxEmESURJhElESQRJREkESMRJBEjESIRIxEiESERIhEhESARIREgER8RIBEfER4RHxEeER0RHhEdERwRHREcERsRHBEbAUEB5BEaERsRGhEZERoRGREYERkRGBEXERgRFxEWERcRFhEVERYRFREUERURFBETERQRExESERMREhERERIREREQEREREA8REA9VDts8VxBfD1cQXw9XEF8PVxBfD2xBIG6SMG2ZIG7y0IBvJG8E4iBukjBt3gFCAFyBAQFWKAJZ9A1voZIwbd8gbpIwbY4X0IEBAdcA1AHQAYEBAdcA0gBVMGwUbwTiAgEgAUQBUwIBZgFFAU4CJ6PLbPNs8bKpsqmyqbKpsqmyqbIqAVQBRgHwVixWLFYsVixWLFZDVi5WLFYnEUMRTBFDEUIRSxFCEUERShFBEUARSRFAET8RSBE/ET4RRxE+ET0RRhE9ETwRRRE8ETsRRBE7EToRTBE6ETkRSxE5ETgRShE4ETcRSRE3ETYRSBE2ETURRxE1ETQRRhE0ETMRRREzAUcB/BEyEUQRMhExEUwRMREwEUsRMBEvEUoRLxEuEUkRLhEtEUgRLREsEUcRLBErEUYRKxEqEUURKhEpEUQRKREoEUwRKBEnEUsRJxEmEUoRJhElEUkRJREkEUgRJBEjEUcRIxEiEUYRIhEhEUURIREgEUQRIBEfEUwRHxEeEUsRHgFIAfgRHRFKER0RHBFJERwRGxFIERsRGhFHERoRGRFGERkRGBFFERgRFxFEERcRFhFMERYRFRFLERURFBFKERQRExFJERMREhFIERIRERFHEREREBFGERAPEUUPDhFEDg0RTA0MEUsMCxFKCwoRSQoJEUgJCBFHCAcRRgcGEUUGAUkC/AURRAUEEUwEAxFLAwIRSgIBEUkBEUjbPAkRSAkIEUcIBxFGBwYRRQYFEU0FBBFMBAMRSwMCEUoCARFJARFEEU0RRBFDEUwRQxFCEUsRQhFBEUoRQRFAEUkRQBE/EUgRPxE+EUcRPhE9EUYRPRE8EUURPBE7EUQROxE6EUMROgFKAUsAEPgjViChViG7AfwRORFCETkROBFBETgRNxFAETcRNhE/ETYRNRE+ETURNBE9ETQRMxE8ETMRMhE7ETIRMRE6ETERMBE5ETARLxE4ES8RLhE3ES4RLRE2ES0RLBE1ESwRKxE0ESsRKhEzESoRKREyESkRKBExESgRJxEwEScRJhEvESYRJREuESUBTAH8ESQRLREkESMRLBEjESIRKxEiESERKhEhESARKREgER8RKBEfER4RJxEeER0RJhEdERwRJREcERsRJBEbERoRIxEaERkRIhEZERgRIREYERcRIBEXERYRHxEWERURHhEVERQRHREUERMRHBETERIRGxESERERGhERERARGREQAU0AMA8RGA8OERcODREWDQwRFQwLERQLChETCgLzoQyDXSYEBC7ry4Igg1wsKIIEE/7ry0ImDCbry4IjbPBFDEUQRQxFCEUMRQhFBEUIRQRFAEUERQBE/EUARPxE+ET8RPhE9ET4RPRE8ET0RPBE7ETwROxE6ETsROhE5EToRORE4ETkROBE3ETgRNxE2ETcRNhE1ETYRNYBVAFPAfwRNBE1ETQRMxE0ETMRMhEzETIRMREyETERMBExETARLxEwES8RLhEvES4RLREuES0RLBEtESwRKxEsESsRKhErESoRKREqESkRKBEpESgRJxEoEScRJhEnESYRJREmESURJBElESQRIxEkESMRIhEjESIRIREiESERIBEhESABUAL0ER8RIBEfER4RHxEeER0RHhEdERwRHREcERsRHBEbERoRGxEaERkRGhEZERgRGREYERcRGBEXERYRFxEWERURFhEVERQRFREUERMRFBETERIRExESEREREhERERAREREQDxEQD1UO2zxXEF8PVxBfD1cQXw9XEF8PbEEBUQFSAG6BAQtWFQJZ9AtvoZIwbd8gbpIwbY4g0IEBAdcAgQEB1wCBAQHXANQB0IEBAdcAMBRDMGwUbwTiACwgbpIwbZkgbvLQgG8kbwTiIG6SMG3eAiGtv+2ebZ42erZ6tnq2erZCwAFUAV8CgO1E0NQB+GPSAAHjAvgo1wsKgwm68uCJ+kABINdJgQELuvLgiCDXCwoggQT/uvLQiYMJuvLgiAHU1FUgA9FY2zwBVQFbAvjbPFdEEUIRQxFCEUERQhFBEUARQRFAET8RQBE/ET4RPxE+ET0RPhE9ETwRPRE8ETsRPBE7EToROxE6ETkROhE5ETgRORE4ETcROBE3ETYRNxE2ETURNhE1ETQRNRE0ETMRNBEzETIRMxEyETERMhExETARMREwES8RMBEvAVYBWQHu+gDSAPpAASDXSYEBC7ry4Igg1wsKIIEE/7ry0ImDCbry4IgB1NQB0NTTD9MH+kABINdJgQELuvLgiCDXCwoggQT/uvLQiYMJuvLgiAH6APoA0w/TD9MP0gDSAPoA+gDTH9MH1DDQgQEB1wCBAQHXAPoA+gDUMNABVwH++kABINdJgQELuvLgiCDXCwoggQT/uvLQiYMJuvLgiAHSANIAgQEB1wCBAQHXAPQE9ATUMNCBAQHXANMH0gDTH4EBAdcA0x+BAQHXANMf0w/0BNQw0IEBAdcA9AT0BPoA0gDTD/oA0x/0BPoA+gDSANMP1DDQ9ATSAPoA+gD0BAFYAHLSAPoA0x/TB4EBAdcAgQEB1wDUMND6APQEgQEB1wD0BDARQBFEEUARQBFDEUARQBFCEUARQBFBEUAB/BEuES8RLhEtES4RLREsES0RLBErESwRKxEqESsRKhEpESoRKREoESkRKBEnESgRJxEmEScRJhElESYRJREkESURJBEjESQRIxEiESMRIhEhESIRIREgESERIBEfESARHxEeER8RHhEdER4RHREcER0RHBEbERwRGxEaERsRGgFaAIQRGREaERkRGBEZERgRFxEYERcRFhEXERYRFREWERURFBEVERQRExEUERMREhETERIRERESEREREBERERAPERAPVQ4B7m1tbW1tbW1tbW1wfy6AHoAyVhFTVYBkgQEsgA9/fyWCElQL5ACBDhBUdyJTAHBwVHIigEtwgVRgI4IICTqA+COCAVGAgQPoU0R/gQfQghgXSHboAIIIJ40AU0R/Vhp/UzN/ghA7msoAVhBWLXH4I1NmETYRQxE2AVwB/BE1EUIRNRE0EUERNBE1EUARNRE0ET8RNBEzET4RMxEyET0RMhExETwRMREwETsRMBEvEToRLxEuETkRLhEtETgRLREsETcRLBErETYRKxEqETURKhEpETQRKREoETMRKBEnETIRJxEmETERJhElETARJREkES8RJBEjES4RIwFdAfwRIhEtESIRKxEsESsRIRErESERIBEqESARHxEpER8RHhEoER4RIBEnESARHxEmER8RHRElER0RHBEkERwRGxEjERsRGhEiERoRGREhERkRGBEgERgRFxEfERcRFhEeERYRFREdERURFhEcERYRFBEbERQRGBEaERgRFxEZERcBXgCOERMRGBETERIRFxESERERFhERERARFREQDxEUDxEQERMREA4REg4NERENDBEQDBC/EN4QrRCcEIsQihB5EGgQVxBGEDVEAwIAFFYXVhdWF1YXVhacltd1');
-    let builder = beginCell();
-    builder.storeRef(__system);
+    const __code = Cell.fromHex('b5ee9c72420201c400010000b0cb0000022cff008e88f4a413f4bcf2c80bed53208e8130e1ed43d9000100600202710002002b020120000300150201200004000e0201200005000a03fbb2d93b513434800063a2fe903535154800f45636cf38c34451445184514451045144510450c4510450c4508450c450845044508450445004504450044fc450044fc44f844fc44f844f444f844f444f044f444f044ec44f044ec44e844ec44e844e444e844e444e044e444e044dc44e044dc44d844dc44d844d444d844d6000610065000601fc113411351134113311341133113211331132113111321131113011311130112f1130112f112e112f112e112d112e112d112c112d112c112b112c112b112a112b112a1129112a1129112811291128112711281127112611271126112511261125112411251124112311241123112211231122112111221121112011211120000702f4111f1120111f111e111f111e111d111e111d111c111d111c111b111c111b111a111b111a1119111a11191118111911181117111811171116111711161115111611151114111511141113111411131112111311121111111211111110111111100f11100f550edb3c57105f0f57105f0f57105f0f57105f0f6c6100080009009481010156200259f40d6fa192306ddf206e92306d8e33d0810101d700810101d700d401d001810101d700d401d0810101d700d401d001d200d200d2003010591058105710566c196f09e2002c206e92306d99206ef2d0806f296f09e2206e92306dde03fbb3f5fb513434800063a2fe903535154800f45636cf38c34451445184514451045144510450c4510450c4508450c450845044508450445004504450044fc450044fc44f844fc44f844f444f844f444f044f444f044ec44f044ec44e844ec44e844e444e844e444e044e444e044dc44e044dc44d844dc44d844d444d844d6000610065000b01fc113411351134113311341133113211331132113111321131113011311130112f1130112f112e112f112e112d112e112d112c112d112c112b112c112b112a112b112a1129112a1129112811291128112711281127112611271126112511261125112411251124112311241123112211231122112111221121112011211120000c01f4111f1120111f111e111f111e111d111e111d111c111d111c111b111c111b111a111b111a1119111a11191118111911181117111811171116111711161115111611151114111511141113111411131112111311121111111211111110111111100f11100f550edb3c57105f0f57105f0f57105f0f57105f0f6c61000d002e81010120562c50334133f40c6fa19401d70030925b6de202016a000f00110346a964ed44d0d200018e8bfa40d4d4552003d158db3ce30ddb3c6ce76ce76ce76ce76ce7006100650010000e547ba9547ba92b03faa90aed44d0d200018e8bfa40d4d4552003d158db3ce30d114511461145114411451144114311441143114211431142114111421141114011411140113f1140113f113e113f113e113d113e113d113c113d113c113b113c113b113a113b113a1139113a113911381139113811371138113711361137113611351136113500610065001201fc113411351134113311341133113211331132113111321131113011311130112f1130112f112e112f112e112d112e112d112c112d112c112b112c112b112a112b112a1129112a1129112811291128112711281127112611271126112511261125112411251124112311241123112211231122112111221121112011211120001302f4111f1120111f111e111f111e111d111e111d111c111d111c111b111c111b111a111b111a1119111a11191118111911181117111811171116111711161115111611151114111511141113111411131112111311121111111211111110111111100f11100f550edb3c57105f0f57105f0f57105f0f57105f0f6c6100140046007c81010b2e0259f40b6fa192306ddf206e92306d8e28d0810101d700810101d700810101d700d401d0810101d700810101d700301025102410236c156f05e2020120001600200201480017001c0201200018001a0356abeded44d0d200018e8bfa40d4d4552003d158db3ce30ddb3c57105f0f57105f0f57105f0f57105f0f6c61006100650019000456380352ab06ed44d0d200018e8bfa40d4d4552003d158db3ce30ddb3c6c996c996c996c996c996c996c996c7900610065001b0024562c5625562556255625562556255621562503fbaf4e76a268690000c745fd206a6a2a9001e8ac6d9e718688a288a308a288a208a288a208a188a208a188a108a188a108a088a108a088a008a088a0089f88a0089f889f089f889f089e889f089e889e089e889e089d889e089d889d089d889d089c889d089c889c089c889c089b889c089b889b089b889b089a889b089ac000610065001d01fc113411351134113311341133113211331132113111321131113011311130112f1130112f112e112f112e112d112e112d112c112d112c112b112c112b112a112b112a1129112a1129112811291128112711281127112611271126112511261125112411251124112311241123112211231122112111221121112011211120001e01f4111f1120111f111e111f111e111d111e111d111c111d111c111b111c111b111a111b111a1119111a11191118111911181117111811171116111711161115111611151114111511141113111411131112111311121111111211111110111111100f11100f550edb3c57105f0f57105f0f57105f0f57105f0f6c61001f001c810101240259f40c6fa192306ddf02012000210029020120002200240353ad75f6a268690000c745fd206a6a2a9001e8ac6d9e7186ed9e3644364436443644364436443644367440006100650023002a80645640a1564101564101563e563e563e5643564303fbadc176a268690000c745fd206a6a2a9001e8ac6d9e718688a288a308a288a208a288a208a188a208a188a108a188a108a088a108a088a008a088a0089f88a0089f889f089f889f089e889f089e889e089e889e089d889e089d889d089d889d089c889d089c889c089c889c089b889c089b889b089b889b089a889b089ac000610065002501fc113411351134113311341133113211331132113111321131113011311130112f1130112f112e112f112e112d112e112d112c112d112c112b112c112b112a112b112a1129112a1129112811291128112711281127112611271126112511261125112411251124112311241123112211231122112111221121112011211120002602f4111f1120111f111e111f111e111d111e111d111c111d111c111b111c111b111a111b111a1119111a11191118111911181117111811171116111711161115111611151114111511141113111411131112111311121111111211111110111111100f11100f550edb3c57105f0f57105f0f57105f0f57105f0f6c6100270028005481010b56120259f40b6fa192306ddf206e92306d8e13d0fa40810101d700810101d70055206c136f03e2002c206e92306d99206ef2d0806f236f03e2206e92306dde0357b0debb513434800063a2fe903535154800f45636cf38c376cf15c417c3d5c417c3d5c417c3d5c417c3db186000610065002a00045625020120002c0039020120002d0037020158002e0035020166002f00310355a30fb513434800063a2fe903535154800f45636cf38c376cf15c417c3d5c417c3d5c417c3d5c417c3db18600610065003000022003f9a1e7b513434800063a2fe903535154800f45636cf38c34451445184514451045144510450c4510450c4508450c450845044508450445004504450044fc450044fc44f844fc44f844f444f844f444f044f444f044ec44f044ec44e844ec44e844e444e844e444e044e444e044dc44e044dc44d844dc44d844d444d844d600610065003201fc113411351134113311341133113211331132113111321131113011311130112f1130112f112e112f112e112d112e112d112c112d112c112b112c112b112a112b112a1129112a1129112811291128112711281127112611271126112511261125112411251124112311241123112211231122112111221121112011211120003301f4111f1120111f111e111f111e111d111e111d111c111d111c111b111c111b111a111b111a1119111a11191118111911181117111811171116111711161115111611151114111511141113111411131112111311121111111211111110111111100f11100f550edb3c57105f0f57105f0f57105f0f57105f0f6c6100340162f828db3c705920f90022f9005ad76501d76582020134c8cb17cb0fcb0fcbffcbff71f90400c87401cb0212ca07cbffc9d000e70347af16f6a268690000c745fd206a6a2a9001e8ac6d9e7186ed9e367ab67ab67ab67ab652c00061006500360014564556455645564556450357b6e29da89a1a400031d17f481a9a8aa4007a2b1b679c61bb678ae20be1eae20be1eae20be1eae20be1ed8c300061006500380104db3c01b4020120003a0047020120003b003f03fbb206fb513434800063a2fe903535154800f45636cf38c34451445184514451045144510450c4510450c4508450c450845044508450445004504450044fc450044fc44f844fc44f844f444f844f444f044f444f044ec44f044ec44e844ec44e844e444e844e444e044e444e044dc44e044dc44d844dc44d844d444d844d6000610065003c01fc113411351134113311341133113211331132113111321131113011311130112f1130112f112e112f112e112d112e112d112c112d112c112b112c112b112a112b112a1129112a1129112811291128112711281127112611271126112511261125112411251124112311241123112211231122112111221121112011211120003d01f4111f1120111f111e111f111e111d111e111d111c111d111c111b111c111b111a111b111a1119111a11191118111911181117111811171116111711161115111611151114111511141113111411131112111311121111111211111110111111100f11100f550edb3c57105f0f57105f0f57105f0f57105f0f6c61003e0104db3c017f020120004000420353afdcf6a268690000c745fd206a6a2a9001e8ac6d9e7186ed9e364cb64cb64cb64cb64cb64cb64cb63cc0006100650041002456375637563756375637563756375637563703fbaebc76a268690000c745fd206a6a2a9001e8ac6d9e718688a288a308a288a208a288a208a188a208a188a108a188a108a088a108a088a008a088a0089f88a0089f889f089f889f089e889f089e889e089e889e089d889e089d889d089d889d089c889d089c889c089c889c089b889c089b889b089b889b089a889b089ac000610065004301fc113411351134113311341133113211331132113111321131113011311130112f1130112f112e112f112e112d112e112d112c112d112c112b112c112b112a112b112a1129112a1129112811291128112711281127112611271126112511261125112411251124112311241123112211231122112111221121112011211120004402f4111f1120111f111e111f111e111d111e111d111c111d111c111b111c111b111a111b111a1119111a11191118111911181117111811171116111711161115111611151114111511141113111411131112111311121111111211111110111111100f11100f550edb3c57105f0f57105f0f57105f0f57105f0f6c61004500460078810101561d0259f40d6fa192306ddf206e92306d8e25d0810101d700810101d700810101d700d401d0810101d700d200301025102410236c156f05e2002c206e92306d99206ef2d0806f256f05e2206e92306dde0201200048004f0201200049004b0357aff376a268690000c745fd206a6a2a9001e8ac6d9e7186ed9e2b882f87ab882f87ab882f87ab882f87b630c000610065004a00022103fbac67f6a268690000c745fd206a6a2a9001e8ac6d9e718688a288a308a288a208a288a208a188a208a188a108a188a108a088a108a088a008a088a0089f88a0089f889f089f889f089e889f089e889e089e889e089d889e089d889d089d889d089c889d089c889c089c889c089b889c089b889b089b889b089a889b089ac000610065004c01fc113411351134113311341133113211331132113111321131113011311130112f1130112f112e112f112e112d112e112d112c112d112c112b112c112b112a112b112a1129112a1129112811291128112711281127112611271126112511261125112411251124112311241123112211231122112111221121112011211120004d02f4111f1120111f111e111f111e111d111e111d111c111d111c111b111c111b111a111b111a1119111a11191118111911181117111811171116111711161115111611151114111511141113111411131112111311121111111211111110111111100f11100f550edb3c57105f0f57105f0f57105f0f57105f0f6c61004e005d005c810101562a0259f40d6fa192306ddf206e92306d8e17d0810101d700d401d001810101d700d20055306c146f04e20201200050005e02016600510059034da3cbb513434800063a2fe903535154800f45636cf38c376cf1b2a9b2a9b2a9b2a9b2a9b2a9b2aa00610065005201f0562e562e562e562e562e56455630562e56291145114e11451144114d11441143114c11431142114b11421141114a1141114011491140113f1148113f113e1147113e113d1146113d113c114e113c113b114d113b113a114c113a1139114b11391138114a1138113711491137113611481136113511471135005301fc1134114611341133114e11331132114d11321131114c11311130114b1130112f114a112f112e1149112e112d1148112d112c1147112c112b1146112b112a114e112a1129114d11291128114c11281127114b11271126114a11261125114911251124114811241123114711231122114611221121114e11211120114d1120005401f8111f114c111f111e114b111e111d114a111d111c1149111c111b1148111b111a1147111a1119114611191118114e11181117114d11171116114c11161115114b11151114114a11141113114911131112114811121111114711111110114611100f114e0f0e114d0e0d114c0d0c114b0c0b114a0b0a11490a09114809005502fc081147080711460706114e0605114d0504114c0403114b0302114a02011149011148db3c091148090811470807114f0706114e0605114d0504114c0403114b0302114a02011149011146114f11461145114e11451144114d11441143114c11431142114b11421141114a1141114011491140113f1148113f113e1147113e01b4005601fc113d1146113d113c1145113c113b1144113b113a1143113a1139114211391138114111381137114011371136113f11361135113e11351134113d11341133113c11331132113b11321131113a1131113011391130112f1138112f112e1137112e112d1136112d112c1135112c112b1134112b112a1133112a112911321129005701fc1128113111281127113011271126112f11261125112e11251124112d11241123112c11231122112b11221121112a1121112011291120111f1128111f111e1127111e111d1126111d111c1125111c111b1124111b111a1123111a1119112211191118112111181117112011171116111f11161115111e11151114111d1114005800601113111c11131112111b11121111111a11111110111911100f11180f0e11170e0d11160d0c11150c0b11140b0a11130a03f9a10fb513434800063a2fe903535154800f45636cf38c34451445184514451045144510450c4510450c4508450c450845044508450445004504450044fc450044fc44f844fc44f844f444f844f444f044f444f044ec44f044ec44e844ec44e844e444e844e444e044e444e044dc44e044dc44d844dc44d844d444d844d600610065005a01fc113411351134113311341133113211331132113111321131113011311130112f1130112f112e112f112e112d112e112d112c112d112c112b112c112b112a112b112a1129112a1129112811291128112711281127112611271126112511261125112411251124112311241123112211231122112111221121112011211120005b02f4111f1120111f111e111f111e111d111e111d111c111d111c111b111c111b111a111b111a1119111a11191118111911181117111811171116111711161115111611151114111511141113111411131112111311121111111211111110111111100f11100f550edb3c57105f0f57105f0f57105f0f57105f0f6c61005c005d006e81010b56170259f40b6fa192306ddf206e92306d8e20d0810101d700810101d700810101d700d401d0810101d700301443306c146f04e2002c206e92306d99206ef2d0806f246f04e2206e92306dde0347adbff6a268690000c745fd206a6a2a9001e8ac6d9e7186ed9e367ab67ab67ab67ab652c000610065005f00145619561956195619561804dceda2edfb01d072d721d200d200fa4021103450666f04f86102f862ed44d0d200018e8bfa40d4d4552003d158db3ce30d11479a5f0f5f0f5f0f5f0f5f0be05645d749c21fe3001145f9012082f07f309c3a7adc967de7844945367788045b18adf5557c5bf60508ec7c231da6deba00610065006a01aa02f06d6d6d6d6d6d6d6d6d6d707f2e801e803256115355806481012c800f7f7f258212540be400810e1054772253007070547222804b70815460238208093a80f823820151808103e853447f8107d08218174876e8008208278d0053447f561a7f53337f82103b9aca005610562d71f8235366891137114411370188006201fc1136114311361135114211351136114111361135114011351134113f11341133113e11331132113d11321131113c11311130113b1130112f113a112f112e1139112e112d1138112d112c1137112c112b1136112b112a1135112a1129113411291128113311281127113211271126113111261125113011251124112f1124006301fc1123112e1123112c112d112c1122112c11221121112b11211120112a1120111f1129111f112111281121112011271120111e1126111e111d1125111d111c1124111c111b1123111b111a1122111a1119112111191118112011181117111f11171116111e11161117111d11171115111c11151119111b11191118111a1118006400a01114111911141113111811131112111711121111111611111110111511101111111411110f11130f0e11120e0d11110d0c11100c10ef10be10ad109c109b108a107910681057104610354140138101f402f8db3c5746114411451144114311441143114211431142114111421141114011411140113f1140113f113e113f113e113d113e113d113c113d113c113b113c113b113a113b113a1139113a11391138113911381137113811371136113711361135113611351134113511341133113411331132113311321131113211310066006801f6fa00d200fa40d4d401d0d4d30fd307fa40fa00fa00d30fd30fd30fd200d200fa00fa00d31fd307d430d0810101d700810101d700fa00fa00d430d0fa40d200d200810101d700810101d700f404f404d430d0810101d700d307d200d31f810101d700d31f810101d700d31fd30ff404d430d0810101d700f404f404006700bcfa00d200d30ffa00d31ff404fa00fa00d200d30fd430d0f404d200fa00fa00f404d200fa00d31fd307810101d700810101d700d430d0fa00f404810101d700f404fa40d30f3011421146114211421145114211421144114211421143114201fc113011311130112f1130112f112e112f112e112d112e112d112c112d112c112b112c112b112a112b112a1129112a1129112811291128112711281127112611271126112511261125112411251124112311241123112211231122112111221121112011211120111f1120111f111e111f111e111d111e111d111c111d111c0069009c111b111c111b111a111b111a1119111a11191118111911181117111811171116111711161115111611151114111511141113111411131112111311121111111211111110111111100f11100f550e04541145d31f218210fc708bd2bae302218210db17f0cabae302218210eb527edfbae302218210cfe1fd3cba006b00710077009204fe31810101d700fa4030011146011147db3c8142a65647c200f2f481540c8d0860000000000000000000000000000000000000000000000000000000000000000004564901c705b3f2f4db3cdb3c8134a65645f2f45645563ca8812710a9045646c2009a564782009db402bbf2f49130e211455646a01145705644564902564900c4006c01bf006d00108200dfcc5639f2f402f802db3cf8427011488040114ac85982103345ab925003cb1f810101cf00cec91302114802011149015a6d6d40037fc8cf8580ca00cf8440ce01fa028069cf40025c6e016eb0935bcf819d58cf8680cf8480f400f400cf81e2f400c901fb00114311451143114211441142114111431141114011421140113f1141113f00e6006e01fc113e1140113e113d113f113d113c113e113c113b113d113b113a113c113a1139113b11391138113a1138113711391137113611381136113511371135113411361134113311351133113211341132113111331131113011321130112f1131112f112e1130112e112d112f112d112c112e112c112b112d112b112a112c112a006f01fc1129112b11291128112a1128112711291127112611281126112511271125112411261124112311251123112211241122112111231121112011221120111f1121111f111e1120111e111d111f111d111c111e111c111b111d111b111a111c111a1119111b11191118111a1118111711191117111611181116111511171115007001501114111611141113111511131112111411121111111311111110111211100f11110f0e11100e551d01a802fc31d33f31810101d700fa40fa40308142a623c200f2f4f8285220db3c81287bf8425a705920f90022f9005ad76501d76582020134c8cb17cb0fcb0fcbffcbff71f90400c87401cb0212ca07cbffc9d0c705f2f4114622a18d086000000000000000000000000000000000000000000000000000000000000000000456470100e7007202fec705b38ec0707080408804114a04146d50436d5033c8cf8580ca00cf8440ce01fa028069cf40025c6e016eb0935bcf819d58cf8680cf8480f400f400cf81e2f400c901fb00925746e2f8427003804003c8598210d28b2faf5003cb1f810101cf00cec943305a6d6d40037fc8cf8580ca00cf8440ce01fa028069cf40025c6e007300740026000000004578636573732072657475726e656401f8016eb0935bcf819d58cf8680cf8480f400f400cf81e2f400c901fb00114311451143114211441142114111431141114011421140113f1141113f113e1140113e113d113f113d113c113e113c113b113d113b113a113c113a1139113b11391138113a1138113711391137113611381136113511371135113411361134007501fc113311351133113211341132113111331131113011321130112f1131112f112e1130112e112d112f112d112c112e112c112b112d112b112a112c112a1129112b11291128112a1128112711291127112611281126112511271125112411261124112311251123112211241122112111231121112011221120111f1121111f007601cc111e1120111e111d111f111d111c111e111c111b111d111b111a111c111a1119111b11191118111a11181117111911171116111811161115111711151114111611141113111511131112111411121111111311111110111211100f11110f0e11100e10df551c01a802fe31d33ffa00fa40308142a622c200f2f4f8285210db3c812e3cf8425a705920f90022f9005ad76501d76582020134c8cb17cb0fcb0fcbffcbff71f90400c87401cb0212ca07cbffc9d0c705f2f4113d21a0215641a88064a9045320a120a70f8064a90421a70f8064a90422a70a8064a90423564ea8812710a9045143a122a100e7007804e221a124a125c2009c114c25a1114425a01144114cde23c20092563e9170e294113d23a09923c2009223a0de113de222c2009256129170e29351c2a09c22c20096113d22a0113dde0ce221c2009256209170e294111a21a09d21c20096113d21a0113dde111ae224c2009170e30de30f56120079007a007d008000548d0860000000000000000000000000000000000000000000000000000000000000000004564e01c705b301fc1145114c11451144114b11441143114a1143114211491142114111481141114011471140113f1146113f113e114c113e113d114b113d06113c06113b1149113b113a1148113a1139114711391138114611381137114c11370c11360c061135061134114911341133114811331132114711321131114611311130114c1130007b01f40c112f0c06112e06112d1149112d112c1148112c112b1147112b112a1146112a1129114c11290c11280c061127061126114911261125114811251124114711241123114611231122114c11220c11210c06112006111f1149111f111e1148111e111d1147111d111c1146111c111b114c111b0c111a0c06111906007c01e21118114911181117114811171116114711161115114611151114114c11141113061112061111114911111110114811100f11470f0e11460e0d114c0d0c106b0a11490a09114809081147080711460706114c060504114c040311490302114802564d0201114f01114e564d5649564ddb3c00e601fa24c20096113d24a0113dde05114e0501114d0104114c04113d114b113d1143114a11430311490302114802081147080711460704114504113d1144113d03114203021141020811400807113f0704113e0406113c0603113b0302113a020811390807113807041137040c11360c06113506031134030211330208113208007e01fc07113107041130040c112f0c06112e0603112d0302112c0208112b0807112a07041129040c11280c0611270603112603021125020811240807112307041122040c11210c0611200603111f0302111e0208111d0807111c0704111b040c111a0c061119060311180302111702081116080711150704111404111306111206007f00300311110302111002108f107e104d0c106b103a102910460504da8ecc561081010b564c59f40b6fa192306ddf206e92306d8e13d0fa40810101d700810101d70055206c136f03e2206eb38e9956475613a8812710a90420c20094564d21be9170e2915be30d9130e2de564bc2009170e30d8e8a563e564c5649564ddb3cde2b9456462bbe9170e20081008400e6008502fc114d564da101206ef2d0806f235b561281010b2259f40b6fa192306ddf206e92306d8e13d0fa40810101d700810101d70055206c136f03e2206eb38e36206ef2d0806f2381010b025651a04300c855205023ce810101cf00810101cf00c902111402561401206e953059f45930944133f413e2e30e111201114d5649564d0082008300a23081010b8d0860000000000000000000000000000000000000000000000000000000000000000004564f70c855205023ce810101cf00810101cf00c902111402561401206e953059f45930944133f413e20104db3c00e600548d0860000000000000000000000000000000000000000000000000000000000000000004563f01c705b303f68e1a148101015242114c206e953059f45a30944133f414e202a4401392574ae256369556355635be9170e298f8235632a15634be9170e2e3002a96f82326a129be9170e29322c2009170e2925746e30df84270804056475613a8812710a904071148070611500605114b0504114a0403114f030201114d01114ec80086008a008e01fc114411451144114311441143114211431142114111421141114011411140113f1140113f113e113f113e113d113e113d113c113d113c113b113c113b113a113b113a1139113a1139113811391138113711381137113611371136113511361135113411351134113311341133113211331132113111321131113011311130008701fc112f1130112f112e112f112e112d112e112d112c112d112c112b112c112b112a112b112a1129112a1129112811291128112711281127112611271126112511261125112411251124112311241123112211231122112111221121112011211120111f1120111f111e111f111e111d111e111d111c111d111c111b111c111b008802fc111a111b111a1119111a11191118111911181117111811171116111711161115111611151114111511141113111411131112111311121111111211111110111111100f11100f550e11495646db3c1149114511441143114211411140113f113e113d113c113b113a1139113811371136113511341133113211311130112f015900890080112e112d112c112b112a1129112811271126112511241123112211211120111f111e111d111c111b111a111911181117111611151114111311121111111055e001fc114411461144114311451143114211441142114111431141114011421140113f1141113f113e1140113e113d113f113d113c113e113c113b113d113b113a113c113a1139113b11391138113a1138113711391137113611381136113511371135113411361134113311351133113211341132113111331131113011321130008b01fc112f1131112f112e1130112e112d112f112d112c112e112c112b112d112b112a112c112a1129112b11291128112a1128112711291127112611281126112511271125112411261124112311251123112211241122112111231121112011221120111f1121111f111e1120111e111d111f111d111c111e111c111b111d111b008c02fc111a111c111a1119111b11191118111a11181117111911171116111811161115111711151114111611141113111511131112111411121111111311111110111211100f11110f0e11100e551d01114901db3c114801114501114401114301114201114101114001113f01113e01113d01113c01113b01113a01113901113800e2008d00f401113701113601113501113401113301113201113101113001112f01112e01112d01112c01112b01112a01112901112801112701112601112501112401112301112201112101112001111f01111e01111d01111c01111b01111a01111901111801111701111601111501111401111301111201111101111055d101fe55708210c47b97305009cb1f17810101cf0015810101cf0013810101cf0001c8810101cf0012810101cf0012810101cf0002c8810101cf0013810101cf00cdcdc90311480302114702011146015a6d6d40037fc8cf8580ca00cf8440ce01fa028069cf40025c6e016eb0935bcf819d58cf8680cf8480f400f400cf81e2f400008f01f8c901fb00113c1145113c113b1144113b113a1143113a1139114211391138114111381137114011371136113f11361135113e11351134113d11341133113c11331132113b11321131113a1131113011391130112f1138112f112e1137112e112d1136112d112c1135112c112b1134112b112a1133112a112911321129009001fc1128113111281127113011271126112f11261125112e11251124112d11241123112c11231122112b11221121112a1121112011291120111f1128111f111e1127111e111d1126111d111c1125111c111b1124111b111a1123111a1119112211191118112111181117112011171116111f11161115111e11151114111d11140091019c1113111c11131112111b11121111111a11111110111911100f11180f0e11170e0d11160d0c11150c0b11140b0a11130a091112090811110807111007106f105e104d103c4ba9105810475e235a1401a802fe8efd31d33f3081632e5637f2f4817c2a56365636bef2f48200da29f8235633a15635bef2f4114411461144114311451143114211441142114111431141114011421140113f1141113f113e1140113e113d113f113d113c113e113c113b113d113b113a113c113a1139113b11391138113a11381137113911371136113811360093009601fc113511371135113411361134113311351133113211341132113111331131113011321130112f1131112f112e1130112e112d112f112d112c112e112c112b112d112b112a112c112a1129112b11291128112a1128112711291127112611281126112511271125112411261124112311251123112211241122112111231121009401fc112011221120111f1121111f111e1120111e111d111f111d111c111e111c111b111d111b111a111c111a1119111b11191118111a11181117111911171116111811161115111711151114111611141113111511131112111411121111111311111110111211100f11110f0e11100e10df10ce10bd10ac109b108a1079106800950216105710461035443012db3c015901a8044ee0218210bef0e904bae302218210ff633be1bae302218210094a1f7cbae30221821013bd6b32ba009700a300b000b901f831fa0030114411451144114311441143114211431142114111421141114011411140113f1140113f113e113f113e113d113e113d113c113d113c113b113c113b113a113b113a1139113a1139113811391138113711381137113611371136113511361135113411351134113311341133113211331132113111321131009801fc113011311130112f1130112f112e112f112e112d112e112d112c112d112c112b112c112b112a112b112a1129112a1129112811291128112711281127112611271126112511261125112411251124112311241123112211231122112111221121112011211120111f1120111f111e111f111e111d111e111d111c111d111c009902fc111b111c111b111a111b111a1119111a11191118111911181117111811171116111711161115111611151114111511141113111411131112111311121111111211111110111111100f11100f10ef10de10cd10bc10ab109a10891078106710561045103411464130db3c8200aac7561af2f48142a65647c200f2f481662c00c4009a01f856475619bef2f4f842561681010b2259f40b6fa192306ddf206e92306d8e20d0810101d700810101d700810101d700d401d0810101d700301443306c146f04e270f823561aa0226eb38e165b20206ef2d0806f245f0301206ef2d0806f246c31019132e2114511481145114411471144114311461143114211481142009b01fc114111471141114011461140113f1148113f113e1147113e113d1146113d113c1148113c113b1147113b113a1146113a113911481139113811471138113711461137113611481136113511471135113411461134113311481133113211471132113111461131113011481130112f1147112f112e1146112e112d1148112d009c01fc112c1147112c112b1146112b112a1148112a112911471129112811461128112711481127112611471126112511461125112411481124112311471123112211461122112111481121112011471120111f1146111f111e1148111e111d1147111d111c1146111c111b1148111b111a1147111a111911461119111811481118009d02fa1117114711171116114611161115114811151114114711141113114611131112114811121111114711111110114611100f11480f0e11470e0d11460d0c11480c0b11470b0a11460a09114809081147080711460706114806051147050411460403114803021147020111460111485647db3c20c20094561421be9170e200b3009e02fe8e9211145614a170f82802111602564a5520db3c9130e281010b1149564aa0f823f82355021149c855305034810101cf00810101cf00810101cf0001c8810101cf00cdc90211150201114801564701206e953059f45930944133f413e211125647a0f8427011478040114ac8598210acd731a75003cb1fce810101cf00c91300e6009f01f402114702011149015a6d6d40037fc8cf8580ca00cf8440ce01fa028069cf40025c6e016eb0935bcf819d58cf8680cf8480f400f400cf81e2f400c901fb00114111451141114011441140113f1143113f113e1142113e113d1141113d113c1140113c113b113f113b113a113e113a1139113d11391138113c113800a001fc1137113b11371136113a1136113511391135113411381134113311371133113211361132113111351131113011341130112f1133112f112e1132112e112d1131112d112c1130112c112b112f112b112a112e112a1129112d11291128112c11281127112b11271126112a112611251129112511241128112411231127112300a101fc112211261122112111251121112011241120111f1123111f111e1122111e111d1121111d111c1120111c111b111f111b111a111e111a1119111d11191118111c11181117111b11171116111a11161115111911151114111811141113111711131112111611121110111511101113111411130f11130f0e11120e0d11110d00a201380c11100c10bf10ae109d108c107b106a10591048103746145033451501a801f831fa0030114411451144114311441143114211431142114111421141114011411140113f1140113f113e113f113e113d113e113d113c113d113c113b113c113b113a113b113a1139113a113911381139113811371138113711361137113611351136113511341135113411331134113311321133113211311132113100a401fc113011311130112f1130112f112e112f112e112d112e112d112c112d112c112b112c112b112a112b112a1129112a1129112811291128112711281127112611271126112511261125112411251124112311241123112211231122112111221121112011211120111f1120111f111e111f111e111d111e111d111c111d111c00a502f6111b111c111b111a111b111a1119111a11191118111911181117111811171116111711161115111611151114111511141113111411131112111311121111111211111110111111100f11100f10ef10de10cd10bc10ab109a10891078106710561045103411464130db3c8142a65647c200f2f4f842561681010b2200c400a601f659f40b6fa192306ddf206e92306d8e20d0810101d700810101d700810101d700d401d0810101d700301443306c146f04e2816dd3216eb3f2f48152fd21206ef2d0806f245f03564abef2f4816283f82322206ef2d0806f246c31bef2f411451147114511441146114411431147114311421146114211411147114100a701fc114011461140113f1147113f113e1146113e113d1147113d113c1146113c113b1147113b113a1146113a113911471139113811461138113711471137113611461136113511471135113411461134113311471133113211461132113111471131113011461130112f1147112f112e1146112e112d1147112d112c1146112c00a801fc112b1147112b112a1146112a112911471129112811461128112711471127112611461126112511471125112411461124112311471123112211461122112111471121112011461120111f1147111f111e1146111e111d1147111d111c1146111c111b1147111b111a1146111a11191147111911181146111811171147111700a903fa1116114611161115114711151114114611141113114711131112114611121111114711111110114611100f11470f0e11460e0d11470d0c11460c0b11470b0a11460a09114709081146080711470706114606051147050411460403114703021146020111470111465647db3c20c20094561421be9170e29130e30d564600b300aa00ab012411145614a170f82802111602564a5520db3c00e602fc206ef2d0806f245f035649a120c2008e4b30574681010b6dc8216e925b6d8e2601206ef2d0806f24550355305034810101cf00810101cf00810101cf0001c8810101cf00cdc9e202111602564801206e953059f45930944133f413e2e30d11135647a170f82811461147114611451146114511441145114411431144114300ac00ad00b081010b5648206ef2d0806f2410235f03f823114a206ef2d0806f246c311201114a01c855305034810101cf00810101cf00810101cf0001c8810101cf00cdc90211160201114701564801206e953059f45930944133f413e201fc114211431142114111421141114011411140113f1140113f113e113f113e113d113e113d113c113d113c113b113c113b113a113b113a1139113a1139113811391138113711381137113611371136113511361135113411351134113311341133113211331132113111321131113011311130112f1130112f112e112f112e00ae01fc112d112e112d112c112d112c112b112c112b112a112b112a1129112a1129112811291128112711281127112611271126112511261125112411251124112311241123112211231122112111221121112011211120111f1120111f111e111f111e111d111e111d111c111d111c111b111c111b111a111b111a1119111a111900af02fe111811191118111711181117111511171115021116021114111511141113111411131112111311121111111211111110111111100f11100f10ef10de10cd10bc10ab109a1089107810671056104510341023564802564a02db3cf8427011488040114ac85982108445bc055003cb1fce810101cf00c913021148020111490100e6011501f65bf842114411451144114311441143114211431142114111421141114011411140113f1140113f113e113f113e113d113e113d113c113d113c113b113c113b113a113b113a1139113a113911381139113811371138113711361137113611351136113511341135113411331134113311321133113211311132113100b101fc113011311130112f1130112f112e112f112e112d112e112d112c112d112c112b112c112b112a112b112a1129112a1129112811291128112711281127112611271126112511261125112411251124112311241123112211231122112111221121112011211120111f1120111f111e111f111e111d111e111d111c111d111c00b202fe111b111c111b111a111b111a1119111a11191118111911181117111811171116111711161115111611151114111511141113111411131112111311121111111211111110111111100f11100f10ef10de10cd10bc10ab109a108910781067105610451034114641305646db3c8200e1b821c200f2f482009c88561522bef2f400b300b400de81010b56170259f40b6fa192306ddf206e92306d8e20d0810101d700810101d700810101d700d401d0810101d700301443306c146f04e2206e923070e0f82321206ef2d0806f24135f03a101206ef2d0806f245f03561aa8812710a90401a88209e13380a904205615bc93305613de02fa11145614a1561681010b564959f40b6fa192306ddf206e92306d8e20d0810101d700810101d700810101d700d401d0810101d700301443306c146f04e2206eb39130e30d70f82811481149114811471148114711461147114611451146114511441145114411431144114311421143114211411142114111401141114000b500b600b881010b21206ef2d0806f245f0322206ef2d0806f2410235f03f82304206ef2d0806f246c31413014c855305034810101cf00810101cf00810101cf0001c8810101cf00cdc902111802564901206e953059f45930944133f413e2111601fc113f1140113f113e113f113e113d113e113d113c113d113c113b113c113b113a113b113a1139113a1139113811391138113711381137113611371136113511361135113411351134113311341133113211331132113111321131113011311130112f1130112f112e112f112e112d112e112d112c112d112c112b112c112b00b701f8112a112b112a1129112a1129112811291128112711281127112611271126112511261125112411251124112311241123112211231122112111221121112011211120111f1120111f111e111f111e111d111e111d111c111d111c111b111c111b111a111b111a1119111a11191118111911181117111811170211170200b802881115111611151114111511141113111411131112111311121111111211111110111111100f11100f10ef10de10cd10bc10ab109a1089107810671056104510341023db3c00e601a802fe8efc31d200d30ffa00d31f30114511471145114411461144114311471143114211461142114111471141114011461140113f1147113f113e1146113e113d1147113d113c1146113c113b1147113b113a1146113a113911471139113811461138113711471137113611461136113511471135113411461134113311471133e000ba00c001fc113211461132113111471131113011461130112f1147112f112e1146112e112d1147112d112c1146112c112b1147112b112a1146112a112911471129112811461128112711471127112611461126112511471125112411461124112311471123112211461122112111471121112011461120111f1147111f111e1146111e00bb01f8111d1147111d111c1146111c111b1147111b111a1146111a1119114711191118114611181117114711171116114611161115114711151114114611141113114711131112114611121111114711111110114611100f11470f0e11460e0d11470d0c11460c0b11470b0a11460a0911470908114608071147070611460600bc02f405114705041146040311470302114602011148011149db3c571657165716571681646d5629b3f2f48200e1415643812710bb945645c2009170e2945646c2009170e2f2f4114111451141114011441140113f1143113f113e1142113e113d1141113d113c1140113c113b113f113b113a113e113a1139113d113901bf00bd01fc1138113c11381137113b11371136113a1136113511391135113411381134113311371133113211361132113111351131113011341130112f1133112f112e1132112e112d1131112d112c1130112c112b112f112b112a112e112a1129112d11291128112c11281127112b11271126112a112611251129112511241128112400be01fc112311271123112211261122112111251121112011241120111f1123111f111e1122111e111d1121111d111c1120111c111b111f111b111a111e111a1119111d11191118111c11181117111b11171116111a11161117111911171116111811161116111711161111111511111110111411100f11130f0e11120e0d11110d00bf01140c11100c10bf10ae553901a8044c218210d3b50b23bae3022182101ab0a142bae302218210ea3f3bddbae302218210f789340aba00c100cb00ce00d601f831fa4030114411451144114311441143114211431142114111421141114011411140113f1140113f113e113f113e113d113e113d113c113d113c113b113c113b113a113b113a1139113a113911381139113811371138113711361137113611351136113511341135113411331134113311321133113211311132113100c201fc113011311130112f1130112f112e112f112e112d112e112d112c112d112c112b112c112b112a112b112a1129112a1129112811291128112711281127112611271126112511261125112411251124112311241123112211231122112111221121112011211120111f1120111f111e111f111e111d111e111d111c111d111c00c302fe111b111c111b111a111b111a1119111a11191118111911181117111811171116111711161115111611151114111511141113111411131112111311121111111211111110111111100f11100f10ef10de10cd10bc10ab109a10891078106710561045103411464130db3c8200abfb5613f2f481104df842564801c705b3f2f400c400c500128200e8415626b3f2f401de81010bf84256125959f40b6fa192306ddf206e92306d8e13d0fa40810101d700810101d70055206c136f03e281526d016ef2f481010bf8427020564a59c855205023ce810101cf00810101cf00c903111303206e953059f45930944133f413e22081010b564859f40b6fa192306ddf00c601e6206e92306d8e13d0fa40810101d700810101d70055206c136f03e2206eb38e4581010b21206ef2d0806f235b22206ef2d0806f23303103206ef2d0806f236c21a44130c855205023ce810101cf00810101cf00c9564801206e953059f45930944133f413e29130e2f842708040f84201114ac800c701f459821028db358b5003cb1fcecec94130011149015a6d6d40037fc8cf8580ca00cf8440ce01fa028069cf40025c6e016eb0935bcf819d58cf8680cf8480f400f400cf81e2f400c901fb00114411451144114311441143114211431142114111421141114011411140113f1140113f113e113f113e113d113e113d00c801fc113c113d113c113b113c113b113a113b113a1139113a1139113811391138113711381137113611371136113511361135113411351134113311341133113211331132113111321131113011311130112f1130112f112e112f112e112d112e112d112c112d112c112b112c112b112a112b112a1129112a112911281129112800c901fc112711281127112611271126112511261125112411251124112311241123112211231122112111221121112011211120111f1120111f111e111f111e111d111e111d111c111d111c111b111c111b111a111b111a1119111a111911181119111811171118111711161117111611151116111511141115111411131114111300ca0128111211131112111111121111111011111110550e01a802f431d200d30f30011146011147db3c5711571181646d562bb3f2f48200ba975646812710bbf2f4114311451143114211441142114111431141114011421140113f1141113f113e1140113e113d113f113d113c113e113c113b113d113b113a113c113a1139113b11391138113a113811371139113711361138113601bf00cc01fc113511371135113411361134113311351133113211341132113111331131113011321130112f1131112f112e1130112e112d112f112d112c112e112c112b112d112b112a112c112a1129112b11291128112a112811271129112711261128112611251127112511241126112411231125112311221124112211211123112100cd01d0112011221120111f1121111f111e1120111e111d111f111d111c111e111c111b111d111b111a111c111a1119111b11191118111a11181117111911171116111811161115111711151114111611141113111511131112111411121111111311110e11100e10df551c01a801f831fa40fa00d31fd31f30114511471145114411461144114311471143114211461142114111471141114011461140113f1147113f113e1146113e113d1147113d113c1146113c113b1147113b113a1146113a11391147113911381146113811371147113711361146113611351147113511341146113411331147113300cf01fc113211461132113111471131113011461130112f1147112f112e1146112e112d1147112d112c1146112c112b1147112b112a1146112a112911471129112811461128112711471127112611461126112511471125112411461124112311471123112211461122112111471121112011461120111f1147111f111e1146111e00d001f8111d1147111d111c1146111c111b1147111b111a1146111a1119114711191118114611181117114711171116114611161115114711151114114611141113114711131112114611121111114711111110114611100f11470f0e11460e0d11470d0c11460c0b11470b0a11460a0911470908114608071147070611460600d102fe05114705041146040311470302114602011148011149db3c8200b0f05647c20094564ac2009170e2955649564bbb9170e2f2f48200a0862d81010b564a59f40b6fa192306ddf206e92306d8e28d0810101d700810101d700810101d700d401d0810101d700810101d700301025102410236c156f05e26ef2f481010b70f82301bf00d201f45649413401114c01114dc855405045810101cf0012810101cf00810101cf0001c8810101cf0012810101cf00cdc9103c0211480201114701206e953059f45930944133f413e211431ba0114111451141114011441140113f1143113f113e1142113e113d1141113d113c1140113c113b113f113b113a113e113a00d301fc1139113d11391138113c11381137113b11371136113a1136113511391135113411381134113311371133113211361132113111351131113011341130112f1133112f112e1132112e112d1131112d112c1130112c112b112f112b112a112e112a1129112d11291128112c11281127112b11271126112a112611251129112500d401fc112411281124112311271123112211261122112111251121112011241120111f1123111f111e1122111e111d1121111d111c1120111c111b111f111b111a111e111a1119111d11191118111c11181117111b11171116111a111611151119111511141118111411131117111311121116111211111115111111101114111000d5014c0f11130f0e11120e0d11110d0c11100c10bf0e109d0c107b106a10591048103740160450330501a802fc8efa5bf8422b81010b2259f40b6fa192306ddf206e92306d8e28d0810101d700810101d700810101d700d401d0810101d700810101d700301025102410236c156f05e2817625216eb3f2f48200cd11f82322206ef2d0806f2510245f0423206ef2d0806f25145f04a0bef2f4f82321206ef2d0806f2510245f04a121e02100d700dd01f4206ef2d0806f256c415210bc9b3020206ef2d0806f256c41de21206ef2d0806f255f0401a821206ef2d0806f256c41a90421206ef2d0806f2510345f04a18200aeff21c200f2f481010b22206ef2d0806f255f0423206ef2d0806f2510345f0423a024206ef2d0806f2510245f0425206ef2d0806f25145f040600d802fe206ef2d0806f256c411034413016c855405045810101cf0012810101cf00810101cf0001c8810101cf0012810101cf00cdc94ee05230206e953059f45930944133f413e251dca070f828102f102e0311480302114902564802564a02db3cf8427011488040114ac85982103764fe765003cb1fce810101cf00c9130211480200e600d901f8011149015a6d6d40037fc8cf8580ca00cf8440ce01fa028069cf40025c6e016eb0935bcf819d58cf8680cf8480f400f400cf81e2f400c901fb00114311451143114211441142114111431141114011421140113f1141113f113e1140113e113d113f113d113c113e113c113b113d113b113a113c113a1139113b113900da01fc1138113a1138113711391137113611381136113511371135113411361134113311351133113211341132113111331131113011321130112f1131112f112e1130112e112d112f112d112c112e112c112b112d112b112a112c112a1129112b11291128112a112811271129112711261128112611251127112511241126112400db01f8112311251123112211241122112111231121112011221120111f1121111f111e1120111e111d111f111d111c111e111c111b111d111b111a111c111a1119111b11191118111a11181117111911171116111811161115111711151114111611141113111511131112111411121111111311111110111211100f11110f00dc010c0e11100e551d01a8044a8210ab78b3cfbae3022182101ba0fefabae302218210c61e9667bae3022182108f9872bdba00de00f90100010501fa31d33f308200b2252bf2f422c200f2e5918200a564f82327a12abef2f4114411461144114311451143114211441142114111431141114011421140113f1141113f113e1140113e113d113f113d113c113e113c113b113d113b113a113c113a1139113b11391138113a113811371139113711361138113611351137113500df01fc113411361134113311351133113211341132113111331131113011321130112f1131112f112e1130112e112d112f112d112c112e112c112b112d112b112a112c112a1129112b11291128112a112811271129112711261128112611251127112511241126112411231125112311221124112211211123112111201122112000e001fc111f1121111f111e1120111e111d111f111d111c111e111c111b111d111b111a111c111a1119111b11191118111a11181117111911171116111811161115111711151114111611141113111511131112111411121111111311111110111211100f11110f0e11100e10df10ce10bd10ac109b108a1079106810571046103500e103fe443012db3cc87f01ca001146114511441143114211411140113f113e113d113c113b113a1139113811371136113511341133113211311130112f112e112d112c112b112a1129112811271126112511241123112211211120111f111e111d111c111b111a111911181117111611151114111311121111111055e0db3cc9ed5400e201c100f801ec249130e1f82325a908810101270259f40c6fa192306ddf206e915be0537aa88064a9045188a121206ef2d080f8281148114a11481147114911471146114a11461145114911451144114a11441143114911431142114a11421141114911411140114a1140113f1149113f113e114a113e113d1149113d00e301fc113c114a113c113b1149113b113a114a113a1139114911391138114a11381137114911371136114a11361135114911351134114a11341133114911331132114a11321131114911311130114a1130112f1149112f112e114a112e112d1149112d112c114a112c112b1149112b112a114a112a1129114911291128114a112800e401fc1127114911271126114a11261125114911251124114a11241123114911231122114a11221121114911211120114a1120111f1149111f111e114a111e111d1149111d111c114a111c111b1149111b111a114a111a1119114911191118114a11181117114911171116114a11161115114911151114114a111411131149111300e502fc1112114a11121111114911111110114a11100f11490f0e114a0e0d11490d0c114a0c0b11490b0a114a0a0911490910280711490710260511490510240311490312564a59db3c3333348101015644206ef2d08026103601206e953059f45a30944133f414e204a4f8236d70f84221804026a5114a206ef2d08002114a020100e600f403f6f82814db3c5c705920f90022f9005ad76501d76582020134c8cb17cb0fcb0fcbffcbff71f90400c87401cb0212ca07cbffc9d0707080408b0810374890c85530821004ad37835005cb1f13cb3f01fa02cecec91610455a1036453304c8cf8580ca00cf8440ce01fa028069cf40025c6e016eb0935bcf818ae2f40000e7014000f3011688c87001ca005a02cecec900e80228ff008e88f4a413f4bcf2c80bed5320e303ed43d900e900eb0157a65ec0bb513434800067fe803e903e9020404075c0154c1b05273e903e901640b4405c150488b8b6cf1b112000ea01145321db3c30546440524000ee03d63001d072d721d200d200fa4021103450666f04f86102f862ed44d0d200019ffa00fa40fa40810101d70055306c149cfa40fa405902d10170541222e205925f05e003d70d1ff2e08221821004ad3783bae30221821093abb53ebae302018210e7822413bae3025f05f2c08200ec00ed00f1005831d33f31fa00308200c241f84225c705f2f412a05023c87f01ca0055305043fa02ce12ce810101cf00c9ed5402a831d33ffa00fa40fa4031f40431fa00318142a623c200f2f48138c6f84226c705f2f48121d45363bef2f48200da29f8235009a1c20418f2f4f82322a71e812710a90420c101923071de5330a15074a15327db3c5c00ee00ef0018f82ac87001ca005a02cecec902fe705920f90022f9005ad76501d76582020134c8cb17cb0fcb0fcbffcbff71f90400c87401cb0212ca07cbffc9d0707f8040544aa052c01110c85530821004ad37835005cb1f13cb3f01fa02cecec94650104d103840d81036453304c8cf8580ca00cf8440ce01fa028069cf40025c6e016eb0935bcf818ae2f400c901fb0024014000f000f4c2008e5a7070541465804004c855308210eb527edf5005cb1f13cb3f01fa02cecec92604034666146d50436d5033c8cf8580ca00cf8440ce01fa028069cf40025c6e016eb0935bcf819d58cf8680cf8480f400f400cf81e2f400c901fb0093303330e259c87f01ca0055305043fa02ce12ce810101cf00c9ed5401fed33ffa00fa40308142a622c200f2f48138c6f84225c705f2f48121d45352bef2f45141a1707f541435804008c855308210db17f0ca5005cb1f13cb3f810101cf00cecec9260443135066146d50436d5033c8cf8580ca00cf8440ce01fa028069cf40025c6e016eb0935bcf819d58cf8680cf8480f400f400cf81e2f400c90100f20034fb004003c87f01ca0055305043fa02ce12ce810101cf00c9ed540008c901fb0001fe114bc85520821056bbaafa5004cb1f12810101cf00ce810101cf00c91302114802011149015a6d6d40037fc8cf8580ca00cf8440ce01fa028069cf40025c6e016eb0935bcf819d58cf8680cf8480f400f400cf81e2f400c901fb00114311451143114211441142114111431141114011421140113f1141113f113e1140113e00f501fc113d113f113d113c113e113c113b113d113b113a113c113a1139113b11391138113a1138113711391137113611381136113511371135113411361134113311351133113211341132113111331131113011321130112f1131112f112e1130112e112d112f112d112c112e112c112b112d112b112a112c112a1129112b112900f601fc1128112a1128112711291127112611281126112511271125112411261124112311251123112211241122112111231121112011221120111f1121111f111e1120111e111d111f111d111c111e111c111b111d111b111a111c111a1119111b11191118111a111811171119111711161118111611151117111511141116111400f7006a1113111511131112111411121111111311111110111211100f11110f0e11100e10df10ce10bd10ac109b108a1079060803455507040004db3101f831d200fa00d31fd30730114511471145114411461144114311471143114211461142114111471141114011461140113f1147113f113e1146113e113d1147113d113c1146113c113b1147113b113a1146113a11391147113911381146113811371147113711361146113611351147113511341146113411331147113300fa01fc113211461132113111471131113011461130112f1147112f112e1146112e112d1147112d112c1146112c112b1147112b112a1146112a112911471129112811461128112711471127112611461126112511471125112411461124112311471123112211461122112111471121112011461120111f1147111f111e1146111e00fb01f8111d1147111d111c1146111c111b1147111b111a1146111a1119114711191118114611181117114711171116114611161115114711151114114611141113114711131112114611121111114711111110114611100f11470f0e11460e0d11470d0c11460c0b11470b0a11460a0911470908114608071147070611460600fc02f805114705041146040311470302114602011148011149db3c3838383881646d5629b3f2f482008d7e5643c200945645c2009170e2945646c2009170e2945646c1659170e2f2f4114111451141114011441140113f1143113f113e1142113e113d1141113d113c1140113c113b113f113b113a113e113a1139113d113901bf00fd01fc1138113c11381137113b11371136113a1136113511391135113411381134113311371133113211361132113111351131113011341130112f1133112f112e1132112e112d1131112d112c1130112c112b112f112b112a112e112a1129112d11291128112c11281127112b11271126112a112611251129112511241128112400fe01f8112311271123112211261122112111251121112011241120111f1123111f111e1122111e111d1121111d111c1120111c111b111f111b111a111e111a1119111d11191118111c11181117111b11171116111a11161115111911151114111811141113111711131112111611121111111511111110111411100f11130f00ff01300e11120e0d11110d0c11100c10bf10ae109d108c1089553301a801f831d20030114411451144114311441143114211431142114111421141114011411140113f1140113f113e113f113e113d113e113d113c113d113c113b113c113b113a113b113a1139113a1139113811391138113711381137113611371136113511361135113411351134113311341133113211331132113111321131010101fc113011311130112f1130112f112e112f112e112d112e112d112c112d112c112b112c112b112a112b112a1129112a1129112811291128112711281127112611271126112511261125112411251124112311241123112211231122112111221121112011211120111f1120111f111e111f111e111d111e111d111c111d111c010202fe111b111c111b111a111b111a1119111a11191118111911181117111811171116111711161115111611151114111511141113111411131112111311121111111211111110111111100f11100f10ef10de10cd10bc10ab109a10891078106710561045103411464130db3c572c5645937f572dde11441145114411431144114301bf010301fc114211431142114111421141114011411140113f1140113f113e113f113e113d113e113d113c113d113c113b113c113b113a113b113a1139113a1139113811391138113711381137113611371136113511361135113411351134113311341133113211331132113111321131113011311130112f1130112f112e112f112e010401fc112d112e112d112c112d112c112a112b112a1129112a1129112811291128112711281127112611271126112511261125112411251124112311241123112211231122112111221121112011211120111f1120111f111e111f111e111d111e111d111c111d111c111b111c111b111a111b111a1119111a1119111811191118014602fe8efc5b571f8109def842562dc705f2f4f823114311451143114211441142114111431141114011421140113f1141113f113e1140113e113d113f113d113c113e113c113b113d113b113a113c113a1139113b11391138113a1138113711391137113611381136113511371135113411361134113311351133113211341132e00106010801f4113111331131113011321130112f1131112f112e1130112e112d112f112d112c112e112c112b112d112b112a112c112a1129112b11291128112a11281127112911271126112811261125112711251124112611241123112511231122112411221121112311211120112211201121111e1120111e111d111f111d010701de111c111e111c111b111d111b111a111c111a1119111b11191118111a11181117111911171116111811161115111711151114111611141113111511131112111411121111111311111110111211100f11110f0e11100e10df10ce10bd10ac109b108a1079106810571046103544301201a8044c218210f5708ab5bae30221821017df7398bae30221821079b9e4c3bae30221821010f7c0f7ba010901140118011d01fa31d33f31d200d307d430d0114511461145114411461144114311461143114211461142114111461141114011461140113f1146113f113e1146113e113d1146113d113c1146113c113b1146113b113a1146113a113911461139113811461138113711461137113611461136113511461135113411461134113311461133010a01fc113211461132113111461131113011461130112f1146112f112e1146112e112d1146112d112c1146112c112b1146112b112a1146112a112911461129112811461128112711461127112611461126112511461125112411461124112311461123112211461122112111461121112011461120111f1146111f111e1146111e010b01f8111d1146111d111c1146111c111b1146111b111a1146111a1119114611191118114611181117114611171116114611161115114611151114114611141113114611131112114611121111114611111110114611100f11460f0e11460e0d11460d0c11460c0b11460b0a11460a09114609081146080711460706114606010c02fc05114605041146040311460302114602011147011148db3c5725573756448e177f701147c0039f573e573e7057428064113e805a113ede9f57458200cf12562af2f4707f114601e28be456d657267656e63795061757365870564791719120e21147114911471146114811461145114711451144114611441143114511430168010d01fc114211441142114111431141114011421140113f1141113f113e1140113e113d113f113d113c113e113c113b113d113b113b113c113b1139113b11391138113a1138113711391137113611381136113511371135113411361134113311351133113211341132113111331131113011321130112f1131112f112e1130112e010e01f8112d112f112d112c112e112c112b112d112b112a112c112a1129112b11291128112a112803112903112611281126112511271125112411261124112311251123112211241122112111231121112011221120111f1121111f111e1120111e111d111f111d111c111e111c111b111d111b111a111c111a1119111b1119010f02fe1118111a11181117111911171116111811161115111711151114111611141113111511131112111411121111111311111110111211100f11110f0e11100e10df10ce10bd10ac109b108a107910681057104610455502114adb3cf8427080408be456d657267656e63795061757365822114c91719122e210351201114c01c8013e011001f4553082105e39a2315005cb1f13810101cf0001c8cecd810101cf00810101cf00c913011149015a6d6d40037fc8cf8580ca00cf8440ce01fa028069cf40025c6e016eb0935bcf819d58cf8680cf8480f400f400cf81e2f400c901fb00114411451144114311441143114211431142114111421141114011411140011101fc113f1140113f113e113f113e113d113e113d113c113d113c113b113c113b113a113b113a1139113a1139113811391138113711381137113611371136113511361135113411351134113311341133113211331132113111321131113011311130112f1130112f112e112f112e112d112e112d112c112d112c112b112c112b011201fc112a112b112a1129112a1129112811291128112711281127112611271126112511261125112411251124112311241123112211231122112111221121112011211120111f1120111f111e111f111e111d111e111d111c111d111c111b111c111b111a111b111a1119111a1119111811191118111711181117111611171116011301541115111611151114111511141113111411131112111311121111111211111110111111100f11100f550e01a804f631d33f31d30fd430d0011146011147db3cdb3c820095535647c165945647c2099170e2f2f456468b6536574466565801114220564901114bdb3cf8427080408b6536574466565810340201114c01114bc8553082105e39a2315005cb1f13810101cf0001c8cecd810101cf00810101cf00c91302114802011149010168013a013e011501fc5a6d6d40037fc8cf8580ca00cf8440ce01fa028069cf40025c6e016eb0935bcf819d58cf8680cf8480f400f400cf81e2f400c901fb00114311451143114211441142114111431141114011421140113f1141113f113e1140113e113d113f113d113c113e113c113b113d113b113a113c113a1139113b11391138113a1138011601fc113711391137113611381136113511371135113411361134113311351133113211341132113111331131113011321130112f1131112f112e1130112e112d112f112d112c112e112c112b112d112b112a112c112a1129112b11291128112a1128112711291127112611281126112511271125112411261124112311251123011701f8112211241122112111231121112011221120111f1121111f111e1120111e111d111f111d111c111e111c111b111d111b111a111c111a1119111b11191118111a11181117111911171116111811161115111711151114111611141113111511131112111411121111111311111110111211100f11110f0e11100e551d01a803f831d33f31fa40d430d0011146011147db3cdb3c573e8200e20f8d0860000000000000000000000000000000000000000000000000000000000000000004564701c705b3f2f48bb53657454726561737572798114511471145114411461144114311451143114211441142114111431141114011421140113f1141113f0168013a011901fc113d113f113d113c113e113c113b113d113b113a113c113a1139113b11391138113a1138113711391137113611381136113511371135113411361134113311351133113211341132113111331131113011321130112f1131112f112e1130112e112d112f112d112c112e112c112b112d112b112a112c112a1129112b1129011a01fc1128112a1128112711291127112611281126112511271125112411261124112311251123112211241122112111231121112011221120111f1121111f111e1120111e111d111f111d111c111e111c111b111d111b111a111c111a1119111b11191118111a1118111711191117111611181116111511171115111411161114011b02fe1113111511131112111411121111111311111110111211100f11110f0e11100e10df10ce10bd10ac109b108a1079106810571046103544007050047101db3cf8427080408bb5365745472656173757279854140271c8553082105e39a2315005cb1f13810101cf0001c8cecd810101cf00810101cf00c941305a6d6d40037f013e011c0160c8cf8580ca00cf8440ce01fa028069cf40025c6e016eb0935bcf819d58cf8680cf8480f400f400cf81e2f400c901fb0001a8043ce3022182100952917dbae3022182100490d605bae3022182102fb11c16ba011e01260130013801fe31d33f31d30fd30fd30fd430d0114511471145114411461144114311471143114211461142114111471141114011461140113f1147113f113e1146113e113d1147113d113c1146113c113b1147113b113a1146113a113911471139113811461138113711471137113611461136113511471135113411461134113311471133011f01fc113211461132113111471131113011461130112f1147112f112e1146112e112d1147112d112c1146112c112b1147112b112a1146112a112911471129112811461128112711471127112611461126112511471125112411461124112311471123112211461122112111471121112011461120111f1147111f111e1146111e012001f8111d1147111d111c1146111c111b1147111b111a1146111a1119114711191118114611181117114711171116114611161115114711151114114611141113114711131112114611121111114711111110114611100f11470f0e11460e0d11470d0c11460c0b11470b0a11460a09114709081146080711470706114606012103f405114705041146040311470302114602011148011149db3cdb3c573957395739820086dc56458101f4bb9656448103e8bb9170e296564681012cbb9170e2f2f456448bc536574416e74695768616c658114411471144114311461143114211451142114111441141114011431140113f1142113f113e1141113e0168013a012201f8113d1140113d113c113f113c113b113e113b01113d011137113a1137113611391136113511381135113411371134113311361133113211351132113111341131113011331130112f1132112f112e1131112e112d1130112d112c112f112c112b112e112b112a112d112a1129112c11291128112b11281127112a1127012301fc112611291126112511281125112411271124112311261123112211251122112111241121112011231120111f1122111f111e1121111e111d1120111d111c111f111c111b111e111b111a111d111a1119111c11191118111b11181117111a1117111611191116111511181115111411171114111311161113111211151112012402fe1111111411111110111311100f11120f0e11110e0d11100d10cf10be10ad109c108b107a10691058104710364500705110114adb3cf8427080408bc536574416e74695768616c65822103558114cc8553082105e39a2315005cb1f13810101cf0001c8cecd810101cf00810101cf00c913011149015a6d6d40037fc8cf8580013e012501f4ca00cf8440ce01fa028069cf40025c6e016eb0935bcf819d58cf8680cf8480f400f400cf81e2f400c901fb00114411451144114311441143114211431142114111421141114011411140113f1140113f113e113f113e113d113e113d113c113d113c113b113c113b113a113b113a1139113a1139113811391138013601f631d33f31d200fa00d31fd307d430d0114511481145114411471144114311461143114211481142114111471141114011461140113f1148113f113e1147113e113d1146113d113c1148113c113b1147113b113a1146113a113911481139113811471138113711461137113611481136113511471135113411461134012701fc113311481133113211471132113111461131113011481130112f1147112f112e1146112e112d1148112d112c1147112c112b1146112b112a1148112a112911471129112811461128112711481127112611471126112511461125112411481124112311471123112211461122112111481121112011471120111f1146111f012801fc111e1148111e111d1147111d111c1146111c111b1148111b111a1147111a1119114611191118114811181117114711171116114611161115114811151114114711141113114611131112114811121111114711111110114611100f11480f0e11470e0d11460d0c11480c0b11470b0a11460a091148090811470807114607012903fc061148060511470504114604031148030211470201114901114adb3cdb3c573357335733573456428ba5365744275796261636b870564591719120e2114511491145114411481144114311471143114211461142114111451141114011441140113f1143113f113e1142113e113d1141113d113c1140113c113b113f113b0168013a012a01fc113a113e113a1139113d11391138113c113803113b031136113a11361138113911380311380303113703113211361132113111351131113011341130112f1133112f112e1132112e112d1131112d112c1130112c112b112f112b112a112e112a1129112d11291128112c11281127112b11271126112a1126112511291125012b01fc112411281124112311271123112211261122112111251121112011241120111f1123111f111e1122111e111d1121111d111c1120111c111b111f111b111a111e111a1119111d11191118111c11181117111b11171116111a1116111511191115111411181114111311171113111211161112111111151111111011141110012c02fe0f11130f0e11120e0d11110d0c11100c10bf10ae109d108c107b106a1059104810375505114adb3cf8427080408ba5365744275796261636b822114c91719122e210351201114c01c8553082105e39a2315005cb1f13810101cf0001c8cecd810101cf00810101cf00c913011149015a6d6d40037fc8cf8580ca00cf8440ce013e012d01f401fa028069cf40025c6e016eb0935bcf819d58cf8680cf8480f400f400cf81e2f400c901fb00114411451144114311441143114211431142114111421141114011411140113f1140113f113e113f113e113d113e113d113c113d113c113b113c113b113a113b113a1139113a1139113811391138113711381137012e01fc113611371136113511361135113411351134113311341133113211331132113111321131113011311130112f1130112f112e112f112e112d112e112d112c112d112c112b112c112b112a112b112a1129112a1129112811291128112711281127112611271126112511261125112411251124112311241123112211231122012f01e4112111221121112011211120111f1120111f111e111f111e111d111e111d111c111d111c111b111c111b111a111b111a1119111a11191118111911181117111811171116111711161115111611151114111511141113111411131112111311121111111211111110111111100f11100f550e01a803f831d33f31d200d430d0011146011147db3cdb3c573856458bd546f67676c6554726164696e67870564891719120e2114811491148114711481147114611471146114511461145114411451144114311441143114211431142114111421141114011411140113f1140113f113e113f113e113d113e113d113c113d113c0168013a013101f803113c03113a113b113a1139113a1139113811391138113711381137113611371136113511361135113411351134113311341133113211331132113111321131113011311130112f1130112f112e112f112e112d112e112d112c112d112c112b112c112b112a112b112a1129112a1129112811291128112711281127013201fc112611271126112511261125112411251124112311241123112211231122112111221121112011211120111f1120111f111e111f111e111d111e111d111c111d111c111b111c111b111a111b111a1119111a1119111811191118111711181117111611171116111511161115111411151114111311141113111211131112013303fc1111111211111110111111100f11100f10ef10de10cd10bc10ab109a108910781067105610455502114adb3cf8427080408bd546f67676c6554726164696e67822114c91719122e210351201114c01c8553082105e39a2315005cb1f13810101cf0001c8cecd810101cf00810101cf00c913011149015a6d6d40037fc889013e0134013500016001f8cf16ca00cf8440ce01fa028069cf40025c6e016eb0935bcf819d58cf8680cf8480f400f400cf81e2f400c901fb00114411451144114311441143114211431142114111421141114011411140113f1140113f113e113f113e113d113e113d113c113d113c113b113c113b113a113b113a1139113a1139113811391138013601fc113711381137113611371136113511361135113411351134113311341133113211331132113111321131113011311130112f1130112f112e112f112e112d112e112d112c112d112c112b112c112b112a112b112a1129112a1129112811291128112711281127112611271126112511261125112411251124112311241123013701f0112211231122112111221121112011211120111f1120111f111e111f111e111d111e111d111c111d111c111b111c111b111a111b111a1119111a11191118111911181117111811171116111711161115111611151114111511141113111411131112111311121111111211111110111111100f11100f550e01a8043ce3022182102a297933bae3022182102882f1e8bae3022182106920939fba013901410147014e03fe31d33f31fa40d430d0011146011147db3cdb3c572e8200cf12562cf2f48bc526f746174654f7261636c658114511471145114411461144114311451143114211441142114111431141114011421140113f1141113f113e1140113e113d113f113d113c113e113c113b113d113b113a113c113a1139113b11391138113a11380168013a013b0024562c9e8200dfe4f8235625a15626bef2f4de01fc113711391137113611381136113511371135113411361134113311351133113211341132113111331131113011321130112f1131112f112d112f112d112c112e112c112b112d112b112a112c112a1129112b11291128112a1128112711291127112611281126112511271125112411261124112311251123112211241122013c01fc112111231121112011221120111f1121111f111e1120111e111d111f111d111c111e111c111b111d111b111a111c111a1119111b11191118111a11181117111911171116111811161115111711151114111611141113111511131112111411121111111311111110111211100f11110f0e11100e10df10ce10bd10ac109b013d03f2108a1079106810571046103544007050047101db3cf8427080408bc526f746174654f7261636c65854140271c8553082105e39a2315005cb1f13810101cf0001c8cecd810101cf00810101cf00c941305a6d6d40037fc8cf8580ca00cf8440ce01fa028069cf40025c6e016eb0935bcf818ae2f400c901fb00013e014001a801f65727810101f823562205552111297f7070c855805089810101cf0016810101cf0004c8ce14cd12810101cf0001c8810101cf0002c8ce12cd12ca0012ca0012ca00cdc902111f0201112401561e01206e953059f45a30944133f415e2810101f8232103111e03561f59216e955b59f45a3098c801cf004133f442e2013f002c561ca4f8231124111d111f111d01111e0102111d0201001a58cf8680cf8480f400f400cf8101f831fa4030114411451144114311441143114211431142114111421141114011411140113f1140113f113e113f113e113d113e113d113c113d113c113b113c113b113a113b113a1139113a1139113811391138113711381137113611371136113511361135113411351134113311341133113211331132113111321131014201fc113011311130112f1130112f112e112f112e112d112e112d112c112d112c112b112c112b112a112b112a1129112a1129112811291128112711281127112611271126112511261125112411251124112311241123112211231122112111221121112011211120111f1120111f111e111f111e111d111e111d111c111d111c014302f4111b111c111b111a111b111a1119111a11191118111911181117111811171116111711161115111611151114111511141113111411131112111311121111111211111110111111100f11100f10ef10de10cd10bc10ab109a10891078106710561045103411464130db3c572d572d11431144114311421143114201bf014401fe114111421141114011411140113f1140113f113e113f113e113d113e113d113c113d113c113b113c113b113a113b113a1139113a1139113811391138113711381137113611371136113511361135113411351134113311341133113211331132113111321131113011311130112f1130112f112e112f112e112d112e112d7f014501f4112d112b112c112b112a112b112a1129112a1129112811291128112711281127112611271126112511261125112411251124112311241123112211231122112111221121112011211120111f1120111f111e111f111e111d111e111d111c111d111c111b111c111b111a111b111a1119111a11191118111911180146016c1117111811171116111711161115111611151114111511141113111411131112111311121111111211111110111111100f11100f550e01a801fa31d33f31d30fd307d430d0114511461145114411461144114311461143114211461142114111461141114011461140113f1146113f113e1146113e113d1146113d113c1146113c113b1146113b113a1146113a113911461139113811461138113711461137113611461136113511461135113411461134113311461133014801fc113211461132113111461131113011461130112f1146112f112e1146112e112d1146112d112c1146112c112b1146112b112a1146112a112911461129112811461128112711461127112611461126112511461125112411461124112311461123112211461122112111461121112011461120111f1146111f111e1146111e014901f8111d1146111d111c1146111c111b1146111b111a1146111a1119114611191118114611181117114611171116114611161115114611151114114611141113114611131112114611121111114611111110114611100f11460f0e11460e0d11460d0c11460c0b11460b0a11460a09114609081146080711460706114606014a02e405114605041146040311460302114602011147011148db3c572b573e573e8200e8415623b3f2f48200f2195644c209945644c1659170e2945645c1659170e2f2f4f8231128a4810101f82301114880647fc855305034810101cf0001c8cecd810101cf00ca00c902112702011147015626010168014b01fa206e953059f45a30944133f415e21124a4114211451142114111441141114011431140113f1142113f113e1141113e113e113f113e113b113e113b113a113d113a1139113c11391138113b11381137113a1137113611391136113511381135113411371134113311361133113211351132113111341131113011331130014c01f4112f1132112f112e1131112e112d1130112d112c112f112c112b112e112b112a112d112a1129112c11291127112b11271129112a11291126112911261124112811241127112311261123112211251122112111241121112011231120111f1122111f111e1121111e111d1120111d111c111f111c111b111e111b014d01cc111a111d111a1119111c11191118111b11181117111a11171116111911161115111811151114111711141113111611131112111511121111111411111110111311100f11120f0e11110e0d11100d10cf10be10ad109c108b107a10691058104710364055040301a8043ce302218210dc63850bbae302218210d890b03fbae3022182109d3b8cb1ba014f015f0164016d01fc31d33ffa00d31fd207d30730114511481145114411471144114311461143114211481142114111471141114011461140113f1148113f113e1147113e113d1146113d113c1148113c113b1147113b113a1146113a113911481139113811471138113711461137113611481136113511471135113411461134113311481133015001fc113211471132113111461131113011481130112f1147112f112e1146112e112d1148112d112c1147112c112b1146112b112a1148112a112911471129112811461128112711481127112611471126112511461125112411481124112311471123112211461122112111481121112011471120111f1146111f111e1148111e015101f8111d1147111d111c1146111c111b1148111b111a1147111a1119114611191118114811181117114711171116114611161115114811151114114711141113114611131112114811121111114711111110114611100f11480f0e11470e0d11460d0c11480c0b11470b0a11460a09114809081147080711460706114806015204fc0511470504114604031148030211470201114901114adb3c112aa4810101f8232104112c04413001114b01216e955b59f45a3098c801cf004133f442e25649c002961146811388bc93574670e28e10573d563dc132948032573ede8046113dde5648c003945647c2509170e2e3005648c001945647c1ce9170e2e30011480168015301540155002c573d5741563cc214948014573dde80287f114201113d0012573d7057428050113d02f4c001941146c1e293574670e29256339170e29556325632be9170e298f823562fa15631be9170e2925742e30d114011451140113f1144113f113e1143113e113d1142113d113c1141113c113b1140113b113a113f113a1139113e11391138113d11381137113c11371136113b11361135113a11351134113911340156015d01fc114111461141114011451140113f1144113f113e1143113e113d1142113d113c1141113c113b1140113b113a113f113a1139113e11391138113d11381137113c11371136113b11361135113a1135113411391134113311381133113211371132113111361131113011351130112f1134112f112e1133112e112d1132112d015701fc112c1131112c112b1130112b112a112f112a1129112e11291128112d11281127112c1127112411291124112311281123112211271122112111261121112011251120111f1124111f111e1123111e111d1122111d111c1121111c111b1120111b111a111f111a1119111e11191118111d11181117111c11171116111b1116015802fe1115111a11151114111911141113111811131112111711121111111611111110111511100f11140f0e11130e0d11120d0c11110c0b11100b10af109e108d107c106b105a104910384715503306db3c0211450203114403112a1143112a112911421129041141040211400203113f03112a113e112a1129113d112904113c040159015b01f63057327056365634a88064a904205647bc93305645de20c2008e1911465646a1113e5646a011315646a0113e1146113e1131113ede11305637a01132a4f8232270113a80401134c859821070acb7bb5003cb1f810101cf00810101cf00c95647431402113b02113401146d50436d5033c8cf8580ca00cf8440ce01015a005efa028069cf40025c6e016eb0935bcf819d58cf8680cf8480f400f400cf81e2f400c901fb0011361132112f1131112f01f802113b0203113a03112a1139112a112911381129041137040211360203113503112a1134112a112911331129041132040211310203113003112a112f112a1129112e112904112d0402112c0203112b03041128040211270203112603112501112401041123040211220203112103112001111f0104111e0402111d02015c008403111c03111b01111a01041119040211180203111703111601111501041114040211130203111203111101111001104f102e103d50bc104a1029103850671045401401fc113311381133113211371132113111361131113011351130112f1134112f112e1133112e112d1132112d112c1131112c112b1130112b112a112f112a1129112e11291128112d11281127112c11271126112b1126112311281123112211271122112111261121112011251120111f1124111f111e1123111e111d1122111d015e01ec111c1121111c111b1120111b111a111f111a1119111e11191118111d11181117111c11171116111b11161115111a11151114111911141113111811131112111711121111111611111110111511100f11140f0e11130e0d11120d0c11110c0b11100b10af109e108d107c106b105a104910384715446401a803fe31d33f31d307d30731d31f31d430d0011146011147db3c810101f823011149806470c855305034810101cf0001c8cecd810101cf00ca00c90211290201114801562801206e953059f45a30944133f415e21126a45645c0038e1357245736573c573c573f57407f70708064805ae30e1143114511430211440211411143114101680160016100541145c0029c573d113da614113d803c113dde041144040311420302113e0201113d01113604112304552001f8114011421140113f1141113f01114001113f113c113e113c113b113d113b113a113c113a1139113b11391138113a113811371139113703113803113511371135113411361134113311351133113211341132113111331131113011321130112f1131112f112e1130112e112d112f112d112c112e112c112b112d112b016201f8112a112c112a1129112b11291128112a112811271129112711251128112511231127112311241126112404112504112211241122112111231121112011221120111f1121111f111e1120111e111d111f111d111c111e111c111b111d111b111a111c111a1119111b11191118111a1118111711191117111611181116016301861115111711151114111611141113111511131112111411121111111311111110111211100f11110f0e11100e10df10ce10bd10ac109b108a107910681057465013444001a801fc31d33f31d307810101d700d401d001d30730114511471145114411461144114311471143114211461142114111471141114011461140113f1147113f113e1146113e113d1147113d113c1146113c113b1147113b113a1146113a113911471139113811461138113711471137113611461136113511471135113411461134016501fc113311471133113211461132113111471131113011461130112f1147112f112e1146112e112d1147112d112c1146112c112b1147112b112a1146112a112911471129112811461128112711471127112611461126112511471125112411461124112311471123112211461122112111471121112011461120111f1147111f016601fc111e1146111e111d1147111d111c1146111c111b1147111b111a1146111a1119114711191118114611181117114711171116114611161115114711151114114611141113114711131112114611121111114711111110114611100f11470f0e11460e0d11470d0c11460c0b11470b0a11460a091147090811460807114707016703f40611460605114705041146040311470302114602011148011149db3c8200d120564a5628bef2f4112aa45647c0019457405746e30e810101f823020111480111497fc855305034810101cf0001c8cecd810101cf00ca00c90211260201114601562501206e953059f45a30944133f415e21123a411411145114101680169016a00268200ccd0f8425630c705f2f48151d0562ef2f400ac5647c00294573f57468e3e5647c0038e14572e574670011145c87401cb0212ca07cbffc9d08e171147c004985734113311441133925745e211441145112ce2113d1144113d112c113de2113e1144113e113d113e113d01fc114011441140113f1143113f113e1142113e113d1141113d113e1140113e113b113f113b113a113e113a1139113d11391138113c11381137113b11371136113a1136113511391135113411381134113311371133113211361132113111351131113011341130112f1133112f112e1132112e112d1131112d112c1130112c016b01f4112b112f112b112a112e112a1129112d11291128112c11281127112b11271128112a11281125112911251123112811231127112211261122112111251121112011241120111f1123111f111e1122111e111d1121111d111c1120111c111b111f111b111a111e111a1119111d11191118111c11181117111b1117016c019e1116111a11161115111911151114111811141113111711131112111611121111111511111110111411100f11130f0e11120e0d11110d0c11100c10bf10ae109d108c107b106a10591048103746050201a802fe8efb31d33ffa4031fa0030561e8101012359f40d6fa192306ddf206e92306d8e33d0810101d700810101d700d401d001810101d700d401d0810101d700d401d001d200d200d2003010591058105710566c196f09e28163be216eb3f2f481188621206ef2d0806f29185f08b39b21206ef2d0806f296c81b39170e2f2f4e021016e017701fc114411461144114311451143114211461142114111451141114011461140113f1145113f113e1146113e113d1145113d113c1146113c113b1145113b113a1146113a113911451139113811461138113711451137113611461136113511451135113411461134113311451133113211461132113111451131113011461130016f01fc112f1145112f112e1146112e112d1145112d112c1146112c112b1145112b112a1146112a112911451129112811461128112711451127112611461126112511451125112411461124112311451123112211461122112111451121112011461120111f1145111f111e1146111e111d1145111d111c1146111c111b1145111b017001fc111a1146111a1119114511191118114611181117114511171116114611161115114511151114114611141113114511131112114611121111114511111110114611100f11450f0e11460e0d11450d0c11460c0b11450b0a11460a091145090811460807114507061146060511450504114604031145030211460201114501017102fe11478122d411495647db3c01114a01f2f4561a810101564859f40d6fa192306ddf206e92306d8e25d0810101d700810101d700810101d700d401d0810101d700d200301025102410236c156f05e27053016eb38e1a5b20206ef2d0806f2510345f0401206ef2d0806f2510245f04019132e25647a056465621a8812710a904017f017202f481010103a45321b9564b5444305240c855405045810101cf0012810101cf00810101cf0001c8810101cf0012ca00cdc902111e0213564a01206e953059f45a30944133f415e2111c01be99021147025745574530e30d114111451141114011441140113f1143113f113e1142113e113d1141113d113c1140113c0173017400ee1147206ef2d0806f295b105610461036102681010147777f70c855805089810101cf0016810101cf0004c8ce14cd12810101cf0001c8810101cf0002c8ce12cd12ca0012ca0012ca00cdc903111e031201114701206e953059f45a30944133f415e2011117011143a0111a1144111a111a1142111a111601fc113b113f113b113a113e113a1139113d11391138113c11381137113b11371136113a1136113511391135113411381134113311371133113211361132113111351131113011341130112f1133112f112e1132112e112d1131112d112c1130112c112b112f112b112a112e112a1129112d11291128112c11281127112b1127017501fc1126112a1126112511291125112411281124112311271123112211261122112111251121112011241120111f1123111f111e1122111e111d1121111d111c1120111c111b111f111b111a111e111a1119111d11191118111c11181117111b11171116111a1116111511191115111411181114111311171113111211161112017601481111111511111110111411100f11130f0e11120e0d11110d0c11100c10bf10ae109d553801a8044a821009d21b11bae30221821023019716bae302218210cfc66cbdbae3022182103c134728ba01780185018c019001f831d33f30114411451144114311441143114211431142114111421141114011411140113f1140113f113e113f113e113d113e113d113c113d113c113b113c113b113a113b113a1139113a1139113811391138113711381137113611371136113511361135113411351134113311341133113211331132113111321131017901fc113011311130112f1130112f112e112f112e112d112e112d112c112d112c112b112c112b112a112b112a1129112a1129112811291128112711281127112611271126112511261125112411251124112311241123112211231122112111221121112011211120111f1120111f111e111f111e111d111e111d111c111d111c017a02f4111b111c111b111a111b111a1119111a11191118111911181117111811171116111711161115111611151114111511141113111411131112111311121111111211111110111111100f11100f10ef10de10cd10bc10ab109a10891078106710561045103411464130db3c561e810101564859f40d6fa192306ddf01bf017b01fe206e92306d8e33d0810101d700810101d700d401d001810101d700d401d0810101d700d401d001d200d200d2003010591058105710566c196f09e28163be216eb3f2f4114411461144114311451143114211461142114111451141114011461140113f1145113f113e1146113e113d1145113d113c1146113c113b1145113b017c01fc113a1146113a113911451139113811461138113711451137113611461136113511451135113411461134113311451133113211461132113111451131113011461130112f1145112f112e1146112e112d1145112d112c1146112c112b1145112b112a1146112a112911451129112811461128112711451127112611461126017d01fc112511451125112411461124112311451123112211461122112111451121112011461120111f1145111f111e1146111e111d1145111d111c1146111c111b1145111b111a1146111a111911451119111811461118111711451117111611461116111511451115111411461114111311451113111211461112111111451111017e02fe1110114611100f11450f0e11460e0d11450d0c11460c0b11450b0a11460a09114509081146080711450706114606051145050411460403114503021146020111450111468122d411465648db3c01114701f2f48159c55647206ef2d0806f296c81b3f2f41146206ef2d0806f2930104710368101017f27515a05104a5a1ac8017f0180005281010120561f50334133f40c6fa19401d70030925b6de2206e923070e0f82301206ef2d080a15621b902fc55805089810101cf0016810101cf0004c8ce14cd12810101cf0001c8810101cf0002c8ce12cd12ca0012ca0012ca00cdc90311200301114a01206e953059f45a30944133f415e28b6536574466565856480101f90101f901ba94573f5746e30e114211451142114111441141114011431140113f1142113f113e1141113e01810182006a8bd546f67676c6554726164696e6780111480101f90101f901ba9a5736111bc3001135111b92571ce2111b1145111b111b113d111b01fc111b1140111b113c113f113c113b113e113b113a113d113a1139113c11391138113b11381137113a1137113611391136113511381135113411371134113311361133113211351132113111341131113011331130112f1132112f112e1131112e112d1130112d112c112f112c112b112e112b112a112d112a1129112c1129018301fc1128112b11281127112a1127112611291126112511281125112411271124112311261123112211251122112111241121112011231120111f1122111f111e1121111e111d1120111d111c111f111c111c111e111c111a111d111a1119111c11191118111b11181117111a1117111611191116111511181115111411171114018401521113111611131112111511121111111411111110111311100f11120f0e11110e0d11100d10cf552b1201a801f831fa4030114411451144114311441143114211431142114111421141114011411140113f1140113f113e113f113e113d113e113d113c113d113c113b113c113b113a113b113a1139113a1139113811391138113711381137113611371136113511361135113411351134113311341133113211331132113111321131018601fc113011311130112f1130112f112e112f112e112d112e112d112c112d112c112b112c112b112a112b112a1129112a1129112811291128112711281127112611271126112511261125112411251124112311241123112211231122112111221121112011211120111f1120111f111e111f111e111d111e111d111c111d111c018703fc111b111c111b111a111b111a1119111a11191118111911181117111811171116111711161115111611151114111511141113111411131112111311121111111211111110111111100f11100f10ef10de10cd10bc10ab109a10891078106710561045103411464130db3c318200835889564701c705b3f2f411441145114401bf0188018900438000000000000000000000000000000000000000000000000000000000000000001001fc114311441143114211431142114111421141114011411140113f1140113f113e113f113e113d113e113d113c113d113c113b113c113b113a113b113a1139113a1139113811391138113711381137113611371136113511361135113411351134113311341133113211331132113111321131113011311130112f1130112f018a01fc112e112f112e112d112e112d112c112d112c112b112c112b112a112b112a1129112a1129112811291128112711281127112611271126112511261125112411251124112311241123112211231122112111221121112011211120111f1120111f111e111f111e111d111e111d111c111d111c111b111c111b111a111b111a018b01b41119111a11191118111911181117111811171116111711161115111611151114111511141113111411131112111311121111111211111110111111100f11100f10ef10de10cd10bc10ab109a108910781067105610451034413001a801f831fa4030114411451144114311441143114211431142114111421141114011411140113f1140113f113e113f113e113d113e113d113c113d113c113b113c113b113a113b113a1139113a1139113811391138113711381137113611371136113511361135113411351134113311341133113211331132113111321131018d01fc113011311130112f1130112f112e112f112e112d112e112d112c112d112c112b112c112b112a112b112a1129112a1129112811291128112711281127112611271126112511261125112411251124112311241123112211231122112111221121112011211120111f1120111f111e111f111e111d111e111d111c111d111c018e02f4111b111c111b111a111b111a1119111a11191118111911181117111811171116111711161115111611151114111511141113111411131112111311121111111211111110111111100f11100f10ef10de10cd10bc10ab109a10891078106710561045103411464130db3c573e81646d562cb3f2f411441145114401bf018f01fc114311441143114211431142114111421141114011411140113f1140113f113e113f113e113c113d113c113b113c113b113a113b113a1139113a1139113811391138113711381137113611371136113511361135113411351134113311341133113211331132113111321131113011311130112f1130112f112e112f112e019c043ce302218210f1822da1bae30221821083b8144abae302018210946a98b6ba01910198019e01a401fc31d30fd307d30fd30fd30f30114511481145114411471144114311461143114211481142114111471141114011461140113f1148113f113e1147113e113d1146113d113c1148113c113b1147113b113a1146113a113911481139113811471138113711461137113611481136113511471135113411461134113311481133019201fc113211471132113111461131113011481130112f1147112f112e1146112e112d1148112d112c1147112c112b1146112b112a1148112a112911471129112811461128112711481127112611471126112511461125112411481124112311471123112211461122112111481121112011471120111f1146111f111e1148111e019301f8111d1147111d111c1146111c111b1148111b111a1147111a1119114611191118114811181117114711171116114611161115114811151114114711141113114611131112114811121111114711111110114611100f11480f0e11470e0d11460d0c11480c0b11470b0a11460a09114809081147080711460706114806019402fc0511470504114604031148030211470201114901114adb3c573957395739573c573c81646d5628b3f2f4820086dc5642c200945642c1659170e2945644c1659170e2945643c2009170e29656438101f4bb9170e2945645c2009170e29656458103e8bb9170e296564681012cbb9170e2f2f4114011451140113f1144113f01bf019501fc113e1143113e113d1142113d113c1141113c113c1140113c113e113f113e1139113e11391138113d11381137113c11371138113b11381139113a1139113711391137113311381133113211371132113111361131113011351130112f1134112f112e1133112e112d1132112d112c1131112c112b1130112b112a112f112a019601fc1129112e11291128112d11281127112c11271126112b11261125112a1125112411291124112311281123112211271122112111261121112011251120111f1124111f111e1123111e111d1122111d111c1121111c111b1120111b111a111f111a1119111e11191118111d11181117111c11171116111b11161115111a1115019701781114111911141113111811131112111711121111111611111110111511100f11140f0e11130e0d11120d0c11110c0b11100b10af109e108d107c554601a801f831d20030114411451144114311441143114211431142114111421141114011411140113f1140113f113e113f113e113d113e113d113c113d113c113b113c113b113a113b113a1139113a1139113811391138113711381137113611371136113511361135113411351134113311341133113211331132113111321131019901fc113011311130112f1130112f112e112f112e112d112e112d112c112d112c112b112c112b112a112b112a1129112a1129112811291128112711281127112611271126112511261125112411251124112311241123112211231122112111221121112011211120111f1120111f111e111f111e111d111e111d111c111d111c019a02f4111b111c111b111a111b111a1119111a11191118111911181117111811171116111711161115111611151114111511141113111411131112111311121111111211111110111111100f11100f10ef10de10cd10bc10ab109a10891078106710561045103411464130db3c573881646d562cb3f2f411441145114401bf019b01fc114311441143114211431142114111421141114011411140113f1140113f113e113f113e113d113e113d113c113d113c113b113c113b113a113b113a1139113a1139113811391138113611371136113511361135113411351134113311341133113211331132113111321131113011311130112f1130112f112e112f112e019c01fc112d112e112d112c112d112c112b112c112b112a112b112a1129112a1129112811291128112711281127112611271126112511261125112411251124112311241123112211231122112111221121112011211120111f1120111f111e111f111e111d111e111d111c111d111c111b111c111b111a111b111a1119111a1119019d01781118111911181117111811171116111711161115111611151114111511141113111411131112111311121111111211111110111111100f11100f550e01a801f831d200fa00d31fd30730114511471145114411461144114311471143114211461142114111471141114011461140113f1147113f113e1146113e113d1147113d113c1146113c113b1147113b113a1146113a113911471139113811461138113711471137113611461136113511471135113411461134113311471133019f01fc113211461132113111471131113011461130112f1147112f112e1146112e112d1147112d112c1146112c112b1147112b112a1146112a112911471129112811461128112711471127112611461126112511471125112411461124112311471123112211461122112111471121112011461120111f1147111f111e1146111e01a001f8111d1147111d111c1146111c111b1147111b111a1146111a1119114711191118114611181117114711171116114611161115114711151114114611141113114711131112114611121111114711111110114611100f11470f0e11460e0d11470d0c11460c0b11470b0a11460a0911470908114608071147070611460601a102f805114705041146040311470302114602011148011149db3c573357335733573481646d5629b3f2f4114111451141114011441140113f1143113f113e1142113e113d1141113d113c1140113c113b113f113b113a113e113a1139113d11391138113c11381137113b11371136113a113611351139113511341138113401bf01a201fc113211361132113211351132113211331132112e1132112e112d1131112d112c1130112c112b112f112b112a112e112a1129112d11291128112c11281127112b11271126112a1126112511291125112411281124112311271123112211261122112111251121112011241120111f1123111f111e1122111e111d1121111d01a301c4111c1120111c111b111f111b111a111e111a1119111d11191118111c11181117111b11171116111a11161115111911151114111811141113111711131112111611121111111511111110111411100f11130f0e11120e0d11110d0c11100c10bf553a01a802fe8efdd33f30c8018210aff90f5758cb1fcb3fc9114411461144114311451143114211441142114111431141114011421140113f1141113f113e1140113e113d113f113d113c113e113c113b113d113b113a113c113a1139113b11391138113a113811371139113711361138113611351137113511341136113411331135113301a501a901fc113211341132113111331131113011321130112f1131112f112e1130112e112d112f112d112c112e112c112b112d112b112a112c112a1129112b11291128112a1128112711291127112611281126112511271125112411261124112311251123112211241122112111231121112011221120111f1121111f111e1120111e01a601ea111d111f111d111c111e111c111b111d111b111a111c111a1119111b11191118111a11181117111911171116111811161115111711151114111611141113111511131112111411121111111311111110111211100f11110f0e11100e10df10ce10bd10ac109b108a1079106810571046103544301201a70146f84270705003804201503304c8cf8580ca00cf8440ce01fa02806acf40f400c901fb0001a801f8c87f01ca001146114511441143114211411140113f113e113d113c113b113a1139113811371136113511341133113211311130112f112e112d112c112b112a1129112811271126112511241123112211211120111f111e111d111c111b111a111911181117111611151114111311121111111055e0db3cc9ed54db3101c10006e0114504e2e3022082f0939b8f50a89494d7788bca14d37ccb5365057f81e805b401d1ab446c0d80a3fabae3022082f040391f4eaad79adb418bdfd49edad3b17b5e392ce4fafbbf82f21f2055ee0f7dbae30282f0228aefdc558b3d1b9bb87fc33d71a2e40504be5a8d6acc8d737ee0215d75d86cba01ab01ae01b801bb01fe30114311451143114211441142114111431141114011421140113f1141113f113e1140113e113d113f113d113c113e113c113b113d113b113a113c113a1139113b11391138113a1138113711391137113611381136113511371135113411361134113311351133113211341132113111331131113011321130112f1131112f01ac01fc112e1130112e112d112f112d112c112e112c112b112d112b112a112c112a1129112b11291128112a1128112711291127112611281126112511271125112411261124112311251123112211241122112111231121112011221120111f1121111f111e1120111e111d111f111d111c111e111c111b111d111b111a111c111a01ad029a1119111b11191118111a11181117111911171116111811161115111711151114111611141113111511131112111411121111111311111110111211100f11110f0e11100e10df551cdb3c70574501bf01c001fe30114311451143114211441142114111431141114011421140113f1141113f113e1140113e113d113f113d113c113e113c113b113d113b113a113c113a1139113b11391138113a1138113711391137113611381136113511371135113411361134113311351133113211341132113111331131113011321130112f1131112f01af01fc112e1130112e112d112f112d112c112e112c112b112d112b112a112c112a1129112b11291128112a1128112711291127112611281126112511271125112411261124112311251123112211241122112111231121112011221120111f1121111f111e1120111e111d111f111d111c111e111c111b111d111b111a111c111a01b002f41119111b11191118111a11181117111911171116111811161115111711151114111611141113111511131112111411121111111311111110111211100f11110f0e11100e10df551cdb3c114411451144114311451143114211451142114111451141114011451140113f1145113f113e1145113e113d1145113d01bf01b101fc113c1145113c113b1145113b113a1145113a113911451139113811451138113711451137113611451136113511451135113411451134113311451133113211451132113111451131113011451130112f1145112f112e1145112e112d1145112d112c1145112c112b1145112b112a1145112a11291145112911281145112801b201fc112711451127112611451126112511451125112411451124112311451123112211451122112111451121112011451120111f1145111f111e1145111e111d1145111d111c1145111c111b1145111b111a1145111a11191145111911181145111811171145111711161145111611151145111511141145111411131145111301b302f61112114511121111114511111110114511100f11450f0e11450e0d11450d0c11450c0b11450b0a11450a09114509114508070655408168f41146db3c5726572c572c572c1122b301114301f2f470705640114311441143114211431142114111421141114011411140113f1140113f113e113f113e113d113e113d01b401b50010f8235622a15623bb01fc113c113d113c113b113c113b113a113b113a1139113a1139113811391138113711381137113611371136113511361135113411351134113311341133113211331132113111321131113011311130112f1130112f112e112f112e112d112e02112c0201112b011129112a112911281129112811271128112711261127112601b601f6112511261125112411251124701125112311241123112211231122112111221121112011211120111f1120111f111e111f111e111d111e111d111c111d111c111b111c111b111a111b111a1119111a111911181119111811171118111711161117111611151116111511141115111411131114111311121113111201b701501111111211111110111111100f11100f10ef10de10cd10bc10ab109a10891078106710561415433001c001fe30114311451143114211441142114111431141114011421140113f1141113f113e1140113e113d113f113d113c113e113c113b113d113b113a113c113a1139113b11391138113a1138113711391137113611381136113511371135113411361134113311351133113211341132113111331131113011321130112f1131112f01b901fc112e1130112e112d112f112d112c112e112c112b112d112b112a112c112a1129112b11291128112a1128112711291127112611281126112511271125112411261124112311251123112211241122112111231121112011221120111f1121111f111e1120111e111d111f111d111c111e111c111b111d111b111a111c111a01ba02aa1119111b11191118111a11181117111911171116111811161115111711151114111611141113111511131112111411121111111311111110111211100f11110f0e11100e10df551cdb3c57255737707f113801112501bf01c0011ee3025f0f5f0f5f0f5f0f5f0af2c08201bc01fc114311451143114211441142114111431141114011421140113f1141113f113e1140113e113d113f113d113c113e113c113b113d113b113a113c113a1139113b11391138113a1138113711391137113611381136113511371135113411361134113311351133113211341132113111331131113011321130112f1131112f01bd01fc112e1130112e112d112f112d112c112e112c112b112d112b112a112c112a1129112b11291128112a1128112711291127112611281126112511271125112411261124112311251123112211241122112111231121112011221120111f1121111f111e1120111e111d111f111d111c111e111c111b111d111b111a111c111a01be02b01119111b11191118111a11181117111911171116111811161115111711151114111611141113111511131112111411121111111311111110111211100f11110f0e11100e10df551cdb3c8200ae97562db3f2f4112db3112d01bf01c0001882008aabf8425645c705f2f401f4c87f01ca001146114511441143114211411140113f113e113d113c113b113a1139113811371136113511341133113211311130112f112e112d112c112b112a1129112811271126112511241123112211211120111f111e111d111c111b111a111911181117111611151114111311121111111055e0db3cc9ed5401c101f4011146011145fa0201114301ca0001114101ce01113f01cc113dc8cc01113c01cb0f01113a01cb0701113801ce011136fa02011134fa0201113201cb0f01113001cb0f01112e01cb0f01112c01ca0001112a01ca00011128fa02011126fa0201112401cb1f01112201cb071120c8810101cf0001111f0181010101c201fccf0001111dfa0201111bfa021119c8ce01111801ca0001111601ca0001111401810101cf0001111201810101cf0001111001f4001ef4000cc8810101cf001bcb0719ca0017cb1f15810101cf0013cb1f810101cf00cb1fcb0ff40001c8810101cf0012f40013f4005003fa0213ca0013cb0f5003fa0213cb1f14f400500401c300b0fa025004fa0215ca0015cb0f05c8f40016ca005006fa025006fa0216f40016ca005006fa0216cb1f16cb0716810101cf0016810101cf00c85007fa0218f40018810101cf0018f40019ce17cb0fcd15cd13cd14cdcd12cdcd615f96a8');
+    const builder = beginCell();
     builder.storeUint(0, 1);
     initQuasarMaster_init_args({ $$type: 'QuasarMaster_init_args', owner, content, walletCode })(builder);
     const __data = builder.endCell();
     return { code: __code, data: __data };
 }
 
-const QuasarMaster_errors: { [key: number]: { message: string } } = {
-    2: { message: `Stack underflow` },
-    3: { message: `Stack overflow` },
-    4: { message: `Integer overflow` },
-    5: { message: `Integer out of expected range` },
-    6: { message: `Invalid opcode` },
-    7: { message: `Type check error` },
-    8: { message: `Cell overflow` },
-    9: { message: `Cell underflow` },
-    10: { message: `Dictionary error` },
-    11: { message: `'Unknown' error` },
-    12: { message: `Fatal error` },
-    13: { message: `Out of gas error` },
-    14: { message: `Virtualization error` },
-    32: { message: `Action list is invalid` },
-    33: { message: `Action list is too long` },
-    34: { message: `Action is invalid or not supported` },
-    35: { message: `Invalid source address in outbound message` },
-    36: { message: `Invalid destination address in outbound message` },
-    37: { message: `Not enough TON` },
-    38: { message: `Not enough extra-currencies` },
-    39: { message: `Outbound message does not fit into a cell after rewriting` },
-    40: { message: `Cannot process a message` },
-    41: { message: `Library reference is null` },
-    42: { message: `Library change action error` },
-    43: { message: `Exceeded maximum number of cells in the library or the maximum depth of the Merkle tree` },
-    50: { message: `Account state size exceeded limits` },
-    128: { message: `Null reference exception` },
-    129: { message: `Invalid serialization prefix` },
-    130: { message: `Invalid incoming message` },
-    131: { message: `Constraints error` },
-    132: { message: `Access denied` },
-    133: { message: `Contract stopped` },
-    134: { message: `Invalid argument` },
-    135: { message: `Code of a contract was not found` },
-    136: { message: `Invalid address` },
-    137: { message: `Masterchain support is not enabled for this contract` },
-    1425: { message: `No tickets` },
-    2526: { message: `Only AI` },
-    4173: { message: `Self referral` },
-    6278: { message: `Closed` },
-    8660: { message: `Insufficient` },
-    8916: { message: `Window closed` },
-    10363: { message: `Unauthorized burn` },
-    11836: { message: `Invalid fee source` },
-    13478: { message: `Minting off` },
-    14534: { message: `Not owner` },
-    20944: { message: `AI disabled` },
-    21101: { message: `Already registered` },
-    21245: { message: `Insufficient stake` },
-    22981: { message: `Done` },
-    25219: { message: `Lock active` },
-    25390: { message: `Buyback off` },
-    25534: { message: `Not found` },
-    25709: { message: `AI controls` },
-    26156: { message: `Below min` },
-    26868: { message: `AI alive` },
-    28115: { message: `No stake` },
-    30245: { message: `No vesting` },
-    31786: { message: `Pool low` },
-    34524: { message: `Limits` },
-    35499: { message: `Only owner` },
-    38227: { message: `Fee 0.10%-1.00%` },
-    40072: { message: `Pool empty` },
-    40372: { message: `Max tx exceeded` },
-    41094: { message: `Already exists` },
-    42340: { message: `Too early` },
-    43719: { message: `Staking off` },
-    44027: { message: `Referral off` },
-    44695: { message: `Disable autonomy first` },
-    44799: { message: `Nothing to claim` },
-    45605: { message: `Lottery off` },
-    49729: { message: `Unauthorized` },
-    52432: { message: `Only AI oracle` },
-    52497: { message: `Cliff not reached` },
-    53010: { message: `No autonomy` },
-    53536: { message: `Low confidence` },
-    55849: { message: `Cooldown` },
-    57292: { message: `Trading off` },
-    57316: { message: `AI cooldown` },
-    57784: { message: `No rewards` },
-    57871: { message: `Invalid` },
-    59457: { message: `Paused` },
-    61977: { message: `Range` },
-}
+export const QuasarMaster_errors = {
+    2: { message: "Stack underflow" },
+    3: { message: "Stack overflow" },
+    4: { message: "Integer overflow" },
+    5: { message: "Integer out of expected range" },
+    6: { message: "Invalid opcode" },
+    7: { message: "Type check error" },
+    8: { message: "Cell overflow" },
+    9: { message: "Cell underflow" },
+    10: { message: "Dictionary error" },
+    11: { message: "'Unknown' error" },
+    12: { message: "Fatal error" },
+    13: { message: "Out of gas error" },
+    14: { message: "Virtualization error" },
+    32: { message: "Action list is invalid" },
+    33: { message: "Action list is too long" },
+    34: { message: "Action is invalid or not supported" },
+    35: { message: "Invalid source address in outbound message" },
+    36: { message: "Invalid destination address in outbound message" },
+    37: { message: "Not enough Toncoin" },
+    38: { message: "Not enough extra currencies" },
+    39: { message: "Outbound message does not fit into a cell after rewriting" },
+    40: { message: "Cannot process a message" },
+    41: { message: "Library reference is null" },
+    42: { message: "Library change action error" },
+    43: { message: "Exceeded maximum number of cells in the library or the maximum depth of the Merkle tree" },
+    50: { message: "Account state size exceeded limits" },
+    128: { message: "Null reference exception" },
+    129: { message: "Invalid serialization prefix" },
+    130: { message: "Invalid incoming message" },
+    131: { message: "Constraints error" },
+    132: { message: "Access denied" },
+    133: { message: "Contract stopped" },
+    134: { message: "Invalid argument" },
+    135: { message: "Code of a contract was not found" },
+    136: { message: "Invalid standard address" },
+    138: { message: "Not a basechain address" },
+    1425: { message: "No tickets" },
+    2526: { message: "Only AI" },
+    4173: { message: "Self referral" },
+    6278: { message: "Closed" },
+    8660: { message: "Insufficient" },
+    8916: { message: "Window closed" },
+    10363: { message: "Unauthorized burn" },
+    11836: { message: "Invalid fee source" },
+    13478: { message: "Minting off" },
+    14534: { message: "Not owner" },
+    17062: { message: "Invalid amount" },
+    20944: { message: "AI disabled" },
+    21101: { message: "Already registered" },
+    21245: { message: "Insufficient stake" },
+    21516: { message: "Invalid receiver" },
+    22981: { message: "Done" },
+    25219: { message: "Lock active" },
+    25390: { message: "Buyback off" },
+    25534: { message: "Not found" },
+    25709: { message: "AI controls" },
+    26156: { message: "Below min" },
+    26868: { message: "AI alive" },
+    28115: { message: "No stake" },
+    30245: { message: "No vesting" },
+    31786: { message: "Pool low" },
+    33624: { message: "Invalid DeFi address" },
+    34524: { message: "Limits" },
+    35499: { message: "Only owner" },
+    36222: { message: "Invalid lottery config" },
+    38227: { message: "Fee 0.10%-1.00%" },
+    40072: { message: "Pool empty" },
+    40372: { message: "Max tx exceeded" },
+    41094: { message: "Already exists" },
+    42340: { message: "Too early" },
+    43719: { message: "Staking off" },
+    44027: { message: "Referral off" },
+    44695: { message: "Disable autonomy first" },
+    44799: { message: "Nothing to claim" },
+    45296: { message: "Invalid vesting" },
+    45605: { message: "Lottery off" },
+    47767: { message: "Invalid referral reward" },
+    49729: { message: "Unauthorized" },
+    52432: { message: "Only AI oracle" },
+    52497: { message: "Cliff not reached" },
+    53010: { message: "No autonomy" },
+    53536: { message: "Low confidence" },
+    55849: { message: "Cooldown" },
+    57292: { message: "Trading off" },
+    57316: { message: "AI cooldown" },
+    57665: { message: "Invalid staking config" },
+    57784: { message: "No rewards" },
+    57871: { message: "Invalid" },
+    59457: { message: "Paused" },
+    61977: { message: "Range" },
+} as const
+
+export const QuasarMaster_errors_backward = {
+    "Stack underflow": 2,
+    "Stack overflow": 3,
+    "Integer overflow": 4,
+    "Integer out of expected range": 5,
+    "Invalid opcode": 6,
+    "Type check error": 7,
+    "Cell overflow": 8,
+    "Cell underflow": 9,
+    "Dictionary error": 10,
+    "'Unknown' error": 11,
+    "Fatal error": 12,
+    "Out of gas error": 13,
+    "Virtualization error": 14,
+    "Action list is invalid": 32,
+    "Action list is too long": 33,
+    "Action is invalid or not supported": 34,
+    "Invalid source address in outbound message": 35,
+    "Invalid destination address in outbound message": 36,
+    "Not enough Toncoin": 37,
+    "Not enough extra currencies": 38,
+    "Outbound message does not fit into a cell after rewriting": 39,
+    "Cannot process a message": 40,
+    "Library reference is null": 41,
+    "Library change action error": 42,
+    "Exceeded maximum number of cells in the library or the maximum depth of the Merkle tree": 43,
+    "Account state size exceeded limits": 50,
+    "Null reference exception": 128,
+    "Invalid serialization prefix": 129,
+    "Invalid incoming message": 130,
+    "Constraints error": 131,
+    "Access denied": 132,
+    "Contract stopped": 133,
+    "Invalid argument": 134,
+    "Code of a contract was not found": 135,
+    "Invalid standard address": 136,
+    "Not a basechain address": 138,
+    "No tickets": 1425,
+    "Only AI": 2526,
+    "Self referral": 4173,
+    "Closed": 6278,
+    "Insufficient": 8660,
+    "Window closed": 8916,
+    "Unauthorized burn": 10363,
+    "Invalid fee source": 11836,
+    "Minting off": 13478,
+    "Not owner": 14534,
+    "Invalid amount": 17062,
+    "AI disabled": 20944,
+    "Already registered": 21101,
+    "Insufficient stake": 21245,
+    "Invalid receiver": 21516,
+    "Done": 22981,
+    "Lock active": 25219,
+    "Buyback off": 25390,
+    "Not found": 25534,
+    "AI controls": 25709,
+    "Below min": 26156,
+    "AI alive": 26868,
+    "No stake": 28115,
+    "No vesting": 30245,
+    "Pool low": 31786,
+    "Invalid DeFi address": 33624,
+    "Limits": 34524,
+    "Only owner": 35499,
+    "Invalid lottery config": 36222,
+    "Fee 0.10%-1.00%": 38227,
+    "Pool empty": 40072,
+    "Max tx exceeded": 40372,
+    "Already exists": 41094,
+    "Too early": 42340,
+    "Staking off": 43719,
+    "Referral off": 44027,
+    "Disable autonomy first": 44695,
+    "Nothing to claim": 44799,
+    "Invalid vesting": 45296,
+    "Lottery off": 45605,
+    "Invalid referral reward": 47767,
+    "Unauthorized": 49729,
+    "Only AI oracle": 52432,
+    "Cliff not reached": 52497,
+    "No autonomy": 53010,
+    "Low confidence": 53536,
+    "Cooldown": 55849,
+    "Trading off": 57292,
+    "AI cooldown": 57316,
+    "Invalid staking config": 57665,
+    "No rewards": 57784,
+    "Invalid": 57871,
+    "Paused": 59457,
+    "Range": 61977,
+} as const
 
 const QuasarMaster_types: ABIType[] = [
+    {"name":"DataSize","header":null,"fields":[{"name":"cells","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"bits","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"refs","type":{"kind":"simple","type":"int","optional":false,"format":257}}]},
+    {"name":"SignedBundle","header":null,"fields":[{"name":"signature","type":{"kind":"simple","type":"fixed-bytes","optional":false,"format":64}},{"name":"signedData","type":{"kind":"simple","type":"slice","optional":false,"format":"remainder"}}]},
     {"name":"StateInit","header":null,"fields":[{"name":"code","type":{"kind":"simple","type":"cell","optional":false}},{"name":"data","type":{"kind":"simple","type":"cell","optional":false}}]},
+    {"name":"Context","header":null,"fields":[{"name":"bounceable","type":{"kind":"simple","type":"bool","optional":false}},{"name":"sender","type":{"kind":"simple","type":"address","optional":false}},{"name":"value","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"raw","type":{"kind":"simple","type":"slice","optional":false}}]},
+    {"name":"SendParameters","header":null,"fields":[{"name":"mode","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"body","type":{"kind":"simple","type":"cell","optional":true}},{"name":"code","type":{"kind":"simple","type":"cell","optional":true}},{"name":"data","type":{"kind":"simple","type":"cell","optional":true}},{"name":"value","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"to","type":{"kind":"simple","type":"address","optional":false}},{"name":"bounce","type":{"kind":"simple","type":"bool","optional":false}}]},
+    {"name":"MessageParameters","header":null,"fields":[{"name":"mode","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"body","type":{"kind":"simple","type":"cell","optional":true}},{"name":"value","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"to","type":{"kind":"simple","type":"address","optional":false}},{"name":"bounce","type":{"kind":"simple","type":"bool","optional":false}}]},
+    {"name":"DeployParameters","header":null,"fields":[{"name":"mode","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"body","type":{"kind":"simple","type":"cell","optional":true}},{"name":"value","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"bounce","type":{"kind":"simple","type":"bool","optional":false}},{"name":"init","type":{"kind":"simple","type":"StateInit","optional":false}}]},
     {"name":"StdAddress","header":null,"fields":[{"name":"workchain","type":{"kind":"simple","type":"int","optional":false,"format":8}},{"name":"address","type":{"kind":"simple","type":"uint","optional":false,"format":256}}]},
     {"name":"VarAddress","header":null,"fields":[{"name":"workchain","type":{"kind":"simple","type":"int","optional":false,"format":32}},{"name":"address","type":{"kind":"simple","type":"slice","optional":false}}]},
-    {"name":"Context","header":null,"fields":[{"name":"bounced","type":{"kind":"simple","type":"bool","optional":false}},{"name":"sender","type":{"kind":"simple","type":"address","optional":false}},{"name":"value","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"raw","type":{"kind":"simple","type":"slice","optional":false}}]},
-    {"name":"SendParameters","header":null,"fields":[{"name":"bounce","type":{"kind":"simple","type":"bool","optional":false}},{"name":"to","type":{"kind":"simple","type":"address","optional":false}},{"name":"value","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"mode","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"body","type":{"kind":"simple","type":"cell","optional":true}},{"name":"code","type":{"kind":"simple","type":"cell","optional":true}},{"name":"data","type":{"kind":"simple","type":"cell","optional":true}}]},
+    {"name":"BasechainAddress","header":null,"fields":[{"name":"hash","type":{"kind":"simple","type":"int","optional":true,"format":257}}]},
     {"name":"Deploy","header":2490013878,"fields":[{"name":"queryId","type":{"kind":"simple","type":"uint","optional":false,"format":64}}]},
     {"name":"DeployOk","header":2952335191,"fields":[{"name":"queryId","type":{"kind":"simple","type":"uint","optional":false,"format":64}}]},
     {"name":"FactoryDeploy","header":1829761339,"fields":[{"name":"queryId","type":{"kind":"simple","type":"uint","optional":false,"format":64}},{"name":"cashback","type":{"kind":"simple","type":"address","optional":false}}]},
+    {"name":"EventMint","header":860203922,"fields":[{"name":"amount","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"receiver","type":{"kind":"simple","type":"address","optional":false}}]},
+    {"name":"EventBurn","header":3532337071,"fields":[{"name":"amount","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"burner","type":{"kind":"simple","type":"address","optional":false}}]},
+    {"name":"EventFeeDistributed","header":3296433968,"fields":[{"name":"totalFee","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"burn","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"buyback","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"lottery","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"staking","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"referral","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"treasury","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"defiPool","type":{"kind":"simple","type":"int","optional":false,"format":257}}]},
+    {"name":"EventBuybackExecuted","header":1890367419,"fields":[{"name":"tonSpent","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"qsrBurned","type":{"kind":"simple","type":"int","optional":false,"format":257}}]},
+    {"name":"EventLotteryDrawn","header":1455139578,"fields":[{"name":"round","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"winner","type":{"kind":"simple","type":"address","optional":false}},{"name":"jackpot","type":{"kind":"simple","type":"int","optional":false,"format":257}}]},
+    {"name":"EventStake","header":2899784103,"fields":[{"name":"staker","type":{"kind":"simple","type":"address","optional":false}},{"name":"amount","type":{"kind":"simple","type":"int","optional":false,"format":257}}]},
+    {"name":"EventUnstake","header":2219162629,"fields":[{"name":"staker","type":{"kind":"simple","type":"address","optional":false}},{"name":"amount","type":{"kind":"simple","type":"int","optional":false,"format":257}}]},
+    {"name":"EventReferralRegistered","header":685454731,"fields":[{"name":"user","type":{"kind":"simple","type":"address","optional":false}},{"name":"referrer","type":{"kind":"simple","type":"address","optional":false}}]},
+    {"name":"EventVestingClaimed","header":929365622,"fields":[{"name":"beneficiary","type":{"kind":"simple","type":"address","optional":false}},{"name":"amount","type":{"kind":"simple","type":"int","optional":false,"format":257}}]},
+    {"name":"EventAiAction","header":1580835377,"fields":[{"name":"actionId","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"actionType","type":{"kind":"simple","type":"string","optional":false}},{"name":"oldValue","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"newValue","type":{"kind":"simple","type":"int","optional":false,"format":257}}]},
     {"name":"AISetOracle","header":707361075,"fields":[{"name":"oracleAddress","type":{"kind":"simple","type":"address","optional":false}}]},
     {"name":"AIGrantFullAutonomy","header":3323893351,"fields":[{"name":"enabled","type":{"kind":"simple","type":"bool","optional":false}}]},
     {"name":"AIHeartbeat","header":2409132733,"fields":[{"name":"queryId","type":{"kind":"simple","type":"uint","optional":false,"format":64}},{"name":"status","type":{"kind":"simple","type":"string","optional":false}}]},
@@ -4581,6 +5682,8 @@ const QuasarMaster_types: ABIType[] = [
     {"name":"ToggleTrading","header":4051840417,"fields":[{"name":"enabled","type":{"kind":"simple","type":"bool","optional":false}}]},
     {"name":"TriggerBuyback","header":3487694140,"fields":[{"name":"queryId","type":{"kind":"simple","type":"uint","optional":false,"format":64}}]},
     {"name":"SetBuybackConfig","header":2209879114,"fields":[{"name":"enabled","type":{"kind":"simple","type":"bool","optional":false}},{"name":"threshold","type":{"kind":"simple","type":"uint","optional":false,"format":"coins"}},{"name":"cooldown","type":{"kind":"simple","type":"uint","optional":false,"format":32}},{"name":"burnPercent","type":{"kind":"simple","type":"uint","optional":false,"format":8}}]},
+    {"name":"SetDefiAddress","header":587306774,"fields":[{"name":"defiAddress","type":{"kind":"simple","type":"address","optional":false}}]},
+    {"name":"SyncFeeToDefi","header":94992733,"fields":[{"name":"amount","type":{"kind":"simple","type":"uint","optional":false,"format":"coins"}}]},
     {"name":"Stake","header":3203459332,"fields":[{"name":"amount","type":{"kind":"simple","type":"uint","optional":false,"format":"coins"}}]},
     {"name":"Unstake","header":4284693473,"fields":[{"name":"amount","type":{"kind":"simple","type":"uint","optional":false,"format":"coins"}}]},
     {"name":"ClaimRewards","header":155852668,"fields":[]},
@@ -4608,31 +5711,89 @@ const QuasarMaster_types: ABIType[] = [
     {"name":"VestingInfo","header":null,"fields":[{"name":"totalAmount","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"claimed","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"startTime","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"cliff","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"duration","type":{"kind":"simple","type":"int","optional":false,"format":257}}]},
     {"name":"LotteryConfig","header":null,"fields":[{"name":"enabled","type":{"kind":"simple","type":"bool","optional":false}},{"name":"ticketPrice","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"drawInterval","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"jackpotShare","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"currentRound","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"lastDraw","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"totalJackpot","type":{"kind":"simple","type":"int","optional":false,"format":257}}]},
     {"name":"LotteryTicket","header":null,"fields":[{"name":"round","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"owner","type":{"kind":"simple","type":"address","optional":false}}]},
-    {"name":"QuasarMaster$Data","header":null,"fields":[{"name":"totalSupply","type":{"kind":"simple","type":"uint","optional":false,"format":"coins"}},{"name":"mintable","type":{"kind":"simple","type":"bool","optional":false}},{"name":"owner","type":{"kind":"simple","type":"address","optional":false}},{"name":"content","type":{"kind":"simple","type":"cell","optional":false}},{"name":"walletCode","type":{"kind":"simple","type":"cell","optional":false}},{"name":"feeBps","type":{"kind":"simple","type":"uint","optional":false,"format":16}},{"name":"feeBurnShare","type":{"kind":"simple","type":"uint","optional":false,"format":8}},{"name":"treasury","type":{"kind":"simple","type":"address","optional":false}},{"name":"totalBurned","type":{"kind":"simple","type":"uint","optional":false,"format":"coins"}},{"name":"totalFeesCollected","type":{"kind":"simple","type":"uint","optional":false,"format":"coins"}},{"name":"maxTxBps","type":{"kind":"simple","type":"uint","optional":false,"format":16}},{"name":"maxWalletBps","type":{"kind":"simple","type":"uint","optional":false,"format":16}},{"name":"cooldownSeconds","type":{"kind":"simple","type":"uint","optional":false,"format":16}},{"name":"tradingEnabled","type":{"kind":"simple","type":"bool","optional":false}},{"name":"buybackEnabled","type":{"kind":"simple","type":"bool","optional":false}},{"name":"buybackPool","type":{"kind":"simple","type":"uint","optional":false,"format":"coins"}},{"name":"buybackThreshold","type":{"kind":"simple","type":"uint","optional":false,"format":"coins"}},{"name":"buybackCooldown","type":{"kind":"simple","type":"uint","optional":false,"format":32}},{"name":"buybackBurnPercent","type":{"kind":"simple","type":"uint","optional":false,"format":8}},{"name":"lastBuybackTime","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"totalBuybacks","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"totalQsrBurnedViaBuyback","type":{"kind":"simple","type":"uint","optional":false,"format":"coins"}},{"name":"totalTonSpentOnBuyback","type":{"kind":"simple","type":"uint","optional":false,"format":"coins"}},{"name":"aiOracle","type":{"kind":"simple","type":"address","optional":false}},{"name":"aiEnabled","type":{"kind":"simple","type":"bool","optional":false}},{"name":"aiFullAutonomy","type":{"kind":"simple","type":"bool","optional":false}},{"name":"lastRebalanceTime","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"signalCount","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"priceHistory","type":{"kind":"dict","key":"int","value":"int"}},{"name":"anomalyLog","type":{"kind":"dict","key":"int","value":"AIRecommendation","valueFormat":"ref"}},{"name":"anomalyIndex","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"minConfidence","type":{"kind":"simple","type":"uint","optional":false,"format":8}},{"name":"emergencyPause","type":{"kind":"simple","type":"bool","optional":false}},{"name":"aiActionCooldown","type":{"kind":"simple","type":"uint","optional":false,"format":32}},{"name":"lastAiActionTime","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"heartbeatTimeout","type":{"kind":"simple","type":"uint","optional":false,"format":32}},{"name":"lastHeartbeat","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"ownerOverrideWindow","type":{"kind":"simple","type":"uint","optional":false,"format":32}},{"name":"vetoThresholdBps","type":{"kind":"simple","type":"uint","optional":false,"format":16}},{"name":"aiActionLog","type":{"kind":"dict","key":"int","value":"AIActionLog","valueFormat":"ref"}},{"name":"aiActionIndex","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"pendingAiActions","type":{"kind":"dict","key":"int","value":"int"}},{"name":"vetoLog","type":{"kind":"dict","key":"int","value":"VetoState","valueFormat":"ref"}},{"name":"totalVetoStake","type":{"kind":"simple","type":"uint","optional":false,"format":"coins"}},{"name":"stakingEnabled","type":{"kind":"simple","type":"bool","optional":false}},{"name":"stakingApyBps","type":{"kind":"simple","type":"uint","optional":false,"format":16}},{"name":"stakingMinStake","type":{"kind":"simple","type":"uint","optional":false,"format":"coins"}},{"name":"stakingLockPeriod","type":{"kind":"simple","type":"uint","optional":false,"format":32}},{"name":"stakers","type":{"kind":"dict","key":"address","value":"StakeInfo","valueFormat":"ref"}},{"name":"totalStaked","type":{"kind":"simple","type":"uint","optional":false,"format":"coins"}},{"name":"stakingRewardsPool","type":{"kind":"simple","type":"uint","optional":false,"format":"coins"}},{"name":"referralEnabled","type":{"kind":"simple","type":"bool","optional":false}},{"name":"referralRewardBps","type":{"kind":"simple","type":"uint","optional":false,"format":16}},{"name":"referrals","type":{"kind":"dict","key":"address","value":"ReferralInfo","valueFormat":"ref"}},{"name":"vestingEnabled","type":{"kind":"simple","type":"bool","optional":false}},{"name":"teamAllocation","type":{"kind":"simple","type":"uint","optional":false,"format":"coins"}},{"name":"teamClaimed","type":{"kind":"simple","type":"uint","optional":false,"format":"coins"}},{"name":"vestingSchedules","type":{"kind":"dict","key":"address","value":"VestingInfo","valueFormat":"ref"}},{"name":"lotteryEnabled","type":{"kind":"simple","type":"bool","optional":false}},{"name":"lotteryTicketPrice","type":{"kind":"simple","type":"uint","optional":false,"format":"coins"}},{"name":"lotteryDrawInterval","type":{"kind":"simple","type":"uint","optional":false,"format":32}},{"name":"lotteryJackpotShare","type":{"kind":"simple","type":"uint","optional":false,"format":8}},{"name":"lotteryRound","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"lotteryLastDraw","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"lotteryJackpot","type":{"kind":"simple","type":"uint","optional":false,"format":"coins"}},{"name":"lotteryTickets","type":{"kind":"dict","key":"int","value":"address"}},{"name":"lotteryTicketCount","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"lotteryWinners","type":{"kind":"dict","key":"int","value":"address"}}]},
+    {"name":"QuasarMaster$Data","header":null,"fields":[{"name":"totalSupply","type":{"kind":"simple","type":"uint","optional":false,"format":"coins"}},{"name":"mintable","type":{"kind":"simple","type":"bool","optional":false}},{"name":"owner","type":{"kind":"simple","type":"address","optional":false}},{"name":"content","type":{"kind":"simple","type":"cell","optional":false}},{"name":"walletCode","type":{"kind":"simple","type":"cell","optional":false}},{"name":"feeBps","type":{"kind":"simple","type":"uint","optional":false,"format":16}},{"name":"feeBurnShare","type":{"kind":"simple","type":"uint","optional":false,"format":8}},{"name":"treasury","type":{"kind":"simple","type":"address","optional":false}},{"name":"totalBurned","type":{"kind":"simple","type":"uint","optional":false,"format":"coins"}},{"name":"totalFeesCollected","type":{"kind":"simple","type":"uint","optional":false,"format":"coins"}},{"name":"maxTxBps","type":{"kind":"simple","type":"uint","optional":false,"format":16}},{"name":"maxWalletBps","type":{"kind":"simple","type":"uint","optional":false,"format":16}},{"name":"cooldownSeconds","type":{"kind":"simple","type":"uint","optional":false,"format":16}},{"name":"tradingEnabled","type":{"kind":"simple","type":"bool","optional":false}},{"name":"buybackEnabled","type":{"kind":"simple","type":"bool","optional":false}},{"name":"buybackPool","type":{"kind":"simple","type":"uint","optional":false,"format":"coins"}},{"name":"buybackThreshold","type":{"kind":"simple","type":"uint","optional":false,"format":"coins"}},{"name":"buybackCooldown","type":{"kind":"simple","type":"uint","optional":false,"format":32}},{"name":"buybackBurnPercent","type":{"kind":"simple","type":"uint","optional":false,"format":8}},{"name":"lastBuybackTime","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"totalBuybacks","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"totalQsrBurnedViaBuyback","type":{"kind":"simple","type":"uint","optional":false,"format":"coins"}},{"name":"totalTonSpentOnBuyback","type":{"kind":"simple","type":"uint","optional":false,"format":"coins"}},{"name":"aiOracle","type":{"kind":"simple","type":"address","optional":false}},{"name":"aiEnabled","type":{"kind":"simple","type":"bool","optional":false}},{"name":"aiFullAutonomy","type":{"kind":"simple","type":"bool","optional":false}},{"name":"lastRebalanceTime","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"signalCount","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"priceHistory","type":{"kind":"dict","key":"int","value":"int"}},{"name":"anomalyLog","type":{"kind":"dict","key":"int","value":"AIRecommendation","valueFormat":"ref"}},{"name":"anomalyIndex","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"minConfidence","type":{"kind":"simple","type":"uint","optional":false,"format":8}},{"name":"emergencyPause","type":{"kind":"simple","type":"bool","optional":false}},{"name":"aiActionCooldown","type":{"kind":"simple","type":"uint","optional":false,"format":32}},{"name":"lastAiActionTime","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"heartbeatTimeout","type":{"kind":"simple","type":"uint","optional":false,"format":32}},{"name":"lastHeartbeat","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"ownerOverrideWindow","type":{"kind":"simple","type":"uint","optional":false,"format":32}},{"name":"vetoThresholdBps","type":{"kind":"simple","type":"uint","optional":false,"format":16}},{"name":"aiActionLog","type":{"kind":"dict","key":"int","value":"AIActionLog","valueFormat":"ref"}},{"name":"aiActionIndex","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"pendingAiActions","type":{"kind":"dict","key":"int","value":"int"}},{"name":"vetoLog","type":{"kind":"dict","key":"int","value":"VetoState","valueFormat":"ref"}},{"name":"totalVetoStake","type":{"kind":"simple","type":"uint","optional":false,"format":"coins"}},{"name":"stakingEnabled","type":{"kind":"simple","type":"bool","optional":false}},{"name":"stakingApyBps","type":{"kind":"simple","type":"uint","optional":false,"format":16}},{"name":"stakingMinStake","type":{"kind":"simple","type":"uint","optional":false,"format":"coins"}},{"name":"stakingLockPeriod","type":{"kind":"simple","type":"uint","optional":false,"format":32}},{"name":"stakers","type":{"kind":"dict","key":"address","value":"StakeInfo","valueFormat":"ref"}},{"name":"totalStaked","type":{"kind":"simple","type":"uint","optional":false,"format":"coins"}},{"name":"stakingRewardsPool","type":{"kind":"simple","type":"uint","optional":false,"format":"coins"}},{"name":"referralEnabled","type":{"kind":"simple","type":"bool","optional":false}},{"name":"referralRewardBps","type":{"kind":"simple","type":"uint","optional":false,"format":16}},{"name":"referrals","type":{"kind":"dict","key":"address","value":"ReferralInfo","valueFormat":"ref"}},{"name":"vestingEnabled","type":{"kind":"simple","type":"bool","optional":false}},{"name":"teamAllocation","type":{"kind":"simple","type":"uint","optional":false,"format":"coins"}},{"name":"teamClaimed","type":{"kind":"simple","type":"uint","optional":false,"format":"coins"}},{"name":"vestingSchedules","type":{"kind":"dict","key":"address","value":"VestingInfo","valueFormat":"ref"}},{"name":"lotteryEnabled","type":{"kind":"simple","type":"bool","optional":false}},{"name":"lotteryTicketPrice","type":{"kind":"simple","type":"uint","optional":false,"format":"coins"}},{"name":"lotteryDrawInterval","type":{"kind":"simple","type":"uint","optional":false,"format":32}},{"name":"lotteryJackpotShare","type":{"kind":"simple","type":"uint","optional":false,"format":8}},{"name":"lotteryRound","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"lotteryLastDraw","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"lotteryJackpot","type":{"kind":"simple","type":"uint","optional":false,"format":"coins"}},{"name":"lotteryTickets","type":{"kind":"dict","key":"int","value":"address"}},{"name":"lotteryTicketCount","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"lotteryWinners","type":{"kind":"dict","key":"int","value":"address"}},{"name":"defiAddress","type":{"kind":"simple","type":"address","optional":false}},{"name":"defiFeeShareBps","type":{"kind":"simple","type":"uint","optional":false,"format":16}}]},
     {"name":"QuasarWallet$Data","header":null,"fields":[{"name":"balance","type":{"kind":"simple","type":"uint","optional":false,"format":"coins"}},{"name":"owner","type":{"kind":"simple","type":"address","optional":false}},{"name":"master","type":{"kind":"simple","type":"address","optional":false}},{"name":"lastTxTime","type":{"kind":"simple","type":"int","optional":false,"format":257}}]},
 ]
 
+const QuasarMaster_opcodes = {
+    "Deploy": 2490013878,
+    "DeployOk": 2952335191,
+    "FactoryDeploy": 1829761339,
+    "EventMint": 860203922,
+    "EventBurn": 3532337071,
+    "EventFeeDistributed": 3296433968,
+    "EventBuybackExecuted": 1890367419,
+    "EventLotteryDrawn": 1455139578,
+    "EventStake": 2899784103,
+    "EventUnstake": 2219162629,
+    "EventReferralRegistered": 685454731,
+    "EventVestingClaimed": 929365622,
+    "EventAiAction": 1580835377,
+    "AISetOracle": 707361075,
+    "AIGrantFullAutonomy": 3323893351,
+    "AIHeartbeat": 2409132733,
+    "AIVetoVote": 2637925553,
+    "OwnerOverride": 164764433,
+    "AIRebalance": 679670248,
+    "AIPriceSignal": 1763742623,
+    "AIAnomalyAlert": 3697509643,
+    "AIGovernanceProposal": 3633360959,
+    "AISetFee": 400520088,
+    "AISetTreasuryDirect": 2042225859,
+    "AISetAntiWhale": 284672247,
+    "AISetBuybackDirect": 156406141,
+    "AIToggleTrading": 76600837,
+    "AIEmergencyPause": 4117793461,
+    "AIRotateOracle": 800136214,
+    "Mint": 4235234258,
+    "BurnNotification": 3675779274,
+    "TokenTransfer": 2477503806,
+    "TokenBurn": 3884065811,
+    "TokenNotification": 78460803,
+    "FeeTransfer": 3948052191,
+    "SetTreasury": 3485887677,
+    "SetFeeConfig": 1007896360,
+    "ToggleTrading": 4051840417,
+    "TriggerBuyback": 3487694140,
+    "SetBuybackConfig": 2209879114,
+    "SetDefiAddress": 587306774,
+    "SyncFeeToDefi": 94992733,
+    "Stake": 3203459332,
+    "Unstake": 4284693473,
+    "ClaimRewards": 155852668,
+    "SetStakingConfig": 331180850,
+    "RegisterReferral": 3551857443,
+    "ClaimReferralRewards": 3188740785,
+    "SetReferralConfig": 447783234,
+    "AddVesting": 3930012637,
+    "ClaimVested": 4152964106,
+    "TriggerLottery": 2876814287,
+    "SetLotteryConfig": 463535866,
+}
+
 const QuasarMaster_getters: ABIGetter[] = [
-    {"name":"get_jetton_data","arguments":[],"returnType":{"kind":"simple","type":"JettonData","optional":false}},
-    {"name":"get_wallet_address","arguments":[{"name":"owner","type":{"kind":"simple","type":"address","optional":false}}],"returnType":{"kind":"simple","type":"address","optional":false}},
-    {"name":"get_ai_state","arguments":[],"returnType":{"kind":"simple","type":"AIState","optional":false}},
-    {"name":"get_autonomy_state","arguments":[],"returnType":{"kind":"simple","type":"AutonomyState","optional":false}},
-    {"name":"get_fee_config","arguments":[],"returnType":{"kind":"simple","type":"FeeConfig","optional":false}},
-    {"name":"get_buyback_state","arguments":[],"returnType":{"kind":"simple","type":"BuybackState","optional":false}},
-    {"name":"get_staking_config","arguments":[],"returnType":{"kind":"simple","type":"StakingConfig","optional":false}},
-    {"name":"get_stake_info","arguments":[{"name":"staker","type":{"kind":"simple","type":"address","optional":false}}],"returnType":{"kind":"simple","type":"StakeInfo","optional":true}},
-    {"name":"get_referral_info","arguments":[{"name":"user","type":{"kind":"simple","type":"address","optional":false}}],"returnType":{"kind":"simple","type":"ReferralInfo","optional":true}},
-    {"name":"get_vesting_info","arguments":[{"name":"beneficiary","type":{"kind":"simple","type":"address","optional":false}}],"returnType":{"kind":"simple","type":"VestingInfo","optional":true}},
-    {"name":"get_lottery_config","arguments":[],"returnType":{"kind":"simple","type":"LotteryConfig","optional":false}},
-    {"name":"get_lottery_winner","arguments":[{"name":"round","type":{"kind":"simple","type":"int","optional":false,"format":257}}],"returnType":{"kind":"simple","type":"address","optional":true}},
-    {"name":"get_ai_action","arguments":[{"name":"actionId","type":{"kind":"simple","type":"int","optional":false,"format":257}}],"returnType":{"kind":"simple","type":"AIActionLog","optional":true}},
-    {"name":"get_veto_state","arguments":[{"name":"actionId","type":{"kind":"simple","type":"int","optional":false,"format":257}}],"returnType":{"kind":"simple","type":"VetoState","optional":true}},
-    {"name":"get_ai_recommendation","arguments":[{"name":"index","type":{"kind":"simple","type":"int","optional":false,"format":257}}],"returnType":{"kind":"simple","type":"AIRecommendation","optional":true}},
-    {"name":"get_price_at","arguments":[{"name":"timestamp","type":{"kind":"simple","type":"int","optional":false,"format":257}}],"returnType":{"kind":"simple","type":"int","optional":true,"format":257}},
-    {"name":"is_paused","arguments":[],"returnType":{"kind":"simple","type":"bool","optional":false}},
-    {"name":"is_trading_enabled","arguments":[],"returnType":{"kind":"simple","type":"bool","optional":false}},
-    {"name":"is_ai_alive","arguments":[],"returnType":{"kind":"simple","type":"bool","optional":false}},
-    {"name":"can_owner_override","arguments":[{"name":"actionId","type":{"kind":"simple","type":"int","optional":false,"format":257}}],"returnType":{"kind":"simple","type":"bool","optional":false}},
+    {"name":"get_jetton_data","methodId":106029,"arguments":[],"returnType":{"kind":"simple","type":"JettonData","optional":false}},
+    {"name":"get_wallet_address","methodId":103289,"arguments":[{"name":"owner","type":{"kind":"simple","type":"address","optional":false}}],"returnType":{"kind":"simple","type":"address","optional":false}},
+    {"name":"get_ai_state","methodId":127730,"arguments":[],"returnType":{"kind":"simple","type":"AIState","optional":false}},
+    {"name":"get_autonomy_state","methodId":83718,"arguments":[],"returnType":{"kind":"simple","type":"AutonomyState","optional":false}},
+    {"name":"get_fee_config","methodId":90859,"arguments":[],"returnType":{"kind":"simple","type":"FeeConfig","optional":false}},
+    {"name":"get_buyback_state","methodId":120761,"arguments":[],"returnType":{"kind":"simple","type":"BuybackState","optional":false}},
+    {"name":"get_staking_config","methodId":129919,"arguments":[],"returnType":{"kind":"simple","type":"StakingConfig","optional":false}},
+    {"name":"get_stake_info","methodId":127811,"arguments":[{"name":"staker","type":{"kind":"simple","type":"address","optional":false}}],"returnType":{"kind":"simple","type":"StakeInfo","optional":true}},
+    {"name":"get_referral_info","methodId":93058,"arguments":[{"name":"user","type":{"kind":"simple","type":"address","optional":false}}],"returnType":{"kind":"simple","type":"ReferralInfo","optional":true}},
+    {"name":"get_vesting_info","methodId":79114,"arguments":[{"name":"beneficiary","type":{"kind":"simple","type":"address","optional":false}}],"returnType":{"kind":"simple","type":"VestingInfo","optional":true}},
+    {"name":"get_lottery_config","methodId":78180,"arguments":[],"returnType":{"kind":"simple","type":"LotteryConfig","optional":false}},
+    {"name":"get_lottery_winner","methodId":85660,"arguments":[{"name":"round","type":{"kind":"simple","type":"int","optional":false,"format":257}}],"returnType":{"kind":"simple","type":"address","optional":true}},
+    {"name":"get_ai_action","methodId":68452,"arguments":[{"name":"actionId","type":{"kind":"simple","type":"int","optional":false,"format":257}}],"returnType":{"kind":"simple","type":"AIActionLog","optional":true}},
+    {"name":"get_veto_state","methodId":122232,"arguments":[{"name":"actionId","type":{"kind":"simple","type":"int","optional":false,"format":257}}],"returnType":{"kind":"simple","type":"VetoState","optional":true}},
+    {"name":"get_ai_recommendation","methodId":125135,"arguments":[{"name":"index","type":{"kind":"simple","type":"int","optional":false,"format":257}}],"returnType":{"kind":"simple","type":"AIRecommendation","optional":true}},
+    {"name":"get_price_at","methodId":73687,"arguments":[{"name":"timestamp","type":{"kind":"simple","type":"int","optional":false,"format":257}}],"returnType":{"kind":"simple","type":"int","optional":true,"format":257}},
+    {"name":"is_paused","methodId":95098,"arguments":[],"returnType":{"kind":"simple","type":"bool","optional":false}},
+    {"name":"is_trading_enabled","methodId":82925,"arguments":[],"returnType":{"kind":"simple","type":"bool","optional":false}},
+    {"name":"is_ai_alive","methodId":112404,"arguments":[],"returnType":{"kind":"simple","type":"bool","optional":false}},
+    {"name":"can_owner_override","methodId":116763,"arguments":[{"name":"actionId","type":{"kind":"simple","type":"int","optional":false,"format":257}}],"returnType":{"kind":"simple","type":"bool","optional":false}},
+    {"name":"get_defi_address","methodId":124902,"arguments":[],"returnType":{"kind":"simple","type":"address","optional":false}},
+    {"name":"get_defi_fee_share","methodId":103107,"arguments":[],"returnType":{"kind":"simple","type":"int","optional":false,"format":257}},
 ]
 
 export const QuasarMaster_getterMapping: { [key: string]: string } = {
@@ -4656,6 +5817,8 @@ export const QuasarMaster_getterMapping: { [key: string]: string } = {
     'is_trading_enabled': 'getIsTradingEnabled',
     'is_ai_alive': 'getIsAiAlive',
     'can_owner_override': 'getCanOwnerOverride',
+    'get_defi_address': 'getGetDefiAddress',
+    'get_defi_fee_share': 'getGetDefiFeeShare',
 }
 
 const QuasarMaster_receivers: ABIReceiver[] = [
@@ -4691,6 +5854,7 @@ const QuasarMaster_receivers: ABIReceiver[] = [
     {"receiver":"internal","message":{"kind":"typed","type":"AIVetoVote"}},
     {"receiver":"internal","message":{"kind":"typed","type":"OwnerOverride"}},
     {"receiver":"internal","message":{"kind":"text","text":"Claim AI Control"}},
+    {"receiver":"internal","message":{"kind":"typed","type":"SetDefiAddress"}},
     {"receiver":"internal","message":{"kind":"typed","type":"SetTreasury"}},
     {"receiver":"internal","message":{"kind":"typed","type":"SetFeeConfig"}},
     {"receiver":"internal","message":{"kind":"typed","type":"ToggleTrading"}},
@@ -4700,16 +5864,21 @@ const QuasarMaster_receivers: ABIReceiver[] = [
     {"receiver":"internal","message":{"kind":"typed","type":"Deploy"}},
 ]
 
+
 export class QuasarMaster implements Contract {
+    
+    public static readonly storageReserve = 0n;
+    public static readonly errors = QuasarMaster_errors_backward;
+    public static readonly opcodes = QuasarMaster_opcodes;
     
     static async init(owner: Address, content: Cell, walletCode: Cell) {
         return await QuasarMaster_init(owner, content, walletCode);
     }
     
     static async fromInit(owner: Address, content: Cell, walletCode: Cell) {
-        const init = await QuasarMaster_init(owner, content, walletCode);
-        const address = contractAddress(0, init);
-        return new QuasarMaster(address, init);
+        const __gen_init = await QuasarMaster_init(owner, content, walletCode);
+        const address = contractAddress(0, __gen_init);
+        return new QuasarMaster(address, __gen_init);
     }
     
     static fromAddress(address: Address) {
@@ -4725,12 +5894,12 @@ export class QuasarMaster implements Contract {
         errors: QuasarMaster_errors,
     };
     
-    private constructor(address: Address, init?: { code: Cell, data: Cell }) {
+    constructor(address: Address, init?: { code: Cell, data: Cell }) {
         this.address = address;
         this.init = init;
     }
     
-    async send(provider: ContractProvider, via: Sender, args: { value: bigint, bounce?: boolean| null | undefined }, message: Mint | BurnNotification | 'Stop Minting' | FeeTransfer | TriggerBuyback | Stake | Unstake | ClaimRewards | SetStakingConfig | RegisterReferral | SetReferralConfig | AddVesting | ClaimVested | TriggerLottery | SetLotteryConfig | AIGrantFullAutonomy | AIHeartbeat | AIEmergencyPause | AISetFee | AISetTreasuryDirect | AISetAntiWhale | AISetBuybackDirect | AIToggleTrading | AIRotateOracle | AISetOracle | AIRebalance | AIPriceSignal | AIAnomalyAlert | AIGovernanceProposal | AIVetoVote | OwnerOverride | 'Claim AI Control' | SetTreasury | SetFeeConfig | ToggleTrading | SetBuybackConfig | 'Resume' | 'Toggle AI' | Deploy) {
+    async send(provider: ContractProvider, via: Sender, args: { value: bigint, bounce?: boolean| null | undefined }, message: Mint | BurnNotification | "Stop Minting" | FeeTransfer | TriggerBuyback | Stake | Unstake | ClaimRewards | SetStakingConfig | RegisterReferral | SetReferralConfig | AddVesting | ClaimVested | TriggerLottery | SetLotteryConfig | AIGrantFullAutonomy | AIHeartbeat | AIEmergencyPause | AISetFee | AISetTreasuryDirect | AISetAntiWhale | AISetBuybackDirect | AIToggleTrading | AIRotateOracle | AISetOracle | AIRebalance | AIPriceSignal | AIAnomalyAlert | AIGovernanceProposal | AIVetoVote | OwnerOverride | "Claim AI Control" | SetDefiAddress | SetTreasury | SetFeeConfig | ToggleTrading | SetBuybackConfig | "Resume" | "Toggle AI" | Deploy) {
         
         let body: Cell | null = null;
         if (message && typeof message === 'object' && !(message instanceof Slice) && message.$$type === 'Mint') {
@@ -4739,7 +5908,7 @@ export class QuasarMaster implements Contract {
         if (message && typeof message === 'object' && !(message instanceof Slice) && message.$$type === 'BurnNotification') {
             body = beginCell().store(storeBurnNotification(message)).endCell();
         }
-        if (message === 'Stop Minting') {
+        if (message === "Stop Minting") {
             body = beginCell().storeUint(0, 32).storeStringTail(message).endCell();
         }
         if (message && typeof message === 'object' && !(message instanceof Slice) && message.$$type === 'FeeTransfer') {
@@ -4826,8 +5995,11 @@ export class QuasarMaster implements Contract {
         if (message && typeof message === 'object' && !(message instanceof Slice) && message.$$type === 'OwnerOverride') {
             body = beginCell().store(storeOwnerOverride(message)).endCell();
         }
-        if (message === 'Claim AI Control') {
+        if (message === "Claim AI Control") {
             body = beginCell().storeUint(0, 32).storeStringTail(message).endCell();
+        }
+        if (message && typeof message === 'object' && !(message instanceof Slice) && message.$$type === 'SetDefiAddress') {
+            body = beginCell().store(storeSetDefiAddress(message)).endCell();
         }
         if (message && typeof message === 'object' && !(message instanceof Slice) && message.$$type === 'SetTreasury') {
             body = beginCell().store(storeSetTreasury(message)).endCell();
@@ -4841,10 +6013,10 @@ export class QuasarMaster implements Contract {
         if (message && typeof message === 'object' && !(message instanceof Slice) && message.$$type === 'SetBuybackConfig') {
             body = beginCell().store(storeSetBuybackConfig(message)).endCell();
         }
-        if (message === 'Resume') {
+        if (message === "Resume") {
             body = beginCell().storeUint(0, 32).storeStringTail(message).endCell();
         }
-        if (message === 'Toggle AI') {
+        if (message === "Toggle AI") {
             body = beginCell().storeUint(0, 32).storeStringTail(message).endCell();
         }
         if (message && typeof message === 'object' && !(message instanceof Slice) && message.$$type === 'Deploy') {
@@ -4857,158 +6029,172 @@ export class QuasarMaster implements Contract {
     }
     
     async getGetJettonData(provider: ContractProvider) {
-        let builder = new TupleBuilder();
-        let source = (await provider.get('get_jetton_data', builder.build())).stack;
+        const builder = new TupleBuilder();
+        const source = (await provider.get('get_jetton_data', builder.build())).stack;
         const result = loadGetterTupleJettonData(source);
         return result;
     }
     
     async getGetWalletAddress(provider: ContractProvider, owner: Address) {
-        let builder = new TupleBuilder();
+        const builder = new TupleBuilder();
         builder.writeAddress(owner);
-        let source = (await provider.get('get_wallet_address', builder.build())).stack;
-        let result = source.readAddress();
+        const source = (await provider.get('get_wallet_address', builder.build())).stack;
+        const result = source.readAddress();
         return result;
     }
     
     async getGetAiState(provider: ContractProvider) {
-        let builder = new TupleBuilder();
-        let source = (await provider.get('get_ai_state', builder.build())).stack;
+        const builder = new TupleBuilder();
+        const source = (await provider.get('get_ai_state', builder.build())).stack;
         const result = loadGetterTupleAIState(source);
         return result;
     }
     
     async getGetAutonomyState(provider: ContractProvider) {
-        let builder = new TupleBuilder();
-        let source = (await provider.get('get_autonomy_state', builder.build())).stack;
+        const builder = new TupleBuilder();
+        const source = (await provider.get('get_autonomy_state', builder.build())).stack;
         const result = loadGetterTupleAutonomyState(source);
         return result;
     }
     
     async getGetFeeConfig(provider: ContractProvider) {
-        let builder = new TupleBuilder();
-        let source = (await provider.get('get_fee_config', builder.build())).stack;
+        const builder = new TupleBuilder();
+        const source = (await provider.get('get_fee_config', builder.build())).stack;
         const result = loadGetterTupleFeeConfig(source);
         return result;
     }
     
     async getGetBuybackState(provider: ContractProvider) {
-        let builder = new TupleBuilder();
-        let source = (await provider.get('get_buyback_state', builder.build())).stack;
+        const builder = new TupleBuilder();
+        const source = (await provider.get('get_buyback_state', builder.build())).stack;
         const result = loadGetterTupleBuybackState(source);
         return result;
     }
     
     async getGetStakingConfig(provider: ContractProvider) {
-        let builder = new TupleBuilder();
-        let source = (await provider.get('get_staking_config', builder.build())).stack;
+        const builder = new TupleBuilder();
+        const source = (await provider.get('get_staking_config', builder.build())).stack;
         const result = loadGetterTupleStakingConfig(source);
         return result;
     }
     
     async getGetStakeInfo(provider: ContractProvider, staker: Address) {
-        let builder = new TupleBuilder();
+        const builder = new TupleBuilder();
         builder.writeAddress(staker);
-        let source = (await provider.get('get_stake_info', builder.build())).stack;
+        const source = (await provider.get('get_stake_info', builder.build())).stack;
         const result_p = source.readTupleOpt();
         const result = result_p ? loadTupleStakeInfo(result_p) : null;
         return result;
     }
     
     async getGetReferralInfo(provider: ContractProvider, user: Address) {
-        let builder = new TupleBuilder();
+        const builder = new TupleBuilder();
         builder.writeAddress(user);
-        let source = (await provider.get('get_referral_info', builder.build())).stack;
+        const source = (await provider.get('get_referral_info', builder.build())).stack;
         const result_p = source.readTupleOpt();
         const result = result_p ? loadTupleReferralInfo(result_p) : null;
         return result;
     }
     
     async getGetVestingInfo(provider: ContractProvider, beneficiary: Address) {
-        let builder = new TupleBuilder();
+        const builder = new TupleBuilder();
         builder.writeAddress(beneficiary);
-        let source = (await provider.get('get_vesting_info', builder.build())).stack;
+        const source = (await provider.get('get_vesting_info', builder.build())).stack;
         const result_p = source.readTupleOpt();
         const result = result_p ? loadTupleVestingInfo(result_p) : null;
         return result;
     }
     
     async getGetLotteryConfig(provider: ContractProvider) {
-        let builder = new TupleBuilder();
-        let source = (await provider.get('get_lottery_config', builder.build())).stack;
+        const builder = new TupleBuilder();
+        const source = (await provider.get('get_lottery_config', builder.build())).stack;
         const result = loadGetterTupleLotteryConfig(source);
         return result;
     }
     
     async getGetLotteryWinner(provider: ContractProvider, round: bigint) {
-        let builder = new TupleBuilder();
+        const builder = new TupleBuilder();
         builder.writeNumber(round);
-        let source = (await provider.get('get_lottery_winner', builder.build())).stack;
-        let result = source.readAddressOpt();
+        const source = (await provider.get('get_lottery_winner', builder.build())).stack;
+        const result = source.readAddressOpt();
         return result;
     }
     
     async getGetAiAction(provider: ContractProvider, actionId: bigint) {
-        let builder = new TupleBuilder();
+        const builder = new TupleBuilder();
         builder.writeNumber(actionId);
-        let source = (await provider.get('get_ai_action', builder.build())).stack;
+        const source = (await provider.get('get_ai_action', builder.build())).stack;
         const result_p = source.readTupleOpt();
         const result = result_p ? loadTupleAIActionLog(result_p) : null;
         return result;
     }
     
     async getGetVetoState(provider: ContractProvider, actionId: bigint) {
-        let builder = new TupleBuilder();
+        const builder = new TupleBuilder();
         builder.writeNumber(actionId);
-        let source = (await provider.get('get_veto_state', builder.build())).stack;
+        const source = (await provider.get('get_veto_state', builder.build())).stack;
         const result_p = source.readTupleOpt();
         const result = result_p ? loadTupleVetoState(result_p) : null;
         return result;
     }
     
     async getGetAiRecommendation(provider: ContractProvider, index: bigint) {
-        let builder = new TupleBuilder();
+        const builder = new TupleBuilder();
         builder.writeNumber(index);
-        let source = (await provider.get('get_ai_recommendation', builder.build())).stack;
+        const source = (await provider.get('get_ai_recommendation', builder.build())).stack;
         const result_p = source.readTupleOpt();
         const result = result_p ? loadTupleAIRecommendation(result_p) : null;
         return result;
     }
     
     async getGetPriceAt(provider: ContractProvider, timestamp: bigint) {
-        let builder = new TupleBuilder();
+        const builder = new TupleBuilder();
         builder.writeNumber(timestamp);
-        let source = (await provider.get('get_price_at', builder.build())).stack;
-        let result = source.readBigNumberOpt();
+        const source = (await provider.get('get_price_at', builder.build())).stack;
+        const result = source.readBigNumberOpt();
         return result;
     }
     
     async getIsPaused(provider: ContractProvider) {
-        let builder = new TupleBuilder();
-        let source = (await provider.get('is_paused', builder.build())).stack;
-        let result = source.readBoolean();
+        const builder = new TupleBuilder();
+        const source = (await provider.get('is_paused', builder.build())).stack;
+        const result = source.readBoolean();
         return result;
     }
     
     async getIsTradingEnabled(provider: ContractProvider) {
-        let builder = new TupleBuilder();
-        let source = (await provider.get('is_trading_enabled', builder.build())).stack;
-        let result = source.readBoolean();
+        const builder = new TupleBuilder();
+        const source = (await provider.get('is_trading_enabled', builder.build())).stack;
+        const result = source.readBoolean();
         return result;
     }
     
     async getIsAiAlive(provider: ContractProvider) {
-        let builder = new TupleBuilder();
-        let source = (await provider.get('is_ai_alive', builder.build())).stack;
-        let result = source.readBoolean();
+        const builder = new TupleBuilder();
+        const source = (await provider.get('is_ai_alive', builder.build())).stack;
+        const result = source.readBoolean();
         return result;
     }
     
     async getCanOwnerOverride(provider: ContractProvider, actionId: bigint) {
-        let builder = new TupleBuilder();
+        const builder = new TupleBuilder();
         builder.writeNumber(actionId);
-        let source = (await provider.get('can_owner_override', builder.build())).stack;
-        let result = source.readBoolean();
+        const source = (await provider.get('can_owner_override', builder.build())).stack;
+        const result = source.readBoolean();
+        return result;
+    }
+    
+    async getGetDefiAddress(provider: ContractProvider) {
+        const builder = new TupleBuilder();
+        const source = (await provider.get('get_defi_address', builder.build())).stack;
+        const result = source.readAddress();
+        return result;
+    }
+    
+    async getGetDefiFeeShare(provider: ContractProvider) {
+        const builder = new TupleBuilder();
+        const source = (await provider.get('get_defi_fee_share', builder.build())).stack;
+        const result = source.readBigNumber();
         return result;
     }
     
