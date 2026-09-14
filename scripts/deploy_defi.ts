@@ -44,7 +44,9 @@ async function deploy() {
     const deployment = JSON.parse(fs.readFileSync(deploymentPath, 'utf-8'));
     const qsrMaster = Address.parse(deployment.contracts.master.address);
     const { QuasarDeFi } = await import('../build/quasar_defi_QuasarDeFi.js');
+    const { QuasarMaster } = await import('../build/quasar_QuasarMaster.js');
     const defi = client.open(await QuasarDeFi.fromInit(wallet.address, qsrMaster));
+    const master = client.open(QuasarMaster.fromAddress(qsrMaster));
     const sender = wallet.sender(client.provider(wallet.address), keyPair.secretKey);
 
     console.log('Deployer:', wallet.address.toString());
@@ -57,6 +59,13 @@ async function deploy() {
         { $$type: 'Deploy', queryId: 0n }
     );
     await new Promise(resolve => setTimeout(resolve, 15000));
+
+    console.log('Linking QuasarMaster ↔ QuasarDeFi...');
+    await master.send(
+        sender,
+        { value: toNano('0.05') },
+        { $$type: 'SetDefiAddress', defiAddress: defi.address }
+    );
 
     deployment.contracts.defi = {
         address: defi.address.toString(),
