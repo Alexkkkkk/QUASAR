@@ -1203,6 +1203,65 @@ export function dictValueParserSetMaxTradeBps(): DictionaryValue<SetMaxTradeBps>
     }
 }
 
+export type DefiPayout = {
+    $$type: 'DefiPayout';
+    queryId: bigint;
+    amount: bigint;
+    destination: Address;
+}
+
+export function storeDefiPayout(src: DefiPayout) {
+    return (builder: Builder) => {
+        const b_0 = builder;
+        b_0.storeUint(3146613905, 32);
+        b_0.storeUint(src.queryId, 64);
+        b_0.storeCoins(src.amount);
+        b_0.storeAddress(src.destination);
+    };
+}
+
+export function loadDefiPayout(slice: Slice) {
+    const sc_0 = slice;
+    if (sc_0.loadUint(32) !== 3146613905) { throw Error('Invalid prefix'); }
+    const _queryId = sc_0.loadUintBig(64);
+    const _amount = sc_0.loadCoins();
+    const _destination = sc_0.loadAddress();
+    return { $$type: 'DefiPayout' as const, queryId: _queryId, amount: _amount, destination: _destination };
+}
+
+export function loadTupleDefiPayout(source: TupleReader) {
+    const _queryId = source.readBigNumber();
+    const _amount = source.readBigNumber();
+    const _destination = source.readAddress();
+    return { $$type: 'DefiPayout' as const, queryId: _queryId, amount: _amount, destination: _destination };
+}
+
+export function loadGetterTupleDefiPayout(source: TupleReader) {
+    const _queryId = source.readBigNumber();
+    const _amount = source.readBigNumber();
+    const _destination = source.readAddress();
+    return { $$type: 'DefiPayout' as const, queryId: _queryId, amount: _amount, destination: _destination };
+}
+
+export function storeTupleDefiPayout(source: DefiPayout) {
+    const builder = new TupleBuilder();
+    builder.writeNumber(source.queryId);
+    builder.writeNumber(source.amount);
+    builder.writeAddress(source.destination);
+    return builder.build();
+}
+
+export function dictValueParserDefiPayout(): DictionaryValue<DefiPayout> {
+    return {
+        serialize: (src, builder) => {
+            builder.storeRef(beginCell().store(storeDefiPayout(src)).endCell());
+        },
+        parse: (src) => {
+            return loadDefiPayout(src.loadRef().beginParse());
+        }
+    }
+}
+
 export type TokenNotification = {
     $$type: 'TokenNotification';
     queryId: bigint;
@@ -1862,6 +1921,7 @@ export type QuasarDeFi$Data = {
     tonReserve: bigint;
     qsrReserve: bigint;
     lpBalances: Dictionary<Address, bigint>;
+    pendingQsrDeposits: Dictionary<Address, bigint>;
     feeBps: bigint;
     feeAccumulated: bigint;
     farmEnabled: boolean;
@@ -1886,6 +1946,7 @@ export function storeQuasarDeFi$Data(src: QuasarDeFi$Data) {
         b_0.storeCoins(src.tonReserve);
         b_0.storeCoins(src.qsrReserve);
         b_0.storeDict(src.lpBalances, Dictionary.Keys.Address(), Dictionary.Values.BigInt(257));
+        b_0.storeDict(src.pendingQsrDeposits, Dictionary.Keys.Address(), Dictionary.Values.BigInt(257));
         b_0.storeUint(src.feeBps, 16);
         const b_1 = new Builder();
         b_1.storeCoins(src.feeAccumulated);
@@ -1912,6 +1973,7 @@ export function loadQuasarDeFi$Data(slice: Slice) {
     const _tonReserve = sc_0.loadCoins();
     const _qsrReserve = sc_0.loadCoins();
     const _lpBalances = Dictionary.load(Dictionary.Keys.Address(), Dictionary.Values.BigInt(257), sc_0);
+    const _pendingQsrDeposits = Dictionary.load(Dictionary.Keys.Address(), Dictionary.Values.BigInt(257), sc_0);
     const _feeBps = sc_0.loadUintBig(16);
     const sc_1 = sc_0.loadRef().beginParse();
     const _feeAccumulated = sc_1.loadCoins();
@@ -1926,7 +1988,7 @@ export function loadQuasarDeFi$Data(slice: Slice) {
     const _locked = sc_1.loadBit();
     const _paused = sc_1.loadBit();
     const _maxTradeBps = sc_1.loadUintBig(16);
-    return { $$type: 'QuasarDeFi$Data' as const, owner: _owner, qsrMaster: _qsrMaster, lpTotalSupply: _lpTotalSupply, tonReserve: _tonReserve, qsrReserve: _qsrReserve, lpBalances: _lpBalances, feeBps: _feeBps, feeAccumulated: _feeAccumulated, farmEnabled: _farmEnabled, farmRewardPerSecond: _farmRewardPerSecond, farmStartTime: _farmStartTime, farmEndTime: _farmEndTime, farmLastUpdate: _farmLastUpdate, farmAccRewardPerShare: _farmAccRewardPerShare, farmTotalStaked: _farmTotalStaked, farmStakes: _farmStakes, locked: _locked, paused: _paused, maxTradeBps: _maxTradeBps };
+    return { $$type: 'QuasarDeFi$Data' as const, owner: _owner, qsrMaster: _qsrMaster, lpTotalSupply: _lpTotalSupply, tonReserve: _tonReserve, qsrReserve: _qsrReserve, lpBalances: _lpBalances, pendingQsrDeposits: _pendingQsrDeposits, feeBps: _feeBps, feeAccumulated: _feeAccumulated, farmEnabled: _farmEnabled, farmRewardPerSecond: _farmRewardPerSecond, farmStartTime: _farmStartTime, farmEndTime: _farmEndTime, farmLastUpdate: _farmLastUpdate, farmAccRewardPerShare: _farmAccRewardPerShare, farmTotalStaked: _farmTotalStaked, farmStakes: _farmStakes, locked: _locked, paused: _paused, maxTradeBps: _maxTradeBps };
 }
 
 export function loadTupleQuasarDeFi$Data(source: TupleReader) {
@@ -1936,6 +1998,7 @@ export function loadTupleQuasarDeFi$Data(source: TupleReader) {
     const _tonReserve = source.readBigNumber();
     const _qsrReserve = source.readBigNumber();
     const _lpBalances = Dictionary.loadDirect(Dictionary.Keys.Address(), Dictionary.Values.BigInt(257), source.readCellOpt());
+    const _pendingQsrDeposits = Dictionary.loadDirect(Dictionary.Keys.Address(), Dictionary.Values.BigInt(257), source.readCellOpt());
     const _feeBps = source.readBigNumber();
     const _feeAccumulated = source.readBigNumber();
     const _farmEnabled = source.readBoolean();
@@ -1943,14 +2006,14 @@ export function loadTupleQuasarDeFi$Data(source: TupleReader) {
     const _farmStartTime = source.readBigNumber();
     const _farmEndTime = source.readBigNumber();
     const _farmLastUpdate = source.readBigNumber();
-    const _farmAccRewardPerShare = source.readBigNumber();
     source = source.readTuple();
+    const _farmAccRewardPerShare = source.readBigNumber();
     const _farmTotalStaked = source.readBigNumber();
     const _farmStakes = Dictionary.loadDirect(Dictionary.Keys.Address(), dictValueParserUserFarmInfo(), source.readCellOpt());
     const _locked = source.readBoolean();
     const _paused = source.readBoolean();
     const _maxTradeBps = source.readBigNumber();
-    return { $$type: 'QuasarDeFi$Data' as const, owner: _owner, qsrMaster: _qsrMaster, lpTotalSupply: _lpTotalSupply, tonReserve: _tonReserve, qsrReserve: _qsrReserve, lpBalances: _lpBalances, feeBps: _feeBps, feeAccumulated: _feeAccumulated, farmEnabled: _farmEnabled, farmRewardPerSecond: _farmRewardPerSecond, farmStartTime: _farmStartTime, farmEndTime: _farmEndTime, farmLastUpdate: _farmLastUpdate, farmAccRewardPerShare: _farmAccRewardPerShare, farmTotalStaked: _farmTotalStaked, farmStakes: _farmStakes, locked: _locked, paused: _paused, maxTradeBps: _maxTradeBps };
+    return { $$type: 'QuasarDeFi$Data' as const, owner: _owner, qsrMaster: _qsrMaster, lpTotalSupply: _lpTotalSupply, tonReserve: _tonReserve, qsrReserve: _qsrReserve, lpBalances: _lpBalances, pendingQsrDeposits: _pendingQsrDeposits, feeBps: _feeBps, feeAccumulated: _feeAccumulated, farmEnabled: _farmEnabled, farmRewardPerSecond: _farmRewardPerSecond, farmStartTime: _farmStartTime, farmEndTime: _farmEndTime, farmLastUpdate: _farmLastUpdate, farmAccRewardPerShare: _farmAccRewardPerShare, farmTotalStaked: _farmTotalStaked, farmStakes: _farmStakes, locked: _locked, paused: _paused, maxTradeBps: _maxTradeBps };
 }
 
 export function loadGetterTupleQuasarDeFi$Data(source: TupleReader) {
@@ -1960,6 +2023,7 @@ export function loadGetterTupleQuasarDeFi$Data(source: TupleReader) {
     const _tonReserve = source.readBigNumber();
     const _qsrReserve = source.readBigNumber();
     const _lpBalances = Dictionary.loadDirect(Dictionary.Keys.Address(), Dictionary.Values.BigInt(257), source.readCellOpt());
+    const _pendingQsrDeposits = Dictionary.loadDirect(Dictionary.Keys.Address(), Dictionary.Values.BigInt(257), source.readCellOpt());
     const _feeBps = source.readBigNumber();
     const _feeAccumulated = source.readBigNumber();
     const _farmEnabled = source.readBoolean();
@@ -1973,7 +2037,7 @@ export function loadGetterTupleQuasarDeFi$Data(source: TupleReader) {
     const _locked = source.readBoolean();
     const _paused = source.readBoolean();
     const _maxTradeBps = source.readBigNumber();
-    return { $$type: 'QuasarDeFi$Data' as const, owner: _owner, qsrMaster: _qsrMaster, lpTotalSupply: _lpTotalSupply, tonReserve: _tonReserve, qsrReserve: _qsrReserve, lpBalances: _lpBalances, feeBps: _feeBps, feeAccumulated: _feeAccumulated, farmEnabled: _farmEnabled, farmRewardPerSecond: _farmRewardPerSecond, farmStartTime: _farmStartTime, farmEndTime: _farmEndTime, farmLastUpdate: _farmLastUpdate, farmAccRewardPerShare: _farmAccRewardPerShare, farmTotalStaked: _farmTotalStaked, farmStakes: _farmStakes, locked: _locked, paused: _paused, maxTradeBps: _maxTradeBps };
+    return { $$type: 'QuasarDeFi$Data' as const, owner: _owner, qsrMaster: _qsrMaster, lpTotalSupply: _lpTotalSupply, tonReserve: _tonReserve, qsrReserve: _qsrReserve, lpBalances: _lpBalances, pendingQsrDeposits: _pendingQsrDeposits, feeBps: _feeBps, feeAccumulated: _feeAccumulated, farmEnabled: _farmEnabled, farmRewardPerSecond: _farmRewardPerSecond, farmStartTime: _farmStartTime, farmEndTime: _farmEndTime, farmLastUpdate: _farmLastUpdate, farmAccRewardPerShare: _farmAccRewardPerShare, farmTotalStaked: _farmTotalStaked, farmStakes: _farmStakes, locked: _locked, paused: _paused, maxTradeBps: _maxTradeBps };
 }
 
 export function storeTupleQuasarDeFi$Data(source: QuasarDeFi$Data) {
@@ -1984,6 +2048,7 @@ export function storeTupleQuasarDeFi$Data(source: QuasarDeFi$Data) {
     builder.writeNumber(source.tonReserve);
     builder.writeNumber(source.qsrReserve);
     builder.writeCell(source.lpBalances.size > 0 ? beginCell().storeDictDirect(source.lpBalances, Dictionary.Keys.Address(), Dictionary.Values.BigInt(257)).endCell() : null);
+    builder.writeCell(source.pendingQsrDeposits.size > 0 ? beginCell().storeDictDirect(source.pendingQsrDeposits, Dictionary.Keys.Address(), Dictionary.Values.BigInt(257)).endCell() : null);
     builder.writeNumber(source.feeBps);
     builder.writeNumber(source.feeAccumulated);
     builder.writeBoolean(source.farmEnabled);
@@ -2026,7 +2091,7 @@ function initQuasarDeFi_init_args(src: QuasarDeFi_init_args) {
 }
 
 async function QuasarDeFi_init(owner: Address, qsrMaster: Address) {
-    const __code = Cell.fromHex('b5ee9c7241024e010013c0000228ff008e88f4a413f4bcf2c80bed5320e303ed43d9012402027102160201200311020120040c020148050a02016a060802b7a0abb5134348000638cbe903e901640b4405b5b5c14c02007885fe084017d78403e08fe08e082784ce0283e08d4d5442f442b0426d5425c1c2042ee38c344448444c44484444444844444440444444403c44403d543b6cf1b3cdb10e250700485611c000917f9320c000e29430705300e0205611a85612a904015610a85612a90456125902bba03fb5134348000638cbe903e901640b4405b5b5c14c02007885fe084017d78403e08fe08e082784ce0283e08d4d5442f442b0426d5425c1c2042ee38c344448444c44484444444844444440444444403c44403d543b6cf15c417c3db0c62509004681010b2f028101014133f40a6fa19401d70030925b6de2206e92307095206ef2d080e2028dad39f6a268690000c7197d207d202c816880b6b6b82980400f10bfc10802faf0807c11fc11c104f099c0507c11a9aa885e8856084daa84b8384085dc7186ed9e2b882f87b618c0250b00022c0201200d0f02c9b1d0fb5134348000638cbe903e901640b4405b5b5c14c02007885fe084017d78403e08fe08e082784ce0283e08d4d5442f442b0426d5425c1c2042ee38c344448445044484444444c44444440444844403c44443c38444038437d54736cf15c417c3db0c60250e023456128e83a8db3ce1015612a85611a904015612a85610a904db3c2948028db32dbb5134348000638cbe903e901640b4405b5b5c14c02007885fe084017d78403e08fe08e082784ce0283e08d4d5442f442b0426d5425c1c2042ee38c376cf15c417c3db0c602510000456110201c71214028caa9eed44d0d200018e32fa40fa405902d1016d6d705300801e217f821005f5e100f823f8238209e13380a0f823535510bd10ac109b55097070810bb8e30ddb3c57105f0f6c31251300022b028ca91ded44d0d200018e32fa40fa405902d1016d6d705300801e217f821005f5e100f823f8238209e13380a0f823535510bd10ac109b55097070810bb8e30ddb3c57105f0f6c31251500045612020120171c02039a08181a0287bd7ed44d0d200018e32fa40fa405902d1016d6d705300801e217f821005f5e100f823f8238209e13380a0f823535510bd10ac109b55097070810bb8e30ddb3c6cf36c4382519000c56105610561002b7ba9ed44d0d200018e32fa40fa405902d1016d6d705300801e217f821005f5e100f823f8238209e13380a0f823535510bd10ac109b55097070810bb8e30d1112111311121111111211111110111111100f11100f550edb3c6cc66c768251b00802fc000917f9320c000e29770547000201045e0205611a8561022a0a904530ea8812710a90466a122812710a85612a90420812710bc9430812710de70520215140201661d220201201e200288a936ed44d0d200018e32fa40fa405902d1016d6d705300801e217f821005f5e100f823f8238209e13380a0f823535510bd10ac109b55097070810bb8e30ddb3c6cc66c76251f000c5474965478ba02b8ab23ed44d0d200018e32fa40fa405902d1016d6d705300801e217f821005f5e100f823f8238209e13380a0f823535510bd10ac109b55097070810bb8e30d1112111311121111111211111110111111100f11100f550edb3c6cf36c432521007881010b250259f40b6fa192306ddf206e92306d8e16d0810101d700810101d700810101d70055206c136f03e2206e943070530097206ef2d0806f23e202b9af7d76a268690000c7197d207d202c816880b6b6b82980400f10bfc10802faf0807c11fc11c104f099c0507c11a9aa885e8856084daa84b8384085dc718688890889888908888889088888880888888807888807aa876d9e3663363b402523007c5610c000917f9320c000e2957054700020e0530fa8561122a0a904530ea8812710a90466a122812710a85613a90420812710bc9430812710de705422031403f03001d072d721d200d200fa4021103450666f04f86102f862ed44d0d200018e32fa40fa405902d1016d6d705300801e217f821005f5e100f823f8238209e13380a0f823535510bd10ac109b55097070810bb8e30d1114945f0f5f05e0705613d74920c21f97311113d31f1114de21821004ad3783bae3022125262700b4fa40fa40fa00fa00fa00f404d30fd401d0fa00d200fa00d31fd31f810101d700810101d700fa00f404d200d200d30f300c11130c0c11120c0c11110c0c11100c10cf10ce10cd57131111111211111110111111100f11100f550e01765b1112d33f31fa0030816b90f8425612c705f2f41da01110111211100f11110f0e11100e10df0e10bd10ac109b108a1079106810571046103544304c04de821008bfa37dba8fdd5b1112fa00fa0030011113011114db3cdb3c812fab5614c200945615c2009170e2f2f48200bcd5f8416f24135f035615bef2f45610c2008e21810de95614812710a8561123a8bbf2f48200d5df5615812710a8561023a8bbf2f4de5610e0218210c3f44eb8ba433c282f03de8e9456135611a85610a90456155612a85610a904db3c8e8756135615a8db3ce28200d97e21c200f2f411105614a00f5615a011115610a081010bf8425610598101014133f40a6fa19401d70030925b6de281010bf842226e933256129902206ef2d0805613a0e2031111031281010148292a003a20c101923070e05300a4ab00935301b999315ca9045210a0ab00e8303103fe216e955b59f4593098c801cf004133f441e21112111311121111111311110e11100e0e11130e55c0db3cf8425614db3cf842708040f8420302111802011119011117c8553082101323cbef5005cb1f13ce810101cf00810101cf0001c8810101cf00cdc90311140302111502011116015a6d6d40037fc8cf8580ca00cf8440472b2e02f62581010b2359f40b6fa192306ddf206e92306d8e16d0810101d700810101d700810101d70055206c136f03e2206e8e46206ef2d0806f2352a2a15220a882103b9aca00a90481010b5134a059a052a0c855205023810101cf00810101cf00810101cf00c910374170206e953059f45930944133f413e2e30d5054a02c2d005c3081010b531870c855205023810101cf00810101cf00810101cf00c910374170206e953059f45930944133f413e20002040274ce01fa028069cf40025c6e016eb0935bcf819d58cf8680cf8480f400f400cf81e2f400c901fb000f11120f0e11110e0d11100d10cf552b12db3c404c043ce30221821042a7c44cbae302218210b402f875bae302218210511327f0ba30383b4103fc5b1112fa00301111111211111110111111100f11100f10ef10de10cd10bc10ab109a10891078106710561045103411134130db3cdb3c81010bf8422f598101014133f40a6fa19401d70030925b6de28200cbbe5615c200f2f481584e216eb39921206ef2d0805616be9170e2f2f456145611a85612a90456155611a85613433c3103f8a9048200a9cb22c2009321c2009170e2f2f41112111511121111111411111110111311100f11150f0e11140e0d11130d0c11150c0b11140b0a11130a0911150908111408071113070611150605111405041113040311150302111402011113011115db3cf8425617db3c81010bf8421116206ef2d0805618a1103f1247323401f42581010b2359f40b6fa192306ddf206e92306d8e16d0810101d700810101d700810101d70055206c136f03e28200c89e216eb39b21206ef2d0806f235b23be9170e2f2f4206ef2d0806f2352a2a15220a882103b9aca00a90481010b5134a159a052a0c855205023810101cf00810101cf00810101cf00c910373300284170206e953059f45930944133f413e25054a10402ea01111601810101216e955b59f4593098c801cf004133f441e20f5615a10e5612a10d5614a1f84272885615595a6d6d40037fc8cf8580ca00cf8440ce01fa028069cf40025c6e016eb0935bcf819d58cf8680cf8480f400f400cf81e2f400c901fb00f842708040f8420302111602011118011119c83536000001fe553082105b4f24a95005cb1f13ce810101cf00810101cf0001c8810101cf00cdc90311160302111302011115015a6d6d40037fc8cf8580ca00cf8440ce01fa028069cf40025c6e016eb0935bcf819d58cf8680cf8480f400f400cf81e2f400c901fb000e11120e0d11110d0b11100b10af10de10cd108c107b106a105910483701c8103746145053db3cc87f01ca00111311121111111055e0011112011113ce01111001ce500efa02500cfa02500afa0218f40016cb0fc85005fa0213ca0001fa02cb1f12cb1f12810101cf0012810101cf0058fa0212f40012ca0012ca0012cb0fcdc9ed544003f85b1112fa00fa0030011113011114db3cdb3c8115f75614c200932fc2009170e2f2f4816d195614812710a8561023a8bbf2f456135610a82f5615a0a904530da8812710a90466a1208200a2391118be01111701f2f4813fc35616c2009556165612b99170e2f2f40f5614a011105615a151cfa0f84272f84270541322433c3901f402111902561a021115c855508210c02a54935007cb1f15ce13810101cf00810101cf0001c8810101cf0012810101cf0012810101cf00cdc90311150302111602011110015a6d6d40037fc8cf8580ca00cf8440ce01fa028069cf40025c6e016eb0935bcf819d58cf8680cf8480f400f400cf81e2f400c901fb003a01f41110111211100f11110f0e11100e109f10de10bd10ac10ab108a5517db3cc87f01ca00111311121111111055e0011112011113ce01111001ce500efa02500cfa02500afa0218f40016cb0fc85005fa0213ca0001fa02cb1f12cb1f12810101cf0012810101cf0058fa0212f40012ca0012ca0012cb0fcdc9ed544003fc5b1112fa00fa0030011113011114db3cdb3c8115f75614c200945610c2009170e2f2f48200bcd5f8416f24135f035615bef2f4816d195614812710a8561123a8bbf2f456132fa856105615a0a904530da8812710a90466a1208200a2391118be01111701f2f4813fc35616c2009556165611b99170e2f2f411105614a00f433c3d00168200a57a03b313f2f47f0202fc5615a10c5610a0f842708040f84254332204111a045a01111b011116c855508210c02a54935007cb1f15ce13810101cf00810101cf0001c8810101cf0012810101cf0012810101cf00cdc90311110302111502011116015a6d6d40037fc8cf8580ca00cf8440ce01fa028069cf40025c6e016eb0935bcf818ae2f400c9013e3f001a58cf8680cf8480f400f400cf8101e8fb001110111211100f11110f0e11100e10cf109e551bdb3cc87f01ca00111311121111111055e0011112011113ce01111001ce500efa02500cfa02500afa0218f40016cb0fc85005fa0213ca0001fa02cb1f12cb1f12810101cf0012810101cf0058fa0212f40012ca0012ca0012cb0fcdc9ed54400004703304d0e302218210e7ceed7ebae30221821017000fb2ba8ec95b3b1111d30f3082008aabf8425612c705f2f482009ab021c2009321c1659170e2f2f41110111211100f11110f0e11100e10df10ce10bd0c109b108a10791068105710461035443012e0218210096819ffba42454c4903fc5b57121110111211100f11110f0e11100e551ddb3cdb3c81010bf842255959f40b6fa192306ddf206e92306d8e16d0810101d700810101d700810101d70055206c136f03e2814159216eb39b21206ef2d0806f235bc2009170e2f2f4206ef2d0806f235282a15220a882103b9aca00a904a08200f7f321c200f2f481010b434744000e81618922b3f2f401fef842513970c855205023810101cf00810101cf00810101cf00c910374170206e953059f45930944133f413e2f84272f84227c8598210ca3de6d55003cb1fce810101cf00c9102310275a6d6d40037fc8cf8580ca00cf8440ce01fa028069cf40025c6e016eb0935bcf819d58cf8680cf8480f400f400cf81e2f400c901fb004c01f85b1112fa00d31fd31f3082008aabf8425615c705f2f482009e4823c200f2f48200ceae5312bcf2f4817b70f8235220bef2f41112111311121111111311111110111311100f11130f0e11130e0d11130d0c11130c0b11130b0a11130a091113090811130807111307061113060511130504111304031113030211130246026e011114011115db3c3737375611245613b9953403111103925712e20f11120f0e11110e0d11100d10cf10be10ad109c108b107a10795523474c0152f82327bb917f9324c000e2dcf82328db3c5307bb9130e05208a12aa882103b9aca00a825a90416a00548000e5cb991309131e204bc8eba5f031111d2003082008aabf8425612c705f2f41110111211100f11110f0e11100e10df10ce10bd10ac109b108a10791068105710461035440302e0218210dcff684fbae302218210946a98b6bae3025714c0001113c12101111301b04c4a4b4d01985b57131111d30f3082008aabf8425612c705f2f4814dc321c2639521811388bb9170e2f2f41110111211100f11110f0e11100e10df10ce10bd10ac109b108a107910681057104610354430124c01c65b1112d33f30c8018210aff90f5758cb1fcb3fc91111111311111110111211100f11110f0e11100e10df10ce10bd10ac109b108a107910681057104610354430f84270705003804201503304c8cf8580ca00cf8440ce01fa02806acf40f400c901fb004c00b8c87f01ca00111311121111111055e0011112011113ce01111001ce500efa02500cfa02500afa0218f40016cb0fc85005fa0213ca0001fa02cb1f12cb1f12810101cf0012810101cf0058fa0212f40012ca0012ca0012cb0fcdc9ed5400ec8e6c1110111211100f11110f0e11100e551dc87f01ca00111311121111111055e0011112011113ce01111001ce500efa02500cfa02500afa0218f40016cb0fc85005fa0213ca0001fa02cb1f12cb1f12810101cf0012810101cf0058fa0212f40012ca0012ca0012cb0fcdc9ed54e05f0f5f04f2c08204af08c2');
+    const __code = Cell.fromHex('b5ee9c72410259010016ed000228ff008e88f4a413f4bcf2c80bed5320e303ed43d9012702027102190201200311020120040c020148050a02016a060802c5a0abb5134348000638cfe903e901640b4405b5b5b5c14c02007885fe084017d78403e08fe08e082784ce0283e08d4d5442f842b442715421c1c2042ee38c34444c4450444c4448444c44484444444844444440444444403c44403d543b6cf1b3cdb14e280700485612c000917f9320c000e29430705300e0205612a85613a904015611a85613a90456135902c9a03fb5134348000638cfe903e901640b4405b5b5b5c14c02007885fe084017d78403e08fe08e082784ce0283e08d4d5442f842b442715421c1c2042ee38c34444c4450444c4448444c44484444444844444440444444403c44403d543b6cf15c417c3db1062809004881010b5610028101014133f40a6fa19401d70030925b6de2206e92307095206ef2d080e2028fad39f6a268690000c719fd207d202c816880b6b6b6b82980400f10bfc10802faf0807c11fc11c104f099c0507c11a9aa885f0856884e2a8438384085dc7186ed9e2b882f87b620c0280b00022c0201200d0f02d3b1d0fb5134348000638cfe903e901640b4405b5b5b5c14c02007885fe084017d78403e08fe08e082784ce0283e08d4d5442f842b442715421c1c2042ee38c34444c4454444c4448445044484444444c44444440444844403c44443c3844403954776cf15c417c3db1060280e023456138e83a8db3ce1015613a85612a904015613a85611a904db3c2f51028fb32dbb5134348000638cfe903e901640b4405b5b5b5c14c02007885fe084017d78403e08fe08e082784ce0283e08d4d5442f842b442715421c1c2042ee38c376cf15c417c3db10602810000456120201c71214028eaa9eed44d0d200018e33fa40fa405902d1016d6d6d705300801e217f821005f5e100f823f8238209e13380a0f823535510be10ad109c55087070810bb8e30ddb3c57105f0f6c41281300022b0201201517028da63bda89a1a400031c67f481f480b205a202dadadae0a601003c42ff04200bebc201f047f0470413c2670141f046a6aa217c215a2138aa10e0e1021771c61bb678ae20be1ed88328160004561302c9a485da89a1a400031c67f481f480b205a202dadadae0a601003c42ff04200bebc201f047f0470413c2670141f046a6aa217c215a2138aa10e0e1021771c61a2226222822262224222622242222222422222220222222201e22201eaa1db678ae20be1ed8832818004681010b2f028101014133f40a6fa19401d70030925b6de2206e92307095206ef2d080e20201201a1f02039a081b1d0289bd7ed44d0d200018e33fa40fa405902d1016d6d6d705300801e217f821005f5e100f823f8238209e13380a0f823535510be10ad109c55087070810bb8e30ddb3c6cf36c538281c000c56115611561102c5ba9ed44d0d200018e33fa40fa405902d1016d6d6d705300801e217f821005f5e100f823f8238209e13380a0f823535510be10ad109c55087070810bb8e30d1113111411131112111311121111111211111110111111100f11100f550edb3c6cc66c868281e00825610c000917f9320c000e29770547000201045e0205612a8561122a0a904530ea8812710a90466a122812710a85613a90420812710bc9430812710de705202151402016620250201202123028aa936ed44d0d200018e33fa40fa405902d1016d6d6d705300801e217f821005f5e100f823f8238209e13380a0f823535510be10ad109c55087070810bb8e30ddb3c6cc66c862822000c5474965478ba02c6ab23ed44d0d200018e33fa40fa405902d1016d6d6d705300801e217f821005f5e100f823f8238209e13380a0f823535510be10ad109c55087070810bb8e30d1113111411131112111311121111111211111110111111100f11100f550edb3c6cf36c532824007881010b250259f40b6fa192306ddf206e92306d8e16d0810101d700810101d700810101d70055206c136f03e2206e943070530097206ef2d0806f23e202c7af7d76a268690000c719fd207d202c816880b6b6b6b82980400f10bfc10802faf0807c11fc11c104f099c0507c11a9aa885f0856884e2a8438384085dc71868889888a088988890889888908888889088888880888888807888807aa876d9e36633643402826007e5611c000917f9320c000e2957054700020e0205611a8561222a0a904530ea8812710a90466a122812710a85614a90420812710bc9430812710de705422031403f23001d072d721d200d200fa4021103450666f04f86102f862ed44d0d200018e33fa40fa405902d1016d6d6d705300801e217f821005f5e100f823f8238209e13380a0f823535510be10ad109c55087070810bb8e30d1115945f0f5f06e0705614d74920c21f97311114d31f1115de21821004ad3783bae3022128292b00c4fa40fa40fa00fa00fa00f404d401d0f404d30ffa00d200fa00d31fd31f810101d700810101d700fa00f404d200d200d30f300e11140e0e11130e0e11120e0e11110e0e11100e10ef57141112111311121111111211111110111111100f11100f550e01fa5b1113d33f31fa00fa4030816b90f8425614c705f2f48142a622c200f2f48200e64d8d08600000000000000000000000000000000000000000000000000000000000000000045220c705b3f2f42d81010b228101014133f40a6fa19401d70030925b6de281010b216e91319a01206ef2d0805003a002e2103e028101012a017c216e955b59f4593098c801cf004133f441e21111111311111110111211100f11110f0e11100e10df10ce0d10ac109b108a1079106810571046103544301256044a821008bfa37dbae302218210c3f44eb8bae30221821042a7c44cbae302218210b402f875ba2c373f4304d25b1113fa00fa0030011114011115db3cdb3c812fab5615c200945616c2009170e2f2f48200bcd5f8416f24135f035616bef2f481010bf8422f598101014133f40a6fa19401d70030925b6de2814eb1216eb39921206ef2d0805618be9170e2f2f45612c200e30056124b452d2e0042810de95616812710a8561324a8bbf2f48200d5df5617812710a8561224a8bbf2f403fa8ee156155617a81114111511141113111511131112111511121111111511111110111511100f11150f0e11150e0d11150d0c11150c0b11150b0a11150a091115090811150807111507061115060511150504111504031115030211150201111501db3ce30d8200d97e21c200f2f411115616a011105617a011125611a02f3031003a20c101923070e05300a4ab00935301b999315ca9045210a0ab00e8303101e056155613a85612a90456175614a85612a9041115111611151114111611141113111611131112111611121111111611111110111611100f11160f0e11160e0d11160d0c11160c0b11160b0a11160a0911160908111608071116070611160605111605041116040311160302111602db3c5101fa81010bf8421117206ef2d0805619a1031110031201111701810101216e955b59f4593098c801cf004133f441e281010bf8425610598101014133f40a6fa19401d70030925b6de281010bf842226e933256129902206ef2d0805613a0e20311110312810101216e955b59f4593098c801cf004133f441e21111111411113204f60f11100f0f11140f0e0ddb3cf8425615db3cf842708040f842030211190201111a011118c8553082101323cbef5005cb1f13ce810101cf00810101cf0001c8810101cf00cdc90311150302111602011117015a6d6d40037fc8cf8580ca00cf8440ce01fa028069cf40025c6e016eb0935bcf818ae2f400c901fb0050334d3602f62581010b2359f40b6fa192306ddf206e92306d8e16d0810101d700810101d700810101d70055206c136f03e2206e8e46206ef2d0806f2352a2a15220a882103b9aca00a90481010b5134a059a052a0c855205023810101cf00810101cf00810101cf00c910374170206e953059f45930944133f413e2e30d5054a03435005c3081010b531870c855205023810101cf00810101cf00810101cf00c910374170206e953059f45930944133f413e200020402561110111311100f11120f0e11110e0d11100d10cf10be10ad109c108b107a1069105810471036453304db3c495603fc5b1113fa00301112111311121111111211111110111111100f11100f10ef10de10cd10bc10ab109a10891078106710561045103411144130db3cdb3c81010bf8425610598101014133f40a6fa19401d70030925b6de28200cbbe5616c200f2f481584e216eb39921206ef2d0805617be9170e2f2f456155612a85613a9044b453803fc56165612a85614a9048200a9cb22c2009321c2009170e2f2f41113111611131112111511121111111411111110111611100f11150f0e11140e0d11160d0c11150c0b11140b0a11160a0911150908111408071116070611150605111405041116040311150302111402011116011115db3cf8425618db3c81010bf842111650393b01f42581010b2359f40b6fa192306ddf206e92306d8e16d0810101d700810101d700810101d70055206c136f03e28200c89e216eb39b21206ef2d0806f235b23be9170e2f2f4206ef2d0806f2352a2a15220a882103b9aca00a90481010b5134a159a052a0c855205023810101cf00810101cf00810101cf00c910373a00284170206e953059f45930944133f413e25054a10402fc206ef2d0805619a1031110031201111601810101216e955b59f4593098c801cf004133f441e211105616a10f5615a10e5614a1f84272885618595a6d6d40037fc8cf8580ca00cf8440ce01fa028069cf40025c6e016eb0935bcf819d58cf8680cf8480f400f400cf81e2f400c901fb00f8421113111411131112111311123c3d000002fc1110111211100f11110f0111100110de10cd10bc10ab109a1089107810671056104510341023561570db3cf842708040f842030211190201111801111ac8553082105b4f24a95005cb1f13ce810101cf00810101cf0001c8810101cf00cdc90311170302111602011115015a6d6d40037fc8cf8580ca00cf8440ce01fa02473e027a8069cf40025c6e016eb0935bcf819d58cf8680cf8480f400f400cf81e2f400c901fb001110111311100f11120f0e11110e0d11100d10cf10be552adb3c495603fe5b1113fa00fa0030011114011115db3cdb3c8115f75615c200945610c2009170e2f2f4816d195615812710a8561123a8bbf2f481010bf8422f598101014133f40a6fa19401d70030925b6de2814eb1216eb39921206ef2d0805617be9170e2f2f456155612a856115617a0a904530ea8812710a90466a1208200a239111abe4b454001ca01111901f2f4813fc35618c2009556185614b99170e2f2f411115616a011125617a10d5611a081010bf84203206ef2d0805618a1031111031201111101810101216e955b59f4593098c801cf004133f441e2f84272f8427054132202111a02561b021116c84101f855508210c02a54935007cb1f15ce13810101cf00810101cf0001c8810101cf0012810101cf0012810101cf00cdc90311160302111702011111015a6d6d40037fc8cf8580ca00cf8440ce01fa028069cf40025c6e016eb0935bcf819d58cf8680cf8480f400f400cf81e2f400c901fb001111111311111110111211104201e80f11110f0911100910ef10ce10ac108a5517db3cc87f01ca001114111311121111111055e0011113011114ce01111101ce500ffa02500dfa02500bfa0219f40007c8f40016cb0f5004fa0212ca0001fa02cb1fcb1f12810101cf0012810101cf0058fa0212f40012ca0012ca0012cb0fcdc9ed5449043ce302218210511327f0bae302218210e7ceed7ebae30221821017000fb2ba444a4e5203fc5b1113fa00fa0030011114011115db3cdb3c8115f75615c200945611c2009170e2f2f48200bcd5f8416f24135f035616bef2f4816d195615812710a8561223a8bbf2f456145610a856115616a0a904530da8812710a90466a1208200a2391119be01111801f2f4813fc35617c2009556175612b99170e2f2f411115615a04b454600168200a57a03b313f2f47f0202fa11105616a10c5611a0f8421114111511141113111511131112111511120d11100d10df10de1c1b1a1918171615144330561770db3cf842708040f84254332204111b045a01111c01111ac855508210c02a54935007cb1f15ce13810101cf00810101cf0001c8810101cf0012810101cf0012810101cf00cdc903111503474800ae707f5023804005c855208210bb8d84915004cb1f12cb3f01fa02cec956164344146d50436d5033c8cf8580ca00cf8440ce01fa028069cf40025c6e016eb0935bcf819d58cf8680cf8480f400f400cf81e2f400c901fb0002d202111602011117015a6d6d40037fc8cf8580ca00cf8440ce01fa028069cf40025c6e016eb0935bcf819d58cf8680cf8480f400f400cf81e2f400c901fb001110111311100f11120f0e11110e0d11100d10cf10be10ad109c108b107a1069105810471036453304db3c49560004703303fe5b57131111111311111110111211100f11110f0e11100e10df551cdb3cdb3c81010bf842255959f40b6fa192306ddf206e92306d8e16d0810101d700810101d700810101d70055206c136f03e2814159216eb39b21206ef2d0806f235bc2009170e2f2f4206ef2d0806f235282a15220a882103b9aca00a904a08200f7f3214b504c000e81618922b3f2f402f2c200f2f481010bf842513970c855205023810101cf00810101cf00810101cf00c910374170206e953059f45930944133f413e2f84272f84227c8598210ca3de6d55003cb1fce810101cf00c9102310275a6d6d40037fc8cf8580ca00cf8440ce01fa028069cf40025c6e016eb0935bcf818ae2f400c901fb004d56001a58cf8680cf8480f400f400cf8101fc5b1113fa00d31fd31f3082008aabf8425616c705f2f482009e4823c200f2f48200ceae5312bcf2f4817b70f8235220bef2f41113111411131112111411121111111411111110111411100f11140f0e11140e0d11140d0c11140c0b11140b0a11140a091114090811140807111407061114060511140504111404031114034f027e02111402011115011116db3c3737375612245614b9953403111203925713e21110111311100f11120f0e11110e0d11100d10cf10be10ad109c108b5e27552350560152f82327bb917f9324c000e2dcf82328db3c5307bb9130e05208a12aa882103b9aca00a825a90416a00551000e5cb991309131e204c28ec25b3b1112d30f3082008aabf8425613c705f2f482009ab021c2009321c1659170e2f2f41111111311111110111211100f11110f0e11100e10df10ce10bd0c109b5518e0218210096819ffbae302218210dcff684fbae302218210946a98b6ba56535455017e5f031112d2003082008aabf8425613c705f2f41111111311111110111211100f11110f0e11100e10df10ce10bd10ac109b108a1079106810571046103544035601a25b57141112d30f3082008aabf8425613c705f2f4814dc321c2639521811388bb9170e2f2f41111111311111110111211100f11110f0e11100e10df10ce10bd10ac109b108a1079106810571046103544305603fc8eea5b1113d33f30c8018210aff90f5758cb1fcb3fc91112111411121111111311111110111211100f11110f0e11100e10df10ce10bd10ac109b108a10791068105710461035443012f84270705003804201503304c8cf8580ca00cf8440ce01fa02806acf40f400c901fb00e05715c0001114c12101111401b0e3025f0f56575800c0c87f01ca001114111311121111111055e0011113011114ce01111101ce500ffa02500dfa02500bfa0219f40007c8f40016cb0f5004fa0212ca0001fa02cb1fcb1f12810101cf0012810101cf0058fa0212f40012ca0012ca0012cb0fcdc9ed5400f01111111311111110111211100f11110f0e11100e10df551cc87f01ca001114111311121111111055e0011113011114ce01111101ce500ffa02500dfa02500bfa0219f40007c8f40016cb0f5004fa0212ca0001fa02cb1fcb1f12810101cf0012810101cf0058fa0212f40012ca0012ca0012cb0fcdc9ed54000a5f05f2c08254b86947');
     const builder = beginCell();
     builder.storeUint(0, 1);
     initQuasarDeFi_init_args({ $$type: 'QuasarDeFi_init_args', owner, qsrMaster })(builder);
@@ -2076,7 +2141,9 @@ export const QuasarDeFi_errors = {
     12203: { message: "Invalid amounts" },
     16323: { message: "Insufficient reserve" },
     16729: { message: "No LP stake" },
+    17062: { message: "Invalid amount" },
     19907: { message: "Trade limit 1%-50%" },
+    20145: { message: "Deposit QSR first" },
     22606: { message: "Insufficient LP balance" },
     24969: { message: "DeFi paused" },
     27536: { message: "Only QSR master" },
@@ -2094,6 +2161,7 @@ export const QuasarDeFi_errors = {
     52910: { message: "Invalid farm period" },
     54751: { message: "QSR deposit too large" },
     55678: { message: "Zero LP tokens" },
+    58957: { message: "Invalid depositor" },
     63475: { message: "No rewards to claim" },
 } as const
 
@@ -2139,7 +2207,9 @@ export const QuasarDeFi_errors_backward = {
     "Invalid amounts": 12203,
     "Insufficient reserve": 16323,
     "No LP stake": 16729,
+    "Invalid amount": 17062,
     "Trade limit 1%-50%": 19907,
+    "Deposit QSR first": 20145,
     "Insufficient LP balance": 22606,
     "DeFi paused": 24969,
     "Only QSR master": 27536,
@@ -2157,6 +2227,7 @@ export const QuasarDeFi_errors_backward = {
     "Invalid farm period": 52910,
     "QSR deposit too large": 54751,
     "Zero LP tokens": 55678,
+    "Invalid depositor": 58957,
     "No rewards to claim": 63475,
 } as const
 
@@ -2183,6 +2254,7 @@ const QuasarDeFi_types: ABIType[] = [
     {"name":"SetFeeBps","header":385879986,"fields":[{"name":"feeBps","type":{"kind":"simple","type":"uint","optional":false,"format":16}}]},
     {"name":"SetPaused","header":157817343,"fields":[{"name":"paused","type":{"kind":"simple","type":"bool","optional":false}}]},
     {"name":"SetMaxTradeBps","header":3707725903,"fields":[{"name":"maxTradeBps","type":{"kind":"simple","type":"uint","optional":false,"format":16}}]},
+    {"name":"DefiPayout","header":3146613905,"fields":[{"name":"queryId","type":{"kind":"simple","type":"uint","optional":false,"format":64}},{"name":"amount","type":{"kind":"simple","type":"uint","optional":false,"format":"coins"}},{"name":"destination","type":{"kind":"simple","type":"address","optional":false}}]},
     {"name":"TokenNotification","header":78460803,"fields":[{"name":"queryId","type":{"kind":"simple","type":"uint","optional":false,"format":64}},{"name":"amount","type":{"kind":"simple","type":"uint","optional":false,"format":"coins"}},{"name":"from","type":{"kind":"simple","type":"address","optional":false}},{"name":"forwardPayload","type":{"kind":"simple","type":"slice","optional":false,"format":"remainder"}}]},
     {"name":"EventLiquidityAdded","header":321113071,"fields":[{"name":"provider","type":{"kind":"simple","type":"address","optional":false}},{"name":"tonAmount","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"qsrAmount","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"lpMinted","type":{"kind":"simple","type":"int","optional":false,"format":257}}]},
     {"name":"EventLiquidityRemoved","header":1531913385,"fields":[{"name":"provider","type":{"kind":"simple","type":"address","optional":false}},{"name":"tonOut","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"qsrOut","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"lpBurned","type":{"kind":"simple","type":"int","optional":false,"format":257}}]},
@@ -2193,7 +2265,7 @@ const QuasarDeFi_types: ABIType[] = [
     {"name":"FarmInfo","header":null,"fields":[{"name":"staked","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"rewardPerSecond","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"lastUpdate","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"accRewardPerShare","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"startTime","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"endTime","type":{"kind":"simple","type":"int","optional":false,"format":257}}]},
     {"name":"UserFarmInfo","header":null,"fields":[{"name":"staked","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"debt","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"pending","type":{"kind":"simple","type":"int","optional":false,"format":257}}]},
     {"name":"SwapQuote","header":null,"fields":[{"name":"tonIn","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"qsrIn","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"tonOut","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"qsrOut","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"fee","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"priceImpactBps","type":{"kind":"simple","type":"int","optional":false,"format":257}}]},
-    {"name":"QuasarDeFi$Data","header":null,"fields":[{"name":"owner","type":{"kind":"simple","type":"address","optional":false}},{"name":"qsrMaster","type":{"kind":"simple","type":"address","optional":false}},{"name":"lpTotalSupply","type":{"kind":"simple","type":"uint","optional":false,"format":"coins"}},{"name":"tonReserve","type":{"kind":"simple","type":"uint","optional":false,"format":"coins"}},{"name":"qsrReserve","type":{"kind":"simple","type":"uint","optional":false,"format":"coins"}},{"name":"lpBalances","type":{"kind":"dict","key":"address","value":"int"}},{"name":"feeBps","type":{"kind":"simple","type":"uint","optional":false,"format":16}},{"name":"feeAccumulated","type":{"kind":"simple","type":"uint","optional":false,"format":"coins"}},{"name":"farmEnabled","type":{"kind":"simple","type":"bool","optional":false}},{"name":"farmRewardPerSecond","type":{"kind":"simple","type":"uint","optional":false,"format":"coins"}},{"name":"farmStartTime","type":{"kind":"simple","type":"uint","optional":false,"format":32}},{"name":"farmEndTime","type":{"kind":"simple","type":"uint","optional":false,"format":32}},{"name":"farmLastUpdate","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"farmAccRewardPerShare","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"farmTotalStaked","type":{"kind":"simple","type":"uint","optional":false,"format":"coins"}},{"name":"farmStakes","type":{"kind":"dict","key":"address","value":"UserFarmInfo","valueFormat":"ref"}},{"name":"locked","type":{"kind":"simple","type":"bool","optional":false}},{"name":"paused","type":{"kind":"simple","type":"bool","optional":false}},{"name":"maxTradeBps","type":{"kind":"simple","type":"uint","optional":false,"format":16}}]},
+    {"name":"QuasarDeFi$Data","header":null,"fields":[{"name":"owner","type":{"kind":"simple","type":"address","optional":false}},{"name":"qsrMaster","type":{"kind":"simple","type":"address","optional":false}},{"name":"lpTotalSupply","type":{"kind":"simple","type":"uint","optional":false,"format":"coins"}},{"name":"tonReserve","type":{"kind":"simple","type":"uint","optional":false,"format":"coins"}},{"name":"qsrReserve","type":{"kind":"simple","type":"uint","optional":false,"format":"coins"}},{"name":"lpBalances","type":{"kind":"dict","key":"address","value":"int"}},{"name":"pendingQsrDeposits","type":{"kind":"dict","key":"address","value":"int"}},{"name":"feeBps","type":{"kind":"simple","type":"uint","optional":false,"format":16}},{"name":"feeAccumulated","type":{"kind":"simple","type":"uint","optional":false,"format":"coins"}},{"name":"farmEnabled","type":{"kind":"simple","type":"bool","optional":false}},{"name":"farmRewardPerSecond","type":{"kind":"simple","type":"uint","optional":false,"format":"coins"}},{"name":"farmStartTime","type":{"kind":"simple","type":"uint","optional":false,"format":32}},{"name":"farmEndTime","type":{"kind":"simple","type":"uint","optional":false,"format":32}},{"name":"farmLastUpdate","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"farmAccRewardPerShare","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"farmTotalStaked","type":{"kind":"simple","type":"uint","optional":false,"format":"coins"}},{"name":"farmStakes","type":{"kind":"dict","key":"address","value":"UserFarmInfo","valueFormat":"ref"}},{"name":"locked","type":{"kind":"simple","type":"bool","optional":false}},{"name":"paused","type":{"kind":"simple","type":"bool","optional":false}},{"name":"maxTradeBps","type":{"kind":"simple","type":"uint","optional":false,"format":16}}]},
 ]
 
 const QuasarDeFi_opcodes = {
@@ -2209,6 +2281,7 @@ const QuasarDeFi_opcodes = {
     "SetFeeBps": 385879986,
     "SetPaused": 157817343,
     "SetMaxTradeBps": 3707725903,
+    "DefiPayout": 3146613905,
     "TokenNotification": 78460803,
     "EventLiquidityAdded": 321113071,
     "EventLiquidityRemoved": 1531913385,
@@ -2219,6 +2292,7 @@ const QuasarDeFi_opcodes = {
 
 const QuasarDeFi_getters: ABIGetter[] = [
     {"name":"lpBalance","methodId":66831,"arguments":[{"name":"user","type":{"kind":"simple","type":"address","optional":false}}],"returnType":{"kind":"simple","type":"int","optional":false,"format":257}},
+    {"name":"pendingQsrDeposit","methodId":83522,"arguments":[{"name":"user","type":{"kind":"simple","type":"address","optional":false}}],"returnType":{"kind":"simple","type":"int","optional":false,"format":257}},
     {"name":"poolInfo","methodId":106583,"arguments":[],"returnType":{"kind":"simple","type":"LPInfo","optional":false}},
     {"name":"farmInfo","methodId":119094,"arguments":[],"returnType":{"kind":"simple","type":"FarmInfo","optional":false}},
     {"name":"userFarm","methodId":120611,"arguments":[{"name":"user","type":{"kind":"simple","type":"address","optional":false}}],"returnType":{"kind":"simple","type":"UserFarmInfo","optional":false}},
@@ -2234,6 +2308,7 @@ const QuasarDeFi_getters: ABIGetter[] = [
 
 export const QuasarDeFi_getterMapping: { [key: string]: string } = {
     'lpBalance': 'getLpBalance',
+    'pendingQsrDeposit': 'getPendingQsrDeposit',
     'poolInfo': 'getPoolInfo',
     'farmInfo': 'getFarmInfo',
     'userFarm': 'getUserFarm',
@@ -2346,6 +2421,14 @@ export class QuasarDeFi implements Contract {
         const builder = new TupleBuilder();
         builder.writeAddress(user);
         const source = (await provider.get('lpBalance', builder.build())).stack;
+        const result = source.readBigNumber();
+        return result;
+    }
+    
+    async getPendingQsrDeposit(provider: ContractProvider, user: Address) {
+        const builder = new TupleBuilder();
+        builder.writeAddress(user);
+        const source = (await provider.get('pendingQsrDeposit', builder.build())).stack;
         const result = source.readBigNumber();
         return result;
     }
