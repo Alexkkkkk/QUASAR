@@ -12,8 +12,12 @@ import {
     QuasarDeFi,
     loadAddLiquidity,
     loadSwapToTON,
+    loadSetPaused,
+    loadSetMaxTradeBps,
     storeAddLiquidity,
-    storeSwapToTON
+    storeSwapToTON,
+    storeSetPaused,
+    storeSetMaxTradeBps
 } from '../build/quasar_defi_QuasarDeFi.js';
 
 const owner = Address.parseRaw(`0:${'00'.repeat(32)}`);
@@ -76,5 +80,23 @@ test('DeFi liquidity and swap messages preserve coin amounts', () => {
         $$type: 'SwapToTON',
         qsrAmount: 250_000_000n,
         minTonOut: 100_000_000n
+    });
+});
+
+test('DeFi risk controls preserve pause and trade-limit settings', () => {
+    const pause = beginCell()
+        .store(storeSetPaused({ $$type: 'SetPaused', paused: true }))
+        .endCell();
+    const tradeLimit = beginCell()
+        .store(storeSetMaxTradeBps({ $$type: 'SetMaxTradeBps', maxTradeBps: 3000n }))
+        .endCell();
+
+    assert.deepEqual(loadSetPaused(pause.beginParse()), {
+        $$type: 'SetPaused',
+        paused: true
+    });
+    assert.deepEqual(loadSetMaxTradeBps(tradeLimit.beginParse()), {
+        $$type: 'SetMaxTradeBps',
+        maxTradeBps: 3000n
     });
 });
