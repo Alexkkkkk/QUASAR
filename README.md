@@ -224,7 +224,7 @@ Connect any TON wallet via **TON Connect 2.0**:
 
 ### Contract Addresses (auto-loaded)
 
-The UI loads addresses from `build/deployment.json` after deployment:
+The UI loads addresses from `website/deployment.json` after deployment:
 
 ```json
 {
@@ -250,11 +250,11 @@ npm run build        # Builds both quasar + quasar_defi
 
 ### 2. Configure Environment
 
-Create `.env`:
+Create `.env` and choose the network explicitly:
 
 ```bash
 WALLET_MNEMONIC=word1 word2 ... word24
-TON_NETWORK=testnet          # or mainnet
+TON_NETWORK=mainnet          # or testnet
 TONCENTER_API_KEY=your_key   # optional
 AI_ORACLE_ADDRESS=EQ...      # optional
 ```
