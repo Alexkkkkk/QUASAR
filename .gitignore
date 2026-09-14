@@ -11,3 +11,9 @@ coverage/
 *.cell
 secrets/
 wallets/
+
+# Local development and generated deployment state
+.idea/
+.vscode/
+build/deployment.json
+website/deployment.json
