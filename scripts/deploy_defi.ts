@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import { toNano, Address } from '@ton/core';
 import { TonClient, WalletContractV4 } from '@ton/ton';
 import { mnemonicToPrivateKey } from '@ton/crypto';
