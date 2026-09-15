@@ -324,6 +324,32 @@ contract QuasarMaster with Deployable {
         self._sendInternalTransfer(to, amount, queryId, from);
     }
 
+    // Fee-funded DeFi liquidity is delivered with a notification so the pool
+    // can account for the tokens in qsrReserve.
+    fun _sendTokensToDefi(amount: Int, queryId: Int) {
+        require(amount > 0, "Invalid DeFi transfer amount");
+        require(self.defiAddress != newAddress(0, 0), "DeFi not configured");
+        require(self.reserveBalance >= amount, "Insufficient QSR reserve");
+        self.reserveBalance = self.reserveBalance - amount;
+        let init: StateInit = initOf QuasarWallet(self.defiAddress, myAddress());
+        send(SendParameters{
+            to: contractAddress(init),
+            value: ton("0.02"),
+            bounce: true,
+            mode: SendPayGasSeparately,
+            body: InternalTransfer{
+                queryId: queryId,
+                amount: amount,
+                from: myAddress(),
+                responseDestination: myAddress(),
+                forwardTonAmount: ton("0.01"),
+                forwardPayload: emptySlice()
+            }.toCell(),
+            code: init.code,
+            data: init.data
+        });
+    }
+
     // Custodied deposits must leave the master-owned Jetton wallet.
     fun _sendCustodiedTokens(to: Address, amount: Int, queryId: Int) {
         require(amount > 0, "Invalid custody transfer amount");
@@ -364,6 +390,7 @@ contract QuasarMaster with Deployable {
     
     receive(msg: BurnNotification) {
         require(msg.amount > 0, "Invalid amount");
+        require(msg.amount <= self.totalSupply, "Supply underflow");
         let wInit: StateInit = initOf QuasarWallet(msg.sender, myAddress());
         require(sender() == contractAddress(wInit), "Unauthorized burn");
         self.totalSupply = self.totalSupply - msg.amount;
@@ -427,7 +454,7 @@ contract QuasarMaster with Deployable {
         
         // Send fee share to DeFi pool
         if (defiAmt > 0 && self.defiAddress != newAddress(0, 0)) {
-            self._sendTokens(self.defiAddress, defiAmt, msg.queryId, msg.originalSender);
+            self._sendTokensToDefi(defiAmt, msg.queryId);
         } else if (defiAmt > 0) {
             treasuryAmt = treasuryAmt + defiAmt;
         }
@@ -843,7 +870,7 @@ contract QuasarMaster with Deployable {
         }
         if (msg.action == 3 && msg.sentiment > 80) {
             self.feeBurnShare = 40;
-            self.mintable = true;
+            // AI may not re-enable minting after the owner stopped it.
         }
         if (msg.action == 1 && msg.sentiment < -50) {
             self.mintable = false;
