@@ -10,7 +10,9 @@
     "deploy:defi": "tsx scripts/deploy_defi.ts",
     "test": "npm run build && node --import tsx --test tests/contracts.test.ts",
     "lint": "tact --config tact.config.json --check",
-    "website": "npx serve website"
+    "website": "npx serve website",
+    "security:check": "tsx scripts/security_check.ts",
+    "testnet:smoke": "tsx scripts/testnet_smoke.ts"
   },
   "keywords": [
     "ton",
