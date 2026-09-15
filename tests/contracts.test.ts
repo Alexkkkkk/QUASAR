@@ -4,11 +4,15 @@ import { readFileSync } from 'node:fs';
 import { Address, beginCell } from '@ton/core';
 import {
     QuasarMaster,
+    loadAIRebalance,
+    loadAISetBuybackDirect,
     loadDeploy,
     loadInternalTransfer,
     loadMint,
     loadTokenNotification,
     storeDeploy,
+    storeAIRebalance,
+    storeAISetBuybackDirect,
     storeInternalTransfer,
     storeMint,
     storeTokenNotification
@@ -187,4 +191,30 @@ test('funded farm controls round-trip through their BOCs', () => {
 
     assert.equal(loadFundFarm(funding.beginParse()).amount, 10_000_000_000n);
     assert.equal(loadSetFarmEnabled(enabled.beginParse()).enabled, true);
+});
+
+test('AI risk-control messages preserve hardened parameters', () => {
+    const rebalance = beginCell()
+        .store(storeAIRebalance({
+            $$type: 'AIRebalance',
+            queryId: 9n,
+            targetFeeBps: 30n,
+            targetBurnShare: 50n,
+            recommendation: 'hold'
+        }))
+        .endCell();
+    const buyback = beginCell()
+        .store(storeAISetBuybackDirect({
+            $$type: 'AISetBuybackDirect',
+            queryId: 10n,
+            enabled: true,
+            threshold: 1_000_000_000n,
+            cooldown: 3600n,
+            burnPercent: 100n,
+            reason: 'bounded'
+        }))
+        .endCell();
+
+    assert.equal(loadAIRebalance(rebalance.beginParse()).targetFeeBps, 30n);
+    assert.equal(loadAISetBuybackDirect(buyback.beginParse()).burnPercent, 100n);
 });

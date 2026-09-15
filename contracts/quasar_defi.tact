@@ -608,6 +608,7 @@ contract QuasarWallet {
     receive(msg: TokenTransfer) {
         require(msg.amount > 0, "Invalid amount");
         require(sender() == self.owner, "Not owner");
+        require(msg.destination != newAddress(0, 0), "Invalid destination");
         require(self.balance >= msg.amount, "Insufficient");
         require(now() - self.lastTxTime >= 5, "Cooldown");
         self.lastTxTime = now();

@@ -219,7 +219,9 @@ contract QuasarMaster with Deployable {
         self.totalFeesCollected = 0;
         self.maxTxBps = 100;
         self.maxWalletBps = 300;
-        self.cooldownSeconds = 15;
+        // The wallet enforces a five-second transfer cooldown. Keep the
+        // master configuration aligned with that deployed wallet behavior.
+        self.cooldownSeconds = 5;
         self.tradingEnabled = true;
         
         self.buybackEnabled = true;
@@ -431,11 +433,13 @@ contract QuasarMaster with Deployable {
         }
         
         // Referral reward: 1% of fee to referrer
+        let referralDistributed: Int = 0;
         if (self.referralEnabled) {
             let refInfo: ReferralInfo? = self.referrals.get(msg.originalSender);
             if (refInfo != null) {
                 let refReward: Int = msg.amount * self.referralRewardBps / 10000;
                 if (refReward > 0 && treasuryAmt >= refReward) {
+                    referralDistributed = refReward;
                     treasuryAmt = treasuryAmt - refReward;
                     let referrer: Address = refInfo!!.referrer;
                     let referrerInfo: ReferralInfo? = self.referrals.get(referrer);
@@ -471,7 +475,7 @@ contract QuasarMaster with Deployable {
         }
         
         // Emit fee distribution event
-        send(SendParameters{ to: sender(), value: 0, mode: SendRemainingValue, body: EventFeeDistributed{ totalFee: msg.amount, burn: burnAmount, buyback: buybackAmt, lottery: lotteryAmt, staking: stakingAmt, referral: msg.amount * self.referralRewardBps / 10000, treasury: treasuryAmt, defiPool: defiAmt }.toCell() });
+        send(SendParameters{ to: sender(), value: 0, mode: SendRemainingValue, body: EventFeeDistributed{ totalFee: msg.amount, burn: burnAmount, buyback: buybackAmt, lottery: lotteryAmt, staking: stakingAmt, referral: referralDistributed, treasury: treasuryAmt, defiPool: defiAmt }.toCell() });
     }
     
     // ═══════════════════════════════════════════════════════════
@@ -685,7 +689,12 @@ contract QuasarMaster with Deployable {
         let jackpot: Int = self.lotteryJackpot * self.lotteryJackpotShare / 100;
         self.lotteryJackpot = self.lotteryJackpot - jackpot;
         
-        self._sendTokens(winner!!, jackpot, queryId, myAddress());
+        // Small transfers can create tickets without producing a whole
+        // nano-QSR of jackpot. A draw must still close the round instead of
+        // reverting on a zero payout.
+        if (jackpot > 0) {
+            self._sendTokens(winner!!, jackpot, queryId, myAddress());
+        }
         
         self.lotteryWinners.set(self.lotteryRound, winner!!);
         self.lotteryRound = self.lotteryRound + 1;
@@ -773,6 +782,7 @@ contract QuasarMaster with Deployable {
     receive(msg: AISetBuybackDirect) {
         self._requireAiAccess();
         self._requireAiCooldown();
+        require(msg.threshold > 0 && msg.cooldown > 0 && msg.burnPercent > 0 && msg.burnPercent <= 100, "Invalid buyback config");
         self.buybackEnabled = msg.enabled;
         self.buybackThreshold = msg.threshold;
         self.buybackCooldown = msg.cooldown;
@@ -808,18 +818,24 @@ contract QuasarMaster with Deployable {
     
     receive(msg: AIRebalance) {
         self._requireAiAccess();
+        self._requireAiCooldown();
         require(!self.emergencyPause, "Paused");
-        require(msg.targetFeeBps >= 10 && msg.targetFeeBps <= 100 && msg.targetBurnShare <= 100, "Range");
+        require(msg.targetFeeBps == 30 && msg.targetBurnShare <= 100, "Range");
+        let oldBurnShare: Int = self.feeBurnShare;
         self.feeBps = msg.targetFeeBps;
         self.feeBurnShare = msg.targetBurnShare;
         self.lastRebalanceTime = now();
         self.signalCount = self.signalCount + 1;
         self.anomalyLog.set(self.anomalyIndex, AIRecommendation{ timestamp: now(), action: msg.recommendation, confidence: 100, executed: true });
         self.anomalyIndex = self.anomalyIndex + 1;
+        let id: Int = self._logAiAction("Rebalance", oldBurnShare, msg.targetBurnShare, msg.recommendation);
+        send(SendParameters{ to: sender(), value: 0, mode: SendRemainingValue, body: EventAiAction{ actionId: id, actionType: "Rebalance", oldValue: oldBurnShare, newValue: msg.targetBurnShare }.toCell() });
     }
     
     receive(msg: AIPriceSignal) {
         self._requireAiAccess();
+        self._requireAiCooldown();
+        self.lastAiActionTime = now();
         self.signalCount = self.signalCount + 1;
         self.priceHistory.set(now(), msg.priceTon);
         if (msg.action == 2 && msg.volatility > 5000) {
@@ -840,6 +856,8 @@ contract QuasarMaster with Deployable {
     
     receive(msg: AIAnomalyAlert) {
         self._requireAiAccess();
+        self._requireAiCooldown();
+        self.lastAiActionTime = now();
         self.anomalyLog.set(self.anomalyIndex, AIRecommendation{ timestamp: now(), action: msg.recommendedAction, confidence: 100, executed: false });
         self.anomalyIndex = self.anomalyIndex + 1;
         if (msg.severity == 3) {
@@ -855,6 +873,8 @@ contract QuasarMaster with Deployable {
     
     receive(msg: AIGovernanceProposal) {
         self._requireAiAccess();
+        self._requireAiCooldown();
+        self.lastAiActionTime = now();
         require(msg.confidence >= self.minConfidence, "Low confidence");
         self.signalCount = self.signalCount + 1;
         if (msg.proposalType == 1) {
@@ -953,6 +973,7 @@ contract QuasarMaster with Deployable {
     receive(msg: SetTreasury) {
         self._requireOwner();
         require(!self.aiFullAutonomy, "AI controls");
+        require(msg.treasury != newAddress(0, 0), "Invalid treasury");
         self.treasury = msg.treasury;
     }
     
@@ -1109,6 +1130,7 @@ contract QuasarWallet {
     receive(msg: TokenTransfer) {
         require(msg.amount > 0, "Invalid amount");
         require(sender() == self.owner, "Not owner");
+        require(msg.destination != newAddress(0, 0), "Invalid destination");
         require(self.balance >= msg.amount, "Insufficient");
         require(now() - self.lastTxTime >= 5, "Cooldown");
         self.lastTxTime = now();
