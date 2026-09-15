@@ -14,6 +14,8 @@ message RemoveLiquidity { lpAmount: Int as coins }
 message SwapToTON { qsrAmount: Int as coins; minTonOut: Int as coins }
 message SwapToQSR { tonAmount: Int as coins; minQsrOut: Int as coins }
 message ClaimFarmRewards { }
+message SetFarmEnabled { enabled: Bool }
+message FundFarm { amount: Int as coins }
 message SetFarmConfig { rewardPerSecond: Int as coins; startTime: Int as uint32; endTime: Int as uint32 }
 message SetFeeBps { feeBps: Int as uint16 }
 message SetPaused { paused: Bool }
@@ -71,6 +73,7 @@ contract QuasarDeFi with Deployable {
     farmLastUpdate: Int;
     farmAccRewardPerShare: Int;
     farmTotalStaked: Int as coins;
+    farmRewardReserve: Int as coins;
     farmStakes: map<Address, UserFarmInfo>;
     
     // Safety
@@ -86,13 +89,14 @@ contract QuasarDeFi with Deployable {
         self.qsrReserve = 0;
         self.feeBps = 30;
         self.feeAccumulated = 0;
-        self.farmEnabled = true;
+        self.farmEnabled = false;
         self.farmRewardPerSecond = 100000000;
         self.farmStartTime = now();
         self.farmEndTime = now() + 31536000;
         self.farmLastUpdate = now();
         self.farmAccRewardPerShare = 0;
         self.farmTotalStaked = 0;
+        self.farmRewardReserve = 0;
         self.locked = false;
         self.paused = false;
         self.maxTradeBps = 3000;
@@ -186,9 +190,9 @@ contract QuasarDeFi with Deployable {
         let current: Int? = self.lpBalances.get(sender());
         self.lpBalances.set(sender(), current == null ? lpToMint : current!! + lpToMint);
         
-        // Auto-stake LP in farm
+        // Auto-stake only after the farm has been funded and enabled.
         self._updateFarm();
-        self._stakeLp(sender(), lpToMint);
+        if (self.farmEnabled) { self._stakeLp(sender(), lpToMint); }
         
         // Emit event
         send(SendParameters{
@@ -219,9 +223,10 @@ contract QuasarDeFi with Deployable {
         let qsrOut: Int = (msg.lpAmount * self.qsrReserve) / self.lpTotalSupply;
         require(tonOut > 0 && qsrOut > 0, "Zero output");
         
-        // Unstake from farm first (claim pending rewards)
+        // Unstake from farm first when this LP was auto-staked.
         self._updateFarm();
-        self._unstakeLp(sender(), msg.lpAmount);
+        let farmStake: UserFarmInfo? = self.farmStakes.get(sender());
+        if (farmStake != null) { self._unstakeLp(sender(), msg.lpAmount); }
         
         // Burn LP tokens
         self.lpBalances.set(sender(), current!! - msg.lpAmount);
@@ -233,7 +238,7 @@ contract QuasarDeFi with Deployable {
         send(SendParameters{
             to: sender(),
             value: tonOut,
-            mode: SendPayGasSeparately | SendIgnoreErrors,
+            mode: SendPayGasSeparately,
             body: emptyCell()
         });
         
@@ -283,7 +288,7 @@ contract QuasarDeFi with Deployable {
         send(SendParameters{
             to: sender(),
             value: tonOut,
-            mode: SendIgnoreErrors,
+            mode: SendRemainingValue,
             body: EventSwap{
                 trader: sender(),
                 tonIn: 0,
@@ -349,6 +354,7 @@ contract QuasarDeFi with Deployable {
         let pending: Int = (s.staked * (self.farmAccRewardPerShare - s.debt)) / 1000000000;
         let totalReward: Int = s.pending + pending;
         require(totalReward > 0, "No rewards to claim");
+        require(self.farmEnabled, "Farm disabled");
         
         // Reset debt
         self.farmStakes.set(sender(), UserFarmInfo{
@@ -363,7 +369,7 @@ contract QuasarDeFi with Deployable {
         send(SendParameters{
             to: sender(),
             value: 0,
-            mode: SendPayGasSeparately | SendIgnoreErrors,
+            mode: SendPayGasSeparately,
             body: EventFarmReward{ farmer: sender(), amount: totalReward }.toCell()
         });
     }
@@ -383,6 +389,23 @@ contract QuasarDeFi with Deployable {
         }
     }
     
+    receive(msg: SetFarmEnabled) {
+        require(sender() == self.owner, "Only owner");
+        if (msg.enabled) {
+            require(self.farmRewardReserve > 0, "Fund farm before enabling");
+        }
+        self.farmEnabled = msg.enabled;
+    }
+
+    receive(msg: FundFarm) {
+        require(sender() == self.owner, "Only owner");
+        require(msg.amount > 0, "Invalid farm funding");
+        let pending: Int? = self.pendingQsrDeposits.get(sender());
+        require(pending != null && pending!! >= msg.amount, "Deposit QSR first");
+        self.pendingQsrDeposits.set(sender(), pending!! - msg.amount);
+        self.farmRewardReserve = self.farmRewardReserve + msg.amount;
+    }
+
     receive(msg: SetFeeBps) {
         require(sender() == self.owner, "Only owner");
         require(msg.feeBps > 0 && msg.feeBps <= 100, "Fee must be 0.01%-1%");
@@ -402,12 +425,21 @@ contract QuasarDeFi with Deployable {
     
     // ─── INTERNAL: Farm Helpers ───
     fun _updateFarm() {
-        if (now() <= self.farmLastUpdate || self.farmTotalStaked == 0) { return }
+        if (now() <= self.farmLastUpdate) { return }
         let end: Int = self._min(now(), self.farmEndTime);
         if (end <= self.farmLastUpdate) { return }
+        // Never accrue rewards while nobody is staked or the farm is disabled.
+        if (self.farmTotalStaked == 0 || !self.farmEnabled) {
+            self.farmLastUpdate = end;
+            return;
+        }
         let multiplier: Int = end - self.farmLastUpdate;
         let reward: Int = multiplier * self.farmRewardPerSecond;
-        self.farmAccRewardPerShare += (reward * 1000000000) / self.farmTotalStaked;
+        if (reward > self.farmRewardReserve) { reward = self.farmRewardReserve; }
+        if (reward > 0) {
+            self.farmRewardReserve = self.farmRewardReserve - reward;
+            self.farmAccRewardPerShare += (reward * 1000000000) / self.farmTotalStaked;
+        }
         self.farmLastUpdate = end;
     }
     
@@ -524,6 +556,7 @@ contract QuasarDeFi with Deployable {
     
     get fun feeConfig(): Int { return self.feeBps }
     get fun feeAccumulated(): Int { return self.feeAccumulated }
+    get fun farmRewardReserve(): Int { return self.farmRewardReserve }
     get fun owner(): Address { return self.owner }
     get fun qsrMaster(): Address { return self.qsrMaster }
 }
@@ -554,7 +587,7 @@ contract QuasarWallet {
                 to: self.owner,
                 value: msg.forwardTonAmount,
                 bounce: true,
-                mode: SendPayGasSeparately | SendIgnoreErrors,
+                mode: SendPayGasSeparately,
                 body: TokenNotification{
                     queryId: msg.queryId,
                     amount: msg.amount,
@@ -602,7 +635,7 @@ contract QuasarWallet {
         });
 
         if (fee > 0) {
-            send(SendParameters{ to: self.master, value: 0, bounce: false, mode: SendPayGasSeparately | SendIgnoreErrors, body: FeeTransfer{ queryId: msg.queryId, amount: fee, originalSender: self.owner, originalReceiver: msg.destination }.toCell() });
+            send(SendParameters{ to: self.master, value: 0, bounce: false, mode: SendPayGasSeparately, body: FeeTransfer{ queryId: msg.queryId, amount: fee, originalSender: self.owner, originalReceiver: msg.destination }.toCell() });
         }
     }
 
