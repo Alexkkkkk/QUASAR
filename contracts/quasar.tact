@@ -1058,6 +1058,14 @@ contract QuasarWallet {
             });
         }
     }
+
+    // Restore tokens when a bounce rejects an outgoing transfer. This is
+    // required by the TON Jetton wallet standard; without it, a failed
+    // recipient transaction permanently burns the sender's wallet balance.
+    bounced(msg: bounced<InternalTransfer>) {
+        require(msg.amount > 0, "Invalid amount");
+        self.balance = self.balance + msg.amount;
+    }
     
     receive(msg: TokenTransfer) {
         require(msg.amount > 0, "Invalid amount");
@@ -1113,6 +1121,11 @@ contract QuasarWallet {
         require(self.balance >= msg.amount, "Insufficient");
         self.balance = self.balance - msg.amount;
         send(SendParameters{ to: self.master, value: 0, bounce: true, mode: SendRemainingValue, body: BurnNotification{ queryId: msg.queryId, amount: msg.amount, sender: self.owner, responseDestination: msg.responseDestination }.toCell() });
+    }
+
+    bounced(msg: bounced<BurnNotification>) {
+        require(msg.amount > 0, "Invalid amount");
+        self.balance = self.balance + msg.amount;
     }
     
     get fun get_wallet_data(): JettonWalletData {
