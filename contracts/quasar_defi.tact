@@ -565,6 +565,13 @@ contract QuasarWallet {
         }
     }
 
+    // Restore tokens when a bounce rejects an outgoing transfer. This keeps
+    // the wallet balance consistent with the Jetton ledger.
+    bounced(msg: bounced<InternalTransfer>) {
+        require(msg.amount > 0, "Invalid amount");
+        self.balance = self.balance + msg.amount;
+    }
+
     receive(msg: TokenTransfer) {
         require(msg.amount > 0, "Invalid amount");
         require(sender() == self.owner, "Not owner");
@@ -640,6 +647,11 @@ contract QuasarWallet {
                 responseDestination: msg.responseDestination
             }.toCell()
         });
+    }
+
+    bounced(msg: bounced<BurnNotification>) {
+        require(msg.amount > 0, "Invalid amount");
+        self.balance = self.balance + msg.amount;
     }
 
     get fun get_wallet_data(): JettonWalletData {
