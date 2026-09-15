@@ -151,8 +151,14 @@ contract QuasarDeFi with Deployable {
         require(msg.amount > 0, "Invalid amount");
         require(msg.from != newAddress(0, 0), "Invalid depositor");
 
-        let pending: Int? = self.pendingQsrDeposits.get(msg.from);
-        self.pendingQsrDeposits.set(msg.from, pending == null ? msg.amount : pending!! + msg.amount);
+        // Master-funded fee liquidity is already owned by the pool and must
+        // enter qsrReserve directly, not become a user withdrawal credit.
+        if (msg.from == self.qsrMaster) {
+            self.qsrReserve = self.qsrReserve + msg.amount;
+        } else {
+            let pending: Int? = self.pendingQsrDeposits.get(msg.from);
+            self.pendingQsrDeposits.set(msg.from, pending == null ? msg.amount : pending!! + msg.amount);
+        }
     }
     
     // ─── ADD LIQUIDITY ───
@@ -226,7 +232,12 @@ contract QuasarDeFi with Deployable {
         // Unstake from farm first when this LP was auto-staked.
         self._updateFarm();
         let farmStake: UserFarmInfo? = self.farmStakes.get(sender());
-        if (farmStake != null) { self._unstakeLp(sender(), msg.lpAmount); }
+        if (farmStake != null && farmStake!!.staked > 0) {
+            // A provider can hold LP that was added while farming was off.
+            // Unstake only the portion actually locked in the farm.
+            let farmAmount: Int = self._min(msg.lpAmount, farmStake!!.staked);
+            if (farmAmount > 0) { self._unstakeLp(sender(), farmAmount); }
+        }
         
         // Burn LP tokens
         self.lpBalances.set(sender(), current!! - msg.lpAmount);
