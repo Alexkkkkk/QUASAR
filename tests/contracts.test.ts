@@ -19,12 +19,16 @@ import {
     loadSwapToTON,
     loadSetPaused,
     loadSetMaxTradeBps,
+    loadFundFarm,
+    loadSetFarmEnabled,
     loadDefiPayout,
     loadTokenTransfer,
     storeAddLiquidity,
     storeSwapToTON,
     storeSetPaused,
     storeSetMaxTradeBps,
+    storeFundFarm,
+    storeSetFarmEnabled,
     storeDefiPayout,
     storeTokenTransfer
 } from '../build/quasar_defi_QuasarDeFi.js';
@@ -171,4 +175,16 @@ test('DeFi derives the same Jetton wallet code as the master', () => {
         readFileSync('build/quasar_QuasarWallet.code.boc'),
         readFileSync('build/quasar_defi_QuasarWallet.code.boc')
     );
+});
+
+test('funded farm controls round-trip through their BOCs', () => {
+    const funding = beginCell()
+        .store(storeFundFarm({ $$type: 'FundFarm', amount: 10_000_000_000n }))
+        .endCell();
+    const enabled = beginCell()
+        .store(storeSetFarmEnabled({ $$type: 'SetFarmEnabled', enabled: true }))
+        .endCell();
+
+    assert.equal(loadFundFarm(funding.beginParse()).amount, 10_000_000_000n);
+    assert.equal(loadSetFarmEnabled(enabled.beginParse()).enabled, true);
 });
