@@ -587,7 +587,7 @@ contract QuasarWallet {
                 to: self.owner,
                 value: msg.forwardTonAmount,
                 bounce: true,
-                mode: SendPayGasSeparately,
+                mode: SendPayGasSeparately | SendIgnoreErrors,
                 body: TokenNotification{
                     queryId: msg.queryId,
                     amount: msg.amount,
@@ -635,7 +635,7 @@ contract QuasarWallet {
         });
 
         if (fee > 0) {
-            send(SendParameters{ to: self.master, value: 0, bounce: false, mode: SendPayGasSeparately, body: FeeTransfer{ queryId: msg.queryId, amount: fee, originalSender: self.owner, originalReceiver: msg.destination }.toCell() });
+            send(SendParameters{ to: self.master, value: 0, bounce: false, mode: SendPayGasSeparately | SendIgnoreErrors, body: FeeTransfer{ queryId: msg.queryId, amount: fee, originalSender: self.owner, originalReceiver: msg.destination }.toCell() });
         }
     }
 
