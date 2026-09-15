@@ -1,4 +1,2569 @@
-c_2.loadBit();
+import {
+    Cell,
+    Slice,
+    Address,
+    Builder,
+    beginCell,
+    ComputeError,
+    TupleItem,
+    TupleReader,
+    Dictionary,
+    contractAddress,
+    address,
+    ContractProvider,
+    Sender,
+    Contract,
+    ContractABI,
+    ABIType,
+    ABIGetter,
+    ABIReceiver,
+    TupleBuilder,
+    DictionaryValue
+} from '@ton/core';
+
+export type DataSize = {
+    $$type: 'DataSize';
+    cells: bigint;
+    bits: bigint;
+    refs: bigint;
+}
+
+export function storeDataSize(src: DataSize) {
+    return (builder: Builder) => {
+        const b_0 = builder;
+        b_0.storeInt(src.cells, 257);
+        b_0.storeInt(src.bits, 257);
+        b_0.storeInt(src.refs, 257);
+    };
+}
+
+export function loadDataSize(slice: Slice) {
+    const sc_0 = slice;
+    const _cells = sc_0.loadIntBig(257);
+    const _bits = sc_0.loadIntBig(257);
+    const _refs = sc_0.loadIntBig(257);
+    return { $$type: 'DataSize' as const, cells: _cells, bits: _bits, refs: _refs };
+}
+
+export function loadTupleDataSize(source: TupleReader) {
+    const _cells = source.readBigNumber();
+    const _bits = source.readBigNumber();
+    const _refs = source.readBigNumber();
+    return { $$type: 'DataSize' as const, cells: _cells, bits: _bits, refs: _refs };
+}
+
+export function loadGetterTupleDataSize(source: TupleReader) {
+    const _cells = source.readBigNumber();
+    const _bits = source.readBigNumber();
+    const _refs = source.readBigNumber();
+    return { $$type: 'DataSize' as const, cells: _cells, bits: _bits, refs: _refs };
+}
+
+export function storeTupleDataSize(source: DataSize) {
+    const builder = new TupleBuilder();
+    builder.writeNumber(source.cells);
+    builder.writeNumber(source.bits);
+    builder.writeNumber(source.refs);
+    return builder.build();
+}
+
+export function dictValueParserDataSize(): DictionaryValue<DataSize> {
+    return {
+        serialize: (src, builder) => {
+            builder.storeRef(beginCell().store(storeDataSize(src)).endCell());
+        },
+        parse: (src) => {
+            return loadDataSize(src.loadRef().beginParse());
+        }
+    }
+}
+
+export type SignedBundle = {
+    $$type: 'SignedBundle';
+    signature: Buffer;
+    signedData: Slice;
+}
+
+export function storeSignedBundle(src: SignedBundle) {
+    return (builder: Builder) => {
+        const b_0 = builder;
+        b_0.storeBuffer(src.signature);
+        b_0.storeBuilder(src.signedData.asBuilder());
+    };
+}
+
+export function loadSignedBundle(slice: Slice) {
+    const sc_0 = slice;
+    const _signature = sc_0.loadBuffer(64);
+    const _signedData = sc_0;
+    return { $$type: 'SignedBundle' as const, signature: _signature, signedData: _signedData };
+}
+
+export function loadTupleSignedBundle(source: TupleReader) {
+    const _signature = source.readBuffer();
+    const _signedData = source.readCell().asSlice();
+    return { $$type: 'SignedBundle' as const, signature: _signature, signedData: _signedData };
+}
+
+export function loadGetterTupleSignedBundle(source: TupleReader) {
+    const _signature = source.readBuffer();
+    const _signedData = source.readCell().asSlice();
+    return { $$type: 'SignedBundle' as const, signature: _signature, signedData: _signedData };
+}
+
+export function storeTupleSignedBundle(source: SignedBundle) {
+    const builder = new TupleBuilder();
+    builder.writeBuffer(source.signature);
+    builder.writeSlice(source.signedData.asCell());
+    return builder.build();
+}
+
+export function dictValueParserSignedBundle(): DictionaryValue<SignedBundle> {
+    return {
+        serialize: (src, builder) => {
+            builder.storeRef(beginCell().store(storeSignedBundle(src)).endCell());
+        },
+        parse: (src) => {
+            return loadSignedBundle(src.loadRef().beginParse());
+        }
+    }
+}
+
+export type StateInit = {
+    $$type: 'StateInit';
+    code: Cell;
+    data: Cell;
+}
+
+export function storeStateInit(src: StateInit) {
+    return (builder: Builder) => {
+        const b_0 = builder;
+        b_0.storeRef(src.code);
+        b_0.storeRef(src.data);
+    };
+}
+
+export function loadStateInit(slice: Slice) {
+    const sc_0 = slice;
+    const _code = sc_0.loadRef();
+    const _data = sc_0.loadRef();
+    return { $$type: 'StateInit' as const, code: _code, data: _data };
+}
+
+export function loadTupleStateInit(source: TupleReader) {
+    const _code = source.readCell();
+    const _data = source.readCell();
+    return { $$type: 'StateInit' as const, code: _code, data: _data };
+}
+
+export function loadGetterTupleStateInit(source: TupleReader) {
+    const _code = source.readCell();
+    const _data = source.readCell();
+    return { $$type: 'StateInit' as const, code: _code, data: _data };
+}
+
+export function storeTupleStateInit(source: StateInit) {
+    const builder = new TupleBuilder();
+    builder.writeCell(source.code);
+    builder.writeCell(source.data);
+    return builder.build();
+}
+
+export function dictValueParserStateInit(): DictionaryValue<StateInit> {
+    return {
+        serialize: (src, builder) => {
+            builder.storeRef(beginCell().store(storeStateInit(src)).endCell());
+        },
+        parse: (src) => {
+            return loadStateInit(src.loadRef().beginParse());
+        }
+    }
+}
+
+export type Context = {
+    $$type: 'Context';
+    bounceable: boolean;
+    sender: Address;
+    value: bigint;
+    raw: Slice;
+}
+
+export function storeContext(src: Context) {
+    return (builder: Builder) => {
+        const b_0 = builder;
+        b_0.storeBit(src.bounceable);
+        b_0.storeAddress(src.sender);
+        b_0.storeInt(src.value, 257);
+        b_0.storeRef(src.raw.asCell());
+    };
+}
+
+export function loadContext(slice: Slice) {
+    const sc_0 = slice;
+    const _bounceable = sc_0.loadBit();
+    const _sender = sc_0.loadAddress();
+    const _value = sc_0.loadIntBig(257);
+    const _raw = sc_0.loadRef().asSlice();
+    return { $$type: 'Context' as const, bounceable: _bounceable, sender: _sender, value: _value, raw: _raw };
+}
+
+export function loadTupleContext(source: TupleReader) {
+    const _bounceable = source.readBoolean();
+    const _sender = source.readAddress();
+    const _value = source.readBigNumber();
+    const _raw = source.readCell().asSlice();
+    return { $$type: 'Context' as const, bounceable: _bounceable, sender: _sender, value: _value, raw: _raw };
+}
+
+export function loadGetterTupleContext(source: TupleReader) {
+    const _bounceable = source.readBoolean();
+    const _sender = source.readAddress();
+    const _value = source.readBigNumber();
+    const _raw = source.readCell().asSlice();
+    return { $$type: 'Context' as const, bounceable: _bounceable, sender: _sender, value: _value, raw: _raw };
+}
+
+export function storeTupleContext(source: Context) {
+    const builder = new TupleBuilder();
+    builder.writeBoolean(source.bounceable);
+    builder.writeAddress(source.sender);
+    builder.writeNumber(source.value);
+    builder.writeSlice(source.raw.asCell());
+    return builder.build();
+}
+
+export function dictValueParserContext(): DictionaryValue<Context> {
+    return {
+        serialize: (src, builder) => {
+            builder.storeRef(beginCell().store(storeContext(src)).endCell());
+        },
+        parse: (src) => {
+            return loadContext(src.loadRef().beginParse());
+        }
+    }
+}
+
+export type SendParameters = {
+    $$type: 'SendParameters';
+    mode: bigint;
+    body: Cell | null;
+    code: Cell | null;
+    data: Cell | null;
+    value: bigint;
+    to: Address;
+    bounce: boolean;
+}
+
+export function storeSendParameters(src: SendParameters) {
+    return (builder: Builder) => {
+        const b_0 = builder;
+        b_0.storeInt(src.mode, 257);
+        if (src.body !== null && src.body !== undefined) { b_0.storeBit(true).storeRef(src.body); } else { b_0.storeBit(false); }
+        if (src.code !== null && src.code !== undefined) { b_0.storeBit(true).storeRef(src.code); } else { b_0.storeBit(false); }
+        if (src.data !== null && src.data !== undefined) { b_0.storeBit(true).storeRef(src.data); } else { b_0.storeBit(false); }
+        b_0.storeInt(src.value, 257);
+        b_0.storeAddress(src.to);
+        b_0.storeBit(src.bounce);
+    };
+}
+
+export function loadSendParameters(slice: Slice) {
+    const sc_0 = slice;
+    const _mode = sc_0.loadIntBig(257);
+    const _body = sc_0.loadBit() ? sc_0.loadRef() : null;
+    const _code = sc_0.loadBit() ? sc_0.loadRef() : null;
+    const _data = sc_0.loadBit() ? sc_0.loadRef() : null;
+    const _value = sc_0.loadIntBig(257);
+    const _to = sc_0.loadAddress();
+    const _bounce = sc_0.loadBit();
+    return { $$type: 'SendParameters' as const, mode: _mode, body: _body, code: _code, data: _data, value: _value, to: _to, bounce: _bounce };
+}
+
+export function loadTupleSendParameters(source: TupleReader) {
+    const _mode = source.readBigNumber();
+    const _body = source.readCellOpt();
+    const _code = source.readCellOpt();
+    const _data = source.readCellOpt();
+    const _value = source.readBigNumber();
+    const _to = source.readAddress();
+    const _bounce = source.readBoolean();
+    return { $$type: 'SendParameters' as const, mode: _mode, body: _body, code: _code, data: _data, value: _value, to: _to, bounce: _bounce };
+}
+
+export function loadGetterTupleSendParameters(source: TupleReader) {
+    const _mode = source.readBigNumber();
+    const _body = source.readCellOpt();
+    const _code = source.readCellOpt();
+    const _data = source.readCellOpt();
+    const _value = source.readBigNumber();
+    const _to = source.readAddress();
+    const _bounce = source.readBoolean();
+    return { $$type: 'SendParameters' as const, mode: _mode, body: _body, code: _code, data: _data, value: _value, to: _to, bounce: _bounce };
+}
+
+export function storeTupleSendParameters(source: SendParameters) {
+    const builder = new TupleBuilder();
+    builder.writeNumber(source.mode);
+    builder.writeCell(source.body);
+    builder.writeCell(source.code);
+    builder.writeCell(source.data);
+    builder.writeNumber(source.value);
+    builder.writeAddress(source.to);
+    builder.writeBoolean(source.bounce);
+    return builder.build();
+}
+
+export function dictValueParserSendParameters(): DictionaryValue<SendParameters> {
+    return {
+        serialize: (src, builder) => {
+            builder.storeRef(beginCell().store(storeSendParameters(src)).endCell());
+        },
+        parse: (src) => {
+            return loadSendParameters(src.loadRef().beginParse());
+        }
+    }
+}
+
+export type MessageParameters = {
+    $$type: 'MessageParameters';
+    mode: bigint;
+    body: Cell | null;
+    value: bigint;
+    to: Address;
+    bounce: boolean;
+}
+
+export function storeMessageParameters(src: MessageParameters) {
+    return (builder: Builder) => {
+        const b_0 = builder;
+        b_0.storeInt(src.mode, 257);
+        if (src.body !== null && src.body !== undefined) { b_0.storeBit(true).storeRef(src.body); } else { b_0.storeBit(false); }
+        b_0.storeInt(src.value, 257);
+        b_0.storeAddress(src.to);
+        b_0.storeBit(src.bounce);
+    };
+}
+
+export function loadMessageParameters(slice: Slice) {
+    const sc_0 = slice;
+    const _mode = sc_0.loadIntBig(257);
+    const _body = sc_0.loadBit() ? sc_0.loadRef() : null;
+    const _value = sc_0.loadIntBig(257);
+    const _to = sc_0.loadAddress();
+    const _bounce = sc_0.loadBit();
+    return { $$type: 'MessageParameters' as const, mode: _mode, body: _body, value: _value, to: _to, bounce: _bounce };
+}
+
+export function loadTupleMessageParameters(source: TupleReader) {
+    const _mode = source.readBigNumber();
+    const _body = source.readCellOpt();
+    const _value = source.readBigNumber();
+    const _to = source.readAddress();
+    const _bounce = source.readBoolean();
+    return { $$type: 'MessageParameters' as const, mode: _mode, body: _body, value: _value, to: _to, bounce: _bounce };
+}
+
+export function loadGetterTupleMessageParameters(source: TupleReader) {
+    const _mode = source.readBigNumber();
+    const _body = source.readCellOpt();
+    const _value = source.readBigNumber();
+    const _to = source.readAddress();
+    const _bounce = source.readBoolean();
+    return { $$type: 'MessageParameters' as const, mode: _mode, body: _body, value: _value, to: _to, bounce: _bounce };
+}
+
+export function storeTupleMessageParameters(source: MessageParameters) {
+    const builder = new TupleBuilder();
+    builder.writeNumber(source.mode);
+    builder.writeCell(source.body);
+    builder.writeNumber(source.value);
+    builder.writeAddress(source.to);
+    builder.writeBoolean(source.bounce);
+    return builder.build();
+}
+
+export function dictValueParserMessageParameters(): DictionaryValue<MessageParameters> {
+    return {
+        serialize: (src, builder) => {
+            builder.storeRef(beginCell().store(storeMessageParameters(src)).endCell());
+        },
+        parse: (src) => {
+            return loadMessageParameters(src.loadRef().beginParse());
+        }
+    }
+}
+
+export type DeployParameters = {
+    $$type: 'DeployParameters';
+    mode: bigint;
+    body: Cell | null;
+    value: bigint;
+    bounce: boolean;
+    init: StateInit;
+}
+
+export function storeDeployParameters(src: DeployParameters) {
+    return (builder: Builder) => {
+        const b_0 = builder;
+        b_0.storeInt(src.mode, 257);
+        if (src.body !== null && src.body !== undefined) { b_0.storeBit(true).storeRef(src.body); } else { b_0.storeBit(false); }
+        b_0.storeInt(src.value, 257);
+        b_0.storeBit(src.bounce);
+        b_0.store(storeStateInit(src.init));
+    };
+}
+
+export function loadDeployParameters(slice: Slice) {
+    const sc_0 = slice;
+    const _mode = sc_0.loadIntBig(257);
+    const _body = sc_0.loadBit() ? sc_0.loadRef() : null;
+    const _value = sc_0.loadIntBig(257);
+    const _bounce = sc_0.loadBit();
+    const _init = loadStateInit(sc_0);
+    return { $$type: 'DeployParameters' as const, mode: _mode, body: _body, value: _value, bounce: _bounce, init: _init };
+}
+
+export function loadTupleDeployParameters(source: TupleReader) {
+    const _mode = source.readBigNumber();
+    const _body = source.readCellOpt();
+    const _value = source.readBigNumber();
+    const _bounce = source.readBoolean();
+    const _init = loadTupleStateInit(source);
+    return { $$type: 'DeployParameters' as const, mode: _mode, body: _body, value: _value, bounce: _bounce, init: _init };
+}
+
+export function loadGetterTupleDeployParameters(source: TupleReader) {
+    const _mode = source.readBigNumber();
+    const _body = source.readCellOpt();
+    const _value = source.readBigNumber();
+    const _bounce = source.readBoolean();
+    const _init = loadGetterTupleStateInit(source);
+    return { $$type: 'DeployParameters' as const, mode: _mode, body: _body, value: _value, bounce: _bounce, init: _init };
+}
+
+export function storeTupleDeployParameters(source: DeployParameters) {
+    const builder = new TupleBuilder();
+    builder.writeNumber(source.mode);
+    builder.writeCell(source.body);
+    builder.writeNumber(source.value);
+    builder.writeBoolean(source.bounce);
+    builder.writeTuple(storeTupleStateInit(source.init));
+    return builder.build();
+}
+
+export function dictValueParserDeployParameters(): DictionaryValue<DeployParameters> {
+    return {
+        serialize: (src, builder) => {
+            builder.storeRef(beginCell().store(storeDeployParameters(src)).endCell());
+        },
+        parse: (src) => {
+            return loadDeployParameters(src.loadRef().beginParse());
+        }
+    }
+}
+
+export type StdAddress = {
+    $$type: 'StdAddress';
+    workchain: bigint;
+    address: bigint;
+}
+
+export function storeStdAddress(src: StdAddress) {
+    return (builder: Builder) => {
+        const b_0 = builder;
+        b_0.storeInt(src.workchain, 8);
+        b_0.storeUint(src.address, 256);
+    };
+}
+
+export function loadStdAddress(slice: Slice) {
+    const sc_0 = slice;
+    const _workchain = sc_0.loadIntBig(8);
+    const _address = sc_0.loadUintBig(256);
+    return { $$type: 'StdAddress' as const, workchain: _workchain, address: _address };
+}
+
+export function loadTupleStdAddress(source: TupleReader) {
+    const _workchain = source.readBigNumber();
+    const _address = source.readBigNumber();
+    return { $$type: 'StdAddress' as const, workchain: _workchain, address: _address };
+}
+
+export function loadGetterTupleStdAddress(source: TupleReader) {
+    const _workchain = source.readBigNumber();
+    const _address = source.readBigNumber();
+    return { $$type: 'StdAddress' as const, workchain: _workchain, address: _address };
+}
+
+export function storeTupleStdAddress(source: StdAddress) {
+    const builder = new TupleBuilder();
+    builder.writeNumber(source.workchain);
+    builder.writeNumber(source.address);
+    return builder.build();
+}
+
+export function dictValueParserStdAddress(): DictionaryValue<StdAddress> {
+    return {
+        serialize: (src, builder) => {
+            builder.storeRef(beginCell().store(storeStdAddress(src)).endCell());
+        },
+        parse: (src) => {
+            return loadStdAddress(src.loadRef().beginParse());
+        }
+    }
+}
+
+export type VarAddress = {
+    $$type: 'VarAddress';
+    workchain: bigint;
+    address: Slice;
+}
+
+export function storeVarAddress(src: VarAddress) {
+    return (builder: Builder) => {
+        const b_0 = builder;
+        b_0.storeInt(src.workchain, 32);
+        b_0.storeRef(src.address.asCell());
+    };
+}
+
+export function loadVarAddress(slice: Slice) {
+    const sc_0 = slice;
+    const _workchain = sc_0.loadIntBig(32);
+    const _address = sc_0.loadRef().asSlice();
+    return { $$type: 'VarAddress' as const, workchain: _workchain, address: _address };
+}
+
+export function loadTupleVarAddress(source: TupleReader) {
+    const _workchain = source.readBigNumber();
+    const _address = source.readCell().asSlice();
+    return { $$type: 'VarAddress' as const, workchain: _workchain, address: _address };
+}
+
+export function loadGetterTupleVarAddress(source: TupleReader) {
+    const _workchain = source.readBigNumber();
+    const _address = source.readCell().asSlice();
+    return { $$type: 'VarAddress' as const, workchain: _workchain, address: _address };
+}
+
+export function storeTupleVarAddress(source: VarAddress) {
+    const builder = new TupleBuilder();
+    builder.writeNumber(source.workchain);
+    builder.writeSlice(source.address.asCell());
+    return builder.build();
+}
+
+export function dictValueParserVarAddress(): DictionaryValue<VarAddress> {
+    return {
+        serialize: (src, builder) => {
+            builder.storeRef(beginCell().store(storeVarAddress(src)).endCell());
+        },
+        parse: (src) => {
+            return loadVarAddress(src.loadRef().beginParse());
+        }
+    }
+}
+
+export type BasechainAddress = {
+    $$type: 'BasechainAddress';
+    hash: bigint | null;
+}
+
+export function storeBasechainAddress(src: BasechainAddress) {
+    return (builder: Builder) => {
+        const b_0 = builder;
+        if (src.hash !== null && src.hash !== undefined) { b_0.storeBit(true).storeInt(src.hash, 257); } else { b_0.storeBit(false); }
+    };
+}
+
+export function loadBasechainAddress(slice: Slice) {
+    const sc_0 = slice;
+    const _hash = sc_0.loadBit() ? sc_0.loadIntBig(257) : null;
+    return { $$type: 'BasechainAddress' as const, hash: _hash };
+}
+
+export function loadTupleBasechainAddress(source: TupleReader) {
+    const _hash = source.readBigNumberOpt();
+    return { $$type: 'BasechainAddress' as const, hash: _hash };
+}
+
+export function loadGetterTupleBasechainAddress(source: TupleReader) {
+    const _hash = source.readBigNumberOpt();
+    return { $$type: 'BasechainAddress' as const, hash: _hash };
+}
+
+export function storeTupleBasechainAddress(source: BasechainAddress) {
+    const builder = new TupleBuilder();
+    builder.writeNumber(source.hash);
+    return builder.build();
+}
+
+export function dictValueParserBasechainAddress(): DictionaryValue<BasechainAddress> {
+    return {
+        serialize: (src, builder) => {
+            builder.storeRef(beginCell().store(storeBasechainAddress(src)).endCell());
+        },
+        parse: (src) => {
+            return loadBasechainAddress(src.loadRef().beginParse());
+        }
+    }
+}
+
+export type Deploy = {
+    $$type: 'Deploy';
+    queryId: bigint;
+}
+
+export function storeDeploy(src: Deploy) {
+    return (builder: Builder) => {
+        const b_0 = builder;
+        b_0.storeUint(2490013878, 32);
+        b_0.storeUint(src.queryId, 64);
+    };
+}
+
+export function loadDeploy(slice: Slice) {
+    const sc_0 = slice;
+    if (sc_0.loadUint(32) !== 2490013878) { throw Error('Invalid prefix'); }
+    const _queryId = sc_0.loadUintBig(64);
+    return { $$type: 'Deploy' as const, queryId: _queryId };
+}
+
+export function loadTupleDeploy(source: TupleReader) {
+    const _queryId = source.readBigNumber();
+    return { $$type: 'Deploy' as const, queryId: _queryId };
+}
+
+export function loadGetterTupleDeploy(source: TupleReader) {
+    const _queryId = source.readBigNumber();
+    return { $$type: 'Deploy' as const, queryId: _queryId };
+}
+
+export function storeTupleDeploy(source: Deploy) {
+    const builder = new TupleBuilder();
+    builder.writeNumber(source.queryId);
+    return builder.build();
+}
+
+export function dictValueParserDeploy(): DictionaryValue<Deploy> {
+    return {
+        serialize: (src, builder) => {
+            builder.storeRef(beginCell().store(storeDeploy(src)).endCell());
+        },
+        parse: (src) => {
+            return loadDeploy(src.loadRef().beginParse());
+        }
+    }
+}
+
+export type DeployOk = {
+    $$type: 'DeployOk';
+    queryId: bigint;
+}
+
+export function storeDeployOk(src: DeployOk) {
+    return (builder: Builder) => {
+        const b_0 = builder;
+        b_0.storeUint(2952335191, 32);
+        b_0.storeUint(src.queryId, 64);
+    };
+}
+
+export function loadDeployOk(slice: Slice) {
+    const sc_0 = slice;
+    if (sc_0.loadUint(32) !== 2952335191) { throw Error('Invalid prefix'); }
+    const _queryId = sc_0.loadUintBig(64);
+    return { $$type: 'DeployOk' as const, queryId: _queryId };
+}
+
+export function loadTupleDeployOk(source: TupleReader) {
+    const _queryId = source.readBigNumber();
+    return { $$type: 'DeployOk' as const, queryId: _queryId };
+}
+
+export function loadGetterTupleDeployOk(source: TupleReader) {
+    const _queryId = source.readBigNumber();
+    return { $$type: 'DeployOk' as const, queryId: _queryId };
+}
+
+export function storeTupleDeployOk(source: DeployOk) {
+    const builder = new TupleBuilder();
+    builder.writeNumber(source.queryId);
+    return builder.build();
+}
+
+export function dictValueParserDeployOk(): DictionaryValue<DeployOk> {
+    return {
+        serialize: (src, builder) => {
+            builder.storeRef(beginCell().store(storeDeployOk(src)).endCell());
+        },
+        parse: (src) => {
+            return loadDeployOk(src.loadRef().beginParse());
+        }
+    }
+}
+
+export type FactoryDeploy = {
+    $$type: 'FactoryDeploy';
+    queryId: bigint;
+    cashback: Address;
+}
+
+export function storeFactoryDeploy(src: FactoryDeploy) {
+    return (builder: Builder) => {
+        const b_0 = builder;
+        b_0.storeUint(1829761339, 32);
+        b_0.storeUint(src.queryId, 64);
+        b_0.storeAddress(src.cashback);
+    };
+}
+
+export function loadFactoryDeploy(slice: Slice) {
+    const sc_0 = slice;
+    if (sc_0.loadUint(32) !== 1829761339) { throw Error('Invalid prefix'); }
+    const _queryId = sc_0.loadUintBig(64);
+    const _cashback = sc_0.loadAddress();
+    return { $$type: 'FactoryDeploy' as const, queryId: _queryId, cashback: _cashback };
+}
+
+export function loadTupleFactoryDeploy(source: TupleReader) {
+    const _queryId = source.readBigNumber();
+    const _cashback = source.readAddress();
+    return { $$type: 'FactoryDeploy' as const, queryId: _queryId, cashback: _cashback };
+}
+
+export function loadGetterTupleFactoryDeploy(source: TupleReader) {
+    const _queryId = source.readBigNumber();
+    const _cashback = source.readAddress();
+    return { $$type: 'FactoryDeploy' as const, queryId: _queryId, cashback: _cashback };
+}
+
+export function storeTupleFactoryDeploy(source: FactoryDeploy) {
+    const builder = new TupleBuilder();
+    builder.writeNumber(source.queryId);
+    builder.writeAddress(source.cashback);
+    return builder.build();
+}
+
+export function dictValueParserFactoryDeploy(): DictionaryValue<FactoryDeploy> {
+    return {
+        serialize: (src, builder) => {
+            builder.storeRef(beginCell().store(storeFactoryDeploy(src)).endCell());
+        },
+        parse: (src) => {
+            return loadFactoryDeploy(src.loadRef().beginParse());
+        }
+    }
+}
+
+export type AddLiquidity = {
+    $$type: 'AddLiquidity';
+    tonAmount: bigint;
+    qsrAmount: bigint;
+}
+
+export function storeAddLiquidity(src: AddLiquidity) {
+    return (builder: Builder) => {
+        const b_0 = builder;
+        b_0.storeUint(146776957, 32);
+        b_0.storeCoins(src.tonAmount);
+        b_0.storeCoins(src.qsrAmount);
+    };
+}
+
+export function loadAddLiquidity(slice: Slice) {
+    const sc_0 = slice;
+    if (sc_0.loadUint(32) !== 146776957) { throw Error('Invalid prefix'); }
+    const _tonAmount = sc_0.loadCoins();
+    const _qsrAmount = sc_0.loadCoins();
+    return { $$type: 'AddLiquidity' as const, tonAmount: _tonAmount, qsrAmount: _qsrAmount };
+}
+
+export function loadTupleAddLiquidity(source: TupleReader) {
+    const _tonAmount = source.readBigNumber();
+    const _qsrAmount = source.readBigNumber();
+    return { $$type: 'AddLiquidity' as const, tonAmount: _tonAmount, qsrAmount: _qsrAmount };
+}
+
+export function loadGetterTupleAddLiquidity(source: TupleReader) {
+    const _tonAmount = source.readBigNumber();
+    const _qsrAmount = source.readBigNumber();
+    return { $$type: 'AddLiquidity' as const, tonAmount: _tonAmount, qsrAmount: _qsrAmount };
+}
+
+export function storeTupleAddLiquidity(source: AddLiquidity) {
+    const builder = new TupleBuilder();
+    builder.writeNumber(source.tonAmount);
+    builder.writeNumber(source.qsrAmount);
+    return builder.build();
+}
+
+export function dictValueParserAddLiquidity(): DictionaryValue<AddLiquidity> {
+    return {
+        serialize: (src, builder) => {
+            builder.storeRef(beginCell().store(storeAddLiquidity(src)).endCell());
+        },
+        parse: (src) => {
+            return loadAddLiquidity(src.loadRef().beginParse());
+        }
+    }
+}
+
+export type RemoveLiquidity = {
+    $$type: 'RemoveLiquidity';
+    lpAmount: bigint;
+}
+
+export function storeRemoveLiquidity(src: RemoveLiquidity) {
+    return (builder: Builder) => {
+        const b_0 = builder;
+        b_0.storeUint(3287568056, 32);
+        b_0.storeCoins(src.lpAmount);
+    };
+}
+
+export function loadRemoveLiquidity(slice: Slice) {
+    const sc_0 = slice;
+    if (sc_0.loadUint(32) !== 3287568056) { throw Error('Invalid prefix'); }
+    const _lpAmount = sc_0.loadCoins();
+    return { $$type: 'RemoveLiquidity' as const, lpAmount: _lpAmount };
+}
+
+export function loadTupleRemoveLiquidity(source: TupleReader) {
+    const _lpAmount = source.readBigNumber();
+    return { $$type: 'RemoveLiquidity' as const, lpAmount: _lpAmount };
+}
+
+export function loadGetterTupleRemoveLiquidity(source: TupleReader) {
+    const _lpAmount = source.readBigNumber();
+    return { $$type: 'RemoveLiquidity' as const, lpAmount: _lpAmount };
+}
+
+export function storeTupleRemoveLiquidity(source: RemoveLiquidity) {
+    const builder = new TupleBuilder();
+    builder.writeNumber(source.lpAmount);
+    return builder.build();
+}
+
+export function dictValueParserRemoveLiquidity(): DictionaryValue<RemoveLiquidity> {
+    return {
+        serialize: (src, builder) => {
+            builder.storeRef(beginCell().store(storeRemoveLiquidity(src)).endCell());
+        },
+        parse: (src) => {
+            return loadRemoveLiquidity(src.loadRef().beginParse());
+        }
+    }
+}
+
+export type SwapToTON = {
+    $$type: 'SwapToTON';
+    qsrAmount: bigint;
+    minTonOut: bigint;
+}
+
+export function storeSwapToTON(src: SwapToTON) {
+    return (builder: Builder) => {
+        const b_0 = builder;
+        b_0.storeUint(1118291020, 32);
+        b_0.storeCoins(src.qsrAmount);
+        b_0.storeCoins(src.minTonOut);
+    };
+}
+
+export function loadSwapToTON(slice: Slice) {
+    const sc_0 = slice;
+    if (sc_0.loadUint(32) !== 1118291020) { throw Error('Invalid prefix'); }
+    const _qsrAmount = sc_0.loadCoins();
+    const _minTonOut = sc_0.loadCoins();
+    return { $$type: 'SwapToTON' as const, qsrAmount: _qsrAmount, minTonOut: _minTonOut };
+}
+
+export function loadTupleSwapToTON(source: TupleReader) {
+    const _qsrAmount = source.readBigNumber();
+    const _minTonOut = source.readBigNumber();
+    return { $$type: 'SwapToTON' as const, qsrAmount: _qsrAmount, minTonOut: _minTonOut };
+}
+
+export function loadGetterTupleSwapToTON(source: TupleReader) {
+    const _qsrAmount = source.readBigNumber();
+    const _minTonOut = source.readBigNumber();
+    return { $$type: 'SwapToTON' as const, qsrAmount: _qsrAmount, minTonOut: _minTonOut };
+}
+
+export function storeTupleSwapToTON(source: SwapToTON) {
+    const builder = new TupleBuilder();
+    builder.writeNumber(source.qsrAmount);
+    builder.writeNumber(source.minTonOut);
+    return builder.build();
+}
+
+export function dictValueParserSwapToTON(): DictionaryValue<SwapToTON> {
+    return {
+        serialize: (src, builder) => {
+            builder.storeRef(beginCell().store(storeSwapToTON(src)).endCell());
+        },
+        parse: (src) => {
+            return loadSwapToTON(src.loadRef().beginParse());
+        }
+    }
+}
+
+export type SwapToQSR = {
+    $$type: 'SwapToQSR';
+    tonAmount: bigint;
+    minQsrOut: bigint;
+}
+
+export function storeSwapToQSR(src: SwapToQSR) {
+    return (builder: Builder) => {
+        const b_0 = builder;
+        b_0.storeUint(3020093557, 32);
+        b_0.storeCoins(src.tonAmount);
+        b_0.storeCoins(src.minQsrOut);
+    };
+}
+
+export function loadSwapToQSR(slice: Slice) {
+    const sc_0 = slice;
+    if (sc_0.loadUint(32) !== 3020093557) { throw Error('Invalid prefix'); }
+    const _tonAmount = sc_0.loadCoins();
+    const _minQsrOut = sc_0.loadCoins();
+    return { $$type: 'SwapToQSR' as const, tonAmount: _tonAmount, minQsrOut: _minQsrOut };
+}
+
+export function loadTupleSwapToQSR(source: TupleReader) {
+    const _tonAmount = source.readBigNumber();
+    const _minQsrOut = source.readBigNumber();
+    return { $$type: 'SwapToQSR' as const, tonAmount: _tonAmount, minQsrOut: _minQsrOut };
+}
+
+export function loadGetterTupleSwapToQSR(source: TupleReader) {
+    const _tonAmount = source.readBigNumber();
+    const _minQsrOut = source.readBigNumber();
+    return { $$type: 'SwapToQSR' as const, tonAmount: _tonAmount, minQsrOut: _minQsrOut };
+}
+
+export function storeTupleSwapToQSR(source: SwapToQSR) {
+    const builder = new TupleBuilder();
+    builder.writeNumber(source.tonAmount);
+    builder.writeNumber(source.minQsrOut);
+    return builder.build();
+}
+
+export function dictValueParserSwapToQSR(): DictionaryValue<SwapToQSR> {
+    return {
+        serialize: (src, builder) => {
+            builder.storeRef(beginCell().store(storeSwapToQSR(src)).endCell());
+        },
+        parse: (src) => {
+            return loadSwapToQSR(src.loadRef().beginParse());
+        }
+    }
+}
+
+export type ClaimFarmRewards = {
+    $$type: 'ClaimFarmRewards';
+}
+
+export function storeClaimFarmRewards(src: ClaimFarmRewards) {
+    return (builder: Builder) => {
+        const b_0 = builder;
+        b_0.storeUint(1360209904, 32);
+    };
+}
+
+export function loadClaimFarmRewards(slice: Slice) {
+    const sc_0 = slice;
+    if (sc_0.loadUint(32) !== 1360209904) { throw Error('Invalid prefix'); }
+    return { $$type: 'ClaimFarmRewards' as const };
+}
+
+export function loadTupleClaimFarmRewards(source: TupleReader) {
+    return { $$type: 'ClaimFarmRewards' as const };
+}
+
+export function loadGetterTupleClaimFarmRewards(source: TupleReader) {
+    return { $$type: 'ClaimFarmRewards' as const };
+}
+
+export function storeTupleClaimFarmRewards(source: ClaimFarmRewards) {
+    const builder = new TupleBuilder();
+    return builder.build();
+}
+
+export function dictValueParserClaimFarmRewards(): DictionaryValue<ClaimFarmRewards> {
+    return {
+        serialize: (src, builder) => {
+            builder.storeRef(beginCell().store(storeClaimFarmRewards(src)).endCell());
+        },
+        parse: (src) => {
+            return loadClaimFarmRewards(src.loadRef().beginParse());
+        }
+    }
+}
+
+export type SetFarmEnabled = {
+    $$type: 'SetFarmEnabled';
+    enabled: boolean;
+}
+
+export function storeSetFarmEnabled(src: SetFarmEnabled) {
+    return (builder: Builder) => {
+        const b_0 = builder;
+        b_0.storeUint(1686300084, 32);
+        b_0.storeBit(src.enabled);
+    };
+}
+
+export function loadSetFarmEnabled(slice: Slice) {
+    const sc_0 = slice;
+    if (sc_0.loadUint(32) !== 1686300084) { throw Error('Invalid prefix'); }
+    const _enabled = sc_0.loadBit();
+    return { $$type: 'SetFarmEnabled' as const, enabled: _enabled };
+}
+
+export function loadTupleSetFarmEnabled(source: TupleReader) {
+    const _enabled = source.readBoolean();
+    return { $$type: 'SetFarmEnabled' as const, enabled: _enabled };
+}
+
+export function loadGetterTupleSetFarmEnabled(source: TupleReader) {
+    const _enabled = source.readBoolean();
+    return { $$type: 'SetFarmEnabled' as const, enabled: _enabled };
+}
+
+export function storeTupleSetFarmEnabled(source: SetFarmEnabled) {
+    const builder = new TupleBuilder();
+    builder.writeBoolean(source.enabled);
+    return builder.build();
+}
+
+export function dictValueParserSetFarmEnabled(): DictionaryValue<SetFarmEnabled> {
+    return {
+        serialize: (src, builder) => {
+            builder.storeRef(beginCell().store(storeSetFarmEnabled(src)).endCell());
+        },
+        parse: (src) => {
+            return loadSetFarmEnabled(src.loadRef().beginParse());
+        }
+    }
+}
+
+export type FundFarm = {
+    $$type: 'FundFarm';
+    amount: bigint;
+}
+
+export function storeFundFarm(src: FundFarm) {
+    return (builder: Builder) => {
+        const b_0 = builder;
+        b_0.storeUint(663313788, 32);
+        b_0.storeCoins(src.amount);
+    };
+}
+
+export function loadFundFarm(slice: Slice) {
+    const sc_0 = slice;
+    if (sc_0.loadUint(32) !== 663313788) { throw Error('Invalid prefix'); }
+    const _amount = sc_0.loadCoins();
+    return { $$type: 'FundFarm' as const, amount: _amount };
+}
+
+export function loadTupleFundFarm(source: TupleReader) {
+    const _amount = source.readBigNumber();
+    return { $$type: 'FundFarm' as const, amount: _amount };
+}
+
+export function loadGetterTupleFundFarm(source: TupleReader) {
+    const _amount = source.readBigNumber();
+    return { $$type: 'FundFarm' as const, amount: _amount };
+}
+
+export function storeTupleFundFarm(source: FundFarm) {
+    const builder = new TupleBuilder();
+    builder.writeNumber(source.amount);
+    return builder.build();
+}
+
+export function dictValueParserFundFarm(): DictionaryValue<FundFarm> {
+    return {
+        serialize: (src, builder) => {
+            builder.storeRef(beginCell().store(storeFundFarm(src)).endCell());
+        },
+        parse: (src) => {
+            return loadFundFarm(src.loadRef().beginParse());
+        }
+    }
+}
+
+export type SetFarmConfig = {
+    $$type: 'SetFarmConfig';
+    rewardPerSecond: bigint;
+    startTime: bigint;
+    endTime: bigint;
+}
+
+export function storeSetFarmConfig(src: SetFarmConfig) {
+    return (builder: Builder) => {
+        const b_0 = builder;
+        b_0.storeUint(3889098110, 32);
+        b_0.storeCoins(src.rewardPerSecond);
+        b_0.storeUint(src.startTime, 32);
+        b_0.storeUint(src.endTime, 32);
+    };
+}
+
+export function loadSetFarmConfig(slice: Slice) {
+    const sc_0 = slice;
+    if (sc_0.loadUint(32) !== 3889098110) { throw Error('Invalid prefix'); }
+    const _rewardPerSecond = sc_0.loadCoins();
+    const _startTime = sc_0.loadUintBig(32);
+    const _endTime = sc_0.loadUintBig(32);
+    return { $$type: 'SetFarmConfig' as const, rewardPerSecond: _rewardPerSecond, startTime: _startTime, endTime: _endTime };
+}
+
+export function loadTupleSetFarmConfig(source: TupleReader) {
+    const _rewardPerSecond = source.readBigNumber();
+    const _startTime = source.readBigNumber();
+    const _endTime = source.readBigNumber();
+    return { $$type: 'SetFarmConfig' as const, rewardPerSecond: _rewardPerSecond, startTime: _startTime, endTime: _endTime };
+}
+
+export function loadGetterTupleSetFarmConfig(source: TupleReader) {
+    const _rewardPerSecond = source.readBigNumber();
+    const _startTime = source.readBigNumber();
+    const _endTime = source.readBigNumber();
+    return { $$type: 'SetFarmConfig' as const, rewardPerSecond: _rewardPerSecond, startTime: _startTime, endTime: _endTime };
+}
+
+export function storeTupleSetFarmConfig(source: SetFarmConfig) {
+    const builder = new TupleBuilder();
+    builder.writeNumber(source.rewardPerSecond);
+    builder.writeNumber(source.startTime);
+    builder.writeNumber(source.endTime);
+    return builder.build();
+}
+
+export function dictValueParserSetFarmConfig(): DictionaryValue<SetFarmConfig> {
+    return {
+        serialize: (src, builder) => {
+            builder.storeRef(beginCell().store(storeSetFarmConfig(src)).endCell());
+        },
+        parse: (src) => {
+            return loadSetFarmConfig(src.loadRef().beginParse());
+        }
+    }
+}
+
+export type SetFeeBps = {
+    $$type: 'SetFeeBps';
+    feeBps: bigint;
+}
+
+export function storeSetFeeBps(src: SetFeeBps) {
+    return (builder: Builder) => {
+        const b_0 = builder;
+        b_0.storeUint(385879986, 32);
+        b_0.storeUint(src.feeBps, 16);
+    };
+}
+
+export function loadSetFeeBps(slice: Slice) {
+    const sc_0 = slice;
+    if (sc_0.loadUint(32) !== 385879986) { throw Error('Invalid prefix'); }
+    const _feeBps = sc_0.loadUintBig(16);
+    return { $$type: 'SetFeeBps' as const, feeBps: _feeBps };
+}
+
+export function loadTupleSetFeeBps(source: TupleReader) {
+    const _feeBps = source.readBigNumber();
+    return { $$type: 'SetFeeBps' as const, feeBps: _feeBps };
+}
+
+export function loadGetterTupleSetFeeBps(source: TupleReader) {
+    const _feeBps = source.readBigNumber();
+    return { $$type: 'SetFeeBps' as const, feeBps: _feeBps };
+}
+
+export function storeTupleSetFeeBps(source: SetFeeBps) {
+    const builder = new TupleBuilder();
+    builder.writeNumber(source.feeBps);
+    return builder.build();
+}
+
+export function dictValueParserSetFeeBps(): DictionaryValue<SetFeeBps> {
+    return {
+        serialize: (src, builder) => {
+            builder.storeRef(beginCell().store(storeSetFeeBps(src)).endCell());
+        },
+        parse: (src) => {
+            return loadSetFeeBps(src.loadRef().beginParse());
+        }
+    }
+}
+
+export type SetPaused = {
+    $$type: 'SetPaused';
+    paused: boolean;
+}
+
+export function storeSetPaused(src: SetPaused) {
+    return (builder: Builder) => {
+        const b_0 = builder;
+        b_0.storeUint(157817343, 32);
+        b_0.storeBit(src.paused);
+    };
+}
+
+export function loadSetPaused(slice: Slice) {
+    const sc_0 = slice;
+    if (sc_0.loadUint(32) !== 157817343) { throw Error('Invalid prefix'); }
+    const _paused = sc_0.loadBit();
+    return { $$type: 'SetPaused' as const, paused: _paused };
+}
+
+export function loadTupleSetPaused(source: TupleReader) {
+    const _paused = source.readBoolean();
+    return { $$type: 'SetPaused' as const, paused: _paused };
+}
+
+export function loadGetterTupleSetPaused(source: TupleReader) {
+    const _paused = source.readBoolean();
+    return { $$type: 'SetPaused' as const, paused: _paused };
+}
+
+export function storeTupleSetPaused(source: SetPaused) {
+    const builder = new TupleBuilder();
+    builder.writeBoolean(source.paused);
+    return builder.build();
+}
+
+export function dictValueParserSetPaused(): DictionaryValue<SetPaused> {
+    return {
+        serialize: (src, builder) => {
+            builder.storeRef(beginCell().store(storeSetPaused(src)).endCell());
+        },
+        parse: (src) => {
+            return loadSetPaused(src.loadRef().beginParse());
+        }
+    }
+}
+
+export type SetMaxTradeBps = {
+    $$type: 'SetMaxTradeBps';
+    maxTradeBps: bigint;
+}
+
+export function storeSetMaxTradeBps(src: SetMaxTradeBps) {
+    return (builder: Builder) => {
+        const b_0 = builder;
+        b_0.storeUint(3707725903, 32);
+        b_0.storeUint(src.maxTradeBps, 16);
+    };
+}
+
+export function loadSetMaxTradeBps(slice: Slice) {
+    const sc_0 = slice;
+    if (sc_0.loadUint(32) !== 3707725903) { throw Error('Invalid prefix'); }
+    const _maxTradeBps = sc_0.loadUintBig(16);
+    return { $$type: 'SetMaxTradeBps' as const, maxTradeBps: _maxTradeBps };
+}
+
+export function loadTupleSetMaxTradeBps(source: TupleReader) {
+    const _maxTradeBps = source.readBigNumber();
+    return { $$type: 'SetMaxTradeBps' as const, maxTradeBps: _maxTradeBps };
+}
+
+export function loadGetterTupleSetMaxTradeBps(source: TupleReader) {
+    const _maxTradeBps = source.readBigNumber();
+    return { $$type: 'SetMaxTradeBps' as const, maxTradeBps: _maxTradeBps };
+}
+
+export function storeTupleSetMaxTradeBps(source: SetMaxTradeBps) {
+    const builder = new TupleBuilder();
+    builder.writeNumber(source.maxTradeBps);
+    return builder.build();
+}
+
+export function dictValueParserSetMaxTradeBps(): DictionaryValue<SetMaxTradeBps> {
+    return {
+        serialize: (src, builder) => {
+            builder.storeRef(beginCell().store(storeSetMaxTradeBps(src)).endCell());
+        },
+        parse: (src) => {
+            return loadSetMaxTradeBps(src.loadRef().beginParse());
+        }
+    }
+}
+
+export type DefiPayout = {
+    $$type: 'DefiPayout';
+    queryId: bigint;
+    amount: bigint;
+    destination: Address;
+}
+
+export function storeDefiPayout(src: DefiPayout) {
+    return (builder: Builder) => {
+        const b_0 = builder;
+        b_0.storeUint(3146613905, 32);
+        b_0.storeUint(src.queryId, 64);
+        b_0.storeCoins(src.amount);
+        b_0.storeAddress(src.destination);
+    };
+}
+
+export function loadDefiPayout(slice: Slice) {
+    const sc_0 = slice;
+    if (sc_0.loadUint(32) !== 3146613905) { throw Error('Invalid prefix'); }
+    const _queryId = sc_0.loadUintBig(64);
+    const _amount = sc_0.loadCoins();
+    const _destination = sc_0.loadAddress();
+    return { $$type: 'DefiPayout' as const, queryId: _queryId, amount: _amount, destination: _destination };
+}
+
+export function loadTupleDefiPayout(source: TupleReader) {
+    const _queryId = source.readBigNumber();
+    const _amount = source.readBigNumber();
+    const _destination = source.readAddress();
+    return { $$type: 'DefiPayout' as const, queryId: _queryId, amount: _amount, destination: _destination };
+}
+
+export function loadGetterTupleDefiPayout(source: TupleReader) {
+    const _queryId = source.readBigNumber();
+    const _amount = source.readBigNumber();
+    const _destination = source.readAddress();
+    return { $$type: 'DefiPayout' as const, queryId: _queryId, amount: _amount, destination: _destination };
+}
+
+export function storeTupleDefiPayout(source: DefiPayout) {
+    const builder = new TupleBuilder();
+    builder.writeNumber(source.queryId);
+    builder.writeNumber(source.amount);
+    builder.writeAddress(source.destination);
+    return builder.build();
+}
+
+export function dictValueParserDefiPayout(): DictionaryValue<DefiPayout> {
+    return {
+        serialize: (src, builder) => {
+            builder.storeRef(beginCell().store(storeDefiPayout(src)).endCell());
+        },
+        parse: (src) => {
+            return loadDefiPayout(src.loadRef().beginParse());
+        }
+    }
+}
+
+export type BurnNotification = {
+    $$type: 'BurnNotification';
+    queryId: bigint;
+    amount: bigint;
+    sender: Address;
+    responseDestination: Address;
+}
+
+export function storeBurnNotification(src: BurnNotification) {
+    return (builder: Builder) => {
+        const b_0 = builder;
+        b_0.storeUint(2078119902, 32);
+        b_0.storeUint(src.queryId, 64);
+        b_0.storeCoins(src.amount);
+        b_0.storeAddress(src.sender);
+        b_0.storeAddress(src.responseDestination);
+    };
+}
+
+export function loadBurnNotification(slice: Slice) {
+    const sc_0 = slice;
+    if (sc_0.loadUint(32) !== 2078119902) { throw Error('Invalid prefix'); }
+    const _queryId = sc_0.loadUintBig(64);
+    const _amount = sc_0.loadCoins();
+    const _sender = sc_0.loadAddress();
+    const _responseDestination = sc_0.loadAddress();
+    return { $$type: 'BurnNotification' as const, queryId: _queryId, amount: _amount, sender: _sender, responseDestination: _responseDestination };
+}
+
+export function loadTupleBurnNotification(source: TupleReader) {
+    const _queryId = source.readBigNumber();
+    const _amount = source.readBigNumber();
+    const _sender = source.readAddress();
+    const _responseDestination = source.readAddress();
+    return { $$type: 'BurnNotification' as const, queryId: _queryId, amount: _amount, sender: _sender, responseDestination: _responseDestination };
+}
+
+export function loadGetterTupleBurnNotification(source: TupleReader) {
+    const _queryId = source.readBigNumber();
+    const _amount = source.readBigNumber();
+    const _sender = source.readAddress();
+    const _responseDestination = source.readAddress();
+    return { $$type: 'BurnNotification' as const, queryId: _queryId, amount: _amount, sender: _sender, responseDestination: _responseDestination };
+}
+
+export function storeTupleBurnNotification(source: BurnNotification) {
+    const builder = new TupleBuilder();
+    builder.writeNumber(source.queryId);
+    builder.writeNumber(source.amount);
+    builder.writeAddress(source.sender);
+    builder.writeAddress(source.responseDestination);
+    return builder.build();
+}
+
+export function dictValueParserBurnNotification(): DictionaryValue<BurnNotification> {
+    return {
+        serialize: (src, builder) => {
+            builder.storeRef(beginCell().store(storeBurnNotification(src)).endCell());
+        },
+        parse: (src) => {
+            return loadBurnNotification(src.loadRef().beginParse());
+        }
+    }
+}
+
+export type TokenTransfer = {
+    $$type: 'TokenTransfer';
+    queryId: bigint;
+    amount: bigint;
+    destination: Address;
+    responseDestination: Address;
+    customPayload: Cell | null;
+    forwardTonAmount: bigint;
+    forwardPayload: Slice;
+}
+
+export function storeTokenTransfer(src: TokenTransfer) {
+    return (builder: Builder) => {
+        const b_0 = builder;
+        b_0.storeUint(260734629, 32);
+        b_0.storeUint(src.queryId, 64);
+        b_0.storeCoins(src.amount);
+        b_0.storeAddress(src.destination);
+        b_0.storeAddress(src.responseDestination);
+        if (src.customPayload !== null && src.customPayload !== undefined) { b_0.storeBit(true).storeRef(src.customPayload); } else { b_0.storeBit(false); }
+        b_0.storeCoins(src.forwardTonAmount);
+        b_0.storeBuilder(src.forwardPayload.asBuilder());
+    };
+}
+
+export function loadTokenTransfer(slice: Slice) {
+    const sc_0 = slice;
+    if (sc_0.loadUint(32) !== 260734629) { throw Error('Invalid prefix'); }
+    const _queryId = sc_0.loadUintBig(64);
+    const _amount = sc_0.loadCoins();
+    const _destination = sc_0.loadAddress();
+    const _responseDestination = sc_0.loadAddress();
+    const _customPayload = sc_0.loadBit() ? sc_0.loadRef() : null;
+    const _forwardTonAmount = sc_0.loadCoins();
+    const _forwardPayload = sc_0;
+    return { $$type: 'TokenTransfer' as const, queryId: _queryId, amount: _amount, destination: _destination, responseDestination: _responseDestination, customPayload: _customPayload, forwardTonAmount: _forwardTonAmount, forwardPayload: _forwardPayload };
+}
+
+export function loadTupleTokenTransfer(source: TupleReader) {
+    const _queryId = source.readBigNumber();
+    const _amount = source.readBigNumber();
+    const _destination = source.readAddress();
+    const _responseDestination = source.readAddress();
+    const _customPayload = source.readCellOpt();
+    const _forwardTonAmount = source.readBigNumber();
+    const _forwardPayload = source.readCell().asSlice();
+    return { $$type: 'TokenTransfer' as const, queryId: _queryId, amount: _amount, destination: _destination, responseDestination: _responseDestination, customPayload: _customPayload, forwardTonAmount: _forwardTonAmount, forwardPayload: _forwardPayload };
+}
+
+export function loadGetterTupleTokenTransfer(source: TupleReader) {
+    const _queryId = source.readBigNumber();
+    const _amount = source.readBigNumber();
+    const _destination = source.readAddress();
+    const _responseDestination = source.readAddress();
+    const _customPayload = source.readCellOpt();
+    const _forwardTonAmount = source.readBigNumber();
+    const _forwardPayload = source.readCell().asSlice();
+    return { $$type: 'TokenTransfer' as const, queryId: _queryId, amount: _amount, destination: _destination, responseDestination: _responseDestination, customPayload: _customPayload, forwardTonAmount: _forwardTonAmount, forwardPayload: _forwardPayload };
+}
+
+export function storeTupleTokenTransfer(source: TokenTransfer) {
+    const builder = new TupleBuilder();
+    builder.writeNumber(source.queryId);
+    builder.writeNumber(source.amount);
+    builder.writeAddress(source.destination);
+    builder.writeAddress(source.responseDestination);
+    builder.writeCell(source.customPayload);
+    builder.writeNumber(source.forwardTonAmount);
+    builder.writeSlice(source.forwardPayload.asCell());
+    return builder.build();
+}
+
+export function dictValueParserTokenTransfer(): DictionaryValue<TokenTransfer> {
+    return {
+        serialize: (src, builder) => {
+            builder.storeRef(beginCell().store(storeTokenTransfer(src)).endCell());
+        },
+        parse: (src) => {
+            return loadTokenTransfer(src.loadRef().beginParse());
+        }
+    }
+}
+
+export type TokenBurn = {
+    $$type: 'TokenBurn';
+    queryId: bigint;
+    amount: bigint;
+    responseDestination: Address;
+    customPayload: Cell | null;
+}
+
+export function storeTokenBurn(src: TokenBurn) {
+    return (builder: Builder) => {
+        const b_0 = builder;
+        b_0.storeUint(1499400124, 32);
+        b_0.storeUint(src.queryId, 64);
+        b_0.storeCoins(src.amount);
+        b_0.storeAddress(src.responseDestination);
+        if (src.customPayload !== null && src.customPayload !== undefined) { b_0.storeBit(true).storeRef(src.customPayload); } else { b_0.storeBit(false); }
+    };
+}
+
+export function loadTokenBurn(slice: Slice) {
+    const sc_0 = slice;
+    if (sc_0.loadUint(32) !== 1499400124) { throw Error('Invalid prefix'); }
+    const _queryId = sc_0.loadUintBig(64);
+    const _amount = sc_0.loadCoins();
+    const _responseDestination = sc_0.loadAddress();
+    const _customPayload = sc_0.loadBit() ? sc_0.loadRef() : null;
+    return { $$type: 'TokenBurn' as const, queryId: _queryId, amount: _amount, responseDestination: _responseDestination, customPayload: _customPayload };
+}
+
+export function loadTupleTokenBurn(source: TupleReader) {
+    const _queryId = source.readBigNumber();
+    const _amount = source.readBigNumber();
+    const _responseDestination = source.readAddress();
+    const _customPayload = source.readCellOpt();
+    return { $$type: 'TokenBurn' as const, queryId: _queryId, amount: _amount, responseDestination: _responseDestination, customPayload: _customPayload };
+}
+
+export function loadGetterTupleTokenBurn(source: TupleReader) {
+    const _queryId = source.readBigNumber();
+    const _amount = source.readBigNumber();
+    const _responseDestination = source.readAddress();
+    const _customPayload = source.readCellOpt();
+    return { $$type: 'TokenBurn' as const, queryId: _queryId, amount: _amount, responseDestination: _responseDestination, customPayload: _customPayload };
+}
+
+export function storeTupleTokenBurn(source: TokenBurn) {
+    const builder = new TupleBuilder();
+    builder.writeNumber(source.queryId);
+    builder.writeNumber(source.amount);
+    builder.writeAddress(source.responseDestination);
+    builder.writeCell(source.customPayload);
+    return builder.build();
+}
+
+export function dictValueParserTokenBurn(): DictionaryValue<TokenBurn> {
+    return {
+        serialize: (src, builder) => {
+            builder.storeRef(beginCell().store(storeTokenBurn(src)).endCell());
+        },
+        parse: (src) => {
+            return loadTokenBurn(src.loadRef().beginParse());
+        }
+    }
+}
+
+export type TokenNotification = {
+    $$type: 'TokenNotification';
+    queryId: bigint;
+    amount: bigint;
+    from: Address;
+    forwardPayload: Slice;
+}
+
+export function storeTokenNotification(src: TokenNotification) {
+    return (builder: Builder) => {
+        const b_0 = builder;
+        b_0.storeUint(1935855772, 32);
+        b_0.storeUint(src.queryId, 64);
+        b_0.storeCoins(src.amount);
+        b_0.storeAddress(src.from);
+        b_0.storeBuilder(src.forwardPayload.asBuilder());
+    };
+}
+
+export function loadTokenNotification(slice: Slice) {
+    const sc_0 = slice;
+    if (sc_0.loadUint(32) !== 1935855772) { throw Error('Invalid prefix'); }
+    const _queryId = sc_0.loadUintBig(64);
+    const _amount = sc_0.loadCoins();
+    const _from = sc_0.loadAddress();
+    const _forwardPayload = sc_0;
+    return { $$type: 'TokenNotification' as const, queryId: _queryId, amount: _amount, from: _from, forwardPayload: _forwardPayload };
+}
+
+export function loadTupleTokenNotification(source: TupleReader) {
+    const _queryId = source.readBigNumber();
+    const _amount = source.readBigNumber();
+    const _from = source.readAddress();
+    const _forwardPayload = source.readCell().asSlice();
+    return { $$type: 'TokenNotification' as const, queryId: _queryId, amount: _amount, from: _from, forwardPayload: _forwardPayload };
+}
+
+export function loadGetterTupleTokenNotification(source: TupleReader) {
+    const _queryId = source.readBigNumber();
+    const _amount = source.readBigNumber();
+    const _from = source.readAddress();
+    const _forwardPayload = source.readCell().asSlice();
+    return { $$type: 'TokenNotification' as const, queryId: _queryId, amount: _amount, from: _from, forwardPayload: _forwardPayload };
+}
+
+export function storeTupleTokenNotification(source: TokenNotification) {
+    const builder = new TupleBuilder();
+    builder.writeNumber(source.queryId);
+    builder.writeNumber(source.amount);
+    builder.writeAddress(source.from);
+    builder.writeSlice(source.forwardPayload.asCell());
+    return builder.build();
+}
+
+export function dictValueParserTokenNotification(): DictionaryValue<TokenNotification> {
+    return {
+        serialize: (src, builder) => {
+            builder.storeRef(beginCell().store(storeTokenNotification(src)).endCell());
+        },
+        parse: (src) => {
+            return loadTokenNotification(src.loadRef().beginParse());
+        }
+    }
+}
+
+export type InternalTransfer = {
+    $$type: 'InternalTransfer';
+    queryId: bigint;
+    amount: bigint;
+    from: Address;
+    responseDestination: Address;
+    forwardTonAmount: bigint;
+    forwardPayload: Slice;
+}
+
+export function storeInternalTransfer(src: InternalTransfer) {
+    return (builder: Builder) => {
+        const b_0 = builder;
+        b_0.storeUint(395134233, 32);
+        b_0.storeUint(src.queryId, 64);
+        b_0.storeCoins(src.amount);
+        b_0.storeAddress(src.from);
+        b_0.storeAddress(src.responseDestination);
+        b_0.storeCoins(src.forwardTonAmount);
+        b_0.storeBuilder(src.forwardPayload.asBuilder());
+    };
+}
+
+export function loadInternalTransfer(slice: Slice) {
+    const sc_0 = slice;
+    if (sc_0.loadUint(32) !== 395134233) { throw Error('Invalid prefix'); }
+    const _queryId = sc_0.loadUintBig(64);
+    const _amount = sc_0.loadCoins();
+    const _from = sc_0.loadAddress();
+    const _responseDestination = sc_0.loadAddress();
+    const _forwardTonAmount = sc_0.loadCoins();
+    const _forwardPayload = sc_0;
+    return { $$type: 'InternalTransfer' as const, queryId: _queryId, amount: _amount, from: _from, responseDestination: _responseDestination, forwardTonAmount: _forwardTonAmount, forwardPayload: _forwardPayload };
+}
+
+export function loadTupleInternalTransfer(source: TupleReader) {
+    const _queryId = source.readBigNumber();
+    const _amount = source.readBigNumber();
+    const _from = source.readAddress();
+    const _responseDestination = source.readAddress();
+    const _forwardTonAmount = source.readBigNumber();
+    const _forwardPayload = source.readCell().asSlice();
+    return { $$type: 'InternalTransfer' as const, queryId: _queryId, amount: _amount, from: _from, responseDestination: _responseDestination, forwardTonAmount: _forwardTonAmount, forwardPayload: _forwardPayload };
+}
+
+export function loadGetterTupleInternalTransfer(source: TupleReader) {
+    const _queryId = source.readBigNumber();
+    const _amount = source.readBigNumber();
+    const _from = source.readAddress();
+    const _responseDestination = source.readAddress();
+    const _forwardTonAmount = source.readBigNumber();
+    const _forwardPayload = source.readCell().asSlice();
+    return { $$type: 'InternalTransfer' as const, queryId: _queryId, amount: _amount, from: _from, responseDestination: _responseDestination, forwardTonAmount: _forwardTonAmount, forwardPayload: _forwardPayload };
+}
+
+export function storeTupleInternalTransfer(source: InternalTransfer) {
+    const builder = new TupleBuilder();
+    builder.writeNumber(source.queryId);
+    builder.writeNumber(source.amount);
+    builder.writeAddress(source.from);
+    builder.writeAddress(source.responseDestination);
+    builder.writeNumber(source.forwardTonAmount);
+    builder.writeSlice(source.forwardPayload.asCell());
+    return builder.build();
+}
+
+export function dictValueParserInternalTransfer(): DictionaryValue<InternalTransfer> {
+    return {
+        serialize: (src, builder) => {
+            builder.storeRef(beginCell().store(storeInternalTransfer(src)).endCell());
+        },
+        parse: (src) => {
+            return loadInternalTransfer(src.loadRef().beginParse());
+        }
+    }
+}
+
+export type PoolPayout = {
+    $$type: 'PoolPayout';
+    queryId: bigint;
+    amount: bigint;
+    destination: Address;
+}
+
+export function storePoolPayout(src: PoolPayout) {
+    return (builder: Builder) => {
+        const b_0 = builder;
+        b_0.storeUint(1369818065, 32);
+        b_0.storeUint(src.queryId, 64);
+        b_0.storeCoins(src.amount);
+        b_0.storeAddress(src.destination);
+    };
+}
+
+export function loadPoolPayout(slice: Slice) {
+    const sc_0 = slice;
+    if (sc_0.loadUint(32) !== 1369818065) { throw Error('Invalid prefix'); }
+    const _queryId = sc_0.loadUintBig(64);
+    const _amount = sc_0.loadCoins();
+    const _destination = sc_0.loadAddress();
+    return { $$type: 'PoolPayout' as const, queryId: _queryId, amount: _amount, destination: _destination };
+}
+
+export function loadTuplePoolPayout(source: TupleReader) {
+    const _queryId = source.readBigNumber();
+    const _amount = source.readBigNumber();
+    const _destination = source.readAddress();
+    return { $$type: 'PoolPayout' as const, queryId: _queryId, amount: _amount, destination: _destination };
+}
+
+export function loadGetterTuplePoolPayout(source: TupleReader) {
+    const _queryId = source.readBigNumber();
+    const _amount = source.readBigNumber();
+    const _destination = source.readAddress();
+    return { $$type: 'PoolPayout' as const, queryId: _queryId, amount: _amount, destination: _destination };
+}
+
+export function storeTuplePoolPayout(source: PoolPayout) {
+    const builder = new TupleBuilder();
+    builder.writeNumber(source.queryId);
+    builder.writeNumber(source.amount);
+    builder.writeAddress(source.destination);
+    return builder.build();
+}
+
+export function dictValueParserPoolPayout(): DictionaryValue<PoolPayout> {
+    return {
+        serialize: (src, builder) => {
+            builder.storeRef(beginCell().store(storePoolPayout(src)).endCell());
+        },
+        parse: (src) => {
+            return loadPoolPayout(src.loadRef().beginParse());
+        }
+    }
+}
+
+export type FeeTransfer = {
+    $$type: 'FeeTransfer';
+    queryId: bigint;
+    amount: bigint;
+    originalSender: Address;
+    originalReceiver: Address;
+}
+
+export function storeFeeTransfer(src: FeeTransfer) {
+    return (builder: Builder) => {
+        const b_0 = builder;
+        b_0.storeUint(3948052191, 32);
+        b_0.storeUint(src.queryId, 64);
+        b_0.storeCoins(src.amount);
+        b_0.storeAddress(src.originalSender);
+        b_0.storeAddress(src.originalReceiver);
+    };
+}
+
+export function loadFeeTransfer(slice: Slice) {
+    const sc_0 = slice;
+    if (sc_0.loadUint(32) !== 3948052191) { throw Error('Invalid prefix'); }
+    const _queryId = sc_0.loadUintBig(64);
+    const _amount = sc_0.loadCoins();
+    const _originalSender = sc_0.loadAddress();
+    const _originalReceiver = sc_0.loadAddress();
+    return { $$type: 'FeeTransfer' as const, queryId: _queryId, amount: _amount, originalSender: _originalSender, originalReceiver: _originalReceiver };
+}
+
+export function loadTupleFeeTransfer(source: TupleReader) {
+    const _queryId = source.readBigNumber();
+    const _amount = source.readBigNumber();
+    const _originalSender = source.readAddress();
+    const _originalReceiver = source.readAddress();
+    return { $$type: 'FeeTransfer' as const, queryId: _queryId, amount: _amount, originalSender: _originalSender, originalReceiver: _originalReceiver };
+}
+
+export function loadGetterTupleFeeTransfer(source: TupleReader) {
+    const _queryId = source.readBigNumber();
+    const _amount = source.readBigNumber();
+    const _originalSender = source.readAddress();
+    const _originalReceiver = source.readAddress();
+    return { $$type: 'FeeTransfer' as const, queryId: _queryId, amount: _amount, originalSender: _originalSender, originalReceiver: _originalReceiver };
+}
+
+export function storeTupleFeeTransfer(source: FeeTransfer) {
+    const builder = new TupleBuilder();
+    builder.writeNumber(source.queryId);
+    builder.writeNumber(source.amount);
+    builder.writeAddress(source.originalSender);
+    builder.writeAddress(source.originalReceiver);
+    return builder.build();
+}
+
+export function dictValueParserFeeTransfer(): DictionaryValue<FeeTransfer> {
+    return {
+        serialize: (src, builder) => {
+            builder.storeRef(beginCell().store(storeFeeTransfer(src)).endCell());
+        },
+        parse: (src) => {
+            return loadFeeTransfer(src.loadRef().beginParse());
+        }
+    }
+}
+
+export type EventLiquidityAdded = {
+    $$type: 'EventLiquidityAdded';
+    provider: Address;
+    tonAmount: bigint;
+    qsrAmount: bigint;
+    lpMinted: bigint;
+}
+
+export function storeEventLiquidityAdded(src: EventLiquidityAdded) {
+    return (builder: Builder) => {
+        const b_0 = builder;
+        b_0.storeUint(321113071, 32);
+        b_0.storeAddress(src.provider);
+        b_0.storeInt(src.tonAmount, 257);
+        b_0.storeInt(src.qsrAmount, 257);
+        const b_1 = new Builder();
+        b_1.storeInt(src.lpMinted, 257);
+        b_0.storeRef(b_1.endCell());
+    };
+}
+
+export function loadEventLiquidityAdded(slice: Slice) {
+    const sc_0 = slice;
+    if (sc_0.loadUint(32) !== 321113071) { throw Error('Invalid prefix'); }
+    const _provider = sc_0.loadAddress();
+    const _tonAmount = sc_0.loadIntBig(257);
+    const _qsrAmount = sc_0.loadIntBig(257);
+    const sc_1 = sc_0.loadRef().beginParse();
+    const _lpMinted = sc_1.loadIntBig(257);
+    return { $$type: 'EventLiquidityAdded' as const, provider: _provider, tonAmount: _tonAmount, qsrAmount: _qsrAmount, lpMinted: _lpMinted };
+}
+
+export function loadTupleEventLiquidityAdded(source: TupleReader) {
+    const _provider = source.readAddress();
+    const _tonAmount = source.readBigNumber();
+    const _qsrAmount = source.readBigNumber();
+    const _lpMinted = source.readBigNumber();
+    return { $$type: 'EventLiquidityAdded' as const, provider: _provider, tonAmount: _tonAmount, qsrAmount: _qsrAmount, lpMinted: _lpMinted };
+}
+
+export function loadGetterTupleEventLiquidityAdded(source: TupleReader) {
+    const _provider = source.readAddress();
+    const _tonAmount = source.readBigNumber();
+    const _qsrAmount = source.readBigNumber();
+    const _lpMinted = source.readBigNumber();
+    return { $$type: 'EventLiquidityAdded' as const, provider: _provider, tonAmount: _tonAmount, qsrAmount: _qsrAmount, lpMinted: _lpMinted };
+}
+
+export function storeTupleEventLiquidityAdded(source: EventLiquidityAdded) {
+    const builder = new TupleBuilder();
+    builder.writeAddress(source.provider);
+    builder.writeNumber(source.tonAmount);
+    builder.writeNumber(source.qsrAmount);
+    builder.writeNumber(source.lpMinted);
+    return builder.build();
+}
+
+export function dictValueParserEventLiquidityAdded(): DictionaryValue<EventLiquidityAdded> {
+    return {
+        serialize: (src, builder) => {
+            builder.storeRef(beginCell().store(storeEventLiquidityAdded(src)).endCell());
+        },
+        parse: (src) => {
+            return loadEventLiquidityAdded(src.loadRef().beginParse());
+        }
+    }
+}
+
+export type EventLiquidityRemoved = {
+    $$type: 'EventLiquidityRemoved';
+    provider: Address;
+    tonOut: bigint;
+    qsrOut: bigint;
+    lpBurned: bigint;
+}
+
+export function storeEventLiquidityRemoved(src: EventLiquidityRemoved) {
+    return (builder: Builder) => {
+        const b_0 = builder;
+        b_0.storeUint(1531913385, 32);
+        b_0.storeAddress(src.provider);
+        b_0.storeInt(src.tonOut, 257);
+        b_0.storeInt(src.qsrOut, 257);
+        const b_1 = new Builder();
+        b_1.storeInt(src.lpBurned, 257);
+        b_0.storeRef(b_1.endCell());
+    };
+}
+
+export function loadEventLiquidityRemoved(slice: Slice) {
+    const sc_0 = slice;
+    if (sc_0.loadUint(32) !== 1531913385) { throw Error('Invalid prefix'); }
+    const _provider = sc_0.loadAddress();
+    const _tonOut = sc_0.loadIntBig(257);
+    const _qsrOut = sc_0.loadIntBig(257);
+    const sc_1 = sc_0.loadRef().beginParse();
+    const _lpBurned = sc_1.loadIntBig(257);
+    return { $$type: 'EventLiquidityRemoved' as const, provider: _provider, tonOut: _tonOut, qsrOut: _qsrOut, lpBurned: _lpBurned };
+}
+
+export function loadTupleEventLiquidityRemoved(source: TupleReader) {
+    const _provider = source.readAddress();
+    const _tonOut = source.readBigNumber();
+    const _qsrOut = source.readBigNumber();
+    const _lpBurned = source.readBigNumber();
+    return { $$type: 'EventLiquidityRemoved' as const, provider: _provider, tonOut: _tonOut, qsrOut: _qsrOut, lpBurned: _lpBurned };
+}
+
+export function loadGetterTupleEventLiquidityRemoved(source: TupleReader) {
+    const _provider = source.readAddress();
+    const _tonOut = source.readBigNumber();
+    const _qsrOut = source.readBigNumber();
+    const _lpBurned = source.readBigNumber();
+    return { $$type: 'EventLiquidityRemoved' as const, provider: _provider, tonOut: _tonOut, qsrOut: _qsrOut, lpBurned: _lpBurned };
+}
+
+export function storeTupleEventLiquidityRemoved(source: EventLiquidityRemoved) {
+    const builder = new TupleBuilder();
+    builder.writeAddress(source.provider);
+    builder.writeNumber(source.tonOut);
+    builder.writeNumber(source.qsrOut);
+    builder.writeNumber(source.lpBurned);
+    return builder.build();
+}
+
+export function dictValueParserEventLiquidityRemoved(): DictionaryValue<EventLiquidityRemoved> {
+    return {
+        serialize: (src, builder) => {
+            builder.storeRef(beginCell().store(storeEventLiquidityRemoved(src)).endCell());
+        },
+        parse: (src) => {
+            return loadEventLiquidityRemoved(src.loadRef().beginParse());
+        }
+    }
+}
+
+export type EventSwap = {
+    $$type: 'EventSwap';
+    trader: Address;
+    tonIn: bigint;
+    qsrIn: bigint;
+    tonOut: bigint;
+    qsrOut: bigint;
+    fee: bigint;
+}
+
+export function storeEventSwap(src: EventSwap) {
+    return (builder: Builder) => {
+        const b_0 = builder;
+        b_0.storeUint(3223999635, 32);
+        b_0.storeAddress(src.trader);
+        b_0.storeInt(src.tonIn, 257);
+        b_0.storeInt(src.qsrIn, 257);
+        const b_1 = new Builder();
+        b_1.storeInt(src.tonOut, 257);
+        b_1.storeInt(src.qsrOut, 257);
+        b_1.storeInt(src.fee, 257);
+        b_0.storeRef(b_1.endCell());
+    };
+}
+
+export function loadEventSwap(slice: Slice) {
+    const sc_0 = slice;
+    if (sc_0.loadUint(32) !== 3223999635) { throw Error('Invalid prefix'); }
+    const _trader = sc_0.loadAddress();
+    const _tonIn = sc_0.loadIntBig(257);
+    const _qsrIn = sc_0.loadIntBig(257);
+    const sc_1 = sc_0.loadRef().beginParse();
+    const _tonOut = sc_1.loadIntBig(257);
+    const _qsrOut = sc_1.loadIntBig(257);
+    const _fee = sc_1.loadIntBig(257);
+    return { $$type: 'EventSwap' as const, trader: _trader, tonIn: _tonIn, qsrIn: _qsrIn, tonOut: _tonOut, qsrOut: _qsrOut, fee: _fee };
+}
+
+export function loadTupleEventSwap(source: TupleReader) {
+    const _trader = source.readAddress();
+    const _tonIn = source.readBigNumber();
+    const _qsrIn = source.readBigNumber();
+    const _tonOut = source.readBigNumber();
+    const _qsrOut = source.readBigNumber();
+    const _fee = source.readBigNumber();
+    return { $$type: 'EventSwap' as const, trader: _trader, tonIn: _tonIn, qsrIn: _qsrIn, tonOut: _tonOut, qsrOut: _qsrOut, fee: _fee };
+}
+
+export function loadGetterTupleEventSwap(source: TupleReader) {
+    const _trader = source.readAddress();
+    const _tonIn = source.readBigNumber();
+    const _qsrIn = source.readBigNumber();
+    const _tonOut = source.readBigNumber();
+    const _qsrOut = source.readBigNumber();
+    const _fee = source.readBigNumber();
+    return { $$type: 'EventSwap' as const, trader: _trader, tonIn: _tonIn, qsrIn: _qsrIn, tonOut: _tonOut, qsrOut: _qsrOut, fee: _fee };
+}
+
+export function storeTupleEventSwap(source: EventSwap) {
+    const builder = new TupleBuilder();
+    builder.writeAddress(source.trader);
+    builder.writeNumber(source.tonIn);
+    builder.writeNumber(source.qsrIn);
+    builder.writeNumber(source.tonOut);
+    builder.writeNumber(source.qsrOut);
+    builder.writeNumber(source.fee);
+    return builder.build();
+}
+
+export function dictValueParserEventSwap(): DictionaryValue<EventSwap> {
+    return {
+        serialize: (src, builder) => {
+            builder.storeRef(beginCell().store(storeEventSwap(src)).endCell());
+        },
+        parse: (src) => {
+            return loadEventSwap(src.loadRef().beginParse());
+        }
+    }
+}
+
+export type EventFarmReward = {
+    $$type: 'EventFarmReward';
+    farmer: Address;
+    amount: bigint;
+}
+
+export function storeEventFarmReward(src: EventFarmReward) {
+    return (builder: Builder) => {
+        const b_0 = builder;
+        b_0.storeUint(3393054421, 32);
+        b_0.storeAddress(src.farmer);
+        b_0.storeInt(src.amount, 257);
+    };
+}
+
+export function loadEventFarmReward(slice: Slice) {
+    const sc_0 = slice;
+    if (sc_0.loadUint(32) !== 3393054421) { throw Error('Invalid prefix'); }
+    const _farmer = sc_0.loadAddress();
+    const _amount = sc_0.loadIntBig(257);
+    return { $$type: 'EventFarmReward' as const, farmer: _farmer, amount: _amount };
+}
+
+export function loadTupleEventFarmReward(source: TupleReader) {
+    const _farmer = source.readAddress();
+    const _amount = source.readBigNumber();
+    return { $$type: 'EventFarmReward' as const, farmer: _farmer, amount: _amount };
+}
+
+export function loadGetterTupleEventFarmReward(source: TupleReader) {
+    const _farmer = source.readAddress();
+    const _amount = source.readBigNumber();
+    return { $$type: 'EventFarmReward' as const, farmer: _farmer, amount: _amount };
+}
+
+export function storeTupleEventFarmReward(source: EventFarmReward) {
+    const builder = new TupleBuilder();
+    builder.writeAddress(source.farmer);
+    builder.writeNumber(source.amount);
+    return builder.build();
+}
+
+export function dictValueParserEventFarmReward(): DictionaryValue<EventFarmReward> {
+    return {
+        serialize: (src, builder) => {
+            builder.storeRef(beginCell().store(storeEventFarmReward(src)).endCell());
+        },
+        parse: (src) => {
+            return loadEventFarmReward(src.loadRef().beginParse());
+        }
+    }
+}
+
+export type EventFeeCollected = {
+    $$type: 'EventFeeCollected';
+    amount: bigint;
+}
+
+export function storeEventFeeCollected(src: EventFeeCollected) {
+    return (builder: Builder) => {
+        const b_0 = builder;
+        b_0.storeUint(1624548570, 32);
+        b_0.storeInt(src.amount, 257);
+    };
+}
+
+export function loadEventFeeCollected(slice: Slice) {
+    const sc_0 = slice;
+    if (sc_0.loadUint(32) !== 1624548570) { throw Error('Invalid prefix'); }
+    const _amount = sc_0.loadIntBig(257);
+    return { $$type: 'EventFeeCollected' as const, amount: _amount };
+}
+
+export function loadTupleEventFeeCollected(source: TupleReader) {
+    const _amount = source.readBigNumber();
+    return { $$type: 'EventFeeCollected' as const, amount: _amount };
+}
+
+export function loadGetterTupleEventFeeCollected(source: TupleReader) {
+    const _amount = source.readBigNumber();
+    return { $$type: 'EventFeeCollected' as const, amount: _amount };
+}
+
+export function storeTupleEventFeeCollected(source: EventFeeCollected) {
+    const builder = new TupleBuilder();
+    builder.writeNumber(source.amount);
+    return builder.build();
+}
+
+export function dictValueParserEventFeeCollected(): DictionaryValue<EventFeeCollected> {
+    return {
+        serialize: (src, builder) => {
+            builder.storeRef(beginCell().store(storeEventFeeCollected(src)).endCell());
+        },
+        parse: (src) => {
+            return loadEventFeeCollected(src.loadRef().beginParse());
+        }
+    }
+}
+
+export type LPInfo = {
+    $$type: 'LPInfo';
+    totalSupply: bigint;
+    tonReserve: bigint;
+    qsrReserve: bigint;
+}
+
+export function storeLPInfo(src: LPInfo) {
+    return (builder: Builder) => {
+        const b_0 = builder;
+        b_0.storeInt(src.totalSupply, 257);
+        b_0.storeInt(src.tonReserve, 257);
+        b_0.storeInt(src.qsrReserve, 257);
+    };
+}
+
+export function loadLPInfo(slice: Slice) {
+    const sc_0 = slice;
+    const _totalSupply = sc_0.loadIntBig(257);
+    const _tonReserve = sc_0.loadIntBig(257);
+    const _qsrReserve = sc_0.loadIntBig(257);
+    return { $$type: 'LPInfo' as const, totalSupply: _totalSupply, tonReserve: _tonReserve, qsrReserve: _qsrReserve };
+}
+
+export function loadTupleLPInfo(source: TupleReader) {
+    const _totalSupply = source.readBigNumber();
+    const _tonReserve = source.readBigNumber();
+    const _qsrReserve = source.readBigNumber();
+    return { $$type: 'LPInfo' as const, totalSupply: _totalSupply, tonReserve: _tonReserve, qsrReserve: _qsrReserve };
+}
+
+export function loadGetterTupleLPInfo(source: TupleReader) {
+    const _totalSupply = source.readBigNumber();
+    const _tonReserve = source.readBigNumber();
+    const _qsrReserve = source.readBigNumber();
+    return { $$type: 'LPInfo' as const, totalSupply: _totalSupply, tonReserve: _tonReserve, qsrReserve: _qsrReserve };
+}
+
+export function storeTupleLPInfo(source: LPInfo) {
+    const builder = new TupleBuilder();
+    builder.writeNumber(source.totalSupply);
+    builder.writeNumber(source.tonReserve);
+    builder.writeNumber(source.qsrReserve);
+    return builder.build();
+}
+
+export function dictValueParserLPInfo(): DictionaryValue<LPInfo> {
+    return {
+        serialize: (src, builder) => {
+            builder.storeRef(beginCell().store(storeLPInfo(src)).endCell());
+        },
+        parse: (src) => {
+            return loadLPInfo(src.loadRef().beginParse());
+        }
+    }
+}
+
+export type FarmInfo = {
+    $$type: 'FarmInfo';
+    staked: bigint;
+    rewardPerSecond: bigint;
+    lastUpdate: bigint;
+    accRewardPerShare: bigint;
+    startTime: bigint;
+    endTime: bigint;
+}
+
+export function storeFarmInfo(src: FarmInfo) {
+    return (builder: Builder) => {
+        const b_0 = builder;
+        b_0.storeInt(src.staked, 257);
+        b_0.storeInt(src.rewardPerSecond, 257);
+        b_0.storeInt(src.lastUpdate, 257);
+        const b_1 = new Builder();
+        b_1.storeInt(src.accRewardPerShare, 257);
+        b_1.storeInt(src.startTime, 257);
+        b_1.storeInt(src.endTime, 257);
+        b_0.storeRef(b_1.endCell());
+    };
+}
+
+export function loadFarmInfo(slice: Slice) {
+    const sc_0 = slice;
+    const _staked = sc_0.loadIntBig(257);
+    const _rewardPerSecond = sc_0.loadIntBig(257);
+    const _lastUpdate = sc_0.loadIntBig(257);
+    const sc_1 = sc_0.loadRef().beginParse();
+    const _accRewardPerShare = sc_1.loadIntBig(257);
+    const _startTime = sc_1.loadIntBig(257);
+    const _endTime = sc_1.loadIntBig(257);
+    return { $$type: 'FarmInfo' as const, staked: _staked, rewardPerSecond: _rewardPerSecond, lastUpdate: _lastUpdate, accRewardPerShare: _accRewardPerShare, startTime: _startTime, endTime: _endTime };
+}
+
+export function loadTupleFarmInfo(source: TupleReader) {
+    const _staked = source.readBigNumber();
+    const _rewardPerSecond = source.readBigNumber();
+    const _lastUpdate = source.readBigNumber();
+    const _accRewardPerShare = source.readBigNumber();
+    const _startTime = source.readBigNumber();
+    const _endTime = source.readBigNumber();
+    return { $$type: 'FarmInfo' as const, staked: _staked, rewardPerSecond: _rewardPerSecond, lastUpdate: _lastUpdate, accRewardPerShare: _accRewardPerShare, startTime: _startTime, endTime: _endTime };
+}
+
+export function loadGetterTupleFarmInfo(source: TupleReader) {
+    const _staked = source.readBigNumber();
+    const _rewardPerSecond = source.readBigNumber();
+    const _lastUpdate = source.readBigNumber();
+    const _accRewardPerShare = source.readBigNumber();
+    const _startTime = source.readBigNumber();
+    const _endTime = source.readBigNumber();
+    return { $$type: 'FarmInfo' as const, staked: _staked, rewardPerSecond: _rewardPerSecond, lastUpdate: _lastUpdate, accRewardPerShare: _accRewardPerShare, startTime: _startTime, endTime: _endTime };
+}
+
+export function storeTupleFarmInfo(source: FarmInfo) {
+    const builder = new TupleBuilder();
+    builder.writeNumber(source.staked);
+    builder.writeNumber(source.rewardPerSecond);
+    builder.writeNumber(source.lastUpdate);
+    builder.writeNumber(source.accRewardPerShare);
+    builder.writeNumber(source.startTime);
+    builder.writeNumber(source.endTime);
+    return builder.build();
+}
+
+export function dictValueParserFarmInfo(): DictionaryValue<FarmInfo> {
+    return {
+        serialize: (src, builder) => {
+            builder.storeRef(beginCell().store(storeFarmInfo(src)).endCell());
+        },
+        parse: (src) => {
+            return loadFarmInfo(src.loadRef().beginParse());
+        }
+    }
+}
+
+export type UserFarmInfo = {
+    $$type: 'UserFarmInfo';
+    staked: bigint;
+    debt: bigint;
+    pending: bigint;
+}
+
+export function storeUserFarmInfo(src: UserFarmInfo) {
+    return (builder: Builder) => {
+        const b_0 = builder;
+        b_0.storeInt(src.staked, 257);
+        b_0.storeInt(src.debt, 257);
+        b_0.storeInt(src.pending, 257);
+    };
+}
+
+export function loadUserFarmInfo(slice: Slice) {
+    const sc_0 = slice;
+    const _staked = sc_0.loadIntBig(257);
+    const _debt = sc_0.loadIntBig(257);
+    const _pending = sc_0.loadIntBig(257);
+    return { $$type: 'UserFarmInfo' as const, staked: _staked, debt: _debt, pending: _pending };
+}
+
+export function loadTupleUserFarmInfo(source: TupleReader) {
+    const _staked = source.readBigNumber();
+    const _debt = source.readBigNumber();
+    const _pending = source.readBigNumber();
+    return { $$type: 'UserFarmInfo' as const, staked: _staked, debt: _debt, pending: _pending };
+}
+
+export function loadGetterTupleUserFarmInfo(source: TupleReader) {
+    const _staked = source.readBigNumber();
+    const _debt = source.readBigNumber();
+    const _pending = source.readBigNumber();
+    return { $$type: 'UserFarmInfo' as const, staked: _staked, debt: _debt, pending: _pending };
+}
+
+export function storeTupleUserFarmInfo(source: UserFarmInfo) {
+    const builder = new TupleBuilder();
+    builder.writeNumber(source.staked);
+    builder.writeNumber(source.debt);
+    builder.writeNumber(source.pending);
+    return builder.build();
+}
+
+export function dictValueParserUserFarmInfo(): DictionaryValue<UserFarmInfo> {
+    return {
+        serialize: (src, builder) => {
+            builder.storeRef(beginCell().store(storeUserFarmInfo(src)).endCell());
+        },
+        parse: (src) => {
+            return loadUserFarmInfo(src.loadRef().beginParse());
+        }
+    }
+}
+
+export type SwapQuote = {
+    $$type: 'SwapQuote';
+    tonIn: bigint;
+    qsrIn: bigint;
+    tonOut: bigint;
+    qsrOut: bigint;
+    fee: bigint;
+    priceImpactBps: bigint;
+}
+
+export function storeSwapQuote(src: SwapQuote) {
+    return (builder: Builder) => {
+        const b_0 = builder;
+        b_0.storeInt(src.tonIn, 257);
+        b_0.storeInt(src.qsrIn, 257);
+        b_0.storeInt(src.tonOut, 257);
+        const b_1 = new Builder();
+        b_1.storeInt(src.qsrOut, 257);
+        b_1.storeInt(src.fee, 257);
+        b_1.storeInt(src.priceImpactBps, 257);
+        b_0.storeRef(b_1.endCell());
+    };
+}
+
+export function loadSwapQuote(slice: Slice) {
+    const sc_0 = slice;
+    const _tonIn = sc_0.loadIntBig(257);
+    const _qsrIn = sc_0.loadIntBig(257);
+    const _tonOut = sc_0.loadIntBig(257);
+    const sc_1 = sc_0.loadRef().beginParse();
+    const _qsrOut = sc_1.loadIntBig(257);
+    const _fee = sc_1.loadIntBig(257);
+    const _priceImpactBps = sc_1.loadIntBig(257);
+    return { $$type: 'SwapQuote' as const, tonIn: _tonIn, qsrIn: _qsrIn, tonOut: _tonOut, qsrOut: _qsrOut, fee: _fee, priceImpactBps: _priceImpactBps };
+}
+
+export function loadTupleSwapQuote(source: TupleReader) {
+    const _tonIn = source.readBigNumber();
+    const _qsrIn = source.readBigNumber();
+    const _tonOut = source.readBigNumber();
+    const _qsrOut = source.readBigNumber();
+    const _fee = source.readBigNumber();
+    const _priceImpactBps = source.readBigNumber();
+    return { $$type: 'SwapQuote' as const, tonIn: _tonIn, qsrIn: _qsrIn, tonOut: _tonOut, qsrOut: _qsrOut, fee: _fee, priceImpactBps: _priceImpactBps };
+}
+
+export function loadGetterTupleSwapQuote(source: TupleReader) {
+    const _tonIn = source.readBigNumber();
+    const _qsrIn = source.readBigNumber();
+    const _tonOut = source.readBigNumber();
+    const _qsrOut = source.readBigNumber();
+    const _fee = source.readBigNumber();
+    const _priceImpactBps = source.readBigNumber();
+    return { $$type: 'SwapQuote' as const, tonIn: _tonIn, qsrIn: _qsrIn, tonOut: _tonOut, qsrOut: _qsrOut, fee: _fee, priceImpactBps: _priceImpactBps };
+}
+
+export function storeTupleSwapQuote(source: SwapQuote) {
+    const builder = new TupleBuilder();
+    builder.writeNumber(source.tonIn);
+    builder.writeNumber(source.qsrIn);
+    builder.writeNumber(source.tonOut);
+    builder.writeNumber(source.qsrOut);
+    builder.writeNumber(source.fee);
+    builder.writeNumber(source.priceImpactBps);
+    return builder.build();
+}
+
+export function dictValueParserSwapQuote(): DictionaryValue<SwapQuote> {
+    return {
+        serialize: (src, builder) => {
+            builder.storeRef(beginCell().store(storeSwapQuote(src)).endCell());
+        },
+        parse: (src) => {
+            return loadSwapQuote(src.loadRef().beginParse());
+        }
+    }
+}
+
+export type JettonWalletData = {
+    $$type: 'JettonWalletData';
+    balance: bigint;
+    owner: Address;
+    master: Address;
+    walletCode: Cell;
+}
+
+export function storeJettonWalletData(src: JettonWalletData) {
+    return (builder: Builder) => {
+        const b_0 = builder;
+        b_0.storeInt(src.balance, 257);
+        b_0.storeAddress(src.owner);
+        b_0.storeAddress(src.master);
+        b_0.storeRef(src.walletCode);
+    };
+}
+
+export function loadJettonWalletData(slice: Slice) {
+    const sc_0 = slice;
+    const _balance = sc_0.loadIntBig(257);
+    const _owner = sc_0.loadAddress();
+    const _master = sc_0.loadAddress();
+    const _walletCode = sc_0.loadRef();
+    return { $$type: 'JettonWalletData' as const, balance: _balance, owner: _owner, master: _master, walletCode: _walletCode };
+}
+
+export function loadTupleJettonWalletData(source: TupleReader) {
+    const _balance = source.readBigNumber();
+    const _owner = source.readAddress();
+    const _master = source.readAddress();
+    const _walletCode = source.readCell();
+    return { $$type: 'JettonWalletData' as const, balance: _balance, owner: _owner, master: _master, walletCode: _walletCode };
+}
+
+export function loadGetterTupleJettonWalletData(source: TupleReader) {
+    const _balance = source.readBigNumber();
+    const _owner = source.readAddress();
+    const _master = source.readAddress();
+    const _walletCode = source.readCell();
+    return { $$type: 'JettonWalletData' as const, balance: _balance, owner: _owner, master: _master, walletCode: _walletCode };
+}
+
+export function storeTupleJettonWalletData(source: JettonWalletData) {
+    const builder = new TupleBuilder();
+    builder.writeNumber(source.balance);
+    builder.writeAddress(source.owner);
+    builder.writeAddress(source.master);
+    builder.writeCell(source.walletCode);
+    return builder.build();
+}
+
+export function dictValueParserJettonWalletData(): DictionaryValue<JettonWalletData> {
+    return {
+        serialize: (src, builder) => {
+            builder.storeRef(beginCell().store(storeJettonWalletData(src)).endCell());
+        },
+        parse: (src) => {
+            return loadJettonWalletData(src.loadRef().beginParse());
+        }
+    }
+}
+
+export type QuasarDeFi$Data = {
+    $$type: 'QuasarDeFi$Data';
+    owner: Address;
+    qsrMaster: Address;
+    lpTotalSupply: bigint;
+    tonReserve: bigint;
+    qsrReserve: bigint;
+    lpBalances: Dictionary<Address, bigint>;
+    pendingQsrDeposits: Dictionary<Address, bigint>;
+    feeBps: bigint;
+    feeAccumulated: bigint;
+    farmEnabled: boolean;
+    farmRewardPerSecond: bigint;
+    farmStartTime: bigint;
+    farmEndTime: bigint;
+    farmLastUpdate: bigint;
+    farmAccRewardPerShare: bigint;
+    farmTotalStaked: bigint;
+    farmRewardReserve: bigint;
+    farmStakes: Dictionary<Address, UserFarmInfo>;
+    locked: boolean;
+    paused: boolean;
+    maxTradeBps: bigint;
+}
+
+export function storeQuasarDeFi$Data(src: QuasarDeFi$Data) {
+    return (builder: Builder) => {
+        const b_0 = builder;
+        b_0.storeAddress(src.owner);
+        b_0.storeAddress(src.qsrMaster);
+        b_0.storeCoins(src.lpTotalSupply);
+        b_0.storeCoins(src.tonReserve);
+        b_0.storeCoins(src.qsrReserve);
+        b_0.storeDict(src.lpBalances, Dictionary.Keys.Address(), Dictionary.Values.BigInt(257));
+        b_0.storeDict(src.pendingQsrDeposits, Dictionary.Keys.Address(), Dictionary.Values.BigInt(257));
+        b_0.storeUint(src.feeBps, 16);
+        const b_1 = new Builder();
+        b_1.storeCoins(src.feeAccumulated);
+        b_1.storeBit(src.farmEnabled);
+        b_1.storeCoins(src.farmRewardPerSecond);
+        b_1.storeUint(src.farmStartTime, 32);
+        b_1.storeUint(src.farmEndTime, 32);
+        b_1.storeInt(src.farmLastUpdate, 257);
+        b_1.storeInt(src.farmAccRewardPerShare, 257);
+        b_1.storeCoins(src.farmTotalStaked);
+        const b_2 = new Builder();
+        b_2.storeCoins(src.farmRewardReserve);
+        b_2.storeDict(src.farmStakes, Dictionary.Keys.Address(), dictValueParserUserFarmInfo());
+        b_2.storeBit(src.locked);
+        b_2.storeBit(src.paused);
+        b_2.storeUint(src.maxTradeBps, 16);
+        b_1.storeRef(b_2.endCell());
+        b_0.storeRef(b_1.endCell());
+    };
+}
+
+export function loadQuasarDeFi$Data(slice: Slice) {
+    const sc_0 = slice;
+    const _owner = sc_0.loadAddress();
+    const _qsrMaster = sc_0.loadAddress();
+    const _lpTotalSupply = sc_0.loadCoins();
+    const _tonReserve = sc_0.loadCoins();
+    const _qsrReserve = sc_0.loadCoins();
+    const _lpBalances = Dictionary.load(Dictionary.Keys.Address(), Dictionary.Values.BigInt(257), sc_0);
+    const _pendingQsrDeposits = Dictionary.load(Dictionary.Keys.Address(), Dictionary.Values.BigInt(257), sc_0);
+    const _feeBps = sc_0.loadUintBig(16);
+    const sc_1 = sc_0.loadRef().beginParse();
+    const _feeAccumulated = sc_1.loadCoins();
+    const _farmEnabled = sc_1.loadBit();
+    const _farmRewardPerSecond = sc_1.loadCoins();
+    const _farmStartTime = sc_1.loadUintBig(32);
+    const _farmEndTime = sc_1.loadUintBig(32);
+    const _farmLastUpdate = sc_1.loadIntBig(257);
+    const _farmAccRewardPerShare = sc_1.loadIntBig(257);
+    const _farmTotalStaked = sc_1.loadCoins();
+    const sc_2 = sc_1.loadRef().beginParse();
+    const _farmRewardReserve = sc_2.loadCoins();
+    const _farmStakes = Dictionary.load(Dictionary.Keys.Address(), dictValueParserUserFarmInfo(), sc_2);
+    const _locked = sc_2.loadBit();
+    const _paused = sc_2.loadBit();
     const _maxTradeBps = sc_2.loadUintBig(16);
     return { $$type: 'QuasarDeFi$Data' as const, owner: _owner, qsrMaster: _qsrMaster, lpTotalSupply: _lpTotalSupply, tonReserve: _tonReserve, qsrReserve: _qsrReserve, lpBalances: _lpBalances, pendingQsrDeposits: _pendingQsrDeposits, feeBps: _feeBps, feeAccumulated: _feeAccumulated, farmEnabled: _farmEnabled, farmRewardPerSecond: _farmRewardPerSecond, farmStartTime: _farmStartTime, farmEndTime: _farmEndTime, farmLastUpdate: _farmLastUpdate, farmAccRewardPerShare: _farmAccRewardPerShare, farmTotalStaked: _farmTotalStaked, farmRewardReserve: _farmRewardReserve, farmStakes: _farmStakes, locked: _locked, paused: _paused, maxTradeBps: _maxTradeBps };
 }
