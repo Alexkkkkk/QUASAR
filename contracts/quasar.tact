@@ -116,6 +116,8 @@ contract QuasarMaster with Deployable {
     content: Cell;
     walletCode: Cell;
     reserveBalance: Int as coins;
+    // QSR deposited into the master wallet for staking/vesting custody.
+    custodyBalance: Int as coins;
     
     // Fee
     feeBps: Int as uint16;
@@ -208,6 +210,7 @@ contract QuasarMaster with Deployable {
         self.content = content;
         self.walletCode = walletCode;
         self.reserveBalance = 0;
+        self.custodyBalance = 0;
         
         self.feeBps = 30;
         self.feeBurnShare = 50;
@@ -318,6 +321,23 @@ contract QuasarMaster with Deployable {
         self.reserveBalance = self.reserveBalance - amount;
         self._sendInternalTransfer(to, amount, queryId, from);
     }
+
+    // Custodied deposits must leave the master-owned Jetton wallet.
+    fun _sendCustodiedTokens(to: Address, amount: Int, queryId: Int) {
+        require(amount > 0, "Invalid custody transfer amount");
+        require(self.custodyBalance >= amount, "Insufficient custody balance");
+        self.custodyBalance = self.custodyBalance - amount;
+        let init: StateInit = initOf QuasarWallet(myAddress(), myAddress());
+        send(SendParameters{
+            to: contractAddress(init),
+            value: 0,
+            bounce: true,
+            mode: SendRemainingValue,
+            body: PoolPayout{ queryId: queryId, amount: amount, destination: to }.toCell(),
+            code: init.code,
+            data: init.data
+        });
+    }
     
     // ═══════════════════════════════════════════════════════════
     // JETTON CORE
@@ -362,7 +382,7 @@ contract QuasarMaster with Deployable {
 
         let pending: Int? = self.pendingQsrDeposits.get(msg.from);
         self.pendingQsrDeposits.set(msg.from, pending == null ? msg.amount : pending!! + msg.amount);
-        self.reserveBalance = self.reserveBalance + msg.amount;
+        self.custodyBalance = self.custodyBalance + msg.amount;
     }
 
     // ═══════════════════════════════════════════════════════════
@@ -379,6 +399,8 @@ contract QuasarMaster with Deployable {
         
         let burnAmount: Int = msg.amount * self.feeBurnShare / 100;
         let remaining: Int = msg.amount - burnAmount;
+        // Burned fees cannot remain spendable in the fee-backed reserve.
+        self.reserveBalance = self.reserveBalance - burnAmount;
         
         // Split remaining: 15% buyback, 15% lottery, 10% staking, 5% defi, 55% treasury
         let buybackAmt: Int = remaining * 15 / 100;
@@ -464,20 +486,21 @@ contract QuasarMaster with Deployable {
     }
     
     fun _executeBuyback(queryId: Int) {
-        let spend: Int = self.buybackPool;
-        self.buybackPool = 0;
-        let qsrBurn: Int = spend * self.buybackBurnPercent / 100;
+        // No AMM swap is performed here. Burn the reserve safely and report
+        // zero TON spent instead of claiming a buyback happened.
+        let qsrBurn: Int = self.buybackPool * self.buybackBurnPercent / 100;
         if (qsrBurn > self.totalSupply) { qsrBurn = self.totalSupply }
+        if (qsrBurn > self.reserveBalance) { qsrBurn = self.reserveBalance }
+        self.buybackPool = self.buybackPool - qsrBurn;
         if (qsrBurn > 0) {
             self.totalSupply = self.totalSupply - qsrBurn;
             self.totalBurned = self.totalBurned + qsrBurn;
             self.totalQsrBurnedViaBuyback = self.totalQsrBurnedViaBuyback + qsrBurn;
+            self.reserveBalance = self.reserveBalance - qsrBurn;
         }
-        self.totalTonSpentOnBuyback = self.totalTonSpentOnBuyback + spend;
         self.totalBuybacks = self.totalBuybacks + 1;
         self.lastBuybackTime = now();
-        
-        send(SendParameters{ to: self.owner, value: 0, bounce: false, mode: SendRemainingValue, body: EventBuybackExecuted{ tonSpent: spend, qsrBurned: qsrBurn }.toCell() });
+        send(SendParameters{ to: self.owner, value: 0, bounce: false, mode: SendRemainingValue, body: EventBuybackExecuted{ tonSpent: 0, qsrBurned: qsrBurn }.toCell() });
     }
     
     // ═══════════════════════════════════════════════════════════
@@ -538,7 +561,7 @@ contract QuasarMaster with Deployable {
             self.stakers.set(staker, null);
         }
         self.totalStaked = self.totalStaked - msg.amount;
-        self._sendTokens(staker, msg.amount, 0, myAddress());
+        self._sendCustodiedTokens(staker, msg.amount, 0);
         
         send(SendParameters{ to: sender(), value: 0, mode: SendRemainingValue, body: EventUnstake{ staker: staker, amount: msg.amount }.toCell() });
     }
@@ -635,7 +658,7 @@ contract QuasarMaster with Deployable {
         
         self.vestingSchedules.set(beneficiary, VestingInfo{ totalAmount: info!!.totalAmount, claimed: info!!.claimed + claimable, startTime: info!!.startTime, cliff: info!!.cliff, duration: info!!.duration });
         self.teamClaimed = self.teamClaimed + claimable;
-        self._sendTokens(beneficiary, claimable, 0, myAddress());
+        self._sendCustodiedTokens(beneficiary, claimable, 0);
         
         send(SendParameters{ to: sender(), value: 0, mode: SendRemainingValue, body: EventVestingClaimed{ beneficiary: beneficiary, amount: claimable }.toCell() });
     }
@@ -653,7 +676,9 @@ contract QuasarMaster with Deployable {
     
     fun _executeLotteryDraw(queryId: Int) {
         if (self.lotteryTicketCount == 0) { return }
-        let winnerIndex: Int = now() % self.lotteryTicketCount;
+        // Use TVM randomness rather than the block timestamp, which is
+        // predictable and can be influenced by the draw caller.
+        let winnerIndex: Int = randomInt() % self.lotteryTicketCount;
         let winner: Address? = self.lotteryTickets.get(winnerIndex);
         if (winner == null) { return }
         
@@ -718,7 +743,7 @@ contract QuasarMaster with Deployable {
     receive(msg: AISetFee) {
         self._requireAiAccess();
         self._requireAiCooldown();
-        require(msg.feeBps <= 100 && msg.feeBps >= 10, "Fee 0.10%-1.00%");
+        require(msg.feeBps == 30, "Wallet fee is fixed at 30 bps");
         let old: Int = self.feeBps;
         self.feeBps = msg.feeBps;
         let id: Int = self._logAiAction("SetFee", old, msg.feeBps, msg.reason);
@@ -737,7 +762,7 @@ contract QuasarMaster with Deployable {
     receive(msg: AISetAntiWhale) {
         self._requireAiAccess();
         self._requireAiCooldown();
-        require(msg.maxTxBps <= 500 && msg.maxWalletBps <= 1000 && msg.cooldown <= 300, "Limits");
+        require(msg.maxTxBps == 100 && msg.maxWalletBps == 300 && msg.cooldown == 5, "Transfer limits are fixed");
         self.maxTxBps = msg.maxTxBps;
         self.maxWalletBps = msg.maxWalletBps;
         self.cooldownSeconds = msg.cooldown;
@@ -768,6 +793,7 @@ contract QuasarMaster with Deployable {
         self._requireAiAccess();
         self._requireAiCooldown();
         require(self.aiFullAutonomy, "No autonomy");
+        require(msg.newOracle != newAddress(0, 0), "Invalid oracle");
         self.aiOracle = msg.newOracle;
         let id: Int = self._logAiAction("RotateOracle", 0, 1, msg.reason);
         send(SendParameters{ to: sender(), value: 0, mode: SendRemainingValue, body: EventAiAction{ actionId: id, actionType: "RotateOracle", oldValue: 0, newValue: 1 }.toCell() });
@@ -775,6 +801,7 @@ contract QuasarMaster with Deployable {
     
     receive(msg: AISetOracle) {
         self._requireOwner();
+        require(msg.oracleAddress != newAddress(0, 0), "Invalid oracle");
         self.aiOracle = msg.oracleAddress;
         self.aiEnabled = true;
     }
@@ -796,11 +823,9 @@ contract QuasarMaster with Deployable {
         self.signalCount = self.signalCount + 1;
         self.priceHistory.set(now(), msg.priceTon);
         if (msg.action == 2 && msg.volatility > 5000) {
-            if (self.feeBps < 50) { self.feeBps = 50 }
             self.feeBurnShare = 70;
         }
         if (msg.action == 3 && msg.sentiment > 80) {
-            if (self.feeBps > 20) { self.feeBps = 20 }
             self.feeBurnShare = 40;
             self.mintable = true;
         }
@@ -824,7 +849,6 @@ contract QuasarMaster with Deployable {
             self.feeBps = 100;
             self.feeBurnShare = 90;
         } else if (msg.severity == 2) {
-            self.feeBps = self.feeBps + 20;
             self.feeBurnShare = 60;
         }
     }
@@ -833,10 +857,18 @@ contract QuasarMaster with Deployable {
         self._requireAiAccess();
         require(msg.confidence >= self.minConfidence, "Low confidence");
         self.signalCount = self.signalCount + 1;
-        if (msg.proposalType == 1) { self.feeBps = msg.newValue }
-        else if (msg.proposalType == 2) { self.feeBurnShare = msg.newValue }
-        else if (msg.proposalType == 3) { self.aiOracle = newAddress(0, msg.newValue) }
-        else if (msg.proposalType == 4) { self.buybackThreshold = msg.newValue }
+        if (msg.proposalType == 1) {
+            require(msg.newValue == 30, "Wallet fee is fixed at 30 bps");
+            self.feeBps = 30;
+        } else if (msg.proposalType == 2) {
+            require(msg.newValue >= 0 && msg.newValue <= 100, "Invalid burn share");
+            self.feeBurnShare = msg.newValue;
+        } else if (msg.proposalType == 4) {
+            require(msg.newValue > 0, "Invalid buyback threshold");
+            self.buybackThreshold = msg.newValue;
+        } else {
+            require(false, "Unsupported governance proposal");
+        }
         self.anomalyLog.set(self.anomalyIndex, AIRecommendation{ timestamp: now(), action: msg.description, confidence: msg.confidence, executed: true });
         self.anomalyIndex = self.anomalyIndex + 1;
     }
@@ -846,6 +878,7 @@ contract QuasarMaster with Deployable {
     // ═══════════════════════════════════════════════════════════
     
     receive(msg: AIVetoVote) {
+        require(false, "Veto voting disabled until stake escrow is implemented");
         let action: AIActionLog? = self.aiActionLog.get(msg.actionId);
         require(action != null, "Not found");
         require(!(action!!.vetoed) && !(action!!.overridden), "Closed");
@@ -908,6 +941,10 @@ contract QuasarMaster with Deployable {
         require(msg.destination != newAddress(0, 0), "Invalid destination");
         self._sendTokens(msg.destination, msg.amount, msg.queryId, myAddress());
     }
+
+    bounced(msg: bounced<PoolPayout>) {
+        self.custodyBalance = self.custodyBalance + msg.amount;
+    }
     
     // ═══════════════════════════════════════════════════════════
     // OWNER ADMIN
@@ -922,7 +959,7 @@ contract QuasarMaster with Deployable {
     receive(msg: SetFeeConfig) {
         self._requireOwner();
         require(!self.aiFullAutonomy, "AI controls");
-        require(msg.feeBps > 0 && msg.feeBps <= 100 && msg.burnShare <= 100 && msg.maxTxBps > 0 && msg.maxTxBps <= 500 && msg.maxWalletBps > 0 && msg.maxWalletBps <= 1000 && msg.cooldown <= 300, "Limits");
+        require(msg.feeBps == 30 && msg.burnShare <= 100 && msg.maxTxBps == 100 && msg.maxWalletBps == 300 && msg.cooldown == 5, "Only implemented limits are allowed");
         self.feeBps = msg.feeBps;
         self.feeBurnShare = msg.burnShare;
         self.maxTxBps = msg.maxTxBps;
@@ -939,6 +976,7 @@ contract QuasarMaster with Deployable {
     receive(msg: SetBuybackConfig) {
         self._requireOwner();
         require(!self.aiFullAutonomy, "AI controls");
+        require(msg.threshold > 0 && msg.cooldown > 0 && msg.burnPercent > 0 && msg.burnPercent <= 100, "Invalid buyback config");
         self.buybackEnabled = msg.enabled;
         self.buybackThreshold = msg.threshold;
         self.buybackCooldown = msg.cooldown;
@@ -966,6 +1004,7 @@ contract QuasarMaster with Deployable {
     }
 
     get fun get_reserve_balance(): Int { return self.reserveBalance }
+    get fun get_custody_balance(): Int { return self.custodyBalance }
     
     get fun get_wallet_address(owner: Address): Address {
         let init: StateInit = initOf QuasarWallet(owner, myAddress());
