@@ -1,9 +1,9 @@
 # Tact compilation report
 Contract: QuasarDeFi
-BoC Size: 7291 bytes
+BoC Size: 8213 bytes
 
 ## Structures (Structs and Messages)
-Total structures: 42
+Total structures: 44
 
 ### DataSize
 TL-B: `_ cells:int257 bits:int257 refs:int257 = DataSize`
@@ -76,6 +76,14 @@ Signature: `SwapToQSR{tonAmount:coins,minQsrOut:coins}`
 ### ClaimFarmRewards
 TL-B: `claim_farm_rewards#511327f0  = ClaimFarmRewards`
 Signature: `ClaimFarmRewards{}`
+
+### SetFarmEnabled
+TL-B: `set_farm_enabled#6482e5b4 enabled:bool = SetFarmEnabled`
+Signature: `SetFarmEnabled{enabled:bool}`
+
+### FundFarm
+TL-B: `fund_farm#27895d7c amount:coins = FundFarm`
+Signature: `FundFarm{amount:coins}`
 
 ### SetFarmConfig
 TL-B: `set_farm_config#e7ceed7e rewardPerSecond:coins startTime:uint32 endTime:uint32 = SetFarmConfig`
@@ -166,15 +174,15 @@ TL-B: `_ balance:int257 owner:address master:address walletCode:^cell = JettonWa
 Signature: `JettonWalletData{balance:int257,owner:address,master:address,walletCode:^cell}`
 
 ### QuasarDeFi$Data
-TL-B: `_ owner:address qsrMaster:address lpTotalSupply:coins tonReserve:coins qsrReserve:coins lpBalances:dict<address, int> pendingQsrDeposits:dict<address, int> feeBps:uint16 feeAccumulated:coins farmEnabled:bool farmRewardPerSecond:coins farmStartTime:uint32 farmEndTime:uint32 farmLastUpdate:int257 farmAccRewardPerShare:int257 farmTotalStaked:coins farmStakes:dict<address, ^UserFarmInfo{staked:int257,debt:int257,pending:int257}> locked:bool paused:bool maxTradeBps:uint16 = QuasarDeFi`
-Signature: `QuasarDeFi{owner:address,qsrMaster:address,lpTotalSupply:coins,tonReserve:coins,qsrReserve:coins,lpBalances:dict<address, int>,pendingQsrDeposits:dict<address, int>,feeBps:uint16,feeAccumulated:coins,farmEnabled:bool,farmRewardPerSecond:coins,farmStartTime:uint32,farmEndTime:uint32,farmLastUpdate:int257,farmAccRewardPerShare:int257,farmTotalStaked:coins,farmStakes:dict<address, ^UserFarmInfo{staked:int257,debt:int257,pending:int257}>,locked:bool,paused:bool,maxTradeBps:uint16}`
+TL-B: `_ owner:address qsrMaster:address lpTotalSupply:coins tonReserve:coins qsrReserve:coins lpBalances:dict<address, int> pendingQsrDeposits:dict<address, int> feeBps:uint16 feeAccumulated:coins farmEnabled:bool farmRewardPerSecond:coins farmStartTime:uint32 farmEndTime:uint32 farmLastUpdate:int257 farmAccRewardPerShare:int257 farmTotalStaked:coins farmRewardReserve:coins farmStakes:dict<address, ^UserFarmInfo{staked:int257,debt:int257,pending:int257}> locked:bool paused:bool maxTradeBps:uint16 = QuasarDeFi`
+Signature: `QuasarDeFi{owner:address,qsrMaster:address,lpTotalSupply:coins,tonReserve:coins,qsrReserve:coins,lpBalances:dict<address, int>,pendingQsrDeposits:dict<address, int>,feeBps:uint16,feeAccumulated:coins,farmEnabled:bool,farmRewardPerSecond:coins,farmStartTime:uint32,farmEndTime:uint32,farmLastUpdate:int257,farmAccRewardPerShare:int257,farmTotalStaked:coins,farmRewardReserve:coins,farmStakes:dict<address, ^UserFarmInfo{staked:int257,debt:int257,pending:int257}>,locked:bool,paused:bool,maxTradeBps:uint16}`
 
 ### QuasarWallet$Data
 TL-B: `_ balance:coins owner:address master:address lastTxTime:int257 = QuasarWallet`
 Signature: `QuasarWallet{balance:coins,owner:address,master:address,lastTxTime:int257}`
 
 ## Get methods
-Total get methods: 13
+Total get methods: 14
 
 ## lpBalance
 Argument: user
@@ -208,6 +216,9 @@ Argument: lpAmount
 No arguments
 
 ## feeAccumulated
+No arguments
+
+## farmRewardReserve
 No arguments
 
 ## owner
@@ -253,21 +264,25 @@ No arguments
 * 135: Code of a contract was not found
 * 136: Invalid standard address
 * 138: Not a basechain address
+* 2338: Invalid destination
 * 3561: TON deposit too large
 * 5623: Invalid swap
 * 8660: Insufficient
 * 12203: Invalid amounts
+* 12321: Farm disabled
 * 12493: Invalid token wallet
 * 14534: Not owner
 * 16323: Insufficient reserve
 * 16729: No LP stake
 * 17062: Invalid amount
+* 18765: Invalid farm funding
 * 19907: Trade limit 1%-50%
 * 20145: Deposit QSR first
 * 22606: Insufficient LP balance
 * 24969: DeFi paused
 * 27929: Trade too large
 * 31600: Farm already ended
+* 33278: Fund farm before enabling
 * 34392: Invalid QSR amount
 * 35499: Only owner
 * 39600: Fee must be 0.01%-1%

@@ -74,9 +74,13 @@ QSR is the Jetton of the QUASAR ecosystem with a base precision of 9 decimals. T
 - lottery tickets;
 - liquidity provision in the TON/QSR pool.
 
-### Important Supply Note
+### Supply cap
 
-The README describes a target total supply of 1,000,000,000 QSR. However, the current QuasarMaster initializer sets totalSupply to 0 and mintable to true. Therefore, the 1 billion figure must not be treated as a hard on-chain cap until it is enforced by the issuance logic, deployment configuration, and tests. This issue must be resolved before mainnet.
+The QuasarMaster initializer sets a hard maximum supply of 1,000,000,000 QSR
+(9 decimals). Minting is rejected when the cap would be exceeded. The owner
+must still explicitly stop minting after the intended initial distribution;
+the cap alone does not define a fair allocation or prove that the supply is
+fully distributed.
 
 ## 5. Fees and Distribution
 
@@ -101,7 +105,7 @@ When a feature is disabled or the DeFi address is not configured, the relevant a
 | Burn share | 50% of the fee |
 | Maximum transaction | 1% of supply |
 | Maximum wallet | 3% of supply |
-| Transfer cooldown | 15 seconds |
+| Transfer cooldown | 5 seconds |
 | Buyback threshold | 10 TON |
 | Buyback cooldown | 1 hour |
 | Buyback burn percentage | 100% |
@@ -135,7 +139,7 @@ A nominal APY does not guarantee a sufficient rewards balance or a particular ma
 
 ## 8. Referral Program
 
-When enabled, a user can register a referrer. The initial reward is 100 basis points, or 1% of the fee associated with eligible activity by the referred user. Rewards are recorded by the contract and can be claimed through ClaimReferralRewards.
+When enabled, a user can register a referrer. The initial reward is 100 basis points, or 1% of the fee associated with eligible activity by the referred user. Rewards are escrowed by the contract and can be claimed through ClaimReferralRewards.
 
 Referral rewards are not guaranteed income. They depend on actual fee-generating activity, the contract state, and the availability of rewards.
 
@@ -161,7 +165,10 @@ When enabled, a transaction that reaches the ticket price adds the sender to the
 
 ### Current implementation limitation
 
-The current winner-selection logic uses the timestamp modulo the number of tickets: now() % lotteryTicketCount. This is not cryptographically secure randomness and may be predictable or influenceable. The lottery must not be considered suitable for meaningful monetary prizes until a secure randomness mechanism and an independent audit are in place.
+The current winner-selection logic uses TVM `randomInt()`. This is preferable
+to timestamp modulo arithmetic, but it still requires an independent review of
+TON randomness guarantees and draw timing before the lottery is used for
+meaningful monetary prizes.
 
 ## 11. AI Oracle and Governance
 
