@@ -17,6 +17,18 @@ Burn notifications now reject amounts greater than totalSupply before subtractio
 ### Mint-stop bypass through AI signal — fixed
 A bullish AI price signal could set mintable back to true after the owner stopped minting. That assignment was removed.
 
+### Unbounded issuance — fixed
+
+The master now rejects a mint when `totalSupply + amount` would exceed the
+hard 1,000,000,000 QSR cap. The deployment script and smoke check use the same
+9-decimal supply model.
+
+### Referral claim mismatch — fixed
+
+Referral rewards are now escrowed in the master and released only through
+`ClaimReferralRewards`; the public message and documentation no longer promise
+an unimplemented claim path.
+
 ## Test coverage added
 
 - npm run security:check validates the source-level invariants above.

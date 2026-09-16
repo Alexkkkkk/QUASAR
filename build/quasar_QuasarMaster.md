@@ -1,6 +1,6 @@
 # Tact compilation report
 Contract: QuasarMaster
-BoC Size: 48361 bytes
+BoC Size: 53521 bytes
 
 ## Structures (Structs and Messages)
 Total structures: 84
@@ -334,20 +334,26 @@ TL-B: `_ round:int257 owner:address = LotteryTicket`
 Signature: `LotteryTicket{round:int257,owner:address}`
 
 ### QuasarMaster$Data
-TL-B: `_ totalSupply:coins mintable:bool owner:address content:^cell walletCode:^cell reserveBalance:coins feeBps:uint16 feeBurnShare:uint8 treasury:address totalBurned:coins totalFeesCollected:coins maxTxBps:uint16 maxWalletBps:uint16 cooldownSeconds:uint16 tradingEnabled:bool buybackEnabled:bool buybackPool:coins buybackThreshold:coins buybackCooldown:uint32 buybackBurnPercent:uint8 lastBuybackTime:int257 totalBuybacks:int257 totalQsrBurnedViaBuyback:coins totalTonSpentOnBuyback:coins aiOracle:address aiEnabled:bool aiFullAutonomy:bool lastRebalanceTime:int257 signalCount:int257 priceHistory:dict<int, int> anomalyLog:dict<int, ^AIRecommendation{timestamp:int257,action:^string,confidence:int257,executed:bool}> anomalyIndex:int257 minConfidence:uint8 emergencyPause:bool aiActionCooldown:uint32 lastAiActionTime:int257 heartbeatTimeout:uint32 lastHeartbeat:int257 ownerOverrideWindow:uint32 vetoThresholdBps:uint16 aiActionLog:dict<int, ^AIActionLog{actionId:int257,timestamp:int257,actionType:^string,oldValue:int257,newValue:int257,reason:^string,executed:bool,vetoed:bool,overridden:bool}> aiActionIndex:int257 pendingAiActions:dict<int, int> vetoLog:dict<int, ^VetoState{actionId:int257,totalStake:int257,vetoCount:int257,threshold:int257,active:bool}> totalVetoStake:coins stakingEnabled:bool stakingApyBps:uint16 stakingMinStake:coins stakingLockPeriod:uint32 stakers:dict<address, ^StakeInfo{amount:int257,startTime:int257,lastClaim:int257,lockEnd:int257}> totalStaked:coins stakingRewardsPool:coins pendingQsrDeposits:dict<address, int> referralEnabled:bool referralRewardBps:uint16 referrals:dict<address, ^ReferralInfo{referrer:address,totalEarned:int257,totalReferrals:int257}> vestingEnabled:bool teamAllocation:coins teamClaimed:coins vestingSchedules:dict<address, ^VestingInfo{totalAmount:int257,claimed:int257,startTime:int257,cliff:int257,duration:int257}> lotteryEnabled:bool lotteryTicketPrice:coins lotteryDrawInterval:uint32 lotteryJackpotShare:uint8 lotteryRound:int257 lotteryLastDraw:int257 lotteryJackpot:coins lotteryTickets:dict<int, address> lotteryTicketCount:int257 lotteryWinners:dict<int, address> defiAddress:address defiFeeShareBps:uint16 = QuasarMaster`
-Signature: `QuasarMaster{totalSupply:coins,mintable:bool,owner:address,content:^cell,walletCode:^cell,reserveBalance:coins,feeBps:uint16,feeBurnShare:uint8,treasury:address,totalBurned:coins,totalFeesCollected:coins,maxTxBps:uint16,maxWalletBps:uint16,cooldownSeconds:uint16,tradingEnabled:bool,buybackEnabled:bool,buybackPool:coins,buybackThreshold:coins,buybackCooldown:uint32,buybackBurnPercent:uint8,lastBuybackTime:int257,totalBuybacks:int257,totalQsrBurnedViaBuyback:coins,totalTonSpentOnBuyback:coins,aiOracle:address,aiEnabled:bool,aiFullAutonomy:bool,lastRebalanceTime:int257,signalCount:int257,priceHistory:dict<int, int>,anomalyLog:dict<int, ^AIRecommendation{timestamp:int257,action:^string,confidence:int257,executed:bool}>,anomalyIndex:int257,minConfidence:uint8,emergencyPause:bool,aiActionCooldown:uint32,lastAiActionTime:int257,heartbeatTimeout:uint32,lastHeartbeat:int257,ownerOverrideWindow:uint32,vetoThresholdBps:uint16,aiActionLog:dict<int, ^AIActionLog{actionId:int257,timestamp:int257,actionType:^string,oldValue:int257,newValue:int257,reason:^string,executed:bool,vetoed:bool,overridden:bool}>,aiActionIndex:int257,pendingAiActions:dict<int, int>,vetoLog:dict<int, ^VetoState{actionId:int257,totalStake:int257,vetoCount:int257,threshold:int257,active:bool}>,totalVetoStake:coins,stakingEnabled:bool,stakingApyBps:uint16,stakingMinStake:coins,stakingLockPeriod:uint32,stakers:dict<address, ^StakeInfo{amount:int257,startTime:int257,lastClaim:int257,lockEnd:int257}>,totalStaked:coins,stakingRewardsPool:coins,pendingQsrDeposits:dict<address, int>,referralEnabled:bool,referralRewardBps:uint16,referrals:dict<address, ^ReferralInfo{referrer:address,totalEarned:int257,totalReferrals:int257}>,vestingEnabled:bool,teamAllocation:coins,teamClaimed:coins,vestingSchedules:dict<address, ^VestingInfo{totalAmount:int257,claimed:int257,startTime:int257,cliff:int257,duration:int257}>,lotteryEnabled:bool,lotteryTicketPrice:coins,lotteryDrawInterval:uint32,lotteryJackpotShare:uint8,lotteryRound:int257,lotteryLastDraw:int257,lotteryJackpot:coins,lotteryTickets:dict<int, address>,lotteryTicketCount:int257,lotteryWinners:dict<int, address>,defiAddress:address,defiFeeShareBps:uint16}`
+TL-B: `_ totalSupply:coins maxSupply:coins mintable:bool owner:address content:^cell walletCode:^cell reserveBalance:coins custodyBalance:coins feeBps:uint16 feeBurnShare:uint8 treasury:address totalBurned:coins totalFeesCollected:coins maxTxBps:uint16 maxWalletBps:uint16 cooldownSeconds:uint16 tradingEnabled:bool buybackEnabled:bool buybackPool:coins buybackThreshold:coins buybackCooldown:uint32 buybackBurnPercent:uint8 lastBuybackTime:int257 totalBuybacks:int257 totalQsrBurnedViaBuyback:coins totalTonSpentOnBuyback:coins aiOracle:address aiEnabled:bool aiFullAutonomy:bool lastRebalanceTime:int257 signalCount:int257 priceHistory:dict<int, int> anomalyLog:dict<int, ^AIRecommendation{timestamp:int257,action:^string,confidence:int257,executed:bool}> anomalyIndex:int257 minConfidence:uint8 emergencyPause:bool aiActionCooldown:uint32 lastAiActionTime:int257 heartbeatTimeout:uint32 lastHeartbeat:int257 ownerOverrideWindow:uint32 vetoThresholdBps:uint16 aiActionLog:dict<int, ^AIActionLog{actionId:int257,timestamp:int257,actionType:^string,oldValue:int257,newValue:int257,reason:^string,executed:bool,vetoed:bool,overridden:bool}> aiActionIndex:int257 pendingAiActions:dict<int, int> vetoLog:dict<int, ^VetoState{actionId:int257,totalStake:int257,vetoCount:int257,threshold:int257,active:bool}> totalVetoStake:coins stakingEnabled:bool stakingApyBps:uint16 stakingMinStake:coins stakingLockPeriod:uint32 stakers:dict<address, ^StakeInfo{amount:int257,startTime:int257,lastClaim:int257,lockEnd:int257}> totalStaked:coins stakingRewardsPool:coins pendingQsrDeposits:dict<address, int> referralEnabled:bool referralRewardBps:uint16 referrals:dict<address, ^ReferralInfo{referrer:address,totalEarned:int257,totalReferrals:int257}> pendingReferralRewards:dict<address, int> vestingEnabled:bool teamAllocation:coins teamClaimed:coins vestingSchedules:dict<address, ^VestingInfo{totalAmount:int257,claimed:int257,startTime:int257,cliff:int257,duration:int257}> lotteryEnabled:bool lotteryTicketPrice:coins lotteryDrawInterval:uint32 lotteryJackpotShare:uint8 lotteryRound:int257 lotteryLastDraw:int257 lotteryJackpot:coins lotteryTickets:dict<int, address> lotteryTicketCount:int257 lotteryWinners:dict<int, address> defiAddress:address defiFeeShareBps:uint16 = QuasarMaster`
+Signature: `QuasarMaster{totalSupply:coins,maxSupply:coins,mintable:bool,owner:address,content:^cell,walletCode:^cell,reserveBalance:coins,custodyBalance:coins,feeBps:uint16,feeBurnShare:uint8,treasury:address,totalBurned:coins,totalFeesCollected:coins,maxTxBps:uint16,maxWalletBps:uint16,cooldownSeconds:uint16,tradingEnabled:bool,buybackEnabled:bool,buybackPool:coins,buybackThreshold:coins,buybackCooldown:uint32,buybackBurnPercent:uint8,lastBuybackTime:int257,totalBuybacks:int257,totalQsrBurnedViaBuyback:coins,totalTonSpentOnBuyback:coins,aiOracle:address,aiEnabled:bool,aiFullAutonomy:bool,lastRebalanceTime:int257,signalCount:int257,priceHistory:dict<int, int>,anomalyLog:dict<int, ^AIRecommendation{timestamp:int257,action:^string,confidence:int257,executed:bool}>,anomalyIndex:int257,minConfidence:uint8,emergencyPause:bool,aiActionCooldown:uint32,lastAiActionTime:int257,heartbeatTimeout:uint32,lastHeartbeat:int257,ownerOverrideWindow:uint32,vetoThresholdBps:uint16,aiActionLog:dict<int, ^AIActionLog{actionId:int257,timestamp:int257,actionType:^string,oldValue:int257,newValue:int257,reason:^string,executed:bool,vetoed:bool,overridden:bool}>,aiActionIndex:int257,pendingAiActions:dict<int, int>,vetoLog:dict<int, ^VetoState{actionId:int257,totalStake:int257,vetoCount:int257,threshold:int257,active:bool}>,totalVetoStake:coins,stakingEnabled:bool,stakingApyBps:uint16,stakingMinStake:coins,stakingLockPeriod:uint32,stakers:dict<address, ^StakeInfo{amount:int257,startTime:int257,lastClaim:int257,lockEnd:int257}>,totalStaked:coins,stakingRewardsPool:coins,pendingQsrDeposits:dict<address, int>,referralEnabled:bool,referralRewardBps:uint16,referrals:dict<address, ^ReferralInfo{referrer:address,totalEarned:int257,totalReferrals:int257}>,pendingReferralRewards:dict<address, int>,vestingEnabled:bool,teamAllocation:coins,teamClaimed:coins,vestingSchedules:dict<address, ^VestingInfo{totalAmount:int257,claimed:int257,startTime:int257,cliff:int257,duration:int257}>,lotteryEnabled:bool,lotteryTicketPrice:coins,lotteryDrawInterval:uint32,lotteryJackpotShare:uint8,lotteryRound:int257,lotteryLastDraw:int257,lotteryJackpot:coins,lotteryTickets:dict<int, address>,lotteryTicketCount:int257,lotteryWinners:dict<int, address>,defiAddress:address,defiFeeShareBps:uint16}`
 
 ### QuasarWallet$Data
 TL-B: `_ balance:coins owner:address master:address lastTxTime:int257 = QuasarWallet`
 Signature: `QuasarWallet{balance:coins,owner:address,master:address,lastTxTime:int257}`
 
 ## Get methods
-Total get methods: 24
+Total get methods: 27
 
 ## get_jetton_data
 No arguments
 
+## get_max_supply
+No arguments
+
 ## get_reserve_balance
+No arguments
+
+## get_custody_balance
 No arguments
 
 ## get_wallet_address
@@ -375,6 +381,9 @@ Argument: staker
 Argument: depositor
 
 ## get_referral_info
+Argument: user
+
+## get_pending_referral_reward
 Argument: user
 
 ## get_vesting_info
@@ -453,19 +462,27 @@ No arguments
 * 135: Code of a contract was not found
 * 136: Invalid standard address
 * 138: Not a basechain address
+* 1228: Invalid oracle
 * 1425: No tickets
 * 2338: Invalid destination
 * 2526: Only AI
 * 4173: Self referral
 * 6278: Closed
+* 8012: Only implemented limits are allowed
 * 8660: Insufficient
 * 8916: Window closed
+* 9291: Invalid treasury
 * 10363: Unauthorized burn
 * 11836: Invalid fee source
+* 12241: Max supply exceeded
+* 12449: Veto voting disabled until stake escrow is implemented
 * 12493: Invalid token wallet
+* 12724: Invalid burn share
 * 13478: Minting off
 * 14534: Not owner
+* 15353: Insufficient custody balance
 * 17062: Invalid amount
+* 19280: Invalid buyback config
 * 20145: Deposit QSR first
 * 20944: AI disabled
 * 21101: Already registered
@@ -478,16 +495,19 @@ No arguments
 * 25709: AI controls
 * 26156: Below min
 * 26868: AI alive
+* 26908: Transfer limits are fixed
 * 28115: No stake
+* 28704: Wallet fee is fixed at 30 bps
 * 30245: No vesting
 * 31786: Pool low
 * 33624: Invalid DeFi address
-* 34524: Limits
 * 35499: Only owner
 * 36222: Invalid lottery config
-* 38227: Fee 0.10%-1.00%
+* 36553: DeFi not configured
+* 39587: No referral rewards
 * 40072: Pool empty
 * 40265: Invalid transfer amount
+* 40326: Supply underflow
 * 40372: Max tx exceeded
 * 41094: Already exists
 * 42340: Too early
@@ -500,6 +520,7 @@ No arguments
 * 46710: Amount too small
 * 47767: Invalid referral reward
 * 49729: Unauthorized
+* 50562: Invalid buyback threshold
 * 52432: Only AI oracle
 * 52497: Cliff not reached
 * 53010: No autonomy
@@ -513,7 +534,10 @@ No arguments
 * 57784: No rewards
 * 57871: Invalid
 * 59457: Paused
+* 60911: Invalid DeFi transfer amount
 * 61977: Range
+* 63705: Unsupported governance proposal
+* 63922: Invalid custody transfer amount
 
 ## Trait inheritance diagram
 

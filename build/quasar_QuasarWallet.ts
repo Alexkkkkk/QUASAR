@@ -5074,11 +5074,13 @@ export function dictValueParserLotteryTicket(): DictionaryValue<LotteryTicket> {
 export type QuasarMaster$Data = {
     $$type: 'QuasarMaster$Data';
     totalSupply: bigint;
+    maxSupply: bigint;
     mintable: boolean;
     owner: Address;
     content: Cell;
     walletCode: Cell;
     reserveBalance: bigint;
+    custodyBalance: bigint;
     feeBps: bigint;
     feeBurnShare: bigint;
     treasury: Address;
@@ -5129,6 +5131,7 @@ export type QuasarMaster$Data = {
     referralEnabled: boolean;
     referralRewardBps: bigint;
     referrals: Dictionary<Address, ReferralInfo>;
+    pendingReferralRewards: Dictionary<Address, bigint>;
     vestingEnabled: boolean;
     teamAllocation: bigint;
     teamClaimed: bigint;
@@ -5151,16 +5154,18 @@ export function storeQuasarMaster$Data(src: QuasarMaster$Data) {
     return (builder: Builder) => {
         const b_0 = builder;
         b_0.storeCoins(src.totalSupply);
+        b_0.storeCoins(src.maxSupply);
         b_0.storeBit(src.mintable);
         b_0.storeAddress(src.owner);
         b_0.storeRef(src.content);
         b_0.storeRef(src.walletCode);
         b_0.storeCoins(src.reserveBalance);
+        b_0.storeCoins(src.custodyBalance);
         b_0.storeUint(src.feeBps, 16);
         b_0.storeUint(src.feeBurnShare, 8);
-        b_0.storeAddress(src.treasury);
-        b_0.storeCoins(src.totalBurned);
         const b_1 = new Builder();
+        b_1.storeAddress(src.treasury);
+        b_1.storeCoins(src.totalBurned);
         b_1.storeCoins(src.totalFeesCollected);
         b_1.storeUint(src.maxTxBps, 16);
         b_1.storeUint(src.maxWalletBps, 16);
@@ -5171,64 +5176,67 @@ export function storeQuasarMaster$Data(src: QuasarMaster$Data) {
         b_1.storeCoins(src.buybackThreshold);
         b_1.storeUint(src.buybackCooldown, 32);
         b_1.storeUint(src.buybackBurnPercent, 8);
-        b_1.storeInt(src.lastBuybackTime, 257);
-        b_1.storeInt(src.totalBuybacks, 257);
         const b_2 = new Builder();
+        b_2.storeInt(src.lastBuybackTime, 257);
+        b_2.storeInt(src.totalBuybacks, 257);
         b_2.storeCoins(src.totalQsrBurnedViaBuyback);
         b_2.storeCoins(src.totalTonSpentOnBuyback);
-        b_2.storeAddress(src.aiOracle);
-        b_2.storeBit(src.aiEnabled);
-        b_2.storeBit(src.aiFullAutonomy);
-        b_2.storeInt(src.lastRebalanceTime, 257);
         const b_3 = new Builder();
+        b_3.storeAddress(src.aiOracle);
+        b_3.storeBit(src.aiEnabled);
+        b_3.storeBit(src.aiFullAutonomy);
+        b_3.storeInt(src.lastRebalanceTime, 257);
         b_3.storeInt(src.signalCount, 257);
         b_3.storeDict(src.priceHistory, Dictionary.Keys.BigInt(257), Dictionary.Values.BigInt(257));
         b_3.storeDict(src.anomalyLog, Dictionary.Keys.BigInt(257), dictValueParserAIRecommendation());
-        b_3.storeInt(src.anomalyIndex, 257);
-        b_3.storeUint(src.minConfidence, 8);
-        b_3.storeBit(src.emergencyPause);
-        b_3.storeUint(src.aiActionCooldown, 32);
-        b_3.storeInt(src.lastAiActionTime, 257);
-        b_3.storeUint(src.heartbeatTimeout, 32);
         const b_4 = new Builder();
+        b_4.storeInt(src.anomalyIndex, 257);
+        b_4.storeUint(src.minConfidence, 8);
+        b_4.storeBit(src.emergencyPause);
+        b_4.storeUint(src.aiActionCooldown, 32);
+        b_4.storeInt(src.lastAiActionTime, 257);
+        b_4.storeUint(src.heartbeatTimeout, 32);
         b_4.storeInt(src.lastHeartbeat, 257);
         b_4.storeUint(src.ownerOverrideWindow, 32);
         b_4.storeUint(src.vetoThresholdBps, 16);
         b_4.storeDict(src.aiActionLog, Dictionary.Keys.BigInt(257), dictValueParserAIActionLog());
-        b_4.storeInt(src.aiActionIndex, 257);
-        b_4.storeDict(src.pendingAiActions, Dictionary.Keys.BigInt(257), Dictionary.Values.BigInt(257));
-        b_4.storeDict(src.vetoLog, Dictionary.Keys.BigInt(257), dictValueParserVetoState());
-        b_4.storeCoins(src.totalVetoStake);
-        b_4.storeBit(src.stakingEnabled);
-        b_4.storeUint(src.stakingApyBps, 16);
-        b_4.storeCoins(src.stakingMinStake);
-        b_4.storeUint(src.stakingLockPeriod, 32);
         const b_5 = new Builder();
+        b_5.storeInt(src.aiActionIndex, 257);
+        b_5.storeDict(src.pendingAiActions, Dictionary.Keys.BigInt(257), Dictionary.Values.BigInt(257));
+        b_5.storeDict(src.vetoLog, Dictionary.Keys.BigInt(257), dictValueParserVetoState());
+        b_5.storeCoins(src.totalVetoStake);
+        b_5.storeBit(src.stakingEnabled);
+        b_5.storeUint(src.stakingApyBps, 16);
+        b_5.storeCoins(src.stakingMinStake);
+        b_5.storeUint(src.stakingLockPeriod, 32);
         b_5.storeDict(src.stakers, Dictionary.Keys.Address(), dictValueParserStakeInfo());
         b_5.storeCoins(src.totalStaked);
         b_5.storeCoins(src.stakingRewardsPool);
-        b_5.storeDict(src.pendingQsrDeposits, Dictionary.Keys.Address(), Dictionary.Values.BigInt(257));
-        b_5.storeBit(src.referralEnabled);
-        b_5.storeUint(src.referralRewardBps, 16);
-        b_5.storeDict(src.referrals, Dictionary.Keys.Address(), dictValueParserReferralInfo());
-        b_5.storeBit(src.vestingEnabled);
-        b_5.storeCoins(src.teamAllocation);
-        b_5.storeCoins(src.teamClaimed);
         const b_6 = new Builder();
-        b_6.storeDict(src.vestingSchedules, Dictionary.Keys.Address(), dictValueParserVestingInfo());
-        b_6.storeBit(src.lotteryEnabled);
-        b_6.storeCoins(src.lotteryTicketPrice);
-        b_6.storeUint(src.lotteryDrawInterval, 32);
-        b_6.storeUint(src.lotteryJackpotShare, 8);
-        b_6.storeInt(src.lotteryRound, 257);
-        b_6.storeInt(src.lotteryLastDraw, 257);
-        b_6.storeCoins(src.lotteryJackpot);
-        b_6.storeDict(src.lotteryTickets, Dictionary.Keys.BigInt(257), Dictionary.Values.Address());
+        b_6.storeDict(src.pendingQsrDeposits, Dictionary.Keys.Address(), Dictionary.Values.BigInt(257));
+        b_6.storeBit(src.referralEnabled);
+        b_6.storeUint(src.referralRewardBps, 16);
+        b_6.storeDict(src.referrals, Dictionary.Keys.Address(), dictValueParserReferralInfo());
+        b_6.storeDict(src.pendingReferralRewards, Dictionary.Keys.Address(), Dictionary.Values.BigInt(257));
+        b_6.storeBit(src.vestingEnabled);
+        b_6.storeCoins(src.teamAllocation);
+        b_6.storeCoins(src.teamClaimed);
         const b_7 = new Builder();
-        b_7.storeInt(src.lotteryTicketCount, 257);
-        b_7.storeDict(src.lotteryWinners, Dictionary.Keys.BigInt(257), Dictionary.Values.Address());
-        b_7.storeAddress(src.defiAddress);
-        b_7.storeUint(src.defiFeeShareBps, 16);
+        b_7.storeDict(src.vestingSchedules, Dictionary.Keys.Address(), dictValueParserVestingInfo());
+        b_7.storeBit(src.lotteryEnabled);
+        b_7.storeCoins(src.lotteryTicketPrice);
+        b_7.storeUint(src.lotteryDrawInterval, 32);
+        b_7.storeUint(src.lotteryJackpotShare, 8);
+        b_7.storeInt(src.lotteryRound, 257);
+        b_7.storeInt(src.lotteryLastDraw, 257);
+        b_7.storeCoins(src.lotteryJackpot);
+        b_7.storeDict(src.lotteryTickets, Dictionary.Keys.BigInt(257), Dictionary.Values.Address());
+        const b_8 = new Builder();
+        b_8.storeInt(src.lotteryTicketCount, 257);
+        b_8.storeDict(src.lotteryWinners, Dictionary.Keys.BigInt(257), Dictionary.Values.Address());
+        b_8.storeAddress(src.defiAddress);
+        b_8.storeUint(src.defiFeeShareBps, 16);
+        b_7.storeRef(b_8.endCell());
         b_6.storeRef(b_7.endCell());
         b_5.storeRef(b_6.endCell());
         b_4.storeRef(b_5.endCell());
@@ -5242,16 +5250,18 @@ export function storeQuasarMaster$Data(src: QuasarMaster$Data) {
 export function loadQuasarMaster$Data(slice: Slice) {
     const sc_0 = slice;
     const _totalSupply = sc_0.loadCoins();
+    const _maxSupply = sc_0.loadCoins();
     const _mintable = sc_0.loadBit();
     const _owner = sc_0.loadAddress();
     const _content = sc_0.loadRef();
     const _walletCode = sc_0.loadRef();
     const _reserveBalance = sc_0.loadCoins();
+    const _custodyBalance = sc_0.loadCoins();
     const _feeBps = sc_0.loadUintBig(16);
     const _feeBurnShare = sc_0.loadUintBig(8);
-    const _treasury = sc_0.loadAddress();
-    const _totalBurned = sc_0.loadCoins();
     const sc_1 = sc_0.loadRef().beginParse();
+    const _treasury = sc_1.loadAddress();
+    const _totalBurned = sc_1.loadCoins();
     const _totalFeesCollected = sc_1.loadCoins();
     const _maxTxBps = sc_1.loadUintBig(16);
     const _maxWalletBps = sc_1.loadUintBig(16);
@@ -5262,83 +5272,87 @@ export function loadQuasarMaster$Data(slice: Slice) {
     const _buybackThreshold = sc_1.loadCoins();
     const _buybackCooldown = sc_1.loadUintBig(32);
     const _buybackBurnPercent = sc_1.loadUintBig(8);
-    const _lastBuybackTime = sc_1.loadIntBig(257);
-    const _totalBuybacks = sc_1.loadIntBig(257);
     const sc_2 = sc_1.loadRef().beginParse();
+    const _lastBuybackTime = sc_2.loadIntBig(257);
+    const _totalBuybacks = sc_2.loadIntBig(257);
     const _totalQsrBurnedViaBuyback = sc_2.loadCoins();
     const _totalTonSpentOnBuyback = sc_2.loadCoins();
-    const _aiOracle = sc_2.loadAddress();
-    const _aiEnabled = sc_2.loadBit();
-    const _aiFullAutonomy = sc_2.loadBit();
-    const _lastRebalanceTime = sc_2.loadIntBig(257);
     const sc_3 = sc_2.loadRef().beginParse();
+    const _aiOracle = sc_3.loadAddress();
+    const _aiEnabled = sc_3.loadBit();
+    const _aiFullAutonomy = sc_3.loadBit();
+    const _lastRebalanceTime = sc_3.loadIntBig(257);
     const _signalCount = sc_3.loadIntBig(257);
     const _priceHistory = Dictionary.load(Dictionary.Keys.BigInt(257), Dictionary.Values.BigInt(257), sc_3);
     const _anomalyLog = Dictionary.load(Dictionary.Keys.BigInt(257), dictValueParserAIRecommendation(), sc_3);
-    const _anomalyIndex = sc_3.loadIntBig(257);
-    const _minConfidence = sc_3.loadUintBig(8);
-    const _emergencyPause = sc_3.loadBit();
-    const _aiActionCooldown = sc_3.loadUintBig(32);
-    const _lastAiActionTime = sc_3.loadIntBig(257);
-    const _heartbeatTimeout = sc_3.loadUintBig(32);
     const sc_4 = sc_3.loadRef().beginParse();
+    const _anomalyIndex = sc_4.loadIntBig(257);
+    const _minConfidence = sc_4.loadUintBig(8);
+    const _emergencyPause = sc_4.loadBit();
+    const _aiActionCooldown = sc_4.loadUintBig(32);
+    const _lastAiActionTime = sc_4.loadIntBig(257);
+    const _heartbeatTimeout = sc_4.loadUintBig(32);
     const _lastHeartbeat = sc_4.loadIntBig(257);
     const _ownerOverrideWindow = sc_4.loadUintBig(32);
     const _vetoThresholdBps = sc_4.loadUintBig(16);
     const _aiActionLog = Dictionary.load(Dictionary.Keys.BigInt(257), dictValueParserAIActionLog(), sc_4);
-    const _aiActionIndex = sc_4.loadIntBig(257);
-    const _pendingAiActions = Dictionary.load(Dictionary.Keys.BigInt(257), Dictionary.Values.BigInt(257), sc_4);
-    const _vetoLog = Dictionary.load(Dictionary.Keys.BigInt(257), dictValueParserVetoState(), sc_4);
-    const _totalVetoStake = sc_4.loadCoins();
-    const _stakingEnabled = sc_4.loadBit();
-    const _stakingApyBps = sc_4.loadUintBig(16);
-    const _stakingMinStake = sc_4.loadCoins();
-    const _stakingLockPeriod = sc_4.loadUintBig(32);
     const sc_5 = sc_4.loadRef().beginParse();
+    const _aiActionIndex = sc_5.loadIntBig(257);
+    const _pendingAiActions = Dictionary.load(Dictionary.Keys.BigInt(257), Dictionary.Values.BigInt(257), sc_5);
+    const _vetoLog = Dictionary.load(Dictionary.Keys.BigInt(257), dictValueParserVetoState(), sc_5);
+    const _totalVetoStake = sc_5.loadCoins();
+    const _stakingEnabled = sc_5.loadBit();
+    const _stakingApyBps = sc_5.loadUintBig(16);
+    const _stakingMinStake = sc_5.loadCoins();
+    const _stakingLockPeriod = sc_5.loadUintBig(32);
     const _stakers = Dictionary.load(Dictionary.Keys.Address(), dictValueParserStakeInfo(), sc_5);
     const _totalStaked = sc_5.loadCoins();
     const _stakingRewardsPool = sc_5.loadCoins();
-    const _pendingQsrDeposits = Dictionary.load(Dictionary.Keys.Address(), Dictionary.Values.BigInt(257), sc_5);
-    const _referralEnabled = sc_5.loadBit();
-    const _referralRewardBps = sc_5.loadUintBig(16);
-    const _referrals = Dictionary.load(Dictionary.Keys.Address(), dictValueParserReferralInfo(), sc_5);
-    const _vestingEnabled = sc_5.loadBit();
-    const _teamAllocation = sc_5.loadCoins();
-    const _teamClaimed = sc_5.loadCoins();
     const sc_6 = sc_5.loadRef().beginParse();
-    const _vestingSchedules = Dictionary.load(Dictionary.Keys.Address(), dictValueParserVestingInfo(), sc_6);
-    const _lotteryEnabled = sc_6.loadBit();
-    const _lotteryTicketPrice = sc_6.loadCoins();
-    const _lotteryDrawInterval = sc_6.loadUintBig(32);
-    const _lotteryJackpotShare = sc_6.loadUintBig(8);
-    const _lotteryRound = sc_6.loadIntBig(257);
-    const _lotteryLastDraw = sc_6.loadIntBig(257);
-    const _lotteryJackpot = sc_6.loadCoins();
-    const _lotteryTickets = Dictionary.load(Dictionary.Keys.BigInt(257), Dictionary.Values.Address(), sc_6);
+    const _pendingQsrDeposits = Dictionary.load(Dictionary.Keys.Address(), Dictionary.Values.BigInt(257), sc_6);
+    const _referralEnabled = sc_6.loadBit();
+    const _referralRewardBps = sc_6.loadUintBig(16);
+    const _referrals = Dictionary.load(Dictionary.Keys.Address(), dictValueParserReferralInfo(), sc_6);
+    const _pendingReferralRewards = Dictionary.load(Dictionary.Keys.Address(), Dictionary.Values.BigInt(257), sc_6);
+    const _vestingEnabled = sc_6.loadBit();
+    const _teamAllocation = sc_6.loadCoins();
+    const _teamClaimed = sc_6.loadCoins();
     const sc_7 = sc_6.loadRef().beginParse();
-    const _lotteryTicketCount = sc_7.loadIntBig(257);
-    const _lotteryWinners = Dictionary.load(Dictionary.Keys.BigInt(257), Dictionary.Values.Address(), sc_7);
-    const _defiAddress = sc_7.loadAddress();
-    const _defiFeeShareBps = sc_7.loadUintBig(16);
-    return { $$type: 'QuasarMaster$Data' as const, totalSupply: _totalSupply, mintable: _mintable, owner: _owner, content: _content, walletCode: _walletCode, reserveBalance: _reserveBalance, feeBps: _feeBps, feeBurnShare: _feeBurnShare, treasury: _treasury, totalBurned: _totalBurned, totalFeesCollected: _totalFeesCollected, maxTxBps: _maxTxBps, maxWalletBps: _maxWalletBps, cooldownSeconds: _cooldownSeconds, tradingEnabled: _tradingEnabled, buybackEnabled: _buybackEnabled, buybackPool: _buybackPool, buybackThreshold: _buybackThreshold, buybackCooldown: _buybackCooldown, buybackBurnPercent: _buybackBurnPercent, lastBuybackTime: _lastBuybackTime, totalBuybacks: _totalBuybacks, totalQsrBurnedViaBuyback: _totalQsrBurnedViaBuyback, totalTonSpentOnBuyback: _totalTonSpentOnBuyback, aiOracle: _aiOracle, aiEnabled: _aiEnabled, aiFullAutonomy: _aiFullAutonomy, lastRebalanceTime: _lastRebalanceTime, signalCount: _signalCount, priceHistory: _priceHistory, anomalyLog: _anomalyLog, anomalyIndex: _anomalyIndex, minConfidence: _minConfidence, emergencyPause: _emergencyPause, aiActionCooldown: _aiActionCooldown, lastAiActionTime: _lastAiActionTime, heartbeatTimeout: _heartbeatTimeout, lastHeartbeat: _lastHeartbeat, ownerOverrideWindow: _ownerOverrideWindow, vetoThresholdBps: _vetoThresholdBps, aiActionLog: _aiActionLog, aiActionIndex: _aiActionIndex, pendingAiActions: _pendingAiActions, vetoLog: _vetoLog, totalVetoStake: _totalVetoStake, stakingEnabled: _stakingEnabled, stakingApyBps: _stakingApyBps, stakingMinStake: _stakingMinStake, stakingLockPeriod: _stakingLockPeriod, stakers: _stakers, totalStaked: _totalStaked, stakingRewardsPool: _stakingRewardsPool, pendingQsrDeposits: _pendingQsrDeposits, referralEnabled: _referralEnabled, referralRewardBps: _referralRewardBps, referrals: _referrals, vestingEnabled: _vestingEnabled, teamAllocation: _teamAllocation, teamClaimed: _teamClaimed, vestingSchedules: _vestingSchedules, lotteryEnabled: _lotteryEnabled, lotteryTicketPrice: _lotteryTicketPrice, lotteryDrawInterval: _lotteryDrawInterval, lotteryJackpotShare: _lotteryJackpotShare, lotteryRound: _lotteryRound, lotteryLastDraw: _lotteryLastDraw, lotteryJackpot: _lotteryJackpot, lotteryTickets: _lotteryTickets, lotteryTicketCount: _lotteryTicketCount, lotteryWinners: _lotteryWinners, defiAddress: _defiAddress, defiFeeShareBps: _defiFeeShareBps };
+    const _vestingSchedules = Dictionary.load(Dictionary.Keys.Address(), dictValueParserVestingInfo(), sc_7);
+    const _lotteryEnabled = sc_7.loadBit();
+    const _lotteryTicketPrice = sc_7.loadCoins();
+    const _lotteryDrawInterval = sc_7.loadUintBig(32);
+    const _lotteryJackpotShare = sc_7.loadUintBig(8);
+    const _lotteryRound = sc_7.loadIntBig(257);
+    const _lotteryLastDraw = sc_7.loadIntBig(257);
+    const _lotteryJackpot = sc_7.loadCoins();
+    const _lotteryTickets = Dictionary.load(Dictionary.Keys.BigInt(257), Dictionary.Values.Address(), sc_7);
+    const sc_8 = sc_7.loadRef().beginParse();
+    const _lotteryTicketCount = sc_8.loadIntBig(257);
+    const _lotteryWinners = Dictionary.load(Dictionary.Keys.BigInt(257), Dictionary.Values.Address(), sc_8);
+    const _defiAddress = sc_8.loadAddress();
+    const _defiFeeShareBps = sc_8.loadUintBig(16);
+    return { $$type: 'QuasarMaster$Data' as const, totalSupply: _totalSupply, maxSupply: _maxSupply, mintable: _mintable, owner: _owner, content: _content, walletCode: _walletCode, reserveBalance: _reserveBalance, custodyBalance: _custodyBalance, feeBps: _feeBps, feeBurnShare: _feeBurnShare, treasury: _treasury, totalBurned: _totalBurned, totalFeesCollected: _totalFeesCollected, maxTxBps: _maxTxBps, maxWalletBps: _maxWalletBps, cooldownSeconds: _cooldownSeconds, tradingEnabled: _tradingEnabled, buybackEnabled: _buybackEnabled, buybackPool: _buybackPool, buybackThreshold: _buybackThreshold, buybackCooldown: _buybackCooldown, buybackBurnPercent: _buybackBurnPercent, lastBuybackTime: _lastBuybackTime, totalBuybacks: _totalBuybacks, totalQsrBurnedViaBuyback: _totalQsrBurnedViaBuyback, totalTonSpentOnBuyback: _totalTonSpentOnBuyback, aiOracle: _aiOracle, aiEnabled: _aiEnabled, aiFullAutonomy: _aiFullAutonomy, lastRebalanceTime: _lastRebalanceTime, signalCount: _signalCount, priceHistory: _priceHistory, anomalyLog: _anomalyLog, anomalyIndex: _anomalyIndex, minConfidence: _minConfidence, emergencyPause: _emergencyPause, aiActionCooldown: _aiActionCooldown, lastAiActionTime: _lastAiActionTime, heartbeatTimeout: _heartbeatTimeout, lastHeartbeat: _lastHeartbeat, ownerOverrideWindow: _ownerOverrideWindow, vetoThresholdBps: _vetoThresholdBps, aiActionLog: _aiActionLog, aiActionIndex: _aiActionIndex, pendingAiActions: _pendingAiActions, vetoLog: _vetoLog, totalVetoStake: _totalVetoStake, stakingEnabled: _stakingEnabled, stakingApyBps: _stakingApyBps, stakingMinStake: _stakingMinStake, stakingLockPeriod: _stakingLockPeriod, stakers: _stakers, totalStaked: _totalStaked, stakingRewardsPool: _stakingRewardsPool, pendingQsrDeposits: _pendingQsrDeposits, referralEnabled: _referralEnabled, referralRewardBps: _referralRewardBps, referrals: _referrals, pendingReferralRewards: _pendingReferralRewards, vestingEnabled: _vestingEnabled, teamAllocation: _teamAllocation, teamClaimed: _teamClaimed, vestingSchedules: _vestingSchedules, lotteryEnabled: _lotteryEnabled, lotteryTicketPrice: _lotteryTicketPrice, lotteryDrawInterval: _lotteryDrawInterval, lotteryJackpotShare: _lotteryJackpotShare, lotteryRound: _lotteryRound, lotteryLastDraw: _lotteryLastDraw, lotteryJackpot: _lotteryJackpot, lotteryTickets: _lotteryTickets, lotteryTicketCount: _lotteryTicketCount, lotteryWinners: _lotteryWinners, defiAddress: _defiAddress, defiFeeShareBps: _defiFeeShareBps };
 }
 
 export function loadTupleQuasarMaster$Data(source: TupleReader) {
     const _totalSupply = source.readBigNumber();
+    const _maxSupply = source.readBigNumber();
     const _mintable = source.readBoolean();
     const _owner = source.readAddress();
     const _content = source.readCell();
     const _walletCode = source.readCell();
     const _reserveBalance = source.readBigNumber();
+    const _custodyBalance = source.readBigNumber();
     const _feeBps = source.readBigNumber();
     const _feeBurnShare = source.readBigNumber();
     const _treasury = source.readAddress();
     const _totalBurned = source.readBigNumber();
     const _totalFeesCollected = source.readBigNumber();
     const _maxTxBps = source.readBigNumber();
+    source = source.readTuple();
     const _maxWalletBps = source.readBigNumber();
     const _cooldownSeconds = source.readBigNumber();
-    source = source.readTuple();
     const _tradingEnabled = source.readBoolean();
     const _buybackEnabled = source.readBoolean();
     const _buybackPool = source.readBigNumber();
@@ -5351,9 +5365,9 @@ export function loadTupleQuasarMaster$Data(source: TupleReader) {
     const _totalTonSpentOnBuyback = source.readBigNumber();
     const _aiOracle = source.readAddress();
     const _aiEnabled = source.readBoolean();
+    source = source.readTuple();
     const _aiFullAutonomy = source.readBoolean();
     const _lastRebalanceTime = source.readBigNumber();
-    source = source.readTuple();
     const _signalCount = source.readBigNumber();
     const _priceHistory = Dictionary.loadDirect(Dictionary.Keys.BigInt(257), Dictionary.Values.BigInt(257), source.readCellOpt());
     const _anomalyLog = Dictionary.loadDirect(Dictionary.Keys.BigInt(257), dictValueParserAIRecommendation(), source.readCellOpt());
@@ -5366,9 +5380,9 @@ export function loadTupleQuasarMaster$Data(source: TupleReader) {
     const _lastHeartbeat = source.readBigNumber();
     const _ownerOverrideWindow = source.readBigNumber();
     const _vetoThresholdBps = source.readBigNumber();
+    source = source.readTuple();
     const _aiActionLog = Dictionary.loadDirect(Dictionary.Keys.BigInt(257), dictValueParserAIActionLog(), source.readCellOpt());
     const _aiActionIndex = source.readBigNumber();
-    source = source.readTuple();
     const _pendingAiActions = Dictionary.loadDirect(Dictionary.Keys.BigInt(257), Dictionary.Values.BigInt(257), source.readCellOpt());
     const _vetoLog = Dictionary.loadDirect(Dictionary.Keys.BigInt(257), dictValueParserVetoState(), source.readCellOpt());
     const _totalVetoStake = source.readBigNumber();
@@ -5381,9 +5395,10 @@ export function loadTupleQuasarMaster$Data(source: TupleReader) {
     const _stakingRewardsPool = source.readBigNumber();
     const _pendingQsrDeposits = Dictionary.loadDirect(Dictionary.Keys.Address(), Dictionary.Values.BigInt(257), source.readCellOpt());
     const _referralEnabled = source.readBoolean();
+    source = source.readTuple();
     const _referralRewardBps = source.readBigNumber();
     const _referrals = Dictionary.loadDirect(Dictionary.Keys.Address(), dictValueParserReferralInfo(), source.readCellOpt());
-    source = source.readTuple();
+    const _pendingReferralRewards = Dictionary.loadDirect(Dictionary.Keys.Address(), Dictionary.Values.BigInt(257), source.readCellOpt());
     const _vestingEnabled = source.readBoolean();
     const _teamAllocation = source.readBigNumber();
     const _teamClaimed = source.readBigNumber();
@@ -5395,22 +5410,24 @@ export function loadTupleQuasarMaster$Data(source: TupleReader) {
     const _lotteryRound = source.readBigNumber();
     const _lotteryLastDraw = source.readBigNumber();
     const _lotteryJackpot = source.readBigNumber();
+    source = source.readTuple();
     const _lotteryTickets = Dictionary.loadDirect(Dictionary.Keys.BigInt(257), Dictionary.Values.Address(), source.readCellOpt());
     const _lotteryTicketCount = source.readBigNumber();
     const _lotteryWinners = Dictionary.loadDirect(Dictionary.Keys.BigInt(257), Dictionary.Values.Address(), source.readCellOpt());
-    source = source.readTuple();
     const _defiAddress = source.readAddress();
     const _defiFeeShareBps = source.readBigNumber();
-    return { $$type: 'QuasarMaster$Data' as const, totalSupply: _totalSupply, mintable: _mintable, owner: _owner, content: _content, walletCode: _walletCode, reserveBalance: _reserveBalance, feeBps: _feeBps, feeBurnShare: _feeBurnShare, treasury: _treasury, totalBurned: _totalBurned, totalFeesCollected: _totalFeesCollected, maxTxBps: _maxTxBps, maxWalletBps: _maxWalletBps, cooldownSeconds: _cooldownSeconds, tradingEnabled: _tradingEnabled, buybackEnabled: _buybackEnabled, buybackPool: _buybackPool, buybackThreshold: _buybackThreshold, buybackCooldown: _buybackCooldown, buybackBurnPercent: _buybackBurnPercent, lastBuybackTime: _lastBuybackTime, totalBuybacks: _totalBuybacks, totalQsrBurnedViaBuyback: _totalQsrBurnedViaBuyback, totalTonSpentOnBuyback: _totalTonSpentOnBuyback, aiOracle: _aiOracle, aiEnabled: _aiEnabled, aiFullAutonomy: _aiFullAutonomy, lastRebalanceTime: _lastRebalanceTime, signalCount: _signalCount, priceHistory: _priceHistory, anomalyLog: _anomalyLog, anomalyIndex: _anomalyIndex, minConfidence: _minConfidence, emergencyPause: _emergencyPause, aiActionCooldown: _aiActionCooldown, lastAiActionTime: _lastAiActionTime, heartbeatTimeout: _heartbeatTimeout, lastHeartbeat: _lastHeartbeat, ownerOverrideWindow: _ownerOverrideWindow, vetoThresholdBps: _vetoThresholdBps, aiActionLog: _aiActionLog, aiActionIndex: _aiActionIndex, pendingAiActions: _pendingAiActions, vetoLog: _vetoLog, totalVetoStake: _totalVetoStake, stakingEnabled: _stakingEnabled, stakingApyBps: _stakingApyBps, stakingMinStake: _stakingMinStake, stakingLockPeriod: _stakingLockPeriod, stakers: _stakers, totalStaked: _totalStaked, stakingRewardsPool: _stakingRewardsPool, pendingQsrDeposits: _pendingQsrDeposits, referralEnabled: _referralEnabled, referralRewardBps: _referralRewardBps, referrals: _referrals, vestingEnabled: _vestingEnabled, teamAllocation: _teamAllocation, teamClaimed: _teamClaimed, vestingSchedules: _vestingSchedules, lotteryEnabled: _lotteryEnabled, lotteryTicketPrice: _lotteryTicketPrice, lotteryDrawInterval: _lotteryDrawInterval, lotteryJackpotShare: _lotteryJackpotShare, lotteryRound: _lotteryRound, lotteryLastDraw: _lotteryLastDraw, lotteryJackpot: _lotteryJackpot, lotteryTickets: _lotteryTickets, lotteryTicketCount: _lotteryTicketCount, lotteryWinners: _lotteryWinners, defiAddress: _defiAddress, defiFeeShareBps: _defiFeeShareBps };
+    return { $$type: 'QuasarMaster$Data' as const, totalSupply: _totalSupply, maxSupply: _maxSupply, mintable: _mintable, owner: _owner, content: _content, walletCode: _walletCode, reserveBalance: _reserveBalance, custodyBalance: _custodyBalance, feeBps: _feeBps, feeBurnShare: _feeBurnShare, treasury: _treasury, totalBurned: _totalBurned, totalFeesCollected: _totalFeesCollected, maxTxBps: _maxTxBps, maxWalletBps: _maxWalletBps, cooldownSeconds: _cooldownSeconds, tradingEnabled: _tradingEnabled, buybackEnabled: _buybackEnabled, buybackPool: _buybackPool, buybackThreshold: _buybackThreshold, buybackCooldown: _buybackCooldown, buybackBurnPercent: _buybackBurnPercent, lastBuybackTime: _lastBuybackTime, totalBuybacks: _totalBuybacks, totalQsrBurnedViaBuyback: _totalQsrBurnedViaBuyback, totalTonSpentOnBuyback: _totalTonSpentOnBuyback, aiOracle: _aiOracle, aiEnabled: _aiEnabled, aiFullAutonomy: _aiFullAutonomy, lastRebalanceTime: _lastRebalanceTime, signalCount: _signalCount, priceHistory: _priceHistory, anomalyLog: _anomalyLog, anomalyIndex: _anomalyIndex, minConfidence: _minConfidence, emergencyPause: _emergencyPause, aiActionCooldown: _aiActionCooldown, lastAiActionTime: _lastAiActionTime, heartbeatTimeout: _heartbeatTimeout, lastHeartbeat: _lastHeartbeat, ownerOverrideWindow: _ownerOverrideWindow, vetoThresholdBps: _vetoThresholdBps, aiActionLog: _aiActionLog, aiActionIndex: _aiActionIndex, pendingAiActions: _pendingAiActions, vetoLog: _vetoLog, totalVetoStake: _totalVetoStake, stakingEnabled: _stakingEnabled, stakingApyBps: _stakingApyBps, stakingMinStake: _stakingMinStake, stakingLockPeriod: _stakingLockPeriod, stakers: _stakers, totalStaked: _totalStaked, stakingRewardsPool: _stakingRewardsPool, pendingQsrDeposits: _pendingQsrDeposits, referralEnabled: _referralEnabled, referralRewardBps: _referralRewardBps, referrals: _referrals, pendingReferralRewards: _pendingReferralRewards, vestingEnabled: _vestingEnabled, teamAllocation: _teamAllocation, teamClaimed: _teamClaimed, vestingSchedules: _vestingSchedules, lotteryEnabled: _lotteryEnabled, lotteryTicketPrice: _lotteryTicketPrice, lotteryDrawInterval: _lotteryDrawInterval, lotteryJackpotShare: _lotteryJackpotShare, lotteryRound: _lotteryRound, lotteryLastDraw: _lotteryLastDraw, lotteryJackpot: _lotteryJackpot, lotteryTickets: _lotteryTickets, lotteryTicketCount: _lotteryTicketCount, lotteryWinners: _lotteryWinners, defiAddress: _defiAddress, defiFeeShareBps: _defiFeeShareBps };
 }
 
 export function loadGetterTupleQuasarMaster$Data(source: TupleReader) {
     const _totalSupply = source.readBigNumber();
+    const _maxSupply = source.readBigNumber();
     const _mintable = source.readBoolean();
     const _owner = source.readAddress();
     const _content = source.readCell();
     const _walletCode = source.readCell();
     const _reserveBalance = source.readBigNumber();
+    const _custodyBalance = source.readBigNumber();
     const _feeBps = source.readBigNumber();
     const _feeBurnShare = source.readBigNumber();
     const _treasury = source.readAddress();
@@ -5461,6 +5478,7 @@ export function loadGetterTupleQuasarMaster$Data(source: TupleReader) {
     const _referralEnabled = source.readBoolean();
     const _referralRewardBps = source.readBigNumber();
     const _referrals = Dictionary.loadDirect(Dictionary.Keys.Address(), dictValueParserReferralInfo(), source.readCellOpt());
+    const _pendingReferralRewards = Dictionary.loadDirect(Dictionary.Keys.Address(), Dictionary.Values.BigInt(257), source.readCellOpt());
     const _vestingEnabled = source.readBoolean();
     const _teamAllocation = source.readBigNumber();
     const _teamClaimed = source.readBigNumber();
@@ -5477,17 +5495,19 @@ export function loadGetterTupleQuasarMaster$Data(source: TupleReader) {
     const _lotteryWinners = Dictionary.loadDirect(Dictionary.Keys.BigInt(257), Dictionary.Values.Address(), source.readCellOpt());
     const _defiAddress = source.readAddress();
     const _defiFeeShareBps = source.readBigNumber();
-    return { $$type: 'QuasarMaster$Data' as const, totalSupply: _totalSupply, mintable: _mintable, owner: _owner, content: _content, walletCode: _walletCode, reserveBalance: _reserveBalance, feeBps: _feeBps, feeBurnShare: _feeBurnShare, treasury: _treasury, totalBurned: _totalBurned, totalFeesCollected: _totalFeesCollected, maxTxBps: _maxTxBps, maxWalletBps: _maxWalletBps, cooldownSeconds: _cooldownSeconds, tradingEnabled: _tradingEnabled, buybackEnabled: _buybackEnabled, buybackPool: _buybackPool, buybackThreshold: _buybackThreshold, buybackCooldown: _buybackCooldown, buybackBurnPercent: _buybackBurnPercent, lastBuybackTime: _lastBuybackTime, totalBuybacks: _totalBuybacks, totalQsrBurnedViaBuyback: _totalQsrBurnedViaBuyback, totalTonSpentOnBuyback: _totalTonSpentOnBuyback, aiOracle: _aiOracle, aiEnabled: _aiEnabled, aiFullAutonomy: _aiFullAutonomy, lastRebalanceTime: _lastRebalanceTime, signalCount: _signalCount, priceHistory: _priceHistory, anomalyLog: _anomalyLog, anomalyIndex: _anomalyIndex, minConfidence: _minConfidence, emergencyPause: _emergencyPause, aiActionCooldown: _aiActionCooldown, lastAiActionTime: _lastAiActionTime, heartbeatTimeout: _heartbeatTimeout, lastHeartbeat: _lastHeartbeat, ownerOverrideWindow: _ownerOverrideWindow, vetoThresholdBps: _vetoThresholdBps, aiActionLog: _aiActionLog, aiActionIndex: _aiActionIndex, pendingAiActions: _pendingAiActions, vetoLog: _vetoLog, totalVetoStake: _totalVetoStake, stakingEnabled: _stakingEnabled, stakingApyBps: _stakingApyBps, stakingMinStake: _stakingMinStake, stakingLockPeriod: _stakingLockPeriod, stakers: _stakers, totalStaked: _totalStaked, stakingRewardsPool: _stakingRewardsPool, pendingQsrDeposits: _pendingQsrDeposits, referralEnabled: _referralEnabled, referralRewardBps: _referralRewardBps, referrals: _referrals, vestingEnabled: _vestingEnabled, teamAllocation: _teamAllocation, teamClaimed: _teamClaimed, vestingSchedules: _vestingSchedules, lotteryEnabled: _lotteryEnabled, lotteryTicketPrice: _lotteryTicketPrice, lotteryDrawInterval: _lotteryDrawInterval, lotteryJackpotShare: _lotteryJackpotShare, lotteryRound: _lotteryRound, lotteryLastDraw: _lotteryLastDraw, lotteryJackpot: _lotteryJackpot, lotteryTickets: _lotteryTickets, lotteryTicketCount: _lotteryTicketCount, lotteryWinners: _lotteryWinners, defiAddress: _defiAddress, defiFeeShareBps: _defiFeeShareBps };
+    return { $$type: 'QuasarMaster$Data' as const, totalSupply: _totalSupply, maxSupply: _maxSupply, mintable: _mintable, owner: _owner, content: _content, walletCode: _walletCode, reserveBalance: _reserveBalance, custodyBalance: _custodyBalance, feeBps: _feeBps, feeBurnShare: _feeBurnShare, treasury: _treasury, totalBurned: _totalBurned, totalFeesCollected: _totalFeesCollected, maxTxBps: _maxTxBps, maxWalletBps: _maxWalletBps, cooldownSeconds: _cooldownSeconds, tradingEnabled: _tradingEnabled, buybackEnabled: _buybackEnabled, buybackPool: _buybackPool, buybackThreshold: _buybackThreshold, buybackCooldown: _buybackCooldown, buybackBurnPercent: _buybackBurnPercent, lastBuybackTime: _lastBuybackTime, totalBuybacks: _totalBuybacks, totalQsrBurnedViaBuyback: _totalQsrBurnedViaBuyback, totalTonSpentOnBuyback: _totalTonSpentOnBuyback, aiOracle: _aiOracle, aiEnabled: _aiEnabled, aiFullAutonomy: _aiFullAutonomy, lastRebalanceTime: _lastRebalanceTime, signalCount: _signalCount, priceHistory: _priceHistory, anomalyLog: _anomalyLog, anomalyIndex: _anomalyIndex, minConfidence: _minConfidence, emergencyPause: _emergencyPause, aiActionCooldown: _aiActionCooldown, lastAiActionTime: _lastAiActionTime, heartbeatTimeout: _heartbeatTimeout, lastHeartbeat: _lastHeartbeat, ownerOverrideWindow: _ownerOverrideWindow, vetoThresholdBps: _vetoThresholdBps, aiActionLog: _aiActionLog, aiActionIndex: _aiActionIndex, pendingAiActions: _pendingAiActions, vetoLog: _vetoLog, totalVetoStake: _totalVetoStake, stakingEnabled: _stakingEnabled, stakingApyBps: _stakingApyBps, stakingMinStake: _stakingMinStake, stakingLockPeriod: _stakingLockPeriod, stakers: _stakers, totalStaked: _totalStaked, stakingRewardsPool: _stakingRewardsPool, pendingQsrDeposits: _pendingQsrDeposits, referralEnabled: _referralEnabled, referralRewardBps: _referralRewardBps, referrals: _referrals, pendingReferralRewards: _pendingReferralRewards, vestingEnabled: _vestingEnabled, teamAllocation: _teamAllocation, teamClaimed: _teamClaimed, vestingSchedules: _vestingSchedules, lotteryEnabled: _lotteryEnabled, lotteryTicketPrice: _lotteryTicketPrice, lotteryDrawInterval: _lotteryDrawInterval, lotteryJackpotShare: _lotteryJackpotShare, lotteryRound: _lotteryRound, lotteryLastDraw: _lotteryLastDraw, lotteryJackpot: _lotteryJackpot, lotteryTickets: _lotteryTickets, lotteryTicketCount: _lotteryTicketCount, lotteryWinners: _lotteryWinners, defiAddress: _defiAddress, defiFeeShareBps: _defiFeeShareBps };
 }
 
 export function storeTupleQuasarMaster$Data(source: QuasarMaster$Data) {
     const builder = new TupleBuilder();
     builder.writeNumber(source.totalSupply);
+    builder.writeNumber(source.maxSupply);
     builder.writeBoolean(source.mintable);
     builder.writeAddress(source.owner);
     builder.writeCell(source.content);
     builder.writeCell(source.walletCode);
     builder.writeNumber(source.reserveBalance);
+    builder.writeNumber(source.custodyBalance);
     builder.writeNumber(source.feeBps);
     builder.writeNumber(source.feeBurnShare);
     builder.writeAddress(source.treasury);
@@ -5538,6 +5558,7 @@ export function storeTupleQuasarMaster$Data(source: QuasarMaster$Data) {
     builder.writeBoolean(source.referralEnabled);
     builder.writeNumber(source.referralRewardBps);
     builder.writeCell(source.referrals.size > 0 ? beginCell().storeDictDirect(source.referrals, Dictionary.Keys.Address(), dictValueParserReferralInfo()).endCell() : null);
+    builder.writeCell(source.pendingReferralRewards.size > 0 ? beginCell().storeDictDirect(source.pendingReferralRewards, Dictionary.Keys.Address(), Dictionary.Values.BigInt(257)).endCell() : null);
     builder.writeBoolean(source.vestingEnabled);
     builder.writeNumber(source.teamAllocation);
     builder.writeNumber(source.teamClaimed);
@@ -5646,7 +5667,7 @@ function initQuasarWallet_init_args(src: QuasarWallet_init_args) {
 }
 
 async function QuasarWallet_init(owner: Address, master: Address) {
-    const __code = Cell.fromHex('b5ee9c724102120100049c00022cff008e88f4a413f4bcf2c80bed53208e8130e1ed43d901030157a65ec0bb513434800067fe803e903e9020404075c0154c1b05273e903e901640b4405c150488b8b6cf1b11200201145321db3c3054644052400d04da01d072d721d200d200fa4021103450666f04f86102f862ed44d0d200019ffa00fa40fa40810101d70055306c149cfa40fa405902d10170541222e205925f05e003d70d1ff2e082218210178d4519bae3022182100f8a7ea5bae30221821051a5c3d1bae302018210595f07bcba04060c0f03d431d33ffa00fa40fa4031fa005327db3c8200c241f8422bc705936c217f8e32f8425a705920f90022f9005ad76501d76582020134c8cb17cb0fcb0fcbffcbff71f90400c87401cb0212ca07cbffc9d0c705e2f2f48142a624c200f2f45163a021c20093365f04e30d40030d050b00b0147f50437308c8553082107362d09c5005cb1f13cb3f01fa02cecec92404035066146d50436d5033c8cf8580ca00cf8440ce01fa028069cf40025c6e016eb0935bcf819d58cf8680cf8480f400f400cf81e2f400c901fb0002b631d33ffa00fa40fa40f40431fa008142a625c200f2f48138c6f84228c705f2f48121d45385bef2f48200da29f823500ba1c2041af2f4f82324a71e812710a90420c101923071de5350a18200b67621c200f2f45096a15349db3c5c0d0703fc705920f90022f9005ad76501d76582020134c8cb17cb0fcb0fcbffcbff71f90400c87401cb0212ca07cbffc9d0707f80402c514e104d4b1311121ac855508210178d45195007cb1f15cb3f5003fa02cece01fa02cec910561058104d1038591036453304c8cf8580ca00cf8440ce01fa028069cf40025c6e016eb08a8ae208090a00065bcf81001a58cf8680cf8480f400f400cf8101d6f400c901fb0024c2008e5970705414657304c855308210eb527edf5005cb1f13cb3f01fa02cecec92604034666146d50436d5033c8cf8580ca00cf8440ce01fa028069cf40025c6e016eb0935bcf819d58cf8680cf8480f400f400cf81e2f400c901fb0093303330e240030b002cc87f01ca0055305043fa02ce12ce810101cf00c9ed5402ce31d33ffa00fa40308142a622c200f2f48138c6f84225c705f2f48121d45352bef2f45141a15145db3c5c705920f90022f9005ad76501d76582020134c8cb17cb0fcb0fcbffcbff71f90400c87401cb0212ca07cbffc9d0707f8040228b082a104a1039544b30c80d0e0018f82ac87001ca005a02cecec900da55508210178d45195007cb1f15cb3f5003fa02cece01fa02cec94016504405031036453304c8cf8580ca00cf8440ce01fa028069cf40025c6e016eb0935bcf819d58cf8680cf8480f400f400cf81e2f400c901fb004003c87f01ca0055305043fa02ce12ce810101cf00c9ed54010ee3025f05f2c0821001fed33ffa00fa40308142a622c200f2f48138c6f84225c705f2f48121d45352bef2f45141a1707f541435804008c8553082107bdd97de5005cb1f13cb3f01fa02cecec9260443135066146d50436d5033c8cf8580ca00cf8440ce01fa028069cf40025c6e016eb0935bcf819d58cf8680cf8480f400f400cf81e2f400c901fb001100304003c87f01ca0055305043fa02ce12ce810101cf00c9ed545b853ce7');
+    const __code = Cell.fromHex('b5ee9c724102110100055500022cff008e88f4a413f4bcf2c80bed53208e8130e1ed43d901030157a65ec0bb513434800067fe803e903e9020404075c0154c1b05273e903e901640b4405c150488b8b6cf1b11200201145321db3c3054644052400d04c201d072d721d200d200fa4021103450666f04f86102f862ed44d0d200019ffa00fa40fa40810101d70055306c149cfa40fa405902d10170541222e205e30203d70d1ff2e082218210178d4519bae3022182100f8a7ea5bae30221821051a5c3d1ba0405080c00f6038020d7217021d749c21f9430d31f01de208210178d4519ba8e2a30d33ffa00596c218142a621c200f2f412a05023c87f01ca0055305043fa02ce12ce810101cf00c9ed54e082107bdd97deba8e29d33ffa00596c218142a621c200f2f412a05023c87f01ca0055305043fa02ce12ce810101cf00c9ed54e05f0503d431d33ffa00fa40fa4031fa005327db3c8200c241f8422bc705936c217f8e32f8425a705920f90022f9005ad76501d76582020134c8cb17cb0fcb0fcbffcbff71f90400c87401cb0212ca07cbffc9d0c705e2f2f48142a624c200f2f45163a021c20093365f04e30d40030d060700b0147f50437308c8553082107362d09c5005cb1f13cb3f01fa02cecec92404035066146d50436d5033c8cf8580ca00cf8440ce01fa028069cf40025c6e016eb0935bcf819d58cf8680cf8480f400f400cf81e2f400c901fb00002cc87f01ca0055305043fa02ce12ce810101cf00c9ed5401fe31d33ffa00fa40fa40f40431fa008142a625c200f2f48138c6f84228c705f2f48109228d08600000000000000000000000000000000000000000000000000000000000000000045250c705b3f2f48121d45385bef2f48200da29f823500ba1c2041af2f4f82324a71e812710a90420c101923071de5350a18200b67621c2000902fef2f45096a15349db3c5c705920f90022f9005ad76501d76582020134c8cb17cb0fcb0fcbffcbff71f90400c87401cb0212ca07cbffc9d0707f80402c514e104d4b1311121ac855508210178d45195007cb1f15cb3f5003fa02cece01fa02cec910561058104d1038591036453304c8cf8580ca00cf8440ce01fa028069cf400d0a0180025c6e016eb0935bcf819d58cf8680cf8480f400f400cf81e2f400c901fb0024c20093303330e30d4003c87f01ca0055305043fa02ce12ce810101cf00c9ed540b00b270705414657304c855308210eb527edf5005cb1f13cb3f01fa02cecec92604034666146d50436d5033c8cf8580ca00cf8440ce01fa028069cf40025c6e016eb0935bcf819d58cf8680cf8480f400f400cf81e2f400c901fb0003f28f6731d33ffa00fa40308142a622c200f2f48138c6f84225c705f2f48121d45352bef2f45141a15145db3c5c705920f90022f9005ad76501d76582020134c8cb17cb0fcb0fcbffcbff71f90400c87401cb0212ca07cbffc9d0707f8040228b082a104a1039544b30c8e0018210595f07bcbae3025f05f2c0820d0e0f0018f82ac87001ca005a02cecec900da55508210178d45195007cb1f15cb3f5003fa02cece01fa02cec94016504405031036453304c8cf8580ca00cf8440ce01fa028069cf40025c6e016eb0935bcf819d58cf8680cf8480f400f400cf81e2f400c901fb004003c87f01ca0055305043fa02ce12ce810101cf00c9ed5401fed33ffa00fa40308142a622c200f2f48138c6f84225c705f2f48121d45352bef2f45141a1707f541435804008c8553082107bdd97de5005cb1f13cb3f01fa02cecec9260443135066146d50436d5033c8cf8580ca00cf8440ce01fa028069cf40025c6e016eb0935bcf819d58cf8680cf8480f400f400cf81e2f400c901fb001000304003c87f01ca0055305043fa02ce12ce810101cf00c9ed54801e6a47');
     const builder = beginCell();
     builder.storeUint(0, 1);
     initQuasarWallet_init_args({ $$type: 'QuasarWallet_init_args', owner, master })(builder);
@@ -5691,19 +5712,27 @@ export const QuasarWallet_errors = {
     135: { message: "Code of a contract was not found" },
     136: { message: "Invalid standard address" },
     138: { message: "Not a basechain address" },
+    1228: { message: "Invalid oracle" },
     1425: { message: "No tickets" },
     2338: { message: "Invalid destination" },
     2526: { message: "Only AI" },
     4173: { message: "Self referral" },
     6278: { message: "Closed" },
+    8012: { message: "Only implemented limits are allowed" },
     8660: { message: "Insufficient" },
     8916: { message: "Window closed" },
+    9291: { message: "Invalid treasury" },
     10363: { message: "Unauthorized burn" },
     11836: { message: "Invalid fee source" },
+    12241: { message: "Max supply exceeded" },
+    12449: { message: "Veto voting disabled until stake escrow is implemented" },
     12493: { message: "Invalid token wallet" },
+    12724: { message: "Invalid burn share" },
     13478: { message: "Minting off" },
     14534: { message: "Not owner" },
+    15353: { message: "Insufficient custody balance" },
     17062: { message: "Invalid amount" },
+    19280: { message: "Invalid buyback config" },
     20145: { message: "Deposit QSR first" },
     20944: { message: "AI disabled" },
     21101: { message: "Already registered" },
@@ -5716,16 +5745,19 @@ export const QuasarWallet_errors = {
     25709: { message: "AI controls" },
     26156: { message: "Below min" },
     26868: { message: "AI alive" },
+    26908: { message: "Transfer limits are fixed" },
     28115: { message: "No stake" },
+    28704: { message: "Wallet fee is fixed at 30 bps" },
     30245: { message: "No vesting" },
     31786: { message: "Pool low" },
     33624: { message: "Invalid DeFi address" },
-    34524: { message: "Limits" },
     35499: { message: "Only owner" },
     36222: { message: "Invalid lottery config" },
-    38227: { message: "Fee 0.10%-1.00%" },
+    36553: { message: "DeFi not configured" },
+    39587: { message: "No referral rewards" },
     40072: { message: "Pool empty" },
     40265: { message: "Invalid transfer amount" },
+    40326: { message: "Supply underflow" },
     40372: { message: "Max tx exceeded" },
     41094: { message: "Already exists" },
     42340: { message: "Too early" },
@@ -5738,6 +5770,7 @@ export const QuasarWallet_errors = {
     46710: { message: "Amount too small" },
     47767: { message: "Invalid referral reward" },
     49729: { message: "Unauthorized" },
+    50562: { message: "Invalid buyback threshold" },
     52432: { message: "Only AI oracle" },
     52497: { message: "Cliff not reached" },
     53010: { message: "No autonomy" },
@@ -5751,7 +5784,10 @@ export const QuasarWallet_errors = {
     57784: { message: "No rewards" },
     57871: { message: "Invalid" },
     59457: { message: "Paused" },
+    60911: { message: "Invalid DeFi transfer amount" },
     61977: { message: "Range" },
+    63705: { message: "Unsupported governance proposal" },
+    63922: { message: "Invalid custody transfer amount" },
 } as const
 
 export const QuasarWallet_errors_backward = {
@@ -5791,19 +5827,27 @@ export const QuasarWallet_errors_backward = {
     "Code of a contract was not found": 135,
     "Invalid standard address": 136,
     "Not a basechain address": 138,
+    "Invalid oracle": 1228,
     "No tickets": 1425,
     "Invalid destination": 2338,
     "Only AI": 2526,
     "Self referral": 4173,
     "Closed": 6278,
+    "Only implemented limits are allowed": 8012,
     "Insufficient": 8660,
     "Window closed": 8916,
+    "Invalid treasury": 9291,
     "Unauthorized burn": 10363,
     "Invalid fee source": 11836,
+    "Max supply exceeded": 12241,
+    "Veto voting disabled until stake escrow is implemented": 12449,
     "Invalid token wallet": 12493,
+    "Invalid burn share": 12724,
     "Minting off": 13478,
     "Not owner": 14534,
+    "Insufficient custody balance": 15353,
     "Invalid amount": 17062,
+    "Invalid buyback config": 19280,
     "Deposit QSR first": 20145,
     "AI disabled": 20944,
     "Already registered": 21101,
@@ -5816,16 +5860,19 @@ export const QuasarWallet_errors_backward = {
     "AI controls": 25709,
     "Below min": 26156,
     "AI alive": 26868,
+    "Transfer limits are fixed": 26908,
     "No stake": 28115,
+    "Wallet fee is fixed at 30 bps": 28704,
     "No vesting": 30245,
     "Pool low": 31786,
     "Invalid DeFi address": 33624,
-    "Limits": 34524,
     "Only owner": 35499,
     "Invalid lottery config": 36222,
-    "Fee 0.10%-1.00%": 38227,
+    "DeFi not configured": 36553,
+    "No referral rewards": 39587,
     "Pool empty": 40072,
     "Invalid transfer amount": 40265,
+    "Supply underflow": 40326,
     "Max tx exceeded": 40372,
     "Already exists": 41094,
     "Too early": 42340,
@@ -5838,6 +5885,7 @@ export const QuasarWallet_errors_backward = {
     "Amount too small": 46710,
     "Invalid referral reward": 47767,
     "Unauthorized": 49729,
+    "Invalid buyback threshold": 50562,
     "Only AI oracle": 52432,
     "Cliff not reached": 52497,
     "No autonomy": 53010,
@@ -5851,7 +5899,10 @@ export const QuasarWallet_errors_backward = {
     "No rewards": 57784,
     "Invalid": 57871,
     "Paused": 59457,
+    "Invalid DeFi transfer amount": 60911,
     "Range": 61977,
+    "Unsupported governance proposal": 63705,
+    "Invalid custody transfer amount": 63922,
 } as const
 
 const QuasarWallet_types: ABIType[] = [
@@ -5937,7 +5988,7 @@ const QuasarWallet_types: ABIType[] = [
     {"name":"VestingInfo","header":null,"fields":[{"name":"totalAmount","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"claimed","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"startTime","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"cliff","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"duration","type":{"kind":"simple","type":"int","optional":false,"format":257}}]},
     {"name":"LotteryConfig","header":null,"fields":[{"name":"enabled","type":{"kind":"simple","type":"bool","optional":false}},{"name":"ticketPrice","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"drawInterval","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"jackpotShare","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"currentRound","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"lastDraw","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"totalJackpot","type":{"kind":"simple","type":"int","optional":false,"format":257}}]},
     {"name":"LotteryTicket","header":null,"fields":[{"name":"round","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"owner","type":{"kind":"simple","type":"address","optional":false}}]},
-    {"name":"QuasarMaster$Data","header":null,"fields":[{"name":"totalSupply","type":{"kind":"simple","type":"uint","optional":false,"format":"coins"}},{"name":"mintable","type":{"kind":"simple","type":"bool","optional":false}},{"name":"owner","type":{"kind":"simple","type":"address","optional":false}},{"name":"content","type":{"kind":"simple","type":"cell","optional":false}},{"name":"walletCode","type":{"kind":"simple","type":"cell","optional":false}},{"name":"reserveBalance","type":{"kind":"simple","type":"uint","optional":false,"format":"coins"}},{"name":"feeBps","type":{"kind":"simple","type":"uint","optional":false,"format":16}},{"name":"feeBurnShare","type":{"kind":"simple","type":"uint","optional":false,"format":8}},{"name":"treasury","type":{"kind":"simple","type":"address","optional":false}},{"name":"totalBurned","type":{"kind":"simple","type":"uint","optional":false,"format":"coins"}},{"name":"totalFeesCollected","type":{"kind":"simple","type":"uint","optional":false,"format":"coins"}},{"name":"maxTxBps","type":{"kind":"simple","type":"uint","optional":false,"format":16}},{"name":"maxWalletBps","type":{"kind":"simple","type":"uint","optional":false,"format":16}},{"name":"cooldownSeconds","type":{"kind":"simple","type":"uint","optional":false,"format":16}},{"name":"tradingEnabled","type":{"kind":"simple","type":"bool","optional":false}},{"name":"buybackEnabled","type":{"kind":"simple","type":"bool","optional":false}},{"name":"buybackPool","type":{"kind":"simple","type":"uint","optional":false,"format":"coins"}},{"name":"buybackThreshold","type":{"kind":"simple","type":"uint","optional":false,"format":"coins"}},{"name":"buybackCooldown","type":{"kind":"simple","type":"uint","optional":false,"format":32}},{"name":"buybackBurnPercent","type":{"kind":"simple","type":"uint","optional":false,"format":8}},{"name":"lastBuybackTime","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"totalBuybacks","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"totalQsrBurnedViaBuyback","type":{"kind":"simple","type":"uint","optional":false,"format":"coins"}},{"name":"totalTonSpentOnBuyback","type":{"kind":"simple","type":"uint","optional":false,"format":"coins"}},{"name":"aiOracle","type":{"kind":"simple","type":"address","optional":false}},{"name":"aiEnabled","type":{"kind":"simple","type":"bool","optional":false}},{"name":"aiFullAutonomy","type":{"kind":"simple","type":"bool","optional":false}},{"name":"lastRebalanceTime","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"signalCount","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"priceHistory","type":{"kind":"dict","key":"int","value":"int"}},{"name":"anomalyLog","type":{"kind":"dict","key":"int","value":"AIRecommendation","valueFormat":"ref"}},{"name":"anomalyIndex","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"minConfidence","type":{"kind":"simple","type":"uint","optional":false,"format":8}},{"name":"emergencyPause","type":{"kind":"simple","type":"bool","optional":false}},{"name":"aiActionCooldown","type":{"kind":"simple","type":"uint","optional":false,"format":32}},{"name":"lastAiActionTime","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"heartbeatTimeout","type":{"kind":"simple","type":"uint","optional":false,"format":32}},{"name":"lastHeartbeat","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"ownerOverrideWindow","type":{"kind":"simple","type":"uint","optional":false,"format":32}},{"name":"vetoThresholdBps","type":{"kind":"simple","type":"uint","optional":false,"format":16}},{"name":"aiActionLog","type":{"kind":"dict","key":"int","value":"AIActionLog","valueFormat":"ref"}},{"name":"aiActionIndex","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"pendingAiActions","type":{"kind":"dict","key":"int","value":"int"}},{"name":"vetoLog","type":{"kind":"dict","key":"int","value":"VetoState","valueFormat":"ref"}},{"name":"totalVetoStake","type":{"kind":"simple","type":"uint","optional":false,"format":"coins"}},{"name":"stakingEnabled","type":{"kind":"simple","type":"bool","optional":false}},{"name":"stakingApyBps","type":{"kind":"simple","type":"uint","optional":false,"format":16}},{"name":"stakingMinStake","type":{"kind":"simple","type":"uint","optional":false,"format":"coins"}},{"name":"stakingLockPeriod","type":{"kind":"simple","type":"uint","optional":false,"format":32}},{"name":"stakers","type":{"kind":"dict","key":"address","value":"StakeInfo","valueFormat":"ref"}},{"name":"totalStaked","type":{"kind":"simple","type":"uint","optional":false,"format":"coins"}},{"name":"stakingRewardsPool","type":{"kind":"simple","type":"uint","optional":false,"format":"coins"}},{"name":"pendingQsrDeposits","type":{"kind":"dict","key":"address","value":"int"}},{"name":"referralEnabled","type":{"kind":"simple","type":"bool","optional":false}},{"name":"referralRewardBps","type":{"kind":"simple","type":"uint","optional":false,"format":16}},{"name":"referrals","type":{"kind":"dict","key":"address","value":"ReferralInfo","valueFormat":"ref"}},{"name":"vestingEnabled","type":{"kind":"simple","type":"bool","optional":false}},{"name":"teamAllocation","type":{"kind":"simple","type":"uint","optional":false,"format":"coins"}},{"name":"teamClaimed","type":{"kind":"simple","type":"uint","optional":false,"format":"coins"}},{"name":"vestingSchedules","type":{"kind":"dict","key":"address","value":"VestingInfo","valueFormat":"ref"}},{"name":"lotteryEnabled","type":{"kind":"simple","type":"bool","optional":false}},{"name":"lotteryTicketPrice","type":{"kind":"simple","type":"uint","optional":false,"format":"coins"}},{"name":"lotteryDrawInterval","type":{"kind":"simple","type":"uint","optional":false,"format":32}},{"name":"lotteryJackpotShare","type":{"kind":"simple","type":"uint","optional":false,"format":8}},{"name":"lotteryRound","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"lotteryLastDraw","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"lotteryJackpot","type":{"kind":"simple","type":"uint","optional":false,"format":"coins"}},{"name":"lotteryTickets","type":{"kind":"dict","key":"int","value":"address"}},{"name":"lotteryTicketCount","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"lotteryWinners","type":{"kind":"dict","key":"int","value":"address"}},{"name":"defiAddress","type":{"kind":"simple","type":"address","optional":false}},{"name":"defiFeeShareBps","type":{"kind":"simple","type":"uint","optional":false,"format":16}}]},
+    {"name":"QuasarMaster$Data","header":null,"fields":[{"name":"totalSupply","type":{"kind":"simple","type":"uint","optional":false,"format":"coins"}},{"name":"maxSupply","type":{"kind":"simple","type":"uint","optional":false,"format":"coins"}},{"name":"mintable","type":{"kind":"simple","type":"bool","optional":false}},{"name":"owner","type":{"kind":"simple","type":"address","optional":false}},{"name":"content","type":{"kind":"simple","type":"cell","optional":false}},{"name":"walletCode","type":{"kind":"simple","type":"cell","optional":false}},{"name":"reserveBalance","type":{"kind":"simple","type":"uint","optional":false,"format":"coins"}},{"name":"custodyBalance","type":{"kind":"simple","type":"uint","optional":false,"format":"coins"}},{"name":"feeBps","type":{"kind":"simple","type":"uint","optional":false,"format":16}},{"name":"feeBurnShare","type":{"kind":"simple","type":"uint","optional":false,"format":8}},{"name":"treasury","type":{"kind":"simple","type":"address","optional":false}},{"name":"totalBurned","type":{"kind":"simple","type":"uint","optional":false,"format":"coins"}},{"name":"totalFeesCollected","type":{"kind":"simple","type":"uint","optional":false,"format":"coins"}},{"name":"maxTxBps","type":{"kind":"simple","type":"uint","optional":false,"format":16}},{"name":"maxWalletBps","type":{"kind":"simple","type":"uint","optional":false,"format":16}},{"name":"cooldownSeconds","type":{"kind":"simple","type":"uint","optional":false,"format":16}},{"name":"tradingEnabled","type":{"kind":"simple","type":"bool","optional":false}},{"name":"buybackEnabled","type":{"kind":"simple","type":"bool","optional":false}},{"name":"buybackPool","type":{"kind":"simple","type":"uint","optional":false,"format":"coins"}},{"name":"buybackThreshold","type":{"kind":"simple","type":"uint","optional":false,"format":"coins"}},{"name":"buybackCooldown","type":{"kind":"simple","type":"uint","optional":false,"format":32}},{"name":"buybackBurnPercent","type":{"kind":"simple","type":"uint","optional":false,"format":8}},{"name":"lastBuybackTime","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"totalBuybacks","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"totalQsrBurnedViaBuyback","type":{"kind":"simple","type":"uint","optional":false,"format":"coins"}},{"name":"totalTonSpentOnBuyback","type":{"kind":"simple","type":"uint","optional":false,"format":"coins"}},{"name":"aiOracle","type":{"kind":"simple","type":"address","optional":false}},{"name":"aiEnabled","type":{"kind":"simple","type":"bool","optional":false}},{"name":"aiFullAutonomy","type":{"kind":"simple","type":"bool","optional":false}},{"name":"lastRebalanceTime","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"signalCount","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"priceHistory","type":{"kind":"dict","key":"int","value":"int"}},{"name":"anomalyLog","type":{"kind":"dict","key":"int","value":"AIRecommendation","valueFormat":"ref"}},{"name":"anomalyIndex","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"minConfidence","type":{"kind":"simple","type":"uint","optional":false,"format":8}},{"name":"emergencyPause","type":{"kind":"simple","type":"bool","optional":false}},{"name":"aiActionCooldown","type":{"kind":"simple","type":"uint","optional":false,"format":32}},{"name":"lastAiActionTime","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"heartbeatTimeout","type":{"kind":"simple","type":"uint","optional":false,"format":32}},{"name":"lastHeartbeat","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"ownerOverrideWindow","type":{"kind":"simple","type":"uint","optional":false,"format":32}},{"name":"vetoThresholdBps","type":{"kind":"simple","type":"uint","optional":false,"format":16}},{"name":"aiActionLog","type":{"kind":"dict","key":"int","value":"AIActionLog","valueFormat":"ref"}},{"name":"aiActionIndex","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"pendingAiActions","type":{"kind":"dict","key":"int","value":"int"}},{"name":"vetoLog","type":{"kind":"dict","key":"int","value":"VetoState","valueFormat":"ref"}},{"name":"totalVetoStake","type":{"kind":"simple","type":"uint","optional":false,"format":"coins"}},{"name":"stakingEnabled","type":{"kind":"simple","type":"bool","optional":false}},{"name":"stakingApyBps","type":{"kind":"simple","type":"uint","optional":false,"format":16}},{"name":"stakingMinStake","type":{"kind":"simple","type":"uint","optional":false,"format":"coins"}},{"name":"stakingLockPeriod","type":{"kind":"simple","type":"uint","optional":false,"format":32}},{"name":"stakers","type":{"kind":"dict","key":"address","value":"StakeInfo","valueFormat":"ref"}},{"name":"totalStaked","type":{"kind":"simple","type":"uint","optional":false,"format":"coins"}},{"name":"stakingRewardsPool","type":{"kind":"simple","type":"uint","optional":false,"format":"coins"}},{"name":"pendingQsrDeposits","type":{"kind":"dict","key":"address","value":"int"}},{"name":"referralEnabled","type":{"kind":"simple","type":"bool","optional":false}},{"name":"referralRewardBps","type":{"kind":"simple","type":"uint","optional":false,"format":16}},{"name":"referrals","type":{"kind":"dict","key":"address","value":"ReferralInfo","valueFormat":"ref"}},{"name":"pendingReferralRewards","type":{"kind":"dict","key":"address","value":"int"}},{"name":"vestingEnabled","type":{"kind":"simple","type":"bool","optional":false}},{"name":"teamAllocation","type":{"kind":"simple","type":"uint","optional":false,"format":"coins"}},{"name":"teamClaimed","type":{"kind":"simple","type":"uint","optional":false,"format":"coins"}},{"name":"vestingSchedules","type":{"kind":"dict","key":"address","value":"VestingInfo","valueFormat":"ref"}},{"name":"lotteryEnabled","type":{"kind":"simple","type":"bool","optional":false}},{"name":"lotteryTicketPrice","type":{"kind":"simple","type":"uint","optional":false,"format":"coins"}},{"name":"lotteryDrawInterval","type":{"kind":"simple","type":"uint","optional":false,"format":32}},{"name":"lotteryJackpotShare","type":{"kind":"simple","type":"uint","optional":false,"format":8}},{"name":"lotteryRound","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"lotteryLastDraw","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"lotteryJackpot","type":{"kind":"simple","type":"uint","optional":false,"format":"coins"}},{"name":"lotteryTickets","type":{"kind":"dict","key":"int","value":"address"}},{"name":"lotteryTicketCount","type":{"kind":"simple","type":"int","optional":false,"format":257}},{"name":"lotteryWinners","type":{"kind":"dict","key":"int","value":"address"}},{"name":"defiAddress","type":{"kind":"simple","type":"address","optional":false}},{"name":"defiFeeShareBps","type":{"kind":"simple","type":"uint","optional":false,"format":16}}]},
     {"name":"QuasarWallet$Data","header":null,"fields":[{"name":"balance","type":{"kind":"simple","type":"uint","optional":false,"format":"coins"}},{"name":"owner","type":{"kind":"simple","type":"address","optional":false}},{"name":"master","type":{"kind":"simple","type":"address","optional":false}},{"name":"lastTxTime","type":{"kind":"simple","type":"int","optional":false,"format":257}}]},
 ]
 
