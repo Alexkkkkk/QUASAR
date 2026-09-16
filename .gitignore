@@ -12,6 +12,9 @@ coverage/
 secrets/
 wallets/
 
+# Generated build artifacts (recreate with: npm run build)
+build/
+
 # Local development and generated deployment state
 .idea/
 .vscode/
