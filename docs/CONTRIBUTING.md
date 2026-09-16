@@ -18,6 +18,10 @@ Contract changes should include a regression test for the affected message
 serialization or state transition. Deployment scripts must fail closed when
 the network or required secrets are missing.
 
+Changes to supply, fees, permissions, randomness, custody, or bounce handling
+require an explicit security note in the pull request and an update to
+`docs/SECURITY_AUDIT.md`.
+
 Thank you for your interest in contributing to QUASAR! We welcome contributions from the community.
 
 ## How to Contribute

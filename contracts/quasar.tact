@@ -111,6 +111,8 @@ contract QuasarMaster with Deployable {
     
     // Core
     totalSupply: Int as coins;
+    // Hard cap: 1,000,000,000 QSR with 9 decimals.
+    maxSupply: Int as coins;
     mintable: Bool;
     owner: Address;
     content: Cell;
@@ -180,6 +182,7 @@ contract QuasarMaster with Deployable {
     referralEnabled: Bool;
     referralRewardBps: Int as uint16;
     referrals: map<Address, ReferralInfo>;
+    pendingReferralRewards: map<Address, Int>;
     
     // Vesting
     vestingEnabled: Bool;
@@ -205,6 +208,7 @@ contract QuasarMaster with Deployable {
     
     init(owner: Address, content: Cell, walletCode: Cell) {
         self.totalSupply = 0;
+        self.maxSupply = ton("1000000000");
         self.mintable = true;
         self.owner = owner;
         self.content = content;
@@ -382,6 +386,7 @@ contract QuasarMaster with Deployable {
         let maxTx: Int = self.totalSupply * self.maxTxBps / 10000;
         if (self.totalSupply > 0) { require(msg.amount <= maxTx, "Max tx exceeded") }
         
+        require(self.totalSupply + msg.amount <= self.maxSupply, "Max supply exceeded");
         self.totalSupply = self.totalSupply + msg.amount;
         self._mintTokens(msg.receiver, msg.amount, 0);
         
@@ -483,7 +488,8 @@ contract QuasarMaster with Deployable {
                     } else {
                         self.referrals.set(referrer, ReferralInfo{ referrer: newAddress(0, 0), totalEarned: refReward, totalReferrals: 0 });
                     }
-                    self._sendTokens(referrer, refReward, msg.queryId, msg.originalSender);
+                    let pendingReward: Int? = self.pendingReferralRewards.get(referrer);
+                    self.pendingReferralRewards.set(referrer, pendingReward == null ? refReward : pendingReward!! + refReward);
                 }
             }
         }
@@ -666,6 +672,15 @@ contract QuasarMaster with Deployable {
         require(msg.rewardBps <= 10000, "Invalid referral reward");
         self.referralEnabled = msg.enabled;
         self.referralRewardBps = msg.rewardBps;
+    }
+
+    receive(msg: ClaimReferralRewards) {
+        self._requireNotPaused();
+        let claimant: Address = sender();
+        let pending: Int? = self.pendingReferralRewards.get(claimant);
+        require(pending != null && pending!! > 0, "No referral rewards");
+        self.pendingReferralRewards.set(claimant, 0);
+        self._sendTokens(claimant, pending!!, 0, myAddress());
     }
     
     // ═══════════════════════════════════════════════════════════
@@ -1060,6 +1075,7 @@ contract QuasarMaster with Deployable {
         return JettonData{ totalSupply: self.totalSupply, mintable: self.mintable, adminAddress: self.owner, jettonContent: self.content, jettonWalletCode: self.walletCode }
     }
 
+    get fun get_max_supply(): Int { return self.maxSupply }
     get fun get_reserve_balance(): Int { return self.reserveBalance }
     get fun get_custody_balance(): Int { return self.custodyBalance }
     
@@ -1094,6 +1110,10 @@ contract QuasarMaster with Deployable {
         return pending == null ? 0 : pending!!
     }
     get fun get_referral_info(user: Address): ReferralInfo? { return self.referrals.get(user) }
+    get fun get_pending_referral_reward(user: Address): Int {
+        let pending: Int? = self.pendingReferralRewards.get(user);
+        return pending == null ? 0 : pending!!
+    }
     get fun get_vesting_info(beneficiary: Address): VestingInfo? { return self.vestingSchedules.get(beneficiary) }
     
     get fun get_lottery_config(): LotteryConfig {

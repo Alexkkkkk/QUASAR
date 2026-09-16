@@ -107,6 +107,16 @@ async function deploy() {
         }
     );
     await new Promise(r => setTimeout(r, 5000));
+
+    // The deployment allocation is the full hard cap. Lock further issuance
+    // immediately so a funded deployer wallet cannot mint again by mistake.
+    console.log('   🔒 Stopping minting after initial allocation...');
+    await quasar.send(
+        sender,
+        { value: toNano('0.05') },
+        'Stop Minting'
+    );
+    await new Promise(r => setTimeout(r, 5000));
     
     // Setup AI Oracle if provided
     if (process.env.AI_ORACLE_ADDRESS) {

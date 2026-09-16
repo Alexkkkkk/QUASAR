@@ -6,6 +6,7 @@ import {
     QuasarMaster,
     loadAIRebalance,
     loadAISetBuybackDirect,
+    loadClaimReferralRewards,
     loadDeploy,
     loadInternalTransfer,
     loadMint,
@@ -13,6 +14,7 @@ import {
     storeDeploy,
     storeAIRebalance,
     storeAISetBuybackDirect,
+    storeClaimReferralRewards,
     storeInternalTransfer,
     storeMint,
     storeTokenNotification
@@ -217,4 +219,12 @@ test('AI risk-control messages preserve hardened parameters', () => {
 
     assert.equal(loadAIRebalance(rebalance.beginParse()).targetFeeBps, 30n);
     assert.equal(loadAISetBuybackDirect(buyback.beginParse()).burnPercent, 100n);
+});
+
+test('referral rewards expose an explicit claim message', () => {
+    const claim = beginCell()
+        .store(storeClaimReferralRewards({ $$type: 'ClaimReferralRewards' }))
+        .endCell();
+
+    assert.equal(loadClaimReferralRewards(claim.beginParse()).$$type, 'ClaimReferralRewards');
 });
