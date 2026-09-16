@@ -21,6 +21,7 @@ message SetFeeBps { feeBps: Int as uint16 }
 message SetPaused { paused: Bool }
 message SetMaxTradeBps { maxTradeBps: Int as uint16 }
 message DefiPayout { queryId: Int as uint64; amount: Int as coins; destination: Address }
+message SweepTON { amount: Int as coins }
 
 // ─── Jetton Integration Messages ───
 message(0x7bdd97de) BurnNotification { queryId: Int as uint64; amount: Int as coins; sender: Address; responseDestination: Address }
@@ -63,7 +64,8 @@ contract QuasarDeFi with Deployable {
     
     // AMM Fee (0.30% default = 30 bps)
     feeBps: Int as uint16;
-    feeAccumulated: Int as coins;
+    feeAccumulatedTon: Int as coins;
+    feeAccumulatedQsr: Int as coins;
     
     // Farm
     farmEnabled: Bool;
@@ -88,7 +90,8 @@ contract QuasarDeFi with Deployable {
         self.tonReserve = 0;
         self.qsrReserve = 0;
         self.feeBps = 30;
-        self.feeAccumulated = 0;
+        self.feeAccumulatedTon = 0;
+        self.feeAccumulatedQsr = 0;
         self.farmEnabled = false;
         self.farmRewardPerSecond = 100000000;
         self.farmStartTime = now();
@@ -142,7 +145,9 @@ contract QuasarDeFi with Deployable {
     }
     
     // ─── Receive TON ───
-    receive() { }
+    // No bare-TON receiver on purpose: plain transfers without a swap or
+    // liquidity message would sit in the pool uncredited. Send a
+    // SwapToQSR / AddLiquidity message instead.
     
     // ─── Jetton QSR Deposit ───
     receive(msg: TokenNotification) {
@@ -175,22 +180,36 @@ contract QuasarDeFi with Deployable {
         }
         
         let lpToMint: Int = 0;
+        let tonUsed: Int = msg.tonAmount;
+        let qsrUsed: Int = msg.qsrAmount;
         if (self.lpTotalSupply == 0) {
             // First deposit: LP = sqrt(ton * qsr)
             lpToMint = self._sqrt(msg.tonAmount * msg.qsrAmount);
         } else {
-            // Subsequent: proportional to existing reserves
-            let lpByTon: Int = (msg.tonAmount * self.lpTotalSupply) / self.tonReserve;
-            let lpByQsr: Int = (msg.qsrAmount * self.lpTotalSupply) / self.qsrReserve;
-            lpToMint = self._min(lpByTon, lpByQsr);
+            // Subsequent: proportional to existing reserves. Only the
+            // proportional share is consumed; the unbalanced surplus is
+            // refunded instead of being donated to the pool.
+            lpToMint = self._min(
+                (msg.tonAmount * self.lpTotalSupply) / self.tonReserve,
+                (msg.qsrAmount * self.lpTotalSupply) / self.qsrReserve
+            );
+            tonUsed = (lpToMint * self.tonReserve) / self.lpTotalSupply;
+            qsrUsed = (lpToMint * self.qsrReserve) / self.lpTotalSupply;
         }
         require(lpToMint > 0, "Zero LP tokens");
         
         // Update reserves
-        self.tonReserve += msg.tonAmount;
-        self.qsrReserve += msg.qsrAmount;
+        self.tonReserve += tonUsed;
+        self.qsrReserve += qsrUsed;
         self.lpTotalSupply += lpToMint;
-        self.pendingQsrDeposits.set(sender(), deposited!! - msg.qsrAmount);
+        self.pendingQsrDeposits.set(sender(), deposited!! - qsrUsed);
+        
+        // Refund the unused part of the attached TON (unbalanced surplus
+        // plus any overpayment).
+        let refund: Int = context().value - tonUsed;
+        if (refund > 0) {
+            send(SendParameters{ to: sender(), value: refund, bounce: false, mode: SendPayGasSeparately, body: emptyCell() });
+        }
         
         // Credit LP tokens
         let current: Int? = self.lpBalances.get(sender());
@@ -207,8 +226,8 @@ contract QuasarDeFi with Deployable {
             mode: SendRemainingValue,
             body: EventLiquidityAdded{
                 provider: sender(),
-                tonAmount: msg.tonAmount,
-                qsrAmount: msg.qsrAmount,
+                tonAmount: tonUsed,
+                qsrAmount: qsrUsed,
                 lpMinted: lpToMint
             }.toCell(),
         });
@@ -227,7 +246,10 @@ contract QuasarDeFi with Deployable {
         // Calculate proportional output
         let tonOut: Int = (msg.lpAmount * self.tonReserve) / self.lpTotalSupply;
         let qsrOut: Int = (msg.lpAmount * self.qsrReserve) / self.lpTotalSupply;
-        require(tonOut > 0 && qsrOut > 0, "Zero output");
+        // Dust from integer rounding may zero one side on tiny withdrawals;
+        // only an all-zero output is rejected, and each side pays out only
+        // when non-zero.
+        require(tonOut > 0 || qsrOut > 0, "Zero output");
         
         // Unstake from farm first when this LP was auto-staked.
         self._updateFarm();
@@ -246,14 +268,18 @@ contract QuasarDeFi with Deployable {
         self.qsrReserve -= qsrOut;
         
         // Send TON back
-        send(SendParameters{
-            to: sender(),
-            value: tonOut,
-            mode: SendPayGasSeparately,
-            body: emptyCell()
-        });
+        if (tonOut > 0) {
+            send(SendParameters{
+                to: sender(),
+                value: tonOut,
+                mode: SendPayGasSeparately,
+                body: emptyCell()
+            });
+        }
         
-        self._sendQsr(sender(), qsrOut, 0);
+        if (qsrOut > 0) {
+            self._sendQsr(sender(), qsrOut, 0);
+        }
         
         // Emit event
         send(SendParameters{
@@ -292,7 +318,7 @@ contract QuasarDeFi with Deployable {
         // Update reserves
         self.qsrReserve += msg.qsrAmount;
         self.tonReserve -= tonOut;
-        self.feeAccumulated += fee;
+        self.feeAccumulatedTon += fee;
         self.pendingQsrDeposits.set(sender(), deposited!! - msg.qsrAmount);
         
         // Payout and event must be separate messages: with
@@ -341,7 +367,13 @@ contract QuasarDeFi with Deployable {
         // Update reserves
         self.tonReserve += msg.tonAmount;
         self.qsrReserve -= qsrOut;
-        self.feeAccumulated += fee;
+        self.feeAccumulatedQsr += fee;
+        
+        // Refund any TON overpayment above the declared amount.
+        let excess: Int = context().value - msg.tonAmount;
+        if (excess > 0) {
+            send(SendParameters{ to: sender(), value: excess, bounce: false, mode: SendPayGasSeparately, body: emptyCell() });
+        }
         
         self._sendQsr(sender(), qsrOut, 0);
         
@@ -441,6 +473,14 @@ contract QuasarDeFi with Deployable {
         require(sender() == self.owner, "Only owner");
         require(msg.maxTradeBps >= 100 && msg.maxTradeBps <= 5000, "Trade limit 1%-50%");
         self.maxTradeBps = msg.maxTradeBps;
+    }
+    
+    // Recover stray TON. QSR funds stay governed by the reserve accounting
+    // and can never be swept.
+    receive(msg: SweepTON) {
+        require(sender() == self.owner, "Only owner");
+        require(msg.amount > 0 && msg.amount <= myBalance() - ton("0.05"), "Invalid sweep");
+        send(SendParameters{ to: self.owner, value: msg.amount, bounce: false, mode: SendPayGasSeparately, body: emptyCell() });
     }
     
     // ─── INTERNAL: Farm Helpers ───
@@ -575,7 +615,8 @@ contract QuasarDeFi with Deployable {
     }
     
     get fun feeConfig(): Int { return self.feeBps }
-    get fun feeAccumulated(): Int { return self.feeAccumulated }
+    get fun feeAccumulatedTon(): Int { return self.feeAccumulatedTon }
+    get fun feeAccumulatedQsr(): Int { return self.feeAccumulatedQsr }
     get fun farmRewardReserve(): Int { return self.farmRewardReserve }
     get fun owner(): Address { return self.owner }
     get fun qsrMaster(): Address { return self.qsrMaster }

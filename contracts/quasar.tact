@@ -205,6 +205,7 @@ contract QuasarMaster with Deployable {
     // DeFi Sync
     defiAddress: Address;
     defiFeeShareBps: Int as uint16; // Basis points sent to DeFi pool (e.g. 500 = 5%);
+    defiMaxPayoutBps: Int as uint16; // Cap (bps of the free reserve) per single DefiPayout call;
     
     init(owner: Address, content: Cell, walletCode: Cell) {
         self.totalSupply = 0;
@@ -280,6 +281,7 @@ contract QuasarMaster with Deployable {
         
         self.defiAddress = newAddress(0, 0);
         self.defiFeeShareBps = 500; // 5% of fees go to DeFi pool;
+        self.defiMaxPayoutBps = 5000; // max 50% of the free reserve per payout call;
     }
     
     // ═══════════════════════════════════════════════════════════
@@ -291,6 +293,11 @@ contract QuasarMaster with Deployable {
     fun _requireAiCooldown() { if (self.aiFullAutonomy) { require(now() - self.lastAiActionTime >= self.aiActionCooldown, "AI cooldown") } }
     fun _requireNotPaused() { require(!self.emergencyPause, "Paused") }
     fun _requireTrading() { require(self.tradingEnabled, "Trading off") }
+
+    // Buyback, lottery and staking pools are sub-accounts inside the fee
+    // reserve. Treasury and DeFi payouts may only spend the part of the
+    // reserve that is not encumbered by these pools.
+    fun _poolEncumbrance(): Int { return self.buybackPool + self.lotteryJackpot + self.stakingRewardsPool }
     
     fun _logAiAction(actionType: String, oldVal: Int, newVal: Int, reason: String): Int {
         let id: Int = self.aiActionIndex;
@@ -495,6 +502,9 @@ contract QuasarMaster with Deployable {
         }
         
         if (treasuryAmt > 0 && self.treasury != newAddress(0, 0)) {
+            // Treasury may only spend the unencumbered part of the reserve:
+            // pool allocations (buyback/lottery/staking) stay fully backed.
+            require(self.reserveBalance - self._poolEncumbrance() >= treasuryAmt, "Reserve encumbered");
             self._sendTokens(self.treasury, treasuryAmt, msg.queryId, msg.originalSender);
         }
         
@@ -509,10 +519,10 @@ contract QuasarMaster with Deployable {
             self._executeBuyback(msg.queryId);
         }
         
-        // Auto-lottery draw
-        if (self.lotteryEnabled && now() - self.lotteryLastDraw >= self.lotteryDrawInterval && self.lotteryTicketCount > 0) {
-            self._executeLotteryDraw(msg.queryId);
-        }
+        // No auto-lottery draw here on purpose: a draw executed inside the
+        // fee-transfer transaction would let the validator processing the
+        // transfer influence the winner via TVM randomness. Draws run only
+        // through an explicit TriggerLottery message.
         
         // Emit fee distribution event
         send(SendParameters{ to: sender(), value: 0, mode: SendRemainingValue, body: EventFeeDistributed{ totalFee: msg.amount, burn: burnAmount, buyback: buybackAmt, lottery: lotteryAmt, staking: stakingAmt, referral: referralDistributed, treasury: treasuryAmt, defiPool: defiAmt }.toCell() });
@@ -700,6 +710,8 @@ contract QuasarMaster with Deployable {
     }
     
     receive(msg: ClaimVested) {
+        self._requireNotPaused();
+        require(self.vestingEnabled, "Vesting off");
         let beneficiary: Address = sender();
         let info: VestingInfo? = self.vestingSchedules.get(beneficiary);
         require(info != null, "No vesting");
@@ -999,7 +1011,7 @@ contract QuasarMaster with Deployable {
     
     receive(msg: SetDefiAddress) {
         self._requireOwner();
-        require(msg.defiAddress != newAddress(0, 0), "Invalid DeFi address");
+        // The zero address revokes DeFi access entirely.
         self.defiAddress = msg.defiAddress;
     }
 
@@ -1010,6 +1022,9 @@ contract QuasarMaster with Deployable {
         require(sender() == self.defiAddress, "Only DeFi");
         require(msg.amount > 0, "Invalid amount");
         require(msg.destination != newAddress(0, 0), "Invalid destination");
+        let freeReserve: Int = self.reserveBalance - self._poolEncumbrance();
+        require(freeReserve >= msg.amount, "Reserve encumbered");
+        require(msg.amount * 10000 <= freeReserve * self.defiMaxPayoutBps, "Payout cap");
         self._sendTokens(msg.destination, msg.amount, msg.queryId, myAddress());
     }
 
@@ -1065,6 +1080,20 @@ contract QuasarMaster with Deployable {
         self._requireOwner();
         require(!self.aiFullAutonomy, "Disable autonomy first");
         self.aiEnabled = !self.aiEnabled;
+    }
+    
+    receive(msg: SetDefiPayoutCap) {
+        self._requireOwner();
+        require(msg.maxPayoutBps > 0 && msg.maxPayoutBps <= 10000, "Invalid cap");
+        self.defiMaxPayoutBps = msg.maxPayoutBps;
+    }
+    
+    // Recover stray TON (overpaid gas etc). QSR funds stay governed by the
+    // reserve/custody accounting and can never be swept.
+    receive(msg: SweepTON) {
+        self._requireOwner();
+        require(msg.amount > 0 && msg.amount <= myBalance() - ton("0.05"), "Invalid sweep");
+        send(SendParameters{ to: self.owner, value: msg.amount, bounce: false, mode: SendPayGasSeparately, body: emptyCell() });
     }
     
     // ═══════════════════════════════════════════════════════════
@@ -1132,6 +1161,9 @@ contract QuasarMaster with Deployable {
     get fun get_defi_address(): Address { return self.defiAddress }
     get fun get_defi_fee_share(): Int { return self.defiFeeShareBps }
 }
+
+message SetDefiPayoutCap { maxPayoutBps: Int as uint16 }
+message SweepTON { amount: Int as coins }
 
 // ═══════════════════════════════════════════════════════════════
 // QUASAR WALLET — Optimized with fee deduction

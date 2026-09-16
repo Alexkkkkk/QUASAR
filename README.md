@@ -45,8 +45,8 @@
 | **Team Vesting** | Linear 2-year unlock | Rare |
 | **Transaction Lottery** | Every tx = lottery ticket | None |
 | **Community Veto** | Escrow is not enabled in the current contract | N/A |
-| **Anti-Whale** | Max tx 1%, max wallet 3% | Rare |
-| **0.30% Fee** | Auto-distributed to ecosystem | Manual |
+| **Anti-Whale** | Max tx 1% on-chain; max-wallet 3% documented only (not enforced in wallet code) | Rare |
+| **0.30% Fee** | Fixed at 0.30% in wallet code; auto-distributed to ecosystem | Manual |
 
 ---
 
