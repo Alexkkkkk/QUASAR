@@ -404,6 +404,13 @@ contract QuasarMaster with Deployable {
         }
         send(SendParameters{ to: sender(), value: 0, mode: SendRemainingValue, body: EventBurn{ amount: msg.amount, burner: msg.sender }.toCell() });
     }
+
+    // When the wallet rejects an internal transfer, the tokens return to the
+    // wallet via its own bounce handler. The master must restore the reserve
+    // accounting to stay consistent with the jetton ledger.
+    bounced(msg: bounced<InternalTransfer>) {
+        self.reserveBalance = self.reserveBalance + msg.amount;
+    }
     
     receive("Stop Minting") { self._requireOwner(); self.mintable = false }
     
@@ -604,6 +611,7 @@ contract QuasarMaster with Deployable {
     }
     
     receive(msg: ClaimRewards) {
+        self._requireNotPaused();
         let staker: Address = sender();
         let pending: Int = self._calculateRewards(staker);
         require(pending > 0, "No rewards");
@@ -681,6 +689,7 @@ contract QuasarMaster with Deployable {
     
     receive(msg: AddVesting) {
         self._requireOwner();
+        self._requireNotPaused();
         require(msg.totalAmount > 0 && msg.duration > 0 && msg.cliff <= msg.duration, "Invalid vesting");
         require(self.vestingSchedules.get(msg.beneficiary) == null, "Already exists");
         let depositPending: Int? = self.pendingQsrDeposits.get(sender());
@@ -1192,7 +1201,10 @@ contract QuasarWallet {
         send(SendParameters{ to: contractAddress(init), value: 0, bounce: true, mode: SendRemainingValue, body: InternalTransfer{ queryId: msg.queryId, amount: sendAmount, from: self.owner, responseDestination: msg.responseDestination, forwardTonAmount: msg.forwardTonAmount, forwardPayload: msg.forwardPayload }.toCell(), code: init.code, data: init.data });
         
         if (fee > 0) {
-            send(SendParameters{ to: self.master, value: 0, bounce: false, mode: SendPayGasSeparately | SendIgnoreErrors, body: FeeTransfer{ queryId: msg.queryId, amount: fee, originalSender: self.owner, originalReceiver: msg.destination }.toCell() });
+            // The fee message must carry gas: the master pays out referral and
+            // treasury shares with SendRemainingValue, which would fail on an
+            // empty incoming value.
+            send(SendParameters{ to: self.master, value: ton("0.05"), bounce: false, mode: SendPayGasSeparately | SendIgnoreErrors, body: FeeTransfer{ queryId: msg.queryId, amount: fee, originalSender: self.owner, originalReceiver: msg.destination }.toCell() });
         }
     }
 

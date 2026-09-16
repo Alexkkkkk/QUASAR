@@ -295,10 +295,19 @@ contract QuasarDeFi with Deployable {
         self.feeAccumulated += fee;
         self.pendingQsrDeposits.set(sender(), deposited!! - msg.qsrAmount);
         
-        // Send TON to trader
+        // Payout and event must be separate messages: with
+        // SendRemainingValue the explicit value field is ignored, so the
+        // trader could receive an unpredictable amount.
         send(SendParameters{
             to: sender(),
             value: tonOut,
+            mode: SendPayGasSeparately,
+            body: emptyCell()
+        });
+
+        send(SendParameters{
+            to: sender(),
+            value: 0,
             mode: SendRemainingValue,
             body: EventSwap{
                 trader: sender(),
@@ -647,7 +656,10 @@ contract QuasarWallet {
         });
 
         if (fee > 0) {
-            send(SendParameters{ to: self.master, value: 0, bounce: false, mode: SendPayGasSeparately | SendIgnoreErrors, body: FeeTransfer{ queryId: msg.queryId, amount: fee, originalSender: self.owner, originalReceiver: msg.destination }.toCell() });
+            // The fee message must carry gas: the master pays out referral and
+            // treasury shares with SendRemainingValue, which would fail on an
+            // empty incoming value.
+            send(SendParameters{ to: self.master, value: ton("0.05"), bounce: false, mode: SendPayGasSeparately | SendIgnoreErrors, body: FeeTransfer{ queryId: msg.queryId, amount: fee, originalSender: self.owner, originalReceiver: msg.destination }.toCell() });
         }
     }
 
