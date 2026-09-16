@@ -8,7 +8,7 @@
     "build": "tact --config tact.config.json",
     "deploy": "tsx scripts/deploy_all.ts",
     "deploy:defi": "tsx scripts/deploy_defi.ts",
-    "test": "npm run build && npm run security:check && node --import tsx --test tests/contracts.test.ts",
+    "test": "npm run build && npm run security:check && node --import tsx --test tests/contracts.test.ts tests/security_regression.test.ts",
     "lint": "tact --config tact.config.json --check",
     "website": "npx serve website",
     "security:check": "tsx scripts/security_check.ts",
@@ -37,6 +37,7 @@
     "dotenv": "^17.4.2"
   },
   "devDependencies": {
+    "@ton/sandbox": "^0.44.0",
     "@types/node": "^26.5.1",
     "husky": "^9.1.7",
     "tsx": "^4.23.13",
