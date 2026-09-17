@@ -45,7 +45,7 @@
 | **Team Vesting** | Linear 2-year unlock | Rare |
 | **Transaction Lottery** | Every tx = lottery ticket | None |
 | **Community Veto** | Escrow is not enabled in the current contract | N/A |
-| **Anti-Whale** | Max tx 1% is enforced only on owner minting (which is stopped after deployment); max-wallet 3% is stored but NOT enforced anywhere; the wallet adds a 5s per-wallet transfer cooldown | Rare |
+| **Anti-Whale** | Max tx 1% applies only to owner `Mint` (minting is stopped after deployment); max-wallet 3% is stored but not enforced in wallet code; the wallet adds a 5s per-wallet transfer cooldown | Rare |
 | **0.30% Fee** | Fixed at 0.30% in wallet code; auto-distributed to ecosystem | Manual |
 
 ---

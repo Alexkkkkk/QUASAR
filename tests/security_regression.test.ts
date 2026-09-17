@@ -75,7 +75,7 @@ test('F6 source: no auto lottery draw inside FeeTransfer', () => {
 });
 
 test('F7 source: ClaimVested honors pause and the vesting flag', () => {
-    const claim = section(masterSrc, 'receive(msg: ClaimVested)', '// ═══', '// LOTTERY');
+    const claim = section(masterSrc, 'receive(msg: ClaimVested)', '// LOTTERY');
     assert.ok(claim.includes('self._requireNotPaused()'), 'claim must respect emergency pause');
     assert.ok(claim.includes('self.vestingEnabled'), 'claim must respect the vesting flag');
 });
