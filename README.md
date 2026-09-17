@@ -22,7 +22,7 @@
 │    AI Oracle)   │     │                 │     │    Storage)     │
 └────────┬────────┘     └────────┬────────┘     └─────────────────┘
          │                       │
-         │  5% fees ─────────────┘
+         │  5% of remainder ────┘
          │  Jetton transfers
          │
     ┌────┴────┐
@@ -45,7 +45,7 @@
 | **Team Vesting** | Linear 2-year unlock | Rare |
 | **Transaction Lottery** | Every tx = lottery ticket | None |
 | **Community Veto** | Escrow is not enabled in the current contract | N/A |
-| **Anti-Whale** | Max tx 1% on-chain; max-wallet 3% documented only (not enforced in wallet code) | Rare |
+| **Anti-Whale** | Max tx 1% is enforced only on owner minting (which is stopped after deployment); max-wallet 3% is stored but NOT enforced anywhere; the wallet adds a 5s per-wallet transfer cooldown | Rare |
 | **0.30% Fee** | Fixed at 0.30% in wallet code; auto-distributed to ecosystem | Manual |
 
 ---
@@ -115,15 +115,14 @@ ClaimFarmRewards {}
 ### Fee Distribution (Updated)
 
 ```
-Every Transfer: 0.30% fee
-├─ 50% Burned forever (deflationary)
-├─ 50% Burned immediately
-└─ 50% Remaining fee, split by configured buckets:
-   ├─ 15% Buyback bucket (of remainder; current path burns QSR, no market swap)
-   ├─ 15% Lottery Jackpot (of remainder)
-   ├─ 10% Staking Rewards (of remainder)
-   ├─ 5% DeFi Pool (of remainder)
-   ├─ up to 1% of original fee, accrued to the referrer
+Every Transfer: 0.30% fee (30 bps, enforced in QuasarWallet)
+├─ 50% of the fee is burned immediately (feeBurnShare = 50)
+└─ the remaining 50% is split in QuasarMaster.FeeTransfer:
+   ├─ 15% of the remainder → Buyback bucket (burns QSR from the reserve; no AMM swap yet)
+   ├─ 15% of the remainder → Lottery Jackpot
+   ├─ 10% of the remainder → Staking Rewards
+   ├─ 5% of the remainder → DeFi Pool (defiFeeShareBps = 500, i.e. 2.5% of the fee)
+   ├─ up to 1% of the original fee → escrowed referral reward (paid out of the treasury share)
    └─ remainder Treasury
 ```
 
@@ -215,10 +214,11 @@ The AI Oracle has sovereign control with democratic safeguards:
 | Emergency pause | Instant | No |
 | Oracle rotation | 6h | Yes |
 
-### Safeguards
-- **Community Veto**: disabled until stake escrow is implemented
-- **Owner Override**: 24h window to reverse
-- **Dead Man's Switch**: Owner reclaims control if AI silent 7 days
+### Safeguards (as implemented)
+- **Community Veto**: `AIVetoVote` currently always reverts — disabled until stake escrow is implemented
+- **Owner Override**: 24h window, but `OwnerOverride` only reverts `SetFee` and `ToggleTrading` actions
+- **Dead Man's Switch**: `Claim AI Control` lets the owner reclaim control if the AI is silent 7 days
+- **AI cooldown**: `aiActionCooldown` (6h) is enforced only while `aiFullAutonomy` is enabled
 
 ---
 
