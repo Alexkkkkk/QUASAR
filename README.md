@@ -39,7 +39,7 @@
 | **AI Oracle** | Optional, bounded controls; disabled by default | N/A |
 | **Built-in DEX** | CPMM AMM with 0.3% fee | External only |
 | **Yield Farming** | LP auto-stake; rewards claimed explicitly | N/A |
-| **Buyback accounting** | Fee bucket can burn QSR; no AMM market swap yet | N/A |
+| **Buyback accounting** | Fee bucket (QSR-denominated) can burn QSR; no AMM market swap yet | N/A |
 | **Staking Vault** | Earn APY from transaction fees | Rare |
 | **Referral System** | 1% lifetime earnings per referral | None |
 | **Team Vesting** | Linear 2-year unlock | Rare |
@@ -59,7 +59,7 @@ Built-in **Constant Product Market Maker (CPMM)** AMM. No external DEX needed.
 | Parameter | Value |
 |-----------|-------|
 | Model | CPMM (x * y = k) |
-| Fee | 0.30% per swap |
+| Fee | 0.30% per swap (owner-configurable only downwards) |
 | Slippage protection | Configurable min output |
 | Reentrancy guard | Yes |
 
@@ -145,7 +145,7 @@ Unstake { amount: 50000000000 }
 ```
 
 - **Min Stake**: 100 QSR
-- **Lock Period**: 30 days
+- **Lock Period**: 30 days; a top-up restarts the lock, it never shortens it
 - **APY**: 20% (adjustable by AI)
 - **Rewards**: Paid instantly from fee pool
 
@@ -218,7 +218,7 @@ The AI Oracle has sovereign control with democratic safeguards:
 - **Community Veto**: `AIVetoVote` currently always reverts — disabled until stake escrow is implemented
 - **Owner Override**: 24h window, but `OwnerOverride` only reverts `SetFee` and `ToggleTrading` actions
 - **Dead Man's Switch**: `Claim AI Control` lets the owner reclaim control if the AI is silent 7 days
-- **AI cooldown**: `aiActionCooldown` (6h) is enforced only while `aiFullAutonomy` is enabled
+- **AI cooldown**: `aiActionCooldown` (6h) gates every administrative AI action in every mode; market signals are logged but not rate-limited
 
 ---
 
@@ -315,7 +315,7 @@ npm run website      # Serves website/ on localhost
 | Farm APY | ~150% |
 | Referral | 1% lifetime |
 | Lottery | Daily |
-| Buyback Threshold | 10 TON |
+| Buyback Threshold | 10 QSR (QSR-denominated pool) |
 
 ---
 

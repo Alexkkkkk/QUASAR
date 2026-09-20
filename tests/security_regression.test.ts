@@ -257,3 +257,70 @@ test('F8+F9+F10 on-chain: DeFi proportional deposit accounting, dust withdrawal,
     // revert for comment-less messages, so the on-chain variant is not
     // portable across sandbox versions.
 });
+
+// ═══════════════ Follow-up hardening (F-05, F-07, F-09, F-13) ═══════════════
+
+test('F5 source: a staking top-up cannot inherit the old lock end', () => {
+    const stake = section(masterSrc, 'receive(msg: Stake)', 'receive(msg: Unstake)');
+    assert.ok(stake.includes('let extended: Int = now() + self.stakingLockPeriod;'), 'top-up must recompute the lock end');
+    assert.ok(stake.includes('lockEnd = info!!.lockEnd > extended ? info!!.lockEnd : extended;'), 'lock end must be the later of the two');
+});
+
+test('F7 source: the AI cooldown is unconditional and every logged action is overridable', () => {
+    assert.ok(
+        masterSrc.includes('fun _requireAiCooldown() { require(now() - self.lastAiActionTime >= self.aiActionCooldown, "AI cooldown") }'),
+        'cooldown must not depend on aiFullAutonomy'
+    );
+    const override = section(masterSrc, 'receive(msg: OwnerOverride)', 'receive("Claim AI Control")');
+    for (const t of ['SetFee', 'ToggleTrading', 'EmergencyPause', 'SetTreasury', 'RotateOracle', 'SetBuyback', 'Rebalance']) {
+        assert.ok(override.includes(`"${t}"`), `OwnerOverride must cover ${t}`);
+    }
+    assert.ok(masterSrc.includes('fun _logAiActionSilent('), 'market signals must be recorded in the action log');
+    const signal = section(masterSrc, 'receive(msg: AIPriceSignal)', 'receive(msg: AIAnomalyAlert)');
+    assert.ok(!signal.includes('_requireAiCooldown'), 'market signals must not consume the administrative cooldown');
+});
+
+test('F9 source: the buyback threshold uses the same unit as the buyback pool', () => {
+    assert.ok(masterSrc.includes('self.buybackThreshold = 10_000_000_000;'), 'threshold must be QSR-denominated');
+    assert.ok(!masterSrc.includes('self.buybackThreshold = ton("10");'), 'the TON-denominated default must be gone');
+});
+
+test('F13 source: farm rewards stay claimable after the farm is switched off', () => {
+    const claim = section(defiSrc, 'receive(msg: ClaimFarmRewards)', 'receive(msg: SetFarmConfig)');
+    assert.ok(!claim.includes('require(self.farmEnabled'), 'accrued rewards must not be frozen by the farm switch');
+});
+
+test('F5 on-chain: a top-up extends the lock and blocks the early exit', async () => {
+    const eco = await deployEco(false);
+    const min = 100_000_000_000n; // ton("100")
+    await creditMasterDeposit(eco, eco.owner.address, min * 2n);
+
+    await eco.master.send(eco.owner.getSender(), { value: toNano('0.2') }, { $$type: 'Stake', amount: min });
+    const first = await eco.master.getGetStakeInfo(eco.owner.address);
+    assert.equal(first.lockEnd, 1000n + 2592000n, 'first stake locks for the configured period');
+
+    eco.bc.now = 1000 + 2592000 - 10; // ten seconds before the original unlock
+    await eco.master.send(eco.owner.getSender(), { value: toNano('0.2') }, { $$type: 'Stake', amount: min });
+    const second = await eco.master.getGetStakeInfo(eco.owner.address);
+    assert.equal(second.amount, min * 2n, 'both stakes must be credited');
+    assert.ok(second.lockEnd > first.lockEnd, 'the top-up must push the unlock further out');
+    assert.equal(second.lockEnd, BigInt(eco.bc.now) + 2592000n, 'the lock restarts from the top-up');
+
+    let blocked = false;
+    try {
+        const res = await eco.master.send(eco.owner.getSender(), { value: toNano('0.2') }, { $$type: 'Unstake', amount: min * 2n });
+        blocked = res.transactions.some((t: any) => t.description?.computePhase?.success === false);
+    } catch (e) {
+        blocked = true;
+    }
+    assert.ok(blocked, 'exiting before the extended lock must fail');
+    assert.equal((await eco.master.getGetStakeInfo(eco.owner.address)).amount, min * 2n, 'the stake must stay locked');
+});
+
+test('F13 on-chain: the DeFi swap fee cannot be raised above the documented 0.30%', async () => {
+    const eco = await deployEco(true);
+    await eco.defi.send(eco.owner.getSender(), { value: toNano('0.1') }, { $$type: 'SetFeeBps', feeBps: 50n }).catch(() => {});
+    assert.equal(await eco.defi.getFeeConfig(), 30n, 'raising the fee above 30 bps must revert');
+    await eco.defi.send(eco.owner.getSender(), { value: toNano('0.1') }, { $$type: 'SetFeeBps', feeBps: 25n });
+    assert.equal(await eco.defi.getFeeConfig(), 25n, 'a fee at or below the ceiling stays configurable');
+});
