@@ -62,6 +62,7 @@ contract QuasarDeFi with Deployable {
     qsrReserve: Int as coins;
     lpBalances: map<Address, Int>;
     pendingQsrDeposits: map<Address, Int>;
+    pendingQsrDepositsAt: map<Address, Int>;
     
     // AMM Fee (0.30% default = 30 bps)
     feeBps: Int as uint16;
@@ -196,8 +197,14 @@ contract QuasarDeFi with Deployable {
                 }
             }
         } else {
-            let pending: Int? = self.pendingQsrDeposits.get(msg.from);
-            self.pendingQsrDeposits.set(msg.from, pending == null ? msg.amount : pending!! + msg.amount);
+            // F-13: deposits are stamped; a pending balance older than the TTL is
+            // stale and must not silently enlarge a fresh deposit.
+            let stamp: Int? = self.pendingQsrDepositsAt.get(msg.from);
+            let prev: Int? = self.pendingQsrDeposits.get(msg.from);
+            let base: Int = 0;
+            if (stamp != null && now() - stamp!! < 86400 && prev != null) { base = prev!! }
+            self.pendingQsrDeposits.set(msg.from, base + msg.amount);
+            self.pendingQsrDepositsAt.set(msg.from, now());
         }
     }
     
@@ -582,6 +589,11 @@ contract QuasarDeFi with Deployable {
 
     get fun pendingQsrDeposit(user: Address): Int {
         let b: Int? = self.pendingQsrDeposits.get(user);
+        return b == null ? 0 : b!!;
+    }
+
+    get fun pendingQsrDepositAt(user: Address): Int {
+        let b: Int? = self.pendingQsrDepositsAt.get(user);
         return b == null ? 0 : b!!;
     }
     

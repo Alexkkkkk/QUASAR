@@ -1,0 +1,19 @@
+# F-15: normalise line endings so the contracts and web assets stay LF in git
+# regardless of the platform that checks them out.
+* text=auto eol=lf
+
+*.tact  text eol=lf
+*.ts    text eol=lf
+*.js    text eol=lf
+*.json  text eol=lf
+*.md    text eol=lf
+*.yml   text eol=lf
+*.html  text eol=lf
+*.css   text eol=lf
+
+# Build artefacts and binaries must never be line-ending converted.
+*.boc   binary
+*.png   binary
+*.jpg   binary
+*.woff  binary
+*.woff2 binary

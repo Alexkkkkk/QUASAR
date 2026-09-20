@@ -141,6 +141,24 @@ test('F-09 source: buyback executes a real AMM swap leg with atomic credit', () 
     assert.ok(tonLeg.includes('to: self.treasury'), 'proceeds must be forwarded to the treasury');
 });
 
+test('F-13 source: pending QSR deposits expire after the TTL', () => {
+    assert.ok(defiSrc.includes('pendingQsrDepositsAt'), 'deposits must be timestamped');
+    assert.ok(defiSrc.includes('now() - stamp!! < 86400'), 'a stale pending balance must not accumulate');
+    assert.ok(defiSrc.includes('get fun pendingQsrDepositAt(user: Address)'), 'the deposit timestamp must be readable');
+});
+
+test('F-03/F-16 source: the web UI deposits QSR first and reads live getters', () => {
+    const web = readFileSync(join(__dirname, '..', 'website', 'tonconnect.js'), 'utf8');
+    assert.ok(web.includes('export async function depositQsr'), 'UI must expose a QSR deposit path');
+    assert.ok(web.includes('0x0f8a7ea5'), 'deposit must use the TEP-74 transfer opcode');
+    assert.ok(web.includes('runGetMethod'), 'UI must read contract getters, not placeholders');
+    assert.ok(web.includes('pendingQsrDeposit'), 'UI must check the pending deposit before dependent calls');
+    assert.ok(!web.includes('TODO: implement contract getter calls'), 'the getter TODO must be gone');
+    const html = readFileSync(join(__dirname, '..', 'website', 'index.html'), 'utf8');
+    assert.ok(html.includes('ensureQsrDeposit'), 'UI handlers must gate on a deposit');
+    assert.ok(!html.includes('~150%'), 'the hardcoded farm APY placeholder must be gone');
+});
+
 test('F3 source: wallet fee math is pinned to 30 bps and README documents it', () => {
     const wallet = section(masterSrc, 'receive(msg: TokenTransfer)');
     assert.ok(wallet.includes('msg.amount * 30 / 10000'), 'wallet fee must stay 0.30% while unenforceable config exists');

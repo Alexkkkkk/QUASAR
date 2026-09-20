@@ -174,7 +174,7 @@
                         </div>
                         <div class="pool-stat-row">
                             <span class="pool-stat-label">Farm APY</span>
-                            <span class="pool-stat-value green" id="pool-farm-apy">~150%</span>
+                            <span class="pool-stat-value green" id="pool-farm-apy">--</span>
                         </div>
                         <div class="pool-stat-row">
                             <span class="pool-stat-label">Total Staked</span>
@@ -227,10 +227,30 @@
             if (typeof window.initTonConnect === 'function') {
                 window.initTonConnect();
             }
+            // F-16: refresh pool stats from the live getters while connected.
+            setInterval(() => {
+                if (window.__qsrOwner && typeof window.loadPoolStats === 'function') {
+                    window.loadPoolStats();
+                }
+            }, 20000);
         });
         
         // UI Helper functions
-        function executeSwap() {
+        // F-03: contract calls that consume QSR (stake, add-liquidity, sell-QSR)
+        // require a pending QSR deposit first. If the wallet has no pending
+        // deposit covering the amount, the deposit transfer is sent first and
+        // the dependent call is queued until it lands. Nothing silently fails.
+        async function ensureQsrDeposit(target, amountNano) {
+            if (!window.depositQsr || !window.pendingDeposit) return false;
+            const pending = await window.pendingDeposit(target, window.__qsrOwner);
+            if (pending >= amountNano) return true;
+            const shortfall = amountNano - pending;
+            showToast(`Depositing ${(Number(shortfall) / 1e9).toFixed(4)} QSR first...`, 'success');
+            await window.depositQsr(target, shortfall);
+            return false;
+        }
+
+        async function executeSwap() {
             const amount = parseFloat(document.getElementById('swap-amount').value);
             const direction = document.getElementById('swap-direction').value;
             const slippage = parseFloat(document.getElementById('swap-slippage').value) || 1;
@@ -243,17 +263,20 @@
             }
             const minOut = amountNano * BigInt(10000 - slippageBps) / 10000n;
             if (direction === 'to-ton') {
+                if (!(await ensureQsrDeposit('defi', amountNano))) return;
                 window.swapToTon(amountNano, minOut);
             } else {
                 window.swapToQsr(amountNano, minOut);
             }
         }
         
-        function addLiquidityFromUI() {
+        async function addLiquidityFromUI() {
             const ton = parseFloat(document.getElementById('lp-ton').value);
             const qsr = parseFloat(document.getElementById('lp-qsr').value);
             if (!ton || !qsr || ton <= 0 || qsr <= 0) { showToast('Enter valid amounts', 'error'); return; }
-            window.addLiquidity(BigInt(Math.floor(ton * 1e9)), BigInt(Math.floor(qsr * 1e9)));
+            const qsrNano = BigInt(Math.floor(qsr * 1e9));
+            if (!(await ensureQsrDeposit('defi', qsrNano))) return;
+            window.addLiquidity(BigInt(Math.floor(ton * 1e9)), qsrNano);
         }
         
         function removeLiquidityFromUI() {
@@ -262,10 +285,12 @@
             window.removeLiquidity(BigInt(Math.floor(lp * 1e9)));
         }
         
-        function stakeFromUI() {
+        async function stakeFromUI() {
             const amount = parseFloat(document.getElementById('stake-amount').value);
             if (!amount || amount <= 0) { showToast('Enter valid amount', 'error'); return; }
-            window.stakeQsr(BigInt(Math.floor(amount * 1e9)));
+            const amountNano = BigInt(Math.floor(amount * 1e9));
+            if (!(await ensureQsrDeposit('master', amountNano))) return;
+            window.stakeQsr(amountNano);
         }
         
         function unstakeFromUI() {

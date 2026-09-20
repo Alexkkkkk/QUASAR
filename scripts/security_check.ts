@@ -17,6 +17,7 @@ assertContains(master, 'self._sendTokensToDefi(defiAmt, msg.queryId);', 'fee spl
 assertContains(master, 'receive(msg: ClaimReferralRewards)', 'referral rewards have a claim path');
 assertContains(master, 'self.pendingReferralRewards.set(referrer', 'referral rewards are escrowed before claim');
 assertContains(defi, 'if (msg.from == self.qsrMaster)', 'master-funded DeFi notification is distinguished');
+assertContains(defi, 'pendingQsrDepositsAt', 'pending QSR deposits are timestamped and expire (F-13)');
 assertContains(defi, 'self.qsrReserve = self.qsrReserve + msg.amount;', 'master-funded DeFi fees enter qsrReserve');
 assertContains(defi, 'let farmAmount: Int = self._min(msg.lpAmount, farmStake!!.staked);', 'partial LP exit only unstakes farmed LP');
 assertContains(master, 'receive(msg: ProposeOwner)', 'ownership transfer requires an explicit proposal');
@@ -43,6 +44,7 @@ console.log('Security invariants passed: ' + [
     'hard supply cap',
     'DeFi fee reserve reconciliation',
     'partial LP farm exit',
+    'pending deposit expiry',
     'mint-stop protection',
     'referral escrow',
     'timelocked ownership transfer',
