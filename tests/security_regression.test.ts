@@ -12,6 +12,7 @@
  *   F9  🟡 RemoveLiquidity dust rounding blocked withdrawals
  *   F10 🟡 bare-TON receiver accepted uncredited TON
  *  F-08 🟠 ownership was a single EOA with no timelock — two-step transfer added
+ *  F-01 🔴 jetton metadata URL was hardcoded and dead (HTTP 404) — env-driven + deploy preflight
  *
  * Two layers:
  *  - source invariants: byte-level checks of the compiled-in behavior,
@@ -85,6 +86,24 @@ test('F10 source: DeFi has no bare-TON receiver', () => {
     assert.ok(!/receive\(\s*\)\s*\{/.test(defiSrc), 'bare receive() must not exist (uncredited TON)');
 });
 
+test('F-01 source: jetton metadata URL is not the dead hardcoded default and is deploy-preflighted', () => {
+    // the dead URL must never be baked back into the content cell
+    assert.ok(!masterSrc.includes('quasar-ton.netlify.app/metadata.json'), 'master source must not embed the dead metadata URL');
+    // deploy script: URL comes from env with a live default, and a preflight
+    // rejects deployment when metadata does not resolve or misses TEP-64 fields
+    const deploySrc = readFileSync(join(__dirname, '..', 'scripts', 'deploy_all.ts'), 'utf8');
+    assert.ok(deploySrc.includes("process.env.JETTON_METADATA_URL"), 'metadata URL must be configurable via JETTON_METADATA_URL');
+    assert.ok(deploySrc.includes('raw.githubusercontent.com/Alexkkkkk/QUASAR/main/website/metadata.json'), 'default must point at git-hosted metadata');
+    assert.ok(deploySrc.includes('Jetton metadata URL returns HTTP'), 'preflight must fail the deploy on a non-OK metadata response');
+    assert.ok(deploySrc.includes('missing the required TEP-64 field'), 'preflight must validate TEP-64 fields');
+    // the published metadata itself must not reference the dead domain for its image
+    const meta = JSON.parse(readFileSync(join(__dirname, '..', 'website', 'metadata.json'), 'utf8'));
+    for (const field of ['name', 'symbol', 'decimals', 'image']) {
+        assert.ok(typeof meta[field] === 'string' && meta[field].length > 0, `metadata.json must define "${field}"`);
+    }
+    assert.ok(!meta.image.includes('quasar-ton.netlify.app'), 'metadata image must not point at the dead domain');
+});
+
 test('F3 source: wallet fee math is pinned to 30 bps and README documents it', () => {
     const wallet = section(masterSrc, 'receive(msg: TokenTransfer)');
     assert.ok(wallet.includes('msg.amount * 30 / 10000'), 'wallet fee must stay 0.30% while unenforceable config exists');
@@ -109,7 +128,7 @@ async function deployEco(withDefi: boolean): Promise<Eco> {
     bc.now = 1000;
     const owner = await bc.treasury('owner');
 
-    const content = beginCell().storeUint(1, 8).storeStringTail('https://quasar-ton.netlify.app/metadata.json').endCell();
+    const content = beginCell().storeUint(1, 8).storeStringTail('https://raw.githubusercontent.com/Alexkkkkk/QUASAR/main/website/metadata.json').endCell();
     const master = await QuasarMaster.fromInit(owner.address, content, walletCode);
     const masterC = bc.openContract(master);
     await masterC.send(owner.getSender(), { value: toNano('0.5') }, { $$type: 'Deploy', queryId: 1n });

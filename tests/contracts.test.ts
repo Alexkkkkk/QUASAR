@@ -42,7 +42,8 @@ import {
 const owner = Address.parseRaw(`0:${'00'.repeat(32)}`);
 const content = beginCell()
     .storeUint(1, 8)
-    .storeStringTail('https://quasar-ton.netlify.app/metadata.json')
+    // F-01: must match the preflighted default in scripts/deploy_all.ts
+    .storeStringTail('https://raw.githubusercontent.com/Alexkkkkk/QUASAR/main/website/metadata.json')
     .endCell();
 const walletCode = beginCell().storeUint(0, 1).endCell();
 
