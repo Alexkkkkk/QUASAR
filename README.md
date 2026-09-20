@@ -39,7 +39,7 @@
 | **AI Oracle** | Optional, bounded controls; disabled by default | N/A |
 | **Built-in DEX** | CPMM AMM with 0.3% fee | External only |
 | **Yield Farming** | LP auto-stake; rewards claimed explicitly | N/A |
-| **Buyback accounting** | Fee bucket (QSR-denominated) can burn QSR; no AMM market swap yet | N/A |
+| **Buyback accounting** | Fee bucket (QSR-denominated): a share is burned, the rest is swapped for TON through the DeFi AMM and the proceeds go to the treasury | N/A |
 | **Staking Vault** | Earn APY from transaction fees | Rare |
 | **Referral System** | 1% lifetime earnings per referral | None |
 | **Team Vesting** | Linear 2-year unlock | Rare |

@@ -30,6 +30,7 @@ message(0x595f07bc) TokenBurn { queryId: Int as uint64; amount: Int as coins; re
 message(0x7362d09c) TokenNotification { queryId: Int as uint64; amount: Int as coins; from: Address; forwardPayload: Slice as remaining }
 message(0x178d4519) InternalTransfer { queryId: Int as uint64; amount: Int as coins; from: Address; responseDestination: Address; forwardTonAmount: Int as coins; forwardPayload: Slice as remaining }
 message(0x51a5c3d1) PoolPayout { queryId: Int as uint64; amount: Int as coins; destination: Address }
+message(0x2c7e91a4) BuybackTon { queryId: Int as uint64; tonAmount: Int as coins; qsrSwapped: Int as coins }
 message FeeTransfer { queryId: Int as uint64; amount: Int as coins; originalSender: Address; originalReceiver: Address }
 
 // ─── Events ───
@@ -61,6 +62,7 @@ contract QuasarDeFi with Deployable {
     qsrReserve: Int as coins;
     lpBalances: map<Address, Int>;
     pendingQsrDeposits: map<Address, Int>;
+    pendingQsrDepositsAt: map<Address, Int>;
     
     // AMM Fee (0.30% default = 30 bps)
     feeBps: Int as uint16;
@@ -129,6 +131,31 @@ contract QuasarDeFi with Deployable {
         });
     }
 
+    // F-09: master-initiated buyback swap. Runs inside the TokenNotification
+    // transaction (the QSR is already credited to qsrReserve above), pays TON
+    // out of the pool reserves and returns the proceeds to the master. No
+    // slippage or trade-size guard on purpose: the master is the pool's own
+    // counterparty, the price is bounded by CPMM math, and a revert here
+    // would bounce the jetton credit and desync the reserve accounting.
+    fun _executeBuybackSwap(qsrIn: Int, queryId: Int) {
+        require(self.tonReserve > 0, "Empty TON reserve");
+        let grossTonOut: Int = (qsrIn * self.tonReserve) / (self.qsrReserve);
+        let fee: Int = (grossTonOut * self.feeBps) / 10000;
+        let tonOut: Int = grossTonOut - fee;
+        // CPMM math guarantees 0 < tonOut < tonReserve, so the swap always
+        // succeeds whenever the pool holds any TON.
+        self.qsrReserve = self.qsrReserve - qsrIn;
+        self.tonReserve = self.tonReserve - tonOut;
+        self.feeAccumulatedTon = self.feeAccumulatedTon + fee;
+        send(SendParameters{
+            to: self.qsrMaster,
+            value: tonOut,
+            bounce: false,
+            mode: SendPayGasSeparately,
+            body: BuybackTon{ queryId: queryId, tonAmount: tonOut, qsrSwapped: qsrIn }.toCell()
+        });
+    }
+
     fun _min(a: Int, b: Int): Int {
         return a < b ? a : b;
     }
@@ -160,9 +187,24 @@ contract QuasarDeFi with Deployable {
         // enter qsrReserve directly, not become a user withdrawal credit.
         if (msg.from == self.qsrMaster) {
             self.qsrReserve = self.qsrReserve + msg.amount;
+            // F-09: a buyback marker in the forward payload converts this
+            // master liquidity transfer into an atomic AMM swap: the credit
+            // and the swap run in one transaction, so message ordering
+            // cannot split them and pool accounting stays consistent.
+            if (msg.forwardPayload.bits() >= 32) {
+                if (msg.forwardPayload.loadUint(32) == 0x5f4a3b21) {
+                    self._executeBuybackSwap(msg.amount, msg.queryId);
+                }
+            }
         } else {
-            let pending: Int? = self.pendingQsrDeposits.get(msg.from);
-            self.pendingQsrDeposits.set(msg.from, pending == null ? msg.amount : pending!! + msg.amount);
+            // F-13: deposits are stamped; a pending balance older than the TTL is
+            // stale and must not silently enlarge a fresh deposit.
+            let stamp: Int? = self.pendingQsrDepositsAt.get(msg.from);
+            let prev: Int? = self.pendingQsrDeposits.get(msg.from);
+            let base: Int = 0;
+            if (stamp != null && now() - stamp!! < 86400 && prev != null) { base = prev!! }
+            self.pendingQsrDeposits.set(msg.from, base + msg.amount);
+            self.pendingQsrDepositsAt.set(msg.from, now());
         }
     }
     
@@ -547,6 +589,11 @@ contract QuasarDeFi with Deployable {
 
     get fun pendingQsrDeposit(user: Address): Int {
         let b: Int? = self.pendingQsrDeposits.get(user);
+        return b == null ? 0 : b!!;
+    }
+
+    get fun pendingQsrDepositAt(user: Address): Int {
+        let b: Int? = self.pendingQsrDepositsAt.get(user);
         return b == null ? 0 : b!!;
     }
     

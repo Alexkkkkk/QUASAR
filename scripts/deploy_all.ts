@@ -67,11 +67,29 @@ async function deploy() {
     const walletCode = Cell.fromBoc(fs.readFileSync(walletCodePath))[0];
     
     // ─── Jetton Metadata (TEP-64) ───
-    // TEP-64 off-chain content: the metadata document contains the name,
-    // symbol, decimals, description, and image URL.
+    // F-01 remediation: the metadata URL is configurable via JETTON_METADATA_URL
+    // (default: raw.githubusercontent.com — anonymous access, git-versioned) and
+    // is preflighted below. A dead URL must never be baked into the content cell:
+    // the content of a deployed jetton is immutable (part of the init data).
+    const metadataUrl = process.env.JETTON_METADATA_URL?.trim()
+        || 'https://raw.githubusercontent.com/Alexkkkkk/QUASAR/main/website/metadata.json';
+
+    console.log(`\n🔎 Preflight: validating TEP-64 metadata at ${metadataUrl}`);
+    const metaRes = await fetch(metadataUrl);
+    if (!metaRes.ok) {
+        throw new Error(`Jetton metadata URL returns HTTP ${metaRes.status} — fix hosting before deploying (F-01)`);
+    }
+    const meta = (await metaRes.json()) as Record<string, unknown>;
+    for (const field of ['name', 'symbol', 'decimals', 'image'] as const) {
+        if (typeof meta[field] !== 'string' || (meta[field] as string).length === 0) {
+            throw new Error(`Jetton metadata is missing the required TEP-64 field "${field}" (F-01)`);
+        }
+    }
+    console.log('   ✅ Metadata resolves and contains all required TEP-64 fields');
+
     const jettonContent = beginCell()
         .storeUint(0x01, 8)
-        .storeStringTail('https://quasar-ton.netlify.app/metadata.json')
+        .storeStringTail(metadataUrl)
         .endCell();
     const sender = wallet.sender(client.provider(wallet.address), keyPair.secretKey);
     

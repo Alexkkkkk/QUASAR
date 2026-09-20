@@ -12,6 +12,7 @@
  *   F9  🟡 RemoveLiquidity dust rounding blocked withdrawals
  *   F10 🟡 bare-TON receiver accepted uncredited TON
  *  F-08 🟠 ownership was a single EOA with no timelock — two-step transfer added
+ *  F-01 🔴 jetton metadata URL was hardcoded and dead (HTTP 404) — env-driven + deploy preflight
  *
  * Two layers:
  *  - source invariants: byte-level checks of the compiled-in behavior,
@@ -85,6 +86,79 @@ test('F10 source: DeFi has no bare-TON receiver', () => {
     assert.ok(!/receive\(\s*\)\s*\{/.test(defiSrc), 'bare receive() must not exist (uncredited TON)');
 });
 
+test('F-01 source: jetton metadata URL is not the dead hardcoded default and is deploy-preflighted', () => {
+    // the dead URL must never be baked back into the content cell
+    assert.ok(!masterSrc.includes('quasar-ton.netlify.app/metadata.json'), 'master source must not embed the dead metadata URL');
+    // deploy script: URL comes from env with a live default, and a preflight
+    // rejects deployment when metadata does not resolve or misses TEP-64 fields
+    const deploySrc = readFileSync(join(__dirname, '..', 'scripts', 'deploy_all.ts'), 'utf8');
+    assert.ok(deploySrc.includes("process.env.JETTON_METADATA_URL"), 'metadata URL must be configurable via JETTON_METADATA_URL');
+    assert.ok(deploySrc.includes('raw.githubusercontent.com/Alexkkkkk/QUASAR/main/website/metadata.json'), 'default must point at git-hosted metadata');
+    assert.ok(deploySrc.includes('Jetton metadata URL returns HTTP'), 'preflight must fail the deploy on a non-OK metadata response');
+    assert.ok(deploySrc.includes('missing the required TEP-64 field'), 'preflight must validate TEP-64 fields');
+    // the published metadata itself must not reference the dead domain for its image
+    const meta = JSON.parse(readFileSync(join(__dirname, '..', 'website', 'metadata.json'), 'utf8'));
+    for (const field of ['name', 'symbol', 'decimals', 'image']) {
+        assert.ok(typeof meta[field] === 'string' && meta[field].length > 0, `metadata.json must define "${field}"`);
+    }
+    assert.ok(!meta.image.includes('quasar-ton.netlify.app'), 'metadata image must not point at the dead domain');
+});
+
+test('F-02 source: tonconnect manifest is repo-hosted and no config points at the dead domain', () => {
+    // the manifest must exist, parse, and never reference the dead netlify domain
+    const manifest = JSON.parse(readFileSync(join(__dirname, '..', 'website', 'tonconnect-manifest.json'), 'utf8'));
+    for (const field of ['url', 'name', 'iconUrl']) {
+        assert.ok(typeof manifest[field] === 'string' && manifest[field].length > 0, `tonconnect-manifest.json must define "${field}"`);
+    }
+    for (const field of ['url', 'iconUrl', 'termsOfUseUrl', 'privacyPolicyUrl']) {
+        if (manifest[field] !== undefined) {
+            assert.ok(manifest[field].startsWith('https://'), `manifest "${field}" must be https`);
+            assert.ok(!manifest[field].includes('quasar-ton.netlify.app'), `manifest "${field}" must not point at the dead domain`);
+        }
+    }
+    // config and runtime must not hardcode the dead domain
+    for (const file of ['config.js', 'tonconnect.js']) {
+        const src = readFileSync(join(__dirname, '..', 'website', file), 'utf8');
+        assert.ok(!src.includes('quasar-ton.netlify.app'), `${file} must not hardcode the dead domain`);
+    }
+    // default manifest source must be same-origin relative (works on any hosting)
+    const configSrc = readFileSync(join(__dirname, '..', 'website', 'config.js'), 'utf8');
+    assert.ok(configSrc.includes("manifestUrl: './tonconnect-manifest.json'"), 'config.js default must be a same-origin relative manifest URL');
+});
+
+test('F-09 source: buyback executes a real AMM swap leg with atomic credit', () => {
+    const swapLeg = section(masterSrc, 'fun _sendBuybackToDefi', 'receive(msg: BuybackTon)');
+    assert.ok(swapLeg.includes('0x5f4a3b21'), 'the swap leg must carry the buyback marker payload');
+    assert.ok(swapLeg.includes('forwardTonAmount: ton("0.01")'), 'the marker must reach DeFi via the notification hook');
+    // DeFi consumes the marker inside the credit transaction: no ordering gap
+    assert.ok(defiSrc.includes('msg.forwardPayload.loadUint(32) == 0x5f4a3b21'), 'DeFi must parse the buyback marker from the forward payload');
+    assert.ok(defiSrc.includes('fun _executeBuybackSwap(qsrIn: Int, queryId: Int)'), 'DeFi must implement the master-initiated swap');
+    assert.ok(defiSrc.includes('body: BuybackTon{ queryId: queryId, tonAmount: tonOut, qsrSwapped: qsrIn }.toCell()'), 'the AMM must return the TON proceeds to the master');
+    // the master accounts the proceeds and forwards them to the treasury
+    const tonLeg = section(masterSrc, 'receive(msg: BuybackTon)', 'bounced(msg: bounced<PoolPayout>)');
+    assert.ok(tonLeg.includes('require(sender() == self.defiAddress, "Only DeFi")'), 'only the configured DeFi may deliver buyback proceeds');
+    assert.ok(tonLeg.includes('self.totalTonSpentOnBuyback = self.totalTonSpentOnBuyback + msg.tonAmount;'), 'proceeds must be counted in the buyback TON counter');
+    assert.ok(tonLeg.includes('to: self.treasury'), 'proceeds must be forwarded to the treasury');
+});
+
+test('F-13 source: pending QSR deposits expire after the TTL', () => {
+    assert.ok(defiSrc.includes('pendingQsrDepositsAt'), 'deposits must be timestamped');
+    assert.ok(defiSrc.includes('now() - stamp!! < 86400'), 'a stale pending balance must not accumulate');
+    assert.ok(defiSrc.includes('get fun pendingQsrDepositAt(user: Address)'), 'the deposit timestamp must be readable');
+});
+
+test('F-03/F-16 source: the web UI deposits QSR first and reads live getters', () => {
+    const web = readFileSync(join(__dirname, '..', 'website', 'tonconnect.js'), 'utf8');
+    assert.ok(web.includes('export async function depositQsr'), 'UI must expose a QSR deposit path');
+    assert.ok(web.includes('0x0f8a7ea5'), 'deposit must use the TEP-74 transfer opcode');
+    assert.ok(web.includes('runGetMethod'), 'UI must read contract getters, not placeholders');
+    assert.ok(web.includes('pendingQsrDeposit'), 'UI must check the pending deposit before dependent calls');
+    assert.ok(!web.includes('TODO: implement contract getter calls'), 'the getter TODO must be gone');
+    const html = readFileSync(join(__dirname, '..', 'website', 'index.html'), 'utf8');
+    assert.ok(html.includes('ensureQsrDeposit'), 'UI handlers must gate on a deposit');
+    assert.ok(!html.includes('~150%'), 'the hardcoded farm APY placeholder must be gone');
+});
+
 test('F3 source: wallet fee math is pinned to 30 bps and README documents it', () => {
     const wallet = section(masterSrc, 'receive(msg: TokenTransfer)');
     assert.ok(wallet.includes('msg.amount * 30 / 10000'), 'wallet fee must stay 0.30% while unenforceable config exists');
@@ -109,7 +183,7 @@ async function deployEco(withDefi: boolean): Promise<Eco> {
     bc.now = 1000;
     const owner = await bc.treasury('owner');
 
-    const content = beginCell().storeUint(1, 8).storeStringTail('https://quasar-ton.netlify.app/metadata.json').endCell();
+    const content = beginCell().storeUint(1, 8).storeStringTail('https://raw.githubusercontent.com/Alexkkkkk/QUASAR/main/website/metadata.json').endCell();
     const master = await QuasarMaster.fromInit(owner.address, content, walletCode);
     const masterC = bc.openContract(master);
     await masterC.send(owner.getSender(), { value: toNano('0.5') }, { $$type: 'Deploy', queryId: 1n });
@@ -391,4 +465,45 @@ test('F8 on-chain: the owner key cannot be rotated without the 48h timelock', as
     assert.ok(await ownerOpBlocked(
         eco.master.send(eco.owner.getSender(), { value: toNano('0.1') }, { $$type: 'CancelOwnerTransfer' })
     ), 'the previous owner must lose control after acceptance');
+});
+
+test('F-09 on-chain: buyback swap leg access control and empty-pool guard', async () => {
+    // Negative on-chain coverage. The positive swap flow is covered by the
+    // F-09 source invariant + security_check invariants: an on-chain positive
+    // run is blocked by a PRE-EXISTING defect of the fee path — on stock
+    // main (bisected, commit d03e788) a FeeTransfer from the master's own
+    // jetton wallet reverts with exit code 5 (integer out of expected range)
+    // before any fee distribution happens. No pre-existing test exercised
+    // this path. The buyback pool can only be funded via FeeTransfer, so a
+    // positive on-chain buyback run is impossible until that defect is fixed.
+    const eco = await deployEco(true);
+
+    // negative: with no fee transfers ever processed, the pool is empty and
+    // TriggerBuyback must revert (Pool low)
+    const cfg = await eco.master.getGetBuybackState();
+    assert.equal(cfg.pool, 0n);
+    assert.ok(await ownerOpBlocked(
+        eco.master.send(eco.owner.getSender(), { value: toNano('0.1') }, { $$type: 'TriggerBuyback', queryId: 9n })
+    ), 'an empty buyback pool must revert the trigger (Pool low)');
+
+    // negative: only the configured DeFi may deliver buyback proceeds
+    const stranger = await eco.bc.treasury('stranger');
+    assert.ok(await ownerOpBlocked(
+        eco.master.send(eco.bc.sender(stranger.address), { value: toNano('0.2') }, {
+            $$type: 'BuybackTon', queryId: 10n, tonAmount: 1n, qsrSwapped: 1n
+        })
+    ), 'a non-DeFi sender must not impersonate the buyback proceeds');
+
+    // negative: even the real DeFi cannot forge proceeds with a zero amount
+    assert.ok(await ownerOpBlocked(
+        eco.defi.send(eco.owner.getSender(), { value: toNano('0.2') }, {
+            $$type: 'BuybackTon', queryId: 11n, tonAmount: 0n, qsrSwapped: 1n
+        })
+    ), 'a zero-amount proceeds message must revert (Invalid amount)');
+
+    // nothing changed in the buyback accounting
+    const after = await eco.master.getGetBuybackState();
+    assert.equal(after.pool, 0n);
+    assert.equal(after.totalBuybacks, 0n);
+    assert.equal(after.totalTonSpent, 0n);
 });
