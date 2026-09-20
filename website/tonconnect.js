@@ -42,7 +42,8 @@ export function initTonConnect() {
     const config = window.QUASAR_CONFIG || {};
     
     tonConnectUI = new window.TON_CONNECT_UI.TonConnectUI({
-        manifestUrl: config.manifestUrl || 'https://quasar-ton.netlify.app/tonconnect-manifest.json',
+        // F-02: same-origin fallback instead of the dead hardcoded domain
+        manifestUrl: config.manifestUrl || './tonconnect-manifest.json',
         buttonRootId: config.buttonRootId || 'ton-connect',
     });
     
