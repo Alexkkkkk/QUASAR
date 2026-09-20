@@ -85,6 +85,28 @@ test('F10 source: DeFi has no bare-TON receiver', () => {
     assert.ok(!/receive\(\s*\)\s*\{/.test(defiSrc), 'bare receive() must not exist (uncredited TON)');
 });
 
+test('F-02 source: tonconnect manifest is repo-hosted and no config points at the dead domain', () => {
+    // the manifest must exist, parse, and never reference the dead netlify domain
+    const manifest = JSON.parse(readFileSync(join(__dirname, '..', 'website', 'tonconnect-manifest.json'), 'utf8'));
+    for (const field of ['url', 'name', 'iconUrl']) {
+        assert.ok(typeof manifest[field] === 'string' && manifest[field].length > 0, `tonconnect-manifest.json must define "${field}"`);
+    }
+    for (const field of ['url', 'iconUrl', 'termsOfUseUrl', 'privacyPolicyUrl']) {
+        if (manifest[field] !== undefined) {
+            assert.ok(manifest[field].startsWith('https://'), `manifest "${field}" must be https`);
+            assert.ok(!manifest[field].includes('quasar-ton.netlify.app'), `manifest "${field}" must not point at the dead domain`);
+        }
+    }
+    // config and runtime must not hardcode the dead domain
+    for (const file of ['config.js', 'tonconnect.js']) {
+        const src = readFileSync(join(__dirname, '..', 'website', file), 'utf8');
+        assert.ok(!src.includes('quasar-ton.netlify.app'), `${file} must not hardcode the dead domain`);
+    }
+    // default manifest source must be same-origin relative (works on any hosting)
+    const configSrc = readFileSync(join(__dirname, '..', 'website', 'config.js'), 'utf8');
+    assert.ok(configSrc.includes("manifestUrl: './tonconnect-manifest.json'"), 'config.js default must be a same-origin relative manifest URL');
+});
+
 test('F3 source: wallet fee math is pinned to 30 bps and README documents it', () => {
     const wallet = section(masterSrc, 'receive(msg: TokenTransfer)');
     assert.ok(wallet.includes('msg.amount * 30 / 10000'), 'wallet fee must stay 0.30% while unenforceable config exists');

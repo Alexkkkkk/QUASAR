@@ -4,7 +4,10 @@
 // ═══════════════════════════════════════════════════════════════
 
 const QUASAR_CONFIG = {
-    manifestUrl: 'https://quasar-ton.netlify.app/tonconnect-manifest.json',
+    // F-02: same-origin relative URL. TON Connect requires the manifest to be
+    // fetched from the same origin as the dApp, and its internal "url" field
+    // must match the hosting origin. A relative default works on ANY hosting.
+    manifestUrl: './tonconnect-manifest.json',
     buttonRootId: 'ton-connect',
     toncenter: {
         mainnet: 'https://toncenter.com/api/v2/jsonRPC',
