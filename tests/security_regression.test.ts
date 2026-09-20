@@ -11,6 +11,7 @@
  *   F8  🟡 AddLiquidity donated unbalanced surplus to the pool
  *   F9  🟡 RemoveLiquidity dust rounding blocked withdrawals
  *   F10 🟡 bare-TON receiver accepted uncredited TON
+ *  F-08 🟠 ownership was a single EOA with no timelock — two-step transfer added
  *
  * Two layers:
  *  - source invariants: byte-level checks of the compiled-in behavior,
@@ -323,4 +324,71 @@ test('F13 on-chain: the DeFi swap fee cannot be raised above the documented 0.30
     assert.equal(await eco.defi.getFeeConfig(), 30n, 'raising the fee above 30 bps must revert');
     await eco.defi.send(eco.owner.getSender(), { value: toNano('0.1') }, { $$type: 'SetFeeBps', feeBps: 25n });
     assert.equal(await eco.defi.getFeeConfig(), 25n, 'a fee at or below the ceiling stays configurable');
+});
+
+// ═══════════════ Ownership transfer (F-08) ═══════════════
+
+function ownerOpSucceeded(res: any): boolean {
+    return res.transactions.some((t: any) => t.description?.computePhase?.success === true);
+}
+
+async function ownerOpBlocked(p: Promise<any>): Promise<boolean> {
+    try {
+        const res = await p;
+        return res.transactions.some((t: any) => t.description?.computePhase?.success === false);
+    } catch {
+        return true;
+    }
+}
+
+test('F8 source: ownership transfer is two-step and timelocked', () => {
+    const propose = section(masterSrc, 'receive(msg: ProposeOwner)', 'receive(msg: CancelOwnerTransfer)');
+    assert.ok(propose.includes('self.pendingOwner = msg.newOwner;'), 'proposal must record a pending owner');
+    assert.ok(propose.includes('self.ownerTransferAt = now() + self.ownerTransferDelay;'), 'proposal must arm the timelock');
+    assert.ok(!propose.includes('self.owner = '), 'proposal must not transfer ownership immediately');
+
+    const accept = section(masterSrc, 'receive(msg: AcceptOwner)', 'receive(msg: SetTreasury)');
+    assert.ok(accept.includes('require(sender() == self.pendingOwner, "Not pending owner");'), 'only the pending owner may accept');
+    assert.ok(accept.includes('require(now() >= self.ownerTransferAt, "Timelock active");'), 'acceptance must wait out the timelock');
+    assert.ok(accept.includes('self.owner = self.pendingOwner;'), 'acceptance performs the transfer');
+
+    const cancel = section(masterSrc, 'receive(msg: CancelOwnerTransfer)', 'receive(msg: AcceptOwner)');
+    assert.ok(cancel.includes('self._requireOwner()'), 'only the owner may cancel');
+    assert.ok(cancel.includes('self.pendingOwner = newAddress(0, 0);'), 'cancel must clear the pending owner');
+});
+
+test('F8 on-chain: the owner key cannot be rotated without the 48h timelock', async () => {
+    const eco = await deployEco(false);
+    const heir = await eco.bc.treasury('heir');
+
+    // No proposal yet: accepting must fail and leave nothing pending.
+    assert.ok(await ownerOpBlocked(
+        eco.master.send(eco.bc.sender(heir.address), { value: toNano('0.1') }, { $$type: 'AcceptOwner' })
+    ), 'accept without a proposal must revert');
+    assert.ok((await eco.master.getGetPendingOwner()).equals(ZERO), 'nothing pending after a failed accept');
+
+    // Propose: records the heir and arms a 48h timelock.
+    await eco.master.send(eco.owner.getSender(), { value: toNano('0.1') }, {
+        $$type: 'ProposeOwner', newOwner: heir.address
+    });
+    assert.ok((await eco.master.getGetPendingOwner()).equals(heir.address), 'proposal must record the pending owner');
+    assert.equal(await eco.master.getGetOwnerTransferAt(), 1000n + 172800n, 'timelock must arm 48h out');
+
+    // The heir cannot take control before the delay elapses.
+    assert.ok(await ownerOpBlocked(
+        eco.master.send(eco.bc.sender(heir.address), { value: toNano('0.1') }, { $$type: 'AcceptOwner' })
+    ), 'accept before the timelock must revert');
+    assert.ok((await eco.master.getGetPendingOwner()).equals(heir.address), 'failed early accept must not clear the proposal');
+
+    // After the delay the heir takes control and the old owner loses it.
+    eco.bc.now = 1000 + 172800;
+    const accepted = await eco.master.send(eco.bc.sender(heir.address), { value: toNano('0.1') }, { $$type: 'AcceptOwner' });
+    assert.ok(ownerOpSucceeded(accepted), 'accept after the timelock must succeed');
+    assert.ok((await eco.master.getGetPendingOwner()).equals(ZERO), 'acceptance must clear the pending owner');
+
+    const heirActs = await eco.master.send(eco.bc.sender(heir.address), { value: toNano('0.1') }, { $$type: 'CancelOwnerTransfer' });
+    assert.ok(ownerOpSucceeded(heirActs), 'the new owner must be able to act');
+    assert.ok(await ownerOpBlocked(
+        eco.master.send(eco.owner.getSender(), { value: toNano('0.1') }, { $$type: 'CancelOwnerTransfer' })
+    ), 'the previous owner must lose control after acceptance');
 });

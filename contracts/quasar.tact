@@ -115,6 +115,12 @@ contract QuasarMaster with Deployable {
     maxSupply: Int as coins;
     mintable: Bool;
     owner: Address;
+    // Two-step ownership transfer with a timelock (F-08): a proposed owner
+    // must wait before accepting, so a single compromised key cannot rotate
+    // control instantly.
+    pendingOwner: Address;
+    ownerTransferAt: Int;
+    ownerTransferDelay: Int as uint32;
     content: Cell;
     walletCode: Cell;
     reserveBalance: Int as coins;
@@ -215,6 +221,10 @@ contract QuasarMaster with Deployable {
         self.maxSupply = ton("1000000000");
         self.mintable = true;
         self.owner = owner;
+        self.pendingOwner = newAddress(0, 0);
+        self.ownerTransferAt = 0;
+        // 48h timelock before a proposed owner may take control.
+        self.ownerTransferDelay = 172800;
         self.content = content;
         self.walletCode = walletCode;
         self.reserveBalance = 0;
@@ -1097,6 +1107,29 @@ contract QuasarMaster with Deployable {
     // OWNER ADMIN
     // ═══════════════════════════════════════════════════════════
     
+    // ─── OWNERSHIP (two-step + timelock, F-08) ───
+    receive(msg: ProposeOwner) {
+        self._requireOwner();
+        require(msg.newOwner != newAddress(0, 0), "Invalid owner");
+        self.pendingOwner = msg.newOwner;
+        self.ownerTransferAt = now() + self.ownerTransferDelay;
+    }
+
+    receive(msg: CancelOwnerTransfer) {
+        self._requireOwner();
+        self.pendingOwner = newAddress(0, 0);
+        self.ownerTransferAt = 0;
+    }
+
+    receive(msg: AcceptOwner) {
+        require(self.pendingOwner != newAddress(0, 0), "No pending owner");
+        require(sender() == self.pendingOwner, "Not pending owner");
+        require(now() >= self.ownerTransferAt, "Timelock active");
+        self.owner = self.pendingOwner;
+        self.pendingOwner = newAddress(0, 0);
+        self.ownerTransferAt = 0;
+    }
+
     receive(msg: SetTreasury) {
         self._requireOwner();
         require(!self.aiFullAutonomy, "AI controls");
@@ -1161,6 +1194,9 @@ contract QuasarMaster with Deployable {
     // GETTERS
     // ═══════════════════════════════════════════════════════════
     
+    get fun get_pending_owner(): Address { return self.pendingOwner }
+    get fun get_owner_transfer_at(): Int { return self.ownerTransferAt }
+    get fun get_owner_transfer_delay(): Int { return self.ownerTransferDelay }
     get fun get_jetton_data(): JettonData {
         return JettonData{ totalSupply: self.totalSupply, mintable: self.mintable, adminAddress: self.owner, jettonContent: self.content, jettonWalletCode: self.walletCode }
     }
@@ -1225,6 +1261,11 @@ contract QuasarMaster with Deployable {
 
 message SetDefiPayoutCap { maxPayoutBps: Int as uint16 }
 message SweepTON { amount: Int as coins }
+
+// ─── Ownership (two-step + timelock, F-08) ───
+message ProposeOwner { newOwner: Address }
+message AcceptOwner { }
+message CancelOwnerTransfer { }
 
 // ═══════════════════════════════════════════════════════════════
 // QUASAR WALLET — Optimized with fee deduction
