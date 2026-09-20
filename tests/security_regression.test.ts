@@ -126,6 +126,21 @@ test('F-02 source: tonconnect manifest is repo-hosted and no config points at th
     assert.ok(configSrc.includes("manifestUrl: './tonconnect-manifest.json'"), 'config.js default must be a same-origin relative manifest URL');
 });
 
+test('F-09 source: buyback executes a real AMM swap leg with atomic credit', () => {
+    const swapLeg = section(masterSrc, 'fun _sendBuybackToDefi', 'receive(msg: BuybackTon)');
+    assert.ok(swapLeg.includes('0x5f4a3b21'), 'the swap leg must carry the buyback marker payload');
+    assert.ok(swapLeg.includes('forwardTonAmount: ton("0.01")'), 'the marker must reach DeFi via the notification hook');
+    // DeFi consumes the marker inside the credit transaction: no ordering gap
+    assert.ok(defiSrc.includes('msg.forwardPayload.loadUint(32) == 0x5f4a3b21'), 'DeFi must parse the buyback marker from the forward payload');
+    assert.ok(defiSrc.includes('fun _executeBuybackSwap(qsrIn: Int, queryId: Int)'), 'DeFi must implement the master-initiated swap');
+    assert.ok(defiSrc.includes('body: BuybackTon{ queryId: queryId, tonAmount: tonOut, qsrSwapped: qsrIn }.toCell()'), 'the AMM must return the TON proceeds to the master');
+    // the master accounts the proceeds and forwards them to the treasury
+    const tonLeg = section(masterSrc, 'receive(msg: BuybackTon)', 'bounced(msg: bounced<PoolPayout>)');
+    assert.ok(tonLeg.includes('require(sender() == self.defiAddress, "Only DeFi")'), 'only the configured DeFi may deliver buyback proceeds');
+    assert.ok(tonLeg.includes('self.totalTonSpentOnBuyback = self.totalTonSpentOnBuyback + msg.tonAmount;'), 'proceeds must be counted in the buyback TON counter');
+    assert.ok(tonLeg.includes('to: self.treasury'), 'proceeds must be forwarded to the treasury');
+});
+
 test('F3 source: wallet fee math is pinned to 30 bps and README documents it', () => {
     const wallet = section(masterSrc, 'receive(msg: TokenTransfer)');
     assert.ok(wallet.includes('msg.amount * 30 / 10000'), 'wallet fee must stay 0.30% while unenforceable config exists');
@@ -432,4 +447,45 @@ test('F8 on-chain: the owner key cannot be rotated without the 48h timelock', as
     assert.ok(await ownerOpBlocked(
         eco.master.send(eco.owner.getSender(), { value: toNano('0.1') }, { $$type: 'CancelOwnerTransfer' })
     ), 'the previous owner must lose control after acceptance');
+});
+
+test('F-09 on-chain: buyback swap leg access control and empty-pool guard', async () => {
+    // Negative on-chain coverage. The positive swap flow is covered by the
+    // F-09 source invariant + security_check invariants: an on-chain positive
+    // run is blocked by a PRE-EXISTING defect of the fee path — on stock
+    // main (bisected, commit d03e788) a FeeTransfer from the master's own
+    // jetton wallet reverts with exit code 5 (integer out of expected range)
+    // before any fee distribution happens. No pre-existing test exercised
+    // this path. The buyback pool can only be funded via FeeTransfer, so a
+    // positive on-chain buyback run is impossible until that defect is fixed.
+    const eco = await deployEco(true);
+
+    // negative: with no fee transfers ever processed, the pool is empty and
+    // TriggerBuyback must revert (Pool low)
+    const cfg = await eco.master.getGetBuybackState();
+    assert.equal(cfg.pool, 0n);
+    assert.ok(await ownerOpBlocked(
+        eco.master.send(eco.owner.getSender(), { value: toNano('0.1') }, { $$type: 'TriggerBuyback', queryId: 9n })
+    ), 'an empty buyback pool must revert the trigger (Pool low)');
+
+    // negative: only the configured DeFi may deliver buyback proceeds
+    const stranger = await eco.bc.treasury('stranger');
+    assert.ok(await ownerOpBlocked(
+        eco.master.send(eco.bc.sender(stranger.address), { value: toNano('0.2') }, {
+            $$type: 'BuybackTon', queryId: 10n, tonAmount: 1n, qsrSwapped: 1n
+        })
+    ), 'a non-DeFi sender must not impersonate the buyback proceeds');
+
+    // negative: even the real DeFi cannot forge proceeds with a zero amount
+    assert.ok(await ownerOpBlocked(
+        eco.defi.send(eco.owner.getSender(), { value: toNano('0.2') }, {
+            $$type: 'BuybackTon', queryId: 11n, tonAmount: 0n, qsrSwapped: 1n
+        })
+    ), 'a zero-amount proceeds message must revert (Invalid amount)');
+
+    // nothing changed in the buyback accounting
+    const after = await eco.master.getGetBuybackState();
+    assert.equal(after.pool, 0n);
+    assert.equal(after.totalBuybacks, 0n);
+    assert.equal(after.totalTonSpent, 0n);
 });

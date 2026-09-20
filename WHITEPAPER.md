@@ -191,7 +191,7 @@ The buyback pool accumulates its configured share of fees. When the threshold is
 
 ### Current implementation limitation
 
-In the current QuasarMaster source, the buyback path does not perform an actual swap through QuasarDeFi. It calculates a QSR burn amount using the contract formula, updates accounting, and sends the remaining TON value to the owner. Therefore, claims about a fully automated market buyback should be treated as a target design until an on-chain swap path, tests, and audit confirmation are implemented.
+In the current QuasarMaster source, the buyback executes in two legs. The burn leg destroys `burnPercent` of the pool directly from the reserve. When a DeFi address is configured and `burnPercent` is below 100, the remaining share is delivered to the QuasarDeFi pool marked with a buyback payload; the pool credits the liquidity and atomically executes a real CPMM swap in the same transaction, returning the TON proceeds to the master, which forwards them to the treasury and reports them through `EventBuybackSwapped` and the `totalTonSpent` counter. With the default `burnPercent = 100` the program is a pure burn; setting a lower burn percentage through `SetBuybackConfig` enables the AMM leg.
 
 ## 13. Security and Risk Disclosure
 

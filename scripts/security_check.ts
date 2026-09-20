@@ -26,6 +26,12 @@ assertContains(master, 'require(now() >= self.ownerTransferAt, "Timelock active"
 assertContains(master, 'let extended: Int = now() + self.stakingLockPeriod;', 'staking top-up extends the lock (F-05)');
 assertContains(master, 'fun _requireAiCooldown() { require(now() - self.lastAiActionTime >= self.aiActionCooldown, "AI cooldown") }', 'AI cooldown is unconditional (F-07)');
 assertContains(master, 'self.buybackThreshold = 10_000_000_000;', 'buyback threshold is QSR-denominated (F-09)');
+assertContains(master, 'fun _sendBuybackToDefi', 'buyback swap leg is routed through the DeFi AMM (F-09)');
+assertContains(master, 'storeUint(0x5f4a3b21, 32)', 'buyback marker payload identifies the swap leg (F-09)');
+assertContains(master, 'receive(msg: BuybackTon)', 'master accounts the AMM buyback TON proceeds (F-09)');
+assertContains(defi, 'fun _executeBuybackSwap', 'DeFi executes the master-initiated buyback swap (F-09)');
+assertContains(defi, 'self._executeBuybackSwap(msg.amount, msg.queryId);', 'the buyback swap runs atomically inside the credit transaction (F-09)');
+assertContains(defi, 'message(0x2c7e91a4) BuybackTon', 'buyback TON return uses a dedicated opcode (F-09)');
 assertContains(master, 'aiActionOldAddress: map<Int, Address>;', 'AI address actions are reversible (F-07)');
 assertContains(defi, 'require(msg.feeBps > 0 && msg.feeBps <= 30, "Fee must not exceed 0.30%");', 'DeFi fee ceiling matches the docs (F-13)');
 
@@ -43,6 +49,7 @@ console.log('Security invariants passed: ' + [
     'staking lock extension',
     'unconditional AI cooldown',
     'QSR-denominated buyback threshold',
+    'buyback AMM swap leg',
     'reversible AI address actions',
     'DeFi fee ceiling'
 ].join(', '));

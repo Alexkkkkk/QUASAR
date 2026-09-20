@@ -11,6 +11,8 @@ message EventMint { amount: Int; receiver: Address }
 message EventBurn { amount: Int; burner: Address }
 message EventFeeDistributed { totalFee: Int; burn: Int; buyback: Int; lottery: Int; staking: Int; referral: Int; treasury: Int; defiPool: Int }
 message EventBuybackExecuted { tonSpent: Int; qsrBurned: Int }
+message EventBuybackSwapped { queryId: Int as uint64; qsrIn: Int; tonOut: Int }
+message(0x2c7e91a4) BuybackTon { queryId: Int as uint64; tonAmount: Int as coins; qsrSwapped: Int as coins }
 message EventLotteryDrawn { round: Int; winner: Address; jackpot: Int }
 message EventStake { staker: Address; amount: Int }
 message EventUnstake { staker: Address; amount: Int }
@@ -82,7 +84,7 @@ struct JettonData { totalSupply: Int; mintable: Bool; adminAddress: Address; jet
 struct JettonWalletData { balance: Int; owner: Address; master: Address; walletCode: Cell }
 struct AIState { oracleAddress: Address; aiModeEnabled: Bool; fullAutonomy: Bool; lastRebalanceAt: Int; totalSignalsReceived: Int; currentFeeBps: Int; priceHistoryCount: Int; anomalyCount: Int; lastHeartbeat: Int; isAlive: Bool }
 struct FeeConfig { feeBps: Int; burnShare: Int; treasuryShare: Int; maxTxBps: Int; maxWalletBps: Int; cooldown: Int; totalBurned: Int; totalFeesCollected: Int }
-struct BuybackState { enabled: Bool; pool: Int; threshold: Int; cooldown: Int; burnPercent: Int; lastBuybackAt: Int; totalBuybacks: Int; totalQsrBurnedViaBuyback: Int; totalTonSpent: Int }
+struct BuybackState { enabled: Bool; pool: Int; threshold: Int; cooldown: Int; burnPercent: Int; buybackSwapPending: Int; buybackSwapQueryId: Int; lastBuybackAt: Int; totalBuybacks: Int; totalQsrBurnedViaBuyback: Int; totalTonSpent: Int }
 struct AutonomyState { fullAutonomyEnabled: Bool; aiActionCooldown: Int; lastAiActionTime: Int; heartbeatTimeout: Int; lastHeartbeat: Int; ownerOverrideWindow: Int; vetoThresholdBps: Int; totalVetoStake: Int; pendingActions: Int }
 struct AIActionLog { actionId: Int; timestamp: Int; actionType: String; oldValue: Int; newValue: Int; reason: String; executed: Bool; vetoed: Bool; overridden: Bool }
 struct VetoState { actionId: Int; totalStake: Int; vetoCount: Int; threshold: Int; active: Bool }
@@ -144,6 +146,8 @@ contract QuasarMaster with Deployable {
     buybackThreshold: Int as coins;
     buybackCooldown: Int as uint32;
     buybackBurnPercent: Int as uint8;
+    buybackSwapPending: Int as coins;
+    buybackSwapQueryId: Int as uint64;
     lastBuybackTime: Int;
     totalBuybacks: Int;
     totalQsrBurnedViaBuyback: Int as coins;
@@ -249,6 +253,8 @@ contract QuasarMaster with Deployable {
         self.buybackThreshold = 10_000_000_000; // 10 QSR
         self.buybackCooldown = 3600;
         self.buybackBurnPercent = 100;
+        self.buybackSwapPending = 0;
+        self.buybackSwapQueryId = 0;
         self.lastBuybackTime = 0;
         self.totalBuybacks = 0;
         self.totalQsrBurnedViaBuyback = 0;
@@ -447,6 +453,13 @@ contract QuasarMaster with Deployable {
     // accounting to stay consistent with the jetton ledger.
     bounced(msg: bounced<InternalTransfer>) {
         self.reserveBalance = self.reserveBalance + msg.amount;
+        // A bounced buyback swap leg returns its amount to the buyback pool,
+        // not to the free reserve; the queryId match rules out unrelated
+        // bounced transfers being misattributed to the swap leg.
+        if (self.buybackSwapPending > 0 && msg.queryId == self.buybackSwapQueryId) {
+            self.buybackPool = self.buybackPool + self.buybackSwapPending;
+            self.buybackSwapPending = 0;
+        }
     }
     
     receive("Stop Minting") { self._requireOwner(); self.mintable = false }
@@ -571,21 +584,61 @@ contract QuasarMaster with Deployable {
     }
     
     fun _executeBuyback(queryId: Int) {
-        // No AMM swap is performed here. Burn the reserve safely and report
-        // zero TON spent instead of claiming a buyback happened.
-        let qsrBurn: Int = self.buybackPool * self.buybackBurnPercent / 100;
-        if (qsrBurn > self.totalSupply) { qsrBurn = self.totalSupply }
-        if (qsrBurn > self.reserveBalance) { qsrBurn = self.reserveBalance }
-        self.buybackPool = self.buybackPool - qsrBurn;
-        if (qsrBurn > 0) {
-            self.totalSupply = self.totalSupply - qsrBurn;
-            self.totalBurned = self.totalBurned + qsrBurn;
-            self.totalQsrBurnedViaBuyback = self.totalQsrBurnedViaBuyback + qsrBurn;
-            self.reserveBalance = self.reserveBalance - qsrBurn;
+        let pool: Int = self.buybackPool;
+        let burnPart: Int = pool * self.buybackBurnPercent / 100;
+        if (burnPart > self.totalSupply) { burnPart = self.totalSupply }
+        if (burnPart > self.reserveBalance) { burnPart = self.reserveBalance }
+        // F-09: with an AMM configured, the non-burned share is swapped for
+        // TON through the real DeFi pool; without one, the whole pool burns.
+        // swapPart is derived from the CAPPED burn part so the pool is always
+        // fully consumed (burn + swap = pool).
+        let swapPart: Int = self.defiAddress == newAddress(0, 0) ? 0 : pool - burnPart;
+        if (swapPart > self.reserveBalance - burnPart) { swapPart = self.reserveBalance - burnPart }
+        self.buybackPool = pool - burnPart - swapPart;
+        if (burnPart > 0) {
+            self.totalSupply = self.totalSupply - burnPart;
+            self.totalBurned = self.totalBurned + burnPart;
+            self.totalQsrBurnedViaBuyback = self.totalQsrBurnedViaBuyback + burnPart;
+            self.reserveBalance = self.reserveBalance - burnPart;
+            send(SendParameters{ to: self.owner, value: 0, bounce: false, mode: SendRemainingValue, body: EventBuybackExecuted{ tonSpent: 0, qsrBurned: burnPart }.toCell() });
+        }
+        if (swapPart > 0) {
+            self._sendBuybackToDefi(swapPart, queryId);
         }
         self.totalBuybacks = self.totalBuybacks + 1;
         self.lastBuybackTime = now();
-        send(SendParameters{ to: self.owner, value: 0, bounce: false, mode: SendRemainingValue, body: EventBuybackExecuted{ tonSpent: 0, qsrBurned: qsrBurn }.toCell() });
+    }
+
+    // Swap leg (F-09): the non-burned buyback share is delivered to the DeFi
+    // pool as master liquidity carrying the buyback marker in the forward
+    // payload. The pool credits the liquidity and executes a real CPMM swap
+    // atomically in the same transaction, then returns the TON proceeds via
+    // BuybackTon.
+    fun _sendBuybackToDefi(amount: Int, queryId: Int) {
+        require(amount > 0, "Invalid buyback swap amount");
+        require(self.defiAddress != newAddress(0, 0), "DeFi not configured");
+        require(self.reserveBalance >= amount, "Insufficient QSR reserve");
+        self.reserveBalance = self.reserveBalance - amount;
+        self.buybackSwapPending = amount;
+        self.buybackSwapQueryId = queryId;
+        let markerPayload: Slice = beginCell().storeUint(0x5f4a3b21, 32).endCell().asSlice();
+        let init: StateInit = initOf QuasarWallet(self.defiAddress, myAddress());
+        send(SendParameters{
+            to: contractAddress(init),
+            value: ton("0.05"),
+            bounce: true,
+            mode: SendPayGasSeparately,
+            body: InternalTransfer{
+                queryId: queryId,
+                amount: amount,
+                from: myAddress(),
+                responseDestination: myAddress(),
+                forwardTonAmount: ton("0.01"),
+                forwardPayload: markerPayload
+            }.toCell(),
+            code: init.code,
+            data: init.data
+        });
     }
     
     // ═══════════════════════════════════════════════════════════
@@ -1099,6 +1152,21 @@ contract QuasarMaster with Deployable {
         self._sendTokens(msg.destination, msg.amount, msg.queryId, myAddress());
     }
 
+    // F-09: TON proceeds of the AMM buyback swap. The master forwards the
+    // realized value to the treasury and reports the swap. The historical
+    // totalTonSpentOnBuyback counter accumulates the TON moved through the
+    // buyback swap legs.
+    receive(msg: BuybackTon) {
+        require(sender() == self.defiAddress, "Only DeFi");
+        require(msg.tonAmount > 0, "Invalid amount");
+        require(context().value >= msg.tonAmount, "TON not attached");
+        self.totalTonSpentOnBuyback = self.totalTonSpentOnBuyback + msg.tonAmount;
+        if (self.treasury != newAddress(0, 0)) {
+            send(SendParameters{ to: self.treasury, value: msg.tonAmount, bounce: false, mode: SendPayGasSeparately, body: emptyCell() });
+        }
+        send(SendParameters{ to: self.owner, value: 0, bounce: false, mode: SendRemainingValue, body: EventBuybackSwapped{ queryId: msg.queryId, qsrIn: msg.qsrSwapped, tonOut: msg.tonAmount }.toCell() });
+    }
+
     bounced(msg: bounced<PoolPayout>) {
         self.custodyBalance = self.custodyBalance + msg.amount;
     }
@@ -1223,7 +1291,7 @@ contract QuasarMaster with Deployable {
     }
     
     get fun get_buyback_state(): BuybackState {
-        return BuybackState{ enabled: self.buybackEnabled, pool: self.buybackPool, threshold: self.buybackThreshold, cooldown: self.buybackCooldown, burnPercent: self.buybackBurnPercent, lastBuybackAt: self.lastBuybackTime, totalBuybacks: self.totalBuybacks, totalQsrBurnedViaBuyback: self.totalQsrBurnedViaBuyback, totalTonSpent: self.totalTonSpentOnBuyback }
+        return BuybackState{ enabled: self.buybackEnabled, pool: self.buybackPool, threshold: self.buybackThreshold, cooldown: self.buybackCooldown, burnPercent: self.buybackBurnPercent, buybackSwapPending: self.buybackSwapPending, buybackSwapQueryId: self.buybackSwapQueryId, lastBuybackAt: self.lastBuybackTime, totalBuybacks: self.totalBuybacks, totalQsrBurnedViaBuyback: self.totalQsrBurnedViaBuyback, totalTonSpent: self.totalTonSpentOnBuyback }
     }
     
     get fun get_staking_config(): StakingConfig {
