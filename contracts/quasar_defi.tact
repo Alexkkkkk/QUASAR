@@ -406,7 +406,8 @@ contract QuasarDeFi with Deployable {
         let pending: Int = (s.staked * (self.farmAccRewardPerShare - s.debt)) / 1000000000;
         let totalReward: Int = s.pending + pending;
         require(totalReward > 0, "No rewards to claim");
-        require(self.farmEnabled, "Farm disabled");
+        // Disabling the farm stops new accrual but must not freeze rewards that
+        // were already earned (F-13).
         
         // Reset debt
         self.farmStakes.set(sender(), UserFarmInfo{
@@ -460,7 +461,9 @@ contract QuasarDeFi with Deployable {
 
     receive(msg: SetFeeBps) {
         require(sender() == self.owner, "Only owner");
-        require(msg.feeBps > 0 && msg.feeBps <= 100, "Fee must be 0.01%-1%");
+        // The documented swap fee is 0.30%; the previous 1% ceiling let the
+        // owner charge more than the protocol advertised (F-13).
+        require(msg.feeBps > 0 && msg.feeBps <= 30, "Fee must not exceed 0.30%");
         self.feeBps = msg.feeBps;
     }
 

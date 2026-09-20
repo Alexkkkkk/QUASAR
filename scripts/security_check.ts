@@ -19,6 +19,15 @@ assertContains(master, 'self.pendingReferralRewards.set(referrer', 'referral rew
 assertContains(defi, 'if (msg.from == self.qsrMaster)', 'master-funded DeFi notification is distinguished');
 assertContains(defi, 'self.qsrReserve = self.qsrReserve + msg.amount;', 'master-funded DeFi fees enter qsrReserve');
 assertContains(defi, 'let farmAmount: Int = self._min(msg.lpAmount, farmStake!!.staked);', 'partial LP exit only unstakes farmed LP');
+assertContains(master, 'receive(msg: ProposeOwner)', 'ownership transfer requires an explicit proposal');
+assertContains(master, 'require(sender() == self.pendingOwner, "Not pending owner");', 'only the pending owner may accept ownership');
+assertContains(master, 'require(now() >= self.ownerTransferAt, "Timelock active");', 'ownership acceptance honors the timelock');
+
+assertContains(master, 'let extended: Int = now() + self.stakingLockPeriod;', 'staking top-up extends the lock (F-05)');
+assertContains(master, 'fun _requireAiCooldown() { require(now() - self.lastAiActionTime >= self.aiActionCooldown, "AI cooldown") }', 'AI cooldown is unconditional (F-07)');
+assertContains(master, 'self.buybackThreshold = 10_000_000_000;', 'buyback threshold is QSR-denominated (F-09)');
+assertContains(master, 'aiActionOldAddress: map<Int, Address>;', 'AI address actions are reversible (F-07)');
+assertContains(defi, 'require(msg.feeBps > 0 && msg.feeBps <= 30, "Fee must not exceed 0.30%");', 'DeFi fee ceiling matches the docs (F-13)');
 
 const aiPriceSignal = master.slice(master.indexOf('receive(msg: AIPriceSignal)'), master.indexOf('receive(msg: AIAnomalyAlert)'));
 if (aiPriceSignal.includes('self.mintable = true')) throw new Error('AIPriceSignal can re-enable minting');
@@ -29,5 +38,11 @@ console.log('Security invariants passed: ' + [
     'DeFi fee reserve reconciliation',
     'partial LP farm exit',
     'mint-stop protection',
-    'referral escrow'
+    'referral escrow',
+    'timelocked ownership transfer',
+    'staking lock extension',
+    'unconditional AI cooldown',
+    'QSR-denominated buyback threshold',
+    'reversible AI address actions',
+    'DeFi fee ceiling'
 ].join(', '));

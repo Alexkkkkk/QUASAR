@@ -115,6 +115,12 @@ contract QuasarMaster with Deployable {
     maxSupply: Int as coins;
     mintable: Bool;
     owner: Address;
+    // Two-step ownership transfer with a timelock (F-08): a proposed owner
+    // must wait before accepting, so a single compromised key cannot rotate
+    // control instantly.
+    pendingOwner: Address;
+    ownerTransferAt: Int;
+    ownerTransferDelay: Int as uint32;
     content: Cell;
     walletCode: Cell;
     reserveBalance: Int as coins;
@@ -164,6 +170,9 @@ contract QuasarMaster with Deployable {
     aiActionIndex: Int;
     pendingAiActions: map<Int, Int>;
     vetoLog: map<Int, VetoState>;
+    // Previous address for AI actions that move a privileged address, so
+    // OwnerOverride can restore it (F-07).
+    aiActionOldAddress: map<Int, Address>;
     totalVetoStake: Int as coins;
     
     // Staking
@@ -212,6 +221,10 @@ contract QuasarMaster with Deployable {
         self.maxSupply = ton("1000000000");
         self.mintable = true;
         self.owner = owner;
+        self.pendingOwner = newAddress(0, 0);
+        self.ownerTransferAt = 0;
+        // 48h timelock before a proposed owner may take control.
+        self.ownerTransferDelay = 172800;
         self.content = content;
         self.walletCode = walletCode;
         self.reserveBalance = 0;
@@ -231,7 +244,9 @@ contract QuasarMaster with Deployable {
         
         self.buybackEnabled = true;
         self.buybackPool = 0;
-        self.buybackThreshold = ton("10");
+        // The buyback pool is accounted in QSR, so the threshold must be
+        // QSR-denominated: comparing it against ton("10") mixed units (F-09).
+        self.buybackThreshold = 10_000_000_000; // 10 QSR
         self.buybackCooldown = 3600;
         self.buybackBurnPercent = 100;
         self.lastBuybackTime = 0;
@@ -248,7 +263,9 @@ contract QuasarMaster with Deployable {
         self.minConfidence = 75;
         self.emergencyPause = false;
         self.aiActionCooldown = 21600;
-        self.lastAiActionTime = 0;
+        // Start the cooldown window at deployment so the first AI action is
+        // not blocked by a zero timestamp.
+        self.lastAiActionTime = now();
         self.heartbeatTimeout = 604800;
         self.lastHeartbeat = now();
         self.ownerOverrideWindow = 86400;
@@ -290,7 +307,9 @@ contract QuasarMaster with Deployable {
     
     fun _requireOwner() { require(sender() == self.owner, "Only owner") }
     fun _requireAiAccess() { require(sender() == self.aiOracle, "Only AI oracle"); require(self.aiEnabled, "AI disabled") }
-    fun _requireAiCooldown() { if (self.aiFullAutonomy) { require(now() - self.lastAiActionTime >= self.aiActionCooldown, "AI cooldown") } }
+    // The administrative cooldown applies in every mode. Tying it to
+    // aiFullAutonomy made the documented 6h safeguard inert (F-07).
+    fun _requireAiCooldown() { require(now() - self.lastAiActionTime >= self.aiActionCooldown, "AI cooldown") }
     fun _requireNotPaused() { require(!self.emergencyPause, "Paused") }
     fun _requireTrading() { require(self.tradingEnabled, "Trading off") }
 
@@ -305,6 +324,17 @@ contract QuasarMaster with Deployable {
         self.pendingAiActions.set(id, now());
         self.aiActionIndex = id + 1;
         self.lastAiActionTime = now();
+        return id;
+    }
+    
+    // Market signals change state too, so they must be recorded in the action
+    // log (and therefore be vetoable/overridable) without consuming or
+    // resetting the administrative cooldown window (F-07).
+    fun _logAiActionSilent(actionType: String, oldVal: Int, newVal: Int, reason: String): Int {
+        let id: Int = self.aiActionIndex;
+        self.aiActionLog.set(id, AIActionLog{ actionId: id, timestamp: now(), actionType: actionType, oldValue: oldVal, newValue: newVal, reason: reason, executed: true, vetoed: false, overridden: false });
+        self.pendingAiActions.set(id, now());
+        self.aiActionIndex = id + 1;
         return id;
     }
     
@@ -533,6 +563,7 @@ contract QuasarMaster with Deployable {
     // ═══════════════════════════════════════════════════════════
     
     receive(msg: TriggerBuyback) {
+        self._requireNotPaused();
         require(self.buybackEnabled, "Buyback off");
         require(self.buybackPool >= self.buybackThreshold, "Pool low");
         require(now() - self.lastBuybackTime >= self.buybackCooldown, "Cooldown");
@@ -575,7 +606,11 @@ contract QuasarMaster with Deployable {
         let lockEnd: Int = now() + self.stakingLockPeriod;
         if (info != null) {
             current = info!!.amount;
-            lockEnd = info!!.lockEnd;
+            // A top-up must never shorten the existing lock. Inheriting the old
+            // lockEnd let a staker top up a tiny amount and then immediately
+            // withdraw the whole balance (F-05).
+            let extended: Int = now() + self.stakingLockPeriod;
+            lockEnd = info!!.lockEnd > extended ? info!!.lockEnd : extended;
         }
         
         // Claim pending rewards first
@@ -735,6 +770,7 @@ contract QuasarMaster with Deployable {
     // ═══════════════════════════════════════════════════════════
     
     receive(msg: TriggerLottery) {
+        self._requireNotPaused();
         require(self.lotteryEnabled, "Lottery off");
         require(self.lotteryTicketCount > 0, "No tickets");
         require(now() - self.lotteryLastDraw >= self.lotteryDrawInterval, "Too early");
@@ -795,6 +831,7 @@ contract QuasarMaster with Deployable {
     
     receive(msg: AIEmergencyPause) {
         self._requireAiAccess();
+        let oldTrading: Bool = self.tradingEnabled;
         if (msg.pause) {
             self.emergencyPause = true;
             self.tradingEnabled = false;
@@ -808,8 +845,8 @@ contract QuasarMaster with Deployable {
             self.emergencyPause = false;
             self.tradingEnabled = true;
         }
-        let id: Int = self._logAiAction("EmergencyPause", 0, msg.pause ? 1 : 0, msg.reason);
-        send(SendParameters{ to: sender(), value: 0, mode: SendRemainingValue, body: EventAiAction{ actionId: id, actionType: "EmergencyPause", oldValue: 0, newValue: msg.pause ? 1 : 0 }.toCell() });
+        let id: Int = self._logAiAction("EmergencyPause", oldTrading ? 1 : 0, msg.pause ? 1 : 0, msg.reason);
+        send(SendParameters{ to: sender(), value: 0, mode: SendRemainingValue, body: EventAiAction{ actionId: id, actionType: "EmergencyPause", oldValue: oldTrading ? 1 : 0, newValue: msg.pause ? 1 : 0 }.toCell() });
     }
     
     receive(msg: AISetFee) {
@@ -826,8 +863,11 @@ contract QuasarMaster with Deployable {
         self._requireAiAccess();
         self._requireAiCooldown();
         require(msg.treasury != newAddress(0, 0), "Invalid");
+        let oldTreasury: Address = self.treasury;
         self.treasury = msg.treasury;
         let id: Int = self._logAiAction("SetTreasury", 0, 1, msg.reason);
+        // Keep the previous address so the owner can actually reverse it (F-07).
+        self.aiActionOldAddress.set(id, oldTreasury);
         send(SendParameters{ to: sender(), value: 0, mode: SendRemainingValue, body: EventAiAction{ actionId: id, actionType: "SetTreasury", oldValue: 0, newValue: 1 }.toCell() });
     }
     
@@ -846,20 +886,22 @@ contract QuasarMaster with Deployable {
         self._requireAiAccess();
         self._requireAiCooldown();
         require(msg.threshold > 0 && msg.cooldown > 0 && msg.burnPercent > 0 && msg.burnPercent <= 100, "Invalid buyback config");
+        let oldEnabled: Bool = self.buybackEnabled;
         self.buybackEnabled = msg.enabled;
         self.buybackThreshold = msg.threshold;
         self.buybackCooldown = msg.cooldown;
         self.buybackBurnPercent = msg.burnPercent;
-        let id: Int = self._logAiAction("SetBuyback", 0, msg.enabled ? 1 : 0, msg.reason);
-        send(SendParameters{ to: sender(), value: 0, mode: SendRemainingValue, body: EventAiAction{ actionId: id, actionType: "SetBuyback", oldValue: 0, newValue: msg.enabled ? 1 : 0 }.toCell() });
+        let id: Int = self._logAiAction("SetBuyback", oldEnabled ? 1 : 0, msg.enabled ? 1 : 0, msg.reason);
+        send(SendParameters{ to: sender(), value: 0, mode: SendRemainingValue, body: EventAiAction{ actionId: id, actionType: "SetBuyback", oldValue: oldEnabled ? 1 : 0, newValue: msg.enabled ? 1 : 0 }.toCell() });
     }
     
     receive(msg: AIToggleTrading) {
         self._requireAiAccess();
         self._requireAiCooldown();
+        let oldTrading: Bool = self.tradingEnabled;
         self.tradingEnabled = msg.enabled;
-        let id: Int = self._logAiAction("ToggleTrading", 0, msg.enabled ? 1 : 0, msg.reason);
-        send(SendParameters{ to: sender(), value: 0, mode: SendRemainingValue, body: EventAiAction{ actionId: id, actionType: "ToggleTrading", oldValue: 0, newValue: msg.enabled ? 1 : 0 }.toCell() });
+        let id: Int = self._logAiAction("ToggleTrading", oldTrading ? 1 : 0, msg.enabled ? 1 : 0, msg.reason);
+        send(SendParameters{ to: sender(), value: 0, mode: SendRemainingValue, body: EventAiAction{ actionId: id, actionType: "ToggleTrading", oldValue: oldTrading ? 1 : 0, newValue: msg.enabled ? 1 : 0 }.toCell() });
     }
     
     receive(msg: AIRotateOracle) {
@@ -867,8 +909,10 @@ contract QuasarMaster with Deployable {
         self._requireAiCooldown();
         require(self.aiFullAutonomy, "No autonomy");
         require(msg.newOracle != newAddress(0, 0), "Invalid oracle");
+        let oldOracle: Address = self.aiOracle;
         self.aiOracle = msg.newOracle;
         let id: Int = self._logAiAction("RotateOracle", 0, 1, msg.reason);
+        self.aiActionOldAddress.set(id, oldOracle);
         send(SendParameters{ to: sender(), value: 0, mode: SendRemainingValue, body: EventAiAction{ actionId: id, actionType: "RotateOracle", oldValue: 0, newValue: 1 }.toCell() });
     }
     
@@ -897,8 +941,10 @@ contract QuasarMaster with Deployable {
     
     receive(msg: AIPriceSignal) {
         self._requireAiAccess();
-        self._requireAiCooldown();
-        self.lastAiActionTime = now();
+        // Market data must not consume or reset the administrative cooldown,
+        // but every state change it causes has to be logged (F-07).
+        let oldBurnShare: Int = self.feeBurnShare;
+        let oldMintable: Bool = self.mintable;
         self.signalCount = self.signalCount + 1;
         self.priceHistory.set(now(), msg.priceTon);
         if (msg.action == 2 && msg.volatility > 5000) {
@@ -915,12 +961,15 @@ contract QuasarMaster with Deployable {
         if (msg.action == 1 && msg.sentiment < -30 && self.buybackEnabled && self.buybackPool >= self.buybackThreshold && now() - self.lastBuybackTime >= self.buybackCooldown) {
             self._executeBuyback(msg.queryId);
         }
+        if (self.feeBurnShare != oldBurnShare || self.mintable != oldMintable) {
+            self._logAiActionSilent("PriceSignal", oldBurnShare, self.feeBurnShare, "price-signal");
+        }
     }
     
     receive(msg: AIAnomalyAlert) {
         self._requireAiAccess();
-        self._requireAiCooldown();
-        self.lastAiActionTime = now();
+        let oldBurnShare: Int = self.feeBurnShare;
+        let oldMintable: Bool = self.mintable;
         self.anomalyLog.set(self.anomalyIndex, AIRecommendation{ timestamp: now(), action: msg.recommendedAction, confidence: 100, executed: false });
         self.anomalyIndex = self.anomalyIndex + 1;
         if (msg.severity == 3) {
@@ -931,6 +980,9 @@ contract QuasarMaster with Deployable {
             self.feeBurnShare = 90;
         } else if (msg.severity == 2) {
             self.feeBurnShare = 60;
+        }
+        if (self.feeBurnShare != oldBurnShare || self.mintable != oldMintable) {
+            self._logAiActionSilent("AnomalyAlert", oldBurnShare, self.feeBurnShare, "anomaly-alert");
         }
     }
     
@@ -992,8 +1044,27 @@ contract QuasarMaster with Deployable {
         
         let act: AIActionLog = action!!;
         self.aiActionLog.set(msg.actionId, AIActionLog{ actionId: act.actionId, timestamp: act.timestamp, actionType: act.actionType, oldValue: act.oldValue, newValue: act.newValue, reason: act.reason, executed: act.executed, vetoed: act.vetoed, overridden: true });
+        // Every action type that _logAiAction/_logAiActionSilent can record
+        // must be reversible here, otherwise the documented 24h owner window
+        // is inert for most AI powers (F-07).
         if (act.actionType == "SetFee") { self.feeBps = act.oldValue }
         else if (act.actionType == "ToggleTrading") { self.tradingEnabled = act.oldValue != 0 }
+        else if (act.actionType == "EmergencyPause") {
+            self.emergencyPause = false;
+            self.tradingEnabled = act.oldValue != 0;
+        }
+        else if (act.actionType == "SetTreasury") {
+            let prevTreasury: Address? = self.aiActionOldAddress.get(msg.actionId);
+            if (prevTreasury != null) { self.treasury = prevTreasury!! }
+        }
+        else if (act.actionType == "RotateOracle") {
+            let prevOracle: Address? = self.aiActionOldAddress.get(msg.actionId);
+            if (prevOracle != null) { self.aiOracle = prevOracle!! }
+        }
+        else if (act.actionType == "SetBuyback") { self.buybackEnabled = act.oldValue != 0 }
+        else if (act.actionType == "Rebalance") { self.feeBurnShare = act.oldValue }
+        else if (act.actionType == "PriceSignal") { self.feeBurnShare = act.oldValue }
+        else if (act.actionType == "AnomalyAlert") { self.feeBurnShare = act.oldValue }
     }
     
     receive("Claim AI Control") {
@@ -1036,6 +1107,29 @@ contract QuasarMaster with Deployable {
     // OWNER ADMIN
     // ═══════════════════════════════════════════════════════════
     
+    // ─── OWNERSHIP (two-step + timelock, F-08) ───
+    receive(msg: ProposeOwner) {
+        self._requireOwner();
+        require(msg.newOwner != newAddress(0, 0), "Invalid owner");
+        self.pendingOwner = msg.newOwner;
+        self.ownerTransferAt = now() + self.ownerTransferDelay;
+    }
+
+    receive(msg: CancelOwnerTransfer) {
+        self._requireOwner();
+        self.pendingOwner = newAddress(0, 0);
+        self.ownerTransferAt = 0;
+    }
+
+    receive(msg: AcceptOwner) {
+        require(self.pendingOwner != newAddress(0, 0), "No pending owner");
+        require(sender() == self.pendingOwner, "Not pending owner");
+        require(now() >= self.ownerTransferAt, "Timelock active");
+        self.owner = self.pendingOwner;
+        self.pendingOwner = newAddress(0, 0);
+        self.ownerTransferAt = 0;
+    }
+
     receive(msg: SetTreasury) {
         self._requireOwner();
         require(!self.aiFullAutonomy, "AI controls");
@@ -1100,6 +1194,9 @@ contract QuasarMaster with Deployable {
     // GETTERS
     // ═══════════════════════════════════════════════════════════
     
+    get fun get_pending_owner(): Address { return self.pendingOwner }
+    get fun get_owner_transfer_at(): Int { return self.ownerTransferAt }
+    get fun get_owner_transfer_delay(): Int { return self.ownerTransferDelay }
     get fun get_jetton_data(): JettonData {
         return JettonData{ totalSupply: self.totalSupply, mintable: self.mintable, adminAddress: self.owner, jettonContent: self.content, jettonWalletCode: self.walletCode }
     }
@@ -1164,6 +1261,11 @@ contract QuasarMaster with Deployable {
 
 message SetDefiPayoutCap { maxPayoutBps: Int as uint16 }
 message SweepTON { amount: Int as coins }
+
+// ─── Ownership (two-step + timelock, F-08) ───
+message ProposeOwner { newOwner: Address }
+message AcceptOwner { }
+message CancelOwnerTransfer { }
 
 // ═══════════════════════════════════════════════════════════════
 // QUASAR WALLET — Optimized with fee deduction

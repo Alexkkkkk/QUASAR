@@ -32,3 +32,9 @@ jobs:
 
       - name: Build and run contract tests
         run: npm test
+
+      - name: Type-check scripts and tests
+        run: npx tsc --noEmit
+
+      - name: Audit dependencies
+        run: npm audit --audit-level=high

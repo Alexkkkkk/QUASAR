@@ -11,6 +11,7 @@
  *   F8  🟡 AddLiquidity donated unbalanced surplus to the pool
  *   F9  🟡 RemoveLiquidity dust rounding blocked withdrawals
  *   F10 🟡 bare-TON receiver accepted uncredited TON
+ *  F-08 🟠 ownership was a single EOA with no timelock — two-step transfer added
  *
  * Two layers:
  *  - source invariants: byte-level checks of the compiled-in behavior,
@@ -75,7 +76,7 @@ test('F6 source: no auto lottery draw inside FeeTransfer', () => {
 });
 
 test('F7 source: ClaimVested honors pause and the vesting flag', () => {
-    const claim = section(masterSrc, 'receive(msg: ClaimVested)', '// ═══', '// LOTTERY');
+    const claim = section(masterSrc, 'receive(msg: ClaimVested)', '// LOTTERY');
     assert.ok(claim.includes('self._requireNotPaused()'), 'claim must respect emergency pause');
     assert.ok(claim.includes('self.vestingEnabled'), 'claim must respect the vesting flag');
 });
@@ -256,4 +257,138 @@ test('F8+F9+F10 on-chain: DeFi proportional deposit accounting, dust withdrawal,
     // the sandbox raises an emulation error instead of a clean compute-phase
     // revert for comment-less messages, so the on-chain variant is not
     // portable across sandbox versions.
+});
+
+// ═══════════════ Follow-up hardening (F-05, F-07, F-09, F-13) ═══════════════
+
+test('F5 source: a staking top-up cannot inherit the old lock end', () => {
+    const stake = section(masterSrc, 'receive(msg: Stake)', 'receive(msg: Unstake)');
+    assert.ok(stake.includes('let extended: Int = now() + self.stakingLockPeriod;'), 'top-up must recompute the lock end');
+    assert.ok(stake.includes('lockEnd = info!!.lockEnd > extended ? info!!.lockEnd : extended;'), 'lock end must be the later of the two');
+});
+
+test('F7 source: the AI cooldown is unconditional and every logged action is overridable', () => {
+    assert.ok(
+        masterSrc.includes('fun _requireAiCooldown() { require(now() - self.lastAiActionTime >= self.aiActionCooldown, "AI cooldown") }'),
+        'cooldown must not depend on aiFullAutonomy'
+    );
+    const override = section(masterSrc, 'receive(msg: OwnerOverride)', 'receive("Claim AI Control")');
+    for (const t of ['SetFee', 'ToggleTrading', 'EmergencyPause', 'SetTreasury', 'RotateOracle', 'SetBuyback', 'Rebalance']) {
+        assert.ok(override.includes(`"${t}"`), `OwnerOverride must cover ${t}`);
+    }
+    assert.ok(masterSrc.includes('fun _logAiActionSilent('), 'market signals must be recorded in the action log');
+    const signal = section(masterSrc, 'receive(msg: AIPriceSignal)', 'receive(msg: AIAnomalyAlert)');
+    assert.ok(!signal.includes('_requireAiCooldown'), 'market signals must not consume the administrative cooldown');
+});
+
+test('F9 source: the buyback threshold uses the same unit as the buyback pool', () => {
+    assert.ok(masterSrc.includes('self.buybackThreshold = 10_000_000_000;'), 'threshold must be QSR-denominated');
+    assert.ok(!masterSrc.includes('self.buybackThreshold = ton("10");'), 'the TON-denominated default must be gone');
+});
+
+test('F13 source: farm rewards stay claimable after the farm is switched off', () => {
+    const claim = section(defiSrc, 'receive(msg: ClaimFarmRewards)', 'receive(msg: SetFarmConfig)');
+    assert.ok(!claim.includes('require(self.farmEnabled'), 'accrued rewards must not be frozen by the farm switch');
+});
+
+test('F5 on-chain: a top-up extends the lock and blocks the early exit', async () => {
+    const eco = await deployEco(false);
+    const min = 100_000_000_000n; // ton("100")
+    await creditMasterDeposit(eco, eco.owner.address, min * 2n);
+
+    await eco.master.send(eco.owner.getSender(), { value: toNano('0.2') }, { $$type: 'Stake', amount: min });
+    const first = await eco.master.getGetStakeInfo(eco.owner.address);
+    assert.equal(first.lockEnd, 1000n + 2592000n, 'first stake locks for the configured period');
+
+    eco.bc.now = 1000 + 2592000 - 10; // ten seconds before the original unlock
+    await eco.master.send(eco.owner.getSender(), { value: toNano('0.2') }, { $$type: 'Stake', amount: min });
+    const second = await eco.master.getGetStakeInfo(eco.owner.address);
+    assert.equal(second.amount, min * 2n, 'both stakes must be credited');
+    assert.ok(second.lockEnd > first.lockEnd, 'the top-up must push the unlock further out');
+    assert.equal(second.lockEnd, BigInt(eco.bc.now) + 2592000n, 'the lock restarts from the top-up');
+
+    let blocked = false;
+    try {
+        const res = await eco.master.send(eco.owner.getSender(), { value: toNano('0.2') }, { $$type: 'Unstake', amount: min * 2n });
+        blocked = res.transactions.some((t: any) => t.description?.computePhase?.success === false);
+    } catch (e) {
+        blocked = true;
+    }
+    assert.ok(blocked, 'exiting before the extended lock must fail');
+    assert.equal((await eco.master.getGetStakeInfo(eco.owner.address)).amount, min * 2n, 'the stake must stay locked');
+});
+
+test('F13 on-chain: the DeFi swap fee cannot be raised above the documented 0.30%', async () => {
+    const eco = await deployEco(true);
+    await eco.defi.send(eco.owner.getSender(), { value: toNano('0.1') }, { $$type: 'SetFeeBps', feeBps: 50n }).catch(() => {});
+    assert.equal(await eco.defi.getFeeConfig(), 30n, 'raising the fee above 30 bps must revert');
+    await eco.defi.send(eco.owner.getSender(), { value: toNano('0.1') }, { $$type: 'SetFeeBps', feeBps: 25n });
+    assert.equal(await eco.defi.getFeeConfig(), 25n, 'a fee at or below the ceiling stays configurable');
+});
+
+// ═══════════════ Ownership transfer (F-08) ═══════════════
+
+function ownerOpSucceeded(res: any): boolean {
+    return res.transactions.some((t: any) => t.description?.computePhase?.success === true);
+}
+
+async function ownerOpBlocked(p: Promise<any>): Promise<boolean> {
+    try {
+        const res = await p;
+        return res.transactions.some((t: any) => t.description?.computePhase?.success === false);
+    } catch {
+        return true;
+    }
+}
+
+test('F8 source: ownership transfer is two-step and timelocked', () => {
+    const propose = section(masterSrc, 'receive(msg: ProposeOwner)', 'receive(msg: CancelOwnerTransfer)');
+    assert.ok(propose.includes('self.pendingOwner = msg.newOwner;'), 'proposal must record a pending owner');
+    assert.ok(propose.includes('self.ownerTransferAt = now() + self.ownerTransferDelay;'), 'proposal must arm the timelock');
+    assert.ok(!propose.includes('self.owner = '), 'proposal must not transfer ownership immediately');
+
+    const accept = section(masterSrc, 'receive(msg: AcceptOwner)', 'receive(msg: SetTreasury)');
+    assert.ok(accept.includes('require(sender() == self.pendingOwner, "Not pending owner");'), 'only the pending owner may accept');
+    assert.ok(accept.includes('require(now() >= self.ownerTransferAt, "Timelock active");'), 'acceptance must wait out the timelock');
+    assert.ok(accept.includes('self.owner = self.pendingOwner;'), 'acceptance performs the transfer');
+
+    const cancel = section(masterSrc, 'receive(msg: CancelOwnerTransfer)', 'receive(msg: AcceptOwner)');
+    assert.ok(cancel.includes('self._requireOwner()'), 'only the owner may cancel');
+    assert.ok(cancel.includes('self.pendingOwner = newAddress(0, 0);'), 'cancel must clear the pending owner');
+});
+
+test('F8 on-chain: the owner key cannot be rotated without the 48h timelock', async () => {
+    const eco = await deployEco(false);
+    const heir = await eco.bc.treasury('heir');
+
+    // No proposal yet: accepting must fail and leave nothing pending.
+    assert.ok(await ownerOpBlocked(
+        eco.master.send(eco.bc.sender(heir.address), { value: toNano('0.1') }, { $$type: 'AcceptOwner' })
+    ), 'accept without a proposal must revert');
+    assert.ok((await eco.master.getGetPendingOwner()).equals(ZERO), 'nothing pending after a failed accept');
+
+    // Propose: records the heir and arms a 48h timelock.
+    await eco.master.send(eco.owner.getSender(), { value: toNano('0.1') }, {
+        $$type: 'ProposeOwner', newOwner: heir.address
+    });
+    assert.ok((await eco.master.getGetPendingOwner()).equals(heir.address), 'proposal must record the pending owner');
+    assert.equal(await eco.master.getGetOwnerTransferAt(), 1000n + 172800n, 'timelock must arm 48h out');
+
+    // The heir cannot take control before the delay elapses.
+    assert.ok(await ownerOpBlocked(
+        eco.master.send(eco.bc.sender(heir.address), { value: toNano('0.1') }, { $$type: 'AcceptOwner' })
+    ), 'accept before the timelock must revert');
+    assert.ok((await eco.master.getGetPendingOwner()).equals(heir.address), 'failed early accept must not clear the proposal');
+
+    // After the delay the heir takes control and the old owner loses it.
+    eco.bc.now = 1000 + 172800;
+    const accepted = await eco.master.send(eco.bc.sender(heir.address), { value: toNano('0.1') }, { $$type: 'AcceptOwner' });
+    assert.ok(ownerOpSucceeded(accepted), 'accept after the timelock must succeed');
+    assert.ok((await eco.master.getGetPendingOwner()).equals(ZERO), 'acceptance must clear the pending owner');
+
+    const heirActs = await eco.master.send(eco.bc.sender(heir.address), { value: toNano('0.1') }, { $$type: 'CancelOwnerTransfer' });
+    assert.ok(ownerOpSucceeded(heirActs), 'the new owner must be able to act');
+    assert.ok(await ownerOpBlocked(
+        eco.master.send(eco.owner.getSender(), { value: toNano('0.1') }, { $$type: 'CancelOwnerTransfer' })
+    ), 'the previous owner must lose control after acceptance');
 });
