@@ -7,6 +7,12 @@
  * compute-phase revert (blocked operation) or a state effect that is
  * observable through the contract getters after the operation.
  *
+ * The suite exposed a real defect: event notifications emitted right after a
+ * payout send starved on gas (SendRemainingValue consumed by the first
+ * message), aborting the whole transaction in the action phase. The fix
+ * routes zero-value event sends through SendPayGasSeparately; these tests
+ * pin that behavior.
+ *
  * NOTE: payout paths that emit several SendRemainingValue messages from one
  * transaction (mint token delivery, unstake/claim payouts) abort in the
  * action phase in the sandbox — they are covered by the regression suite's
