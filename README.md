@@ -11,7 +11,7 @@
 
 ## Overview
 
-**QUASAR** is a TON Jetton and DeFi prototype. It includes a CPMM pool, LP farming, staking, vesting, referrals, lottery accounting, and an optional AI oracle. The contracts are pre-testnet and must not be treated as audited, production-ready, or a promise of yield.
+**QUASAR** is a TON Jetton and DeFi prototype. It includes a CPMM pool, LP farming, staking, vesting, referrals, and an optional AI oracle. The contracts are pre-testnet and must not be treated as audited, production-ready, or a promise of yield.
 
 ## Architecture
 
@@ -43,7 +43,6 @@
 | **Staking Vault** | Earn APY from transaction fees | Rare |
 | **Referral System** | 1% lifetime earnings per referral | None |
 | **Team Vesting** | Linear 2-year unlock | Rare |
-| **Transaction Lottery** | Every tx = lottery ticket | None |
 | **Community Veto** | Escrow is not enabled in the current contract | N/A |
 | **Owner Control** | Two-step transfer with a 48h timelock (`ProposeOwner` → `AcceptOwner`); no multisig yet | Rare |
 | **Anti-Whale** | Max tx 1% applies only to owner `Mint` (minting is stopped after deployment); max-wallet 3% is stored but not enforced in wallet code; the wallet adds a 5s per-wallet transfer cooldown | Rare |
@@ -119,12 +118,11 @@ ClaimFarmRewards {}
 Every Transfer: 0.30% fee (30 bps, enforced in QuasarWallet)
 ├─ 50% of the fee is burned immediately (feeBurnShare = 50)
 └─ the remaining 50% is split in QuasarMaster.FeeTransfer:
-   ├─ 15% of the remainder → Buyback bucket (burns QSR from the reserve; no AMM swap yet)
-   ├─ 15% of the remainder → Lottery Jackpot
+   ├─ 15% of the remainder → Buyback bucket (burns QSR from the reserve; the non-burned share is swapped for TON through the DeFi AMM when configured)
    ├─ 10% of the remainder → Staking Rewards
    ├─ 5% of the remainder → DeFi Pool (defiFeeShareBps = 500, i.e. 2.5% of the fee)
    ├─ up to 1% of the original fee → escrowed referral reward (paid out of the treasury share)
-   └─ remainder Treasury
+   └─ remainder Treasury (includes the former 15% lottery share, retired with the lottery feature)
 ```
 
 ---
@@ -185,19 +183,6 @@ ClaimVested {}
 
 ---
 
-## Transaction Lottery
-
-Every transaction is a lottery ticket. Daily draw sends jackpot to a random holder.
-
-```bash
-# Anyone can trigger draw after interval
-TriggerLottery { queryId: 0 }
-```
-
-- **Ticket Price**: 1 QSR minimum tx
-- **Draw Interval**: 24 hours
-- **Jackpot**: 50% of accumulated pool
-- **Winner**: Randomly selected from all transactions
 
 ---
 
@@ -296,7 +281,7 @@ npm run website      # Serves website/ on localhost
 
 | Contract | File | Description |
 |----------|------|-------------|
-| `QuasarMaster` | `contracts/quasar.tact` | Jetton minter, fee distributor, staking, lottery, AI oracle |
+| `QuasarMaster` | `contracts/quasar.tact` | Jetton minter, fee distributor, staking, AI oracle |
 | `QuasarDeFi` | `contracts/quasar_defi.tact` | CPMM DEX, liquidity pool, yield farming |
 | `QuasarWallet` | `contracts/quasar.tact` | Individual wallet with fee deduction |
 
@@ -315,7 +300,6 @@ npm run website      # Serves website/ on localhost
 | Staking APY | 20% |
 | Farm APY | ~150% |
 | Referral | 1% lifetime |
-| Lottery | Daily |
 | Buyback Threshold | 10 QSR (QSR-denominated pool) |
 
 ---
@@ -331,7 +315,7 @@ npm run website      # Serves website/ on localhost
 - [x] Reconcile core tokenomics documentation with the on-chain implementation
 - [ ] TON testnet deployment and public scenario testing
 - [ ] Independent security audit and remediation
-- [ ] Production-ready buyback swap and secure lottery randomness
+- [ ] Production-ready buyback swap
 - [ ] Mainnet launch with published addresses and build hashes
 - [ ] Cross-chain bridges (future)
 - [ ] Production AI agent deployment (future)
