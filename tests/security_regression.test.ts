@@ -135,10 +135,11 @@ test('F-09 source: buyback executes a real AMM swap leg with atomic credit', () 
     assert.ok(tonLeg.includes('to: self.treasury'), 'proceeds must be forwarded to the treasury');
 });
 
-test('F-13 source: pending QSR deposits expire after the TTL', () => {
-    assert.ok(defiSrc.includes('pendingQsrDepositsAt'), 'deposits must be timestamped');
-    assert.ok(defiSrc.includes('now() - stamp!! < 86400'), 'a stale pending balance must not accumulate');
-    assert.ok(defiSrc.includes('get fun pendingQsrDepositAt(user: Address)'), 'the deposit timestamp must be readable');
+test('hardening source: pending QSR deposits can always be refunded', () => {
+    assert.ok(defiSrc.includes('message RefundPendingQsr'), 'users need a refund path for unconsumed deposits');
+    assert.ok(defiSrc.includes('self.pendingQsrDeposits.set(sender(), 0)'), 'refund must clear the pending balance');
+    assert.ok(defiSrc.includes('self._sendQsr(sender(), pending!!, 0)'), 'refund must return the QSR');
+    assert.ok(!defiSrc.includes('now() - stamp!! < 86400'), 'stale deposits must not be silently discarded');
 });
 
 test('F-03/F-16 source: the web UI deposits QSR first and reads live getters', () => {
@@ -147,6 +148,7 @@ test('F-03/F-16 source: the web UI deposits QSR first and reads live getters', (
     assert.ok(web.includes('0x0f8a7ea5'), 'deposit must use the TEP-74 transfer opcode');
     assert.ok(web.includes('runGetMethod'), 'UI must read contract getters, not placeholders');
     assert.ok(web.includes('pendingQsrDeposit'), 'UI must check the pending deposit before dependent calls');
+    assert.ok(web.includes('refundPendingQsr'), 'UI must expose the pending deposit refund path');
     assert.ok(!web.includes('TODO: implement contract getter calls'), 'the getter TODO must be gone');
     const html = readFileSync(join(__dirname, '..', 'website', 'index.html'), 'utf8');
     assert.ok(html.includes('ensureQsrDeposit'), 'UI handlers must gate on a deposit');
@@ -159,6 +161,28 @@ test('F3 source: wallet fee math is pinned to 30 bps and README documents it', (
     const readme = readFileSync(join(__dirname, '..', 'README.md'), 'utf8');
     assert.ok(readme.includes('not enforced in wallet code'), 'README must not claim an unenforced max-wallet limit');
     assert.ok(readme.includes('Fixed at 0.30% in wallet code'), 'README must document the fixed fee');
+});
+
+test('hardening source: DeFi sweep cannot touch LP TON reserves', () => {
+    const sweep = section(defiSrc, 'receive(msg: SweepTON)', 'fun _updateFarm');
+    assert.ok(sweep.includes('self.tonReserve + msg.amount + ton("0.05")'), 'sweep must preserve the LP reserve and gas floor');
+});
+
+test('hardening source: staking cannot erase unpaid rewards', () => {
+    const stake = section(masterSrc, 'receive(msg: Stake)', 'receive(msg: Unstake)');
+    const unstake = section(masterSrc, 'receive(msg: Unstake)', 'receive(msg: ClaimRewards)');
+    assert.ok(stake.includes('require(pending == 0 || self.stakingRewardsPool >= pending, "Rewards pool empty")'));
+    assert.ok(unstake.includes('require(pending == 0 || self.stakingRewardsPool >= pending, "Rewards pool empty")'));
+    const rewards = section(masterSrc, 'fun _calculateRewards', 'receive(msg: SetStakingConfig)');
+    assert.ok(!rewards.includes('if (reward > self.stakingRewardsPool)'), 'reward calculation must not cap away an unpaid balance');
+});
+
+test('hardening source: UI slippage uses an output quote', () => {
+    const web = readFileSync(join(__dirname, '..', 'website', 'tonconnect.js'), 'utf8');
+    const html = readFileSync(join(__dirname, '..', 'website', 'index.html'), 'utf8');
+    assert.ok(web.includes('export async function quoteSwap'), 'UI must expose a CPMM quote');
+    assert.ok(html.includes('window.quoteSwap(direction, amountNano)'), 'UI must derive minOut from the quoted output');
+    assert.ok(!html.includes('const minOut = amountNano * BigInt(10000 - slippageBps)'), 'UI must not use input units as minOut');
 });
 
 // ═══════════════ On-chain layer (@ton/sandbox) ═══════════════
@@ -319,6 +343,35 @@ test('F8+F9+F10 on-chain: DeFi proportional deposit accounting, dust withdrawal,
     // portable across sandbox versions.
 });
 
+test('hardening on-chain: SweepTON cannot withdraw LP-backed TON', async () => {
+    const eco = await deployEco(true);
+    const user = await eco.bc.treasury('lp-owner');
+    await creditDefiDeposit(eco, user.address, 1_000_000_000n);
+    await eco.defi.send(user.getSender(), { value: 10_000_000_000n }, {
+        $$type: 'AddLiquidity', tonAmount: 10_000_000_000n, qsrAmount: 1_000_000_000n
+    });
+
+    assert.ok(await ownerOpBlocked(
+        eco.defi.send(eco.owner.getSender(), { value: toNano('0.1') }, {
+            $$type: 'SweepTON', amount: 10_000_000_000n
+        })
+    ), 'the owner must not be able to sweep LP-backed TON');
+    assert.equal((await eco.defi.getPoolInfo()).tonReserve, 10_000_000_000n);
+});
+
+test('hardening on-chain: an unconsumed DeFi QSR deposit can be refunded', async () => {
+    const eco = await deployEco(true);
+    const user = await eco.bc.treasury('refund-user');
+    await creditDefiDeposit(eco, user.address, 1_000_000_000n);
+    assert.equal(await eco.defi.getPendingQsrDeposit(user.address), 1_000_000_000n);
+
+    const result = await eco.defi.send(user.getSender(), { value: toNano('0.2') }, {
+        $$type: 'RefundPendingQsr'
+    });
+    assert.ok(ownerOpSucceeded(result), 'refund message must execute');
+    assert.equal(await eco.defi.getPendingQsrDeposit(user.address), 0n);
+});
+
 // ═══════════════ Follow-up hardening (F-05, F-07, F-09, F-13) ═══════════════
 
 test('F5 source: a staking top-up cannot inherit the old lock end', () => {
@@ -360,6 +413,11 @@ test('F5 on-chain: a top-up extends the lock and blocks the early exit', async (
     const first = await eco.master.getGetStakeInfo(eco.owner.address);
     assert.equal(first.lockEnd, 1000n + 2592000n, 'first stake locks for the configured period');
 
+    // Keep this regression focused on lock extension. With no reward reserve,
+    // accrued rewards must not make a top-up fail for an unrelated reason.
+    await eco.master.send(eco.owner.getSender(), { value: toNano('0.1') }, {
+        $$type: 'SetStakingConfig', enabled: true, apyBps: 0n, minStake: min, lockPeriod: 2592000
+    });
     eco.bc.now = 1000 + 2592000 - 10; // ten seconds before the original unlock
     await eco.master.send(eco.owner.getSender(), { value: toNano('0.2') }, { $$type: 'Stake', amount: min });
     const second = await eco.master.getGetStakeInfo(eco.owner.address);

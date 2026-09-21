@@ -20,6 +20,7 @@ const OP = {
     SWAP_TO_TON: 1118291020,
     SWAP_TO_QSR: 3020093557,
     CLAIM_FARM: 1360209904,
+    REFUND_PENDING_QSR: 1093959957,
 };
 
 // TEP-74 standard jetton transfer opcode, used for the QSR deposit (F-03).
@@ -243,6 +244,32 @@ export async function pendingDeposit(target, user) {
     }
 }
 
+// Quote against the same CPMM equations used by QuasarDeFi. The minimum
+// output must be derived from the expected output, not from the input amount
+// (QSR and TON are different assets and therefore different units).
+export async function quoteSwap(direction, amountNano) {
+    if (!amountNano || amountNano <= 0n) return 0n;
+    const config = window.QUASAR_CONFIG || {};
+    const defi = config.addresses?.defi;
+    if (!defi) throw new Error('DeFi address is not configured');
+    const [pool, feeStack] = await Promise.all([
+        runGetMethod(defi, 'poolInfo'),
+        runGetMethod(defi, 'feeConfig')
+    ]);
+    const tonReserve = parseNumber(pool[1]);
+    const qsrReserve = parseNumber(pool[2]);
+    const feeBps = parseNumber(feeStack[0]);
+    if (tonReserve <= 0n || qsrReserve <= 0n) return 0n;
+
+    if (direction === 'to-ton') {
+        const gross = (amountNano * tonReserve) / (qsrReserve + amountNano);
+        return gross - (gross * feeBps) / 10000n;
+    }
+
+    const gross = (amountNano * qsrReserve) / (tonReserve + amountNano);
+    return gross - (gross * feeBps) / 10000n;
+}
+
 // ─── BOC Builder ───
 function buildPayload(op, ...args) {
     const cell = beginCell();
@@ -397,6 +424,11 @@ export async function claimFarmRewards() {
     return sendTx(config.addresses?.defi, GAS.CLAIM, buildPayload(OP.CLAIM_FARM));
 }
 
+export async function refundPendingQsr() {
+    const config = window.QUASAR_CONFIG || {};
+    return sendTx(config.addresses?.defi, GAS.CLAIM, buildPayload(OP.REFUND_PENDING_QSR));
+}
+
 // ─── Expose to window ───
 if (typeof window !== 'undefined') {
     window.stakeQsr = stakeQsr;
@@ -407,8 +439,10 @@ if (typeof window !== 'undefined') {
     window.swapToTon = swapToTon;
     window.swapToQsr = swapToQsr;
     window.claimFarmRewards = claimFarmRewards;
+    window.refundPendingQsr = refundPendingQsr;
     window.depositQsr = depositQsr;
     window.pendingDeposit = pendingDeposit;
+    window.quoteSwap = quoteSwap;
     window.loadPoolStats = loadPoolStats;
     window.initTonConnect = initTonConnect;
 }

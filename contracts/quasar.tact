@@ -634,7 +634,8 @@ contract QuasarMaster with Deployable {
         
         // Claim pending rewards first
         let pending: Int = self._calculateRewards(staker);
-        if (pending > 0 && self.stakingRewardsPool >= pending) {
+        require(pending == 0 || self.stakingRewardsPool >= pending, "Rewards pool empty");
+        if (pending > 0) {
             self.stakingRewardsPool = self.stakingRewardsPool - pending;
             self._sendTokens(staker, pending, 0, myAddress());
         }
@@ -657,7 +658,8 @@ contract QuasarMaster with Deployable {
         
         // Claim rewards
         let pending: Int = self._calculateRewards(staker);
-        if (pending > 0 && self.stakingRewardsPool >= pending) {
+        require(pending == 0 || self.stakingRewardsPool >= pending, "Rewards pool empty");
+        if (pending > 0) {
             self.stakingRewardsPool = self.stakingRewardsPool - pending;
             self._sendTokens(staker, pending, 0, myAddress());
         }
@@ -694,9 +696,7 @@ contract QuasarMaster with Deployable {
         if (info == null) { return 0 }
         let elapsed: Int = now() - info!!.lastClaim;
         let yearly: Int = info!!.amount * self.stakingApyBps / 10000;
-        let reward: Int = yearly * elapsed / 31536000;
-        if (reward > self.stakingRewardsPool) { reward = self.stakingRewardsPool }
-        return reward;
+        return yearly * elapsed / 31536000;
     }
     
     receive(msg: SetStakingConfig) {
