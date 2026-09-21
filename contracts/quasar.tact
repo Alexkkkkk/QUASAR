@@ -433,6 +433,17 @@ contract QuasarMaster with Deployable {
     }
     
     receive("Stop Minting") { self._requireOwner(); self.mintable = false }
+
+    // F-18: `mintable` can be turned off by the owner, by the AI emergency
+    // pause (severity 3) and by AI price/anomaly signals, but before this
+    // patch nothing could ever turn it back on — a single signal permanently
+    // bricked issuance. Recovery is owner-only and is refused while the AI
+    // holds full autonomy.
+    receive("Resume Minting") {
+        self._requireOwner();
+        require(!self.aiFullAutonomy, "AI controls");
+        self.mintable = true;
+    }
     
     // A user funds staking by sending QSR to the master wallet. The
     // subsequent Stake message can only consume a deposit from that wallet.
@@ -732,6 +743,11 @@ contract QuasarMaster with Deployable {
         let claimant: Address = sender();
         let pending: Int? = self.pendingReferralRewards.get(claimant);
         require(pending != null && pending!! > 0, "No referral rewards");
+        // F-17: referral rewards are paid out of the fee reserve, which also
+        // backs the buyback and staking pools. Without the same
+        // free-reserve guard the treasury path uses, a claim could spend
+        // encumbered pool backing.
+        require(self.reserveBalance - self._poolEncumbrance() >= pending!!, "Reserve encumbered");
         self.pendingReferralRewards.set(claimant, 0);
         self._sendTokens(claimant, pending!!, 0, myAddress());
     }
