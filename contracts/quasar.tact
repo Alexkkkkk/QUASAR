@@ -3,17 +3,16 @@ import "@stdlib/content";
 
 // ═══════════════════════════════════════════════════════════════
 // QUASAR — The Ultimate Jetton v3.0
-// AI Sovereignty | DeFi Sync | 0.30% Fee | Auto-Buyback | Staking | Referral | Vesting | Lottery
+// AI Sovereignty | DeFi Sync | 0.30% Fee | Auto-Buyback | Staking | Referral | Vesting
 // ═══════════════════════════════════════════════════════════════
 
 // ─── Events ───
 message EventMint { amount: Int; receiver: Address }
 message EventBurn { amount: Int; burner: Address }
-message EventFeeDistributed { totalFee: Int; burn: Int; buyback: Int; lottery: Int; staking: Int; referral: Int; treasury: Int; defiPool: Int }
+message EventFeeDistributed { totalFee: Int; burn: Int; buyback: Int; staking: Int; referral: Int; treasury: Int; defiPool: Int }
 message EventBuybackExecuted { tonSpent: Int; qsrBurned: Int }
 message EventBuybackSwapped { queryId: Int as uint64; qsrIn: Int; tonOut: Int }
 message(0x2c7e91a4) BuybackTon { queryId: Int as uint64; tonAmount: Int as coins; qsrSwapped: Int as coins }
-message EventLotteryDrawn { round: Int; winner: Address; jackpot: Int }
 message EventStake { staker: Address; amount: Int }
 message EventUnstake { staker: Address; amount: Int }
 message EventReferralRegistered { user: Address; referrer: Address }
@@ -75,10 +74,6 @@ message SetReferralConfig { enabled: Bool; rewardBps: Int as uint16 }
 message AddVesting { beneficiary: Address; totalAmount: Int as coins; cliff: Int as uint32; duration: Int as uint32 }
 message ClaimVested { }
 
-// ─── Lottery Messages ───
-message TriggerLottery { queryId: Int as uint64 }
-message SetLotteryConfig { enabled: Bool; ticketPrice: Int as coins; drawInterval: Int as uint32; jackpotShare: Int as uint8 }
-
 // ─── Data Structures ───
 struct JettonData { totalSupply: Int; mintable: Bool; adminAddress: Address; jettonContent: Cell; jettonWalletCode: Cell }
 struct JettonWalletData { balance: Int; owner: Address; master: Address; walletCode: Cell }
@@ -100,10 +95,6 @@ struct ReferralConfig { enabled: Bool; rewardBps: Int }
 
 // Vesting
 struct VestingInfo { totalAmount: Int; claimed: Int; startTime: Int; cliff: Int; duration: Int }
-
-// Lottery
-struct LotteryConfig { enabled: Bool; ticketPrice: Int; drawInterval: Int; jackpotShare: Int; currentRound: Int; lastDraw: Int; totalJackpot: Int }
-struct LotteryTicket { round: Int; owner: Address }
 
 // ═══════════════════════════════════════════════════════════════
 // QUASAR MASTER
@@ -203,18 +194,6 @@ contract QuasarMaster with Deployable {
     teamClaimed: Int as coins;
     vestingSchedules: map<Address, VestingInfo>;
     
-    // Lottery
-    lotteryEnabled: Bool;
-    lotteryTicketPrice: Int as coins;
-    lotteryDrawInterval: Int as uint32;
-    lotteryJackpotShare: Int as uint8;
-    lotteryRound: Int;
-    lotteryLastDraw: Int;
-    lotteryJackpot: Int as coins;
-    lotteryTickets: map<Int, Address>;
-    lotteryTicketCount: Int;
-    lotteryWinners: map<Int, Address>;
-    
     // DeFi Sync
     defiAddress: Address;
     defiFeeShareBps: Int as uint16; // Basis points sent to DeFi pool (e.g. 500 = 5%);
@@ -293,15 +272,6 @@ contract QuasarMaster with Deployable {
         self.teamAllocation = 0;
         self.teamClaimed = 0;
         
-        self.lotteryEnabled = true;
-        self.lotteryTicketPrice = ton("1");
-        self.lotteryDrawInterval = 86400;
-        self.lotteryJackpotShare = 50;
-        self.lotteryRound = 1;
-        self.lotteryLastDraw = now();
-        self.lotteryJackpot = 0;
-        self.lotteryTicketCount = 0;
-        
         self.defiAddress = newAddress(0, 0);
         self.defiFeeShareBps = 500; // 5% of fees go to DeFi pool;
         self.defiMaxPayoutBps = 5000; // max 50% of the free reserve per payout call;
@@ -319,10 +289,10 @@ contract QuasarMaster with Deployable {
     fun _requireNotPaused() { require(!self.emergencyPause, "Paused") }
     fun _requireTrading() { require(self.tradingEnabled, "Trading off") }
 
-    // Buyback, lottery and staking pools are sub-accounts inside the fee
-    // reserve. Treasury and DeFi payouts may only spend the part of the
-    // reserve that is not encumbered by these pools.
-    fun _poolEncumbrance(): Int { return self.buybackPool + self.lotteryJackpot + self.stakingRewardsPool }
+    // Buyback and staking pools are sub-accounts inside the fee reserve.
+    // Treasury and DeFi payouts may only spend the part of the reserve that
+    // is not encumbered by these pools.
+    fun _poolEncumbrance(): Int { return self.buybackPool + self.stakingRewardsPool }
     
     fun _logAiAction(actionType: String, oldVal: Int, newVal: Int, reason: String): Int {
         let id: Int = self.aiActionIndex;
@@ -488,7 +458,7 @@ contract QuasarMaster with Deployable {
     }
 
     // ═══════════════════════════════════════════════════════════
-    // FEE PROCESSING — 0.30% with Buyback + Lottery + Staking + DeFi
+    // FEE PROCESSING — 0.30% with Buyback + Staking + DeFi
     // ═══════════════════════════════════════════════════════════
     
     receive(msg: FeeTransfer) {
@@ -504,12 +474,11 @@ contract QuasarMaster with Deployable {
         // Burned fees cannot remain spendable in the fee-backed reserve.
         self.reserveBalance = self.reserveBalance - burnAmount;
         
-        // Split remaining: 15% buyback, 15% lottery, 10% staking, 5% defi, 55% treasury
+        // Split remaining: 15% buyback, 10% staking, 5% defi, 70% treasury.
         let buybackAmt: Int = remaining * 15 / 100;
-        let lotteryAmt: Int = remaining * 15 / 100;
         let stakingAmt: Int = remaining * 10 / 100;
         let defiAmt: Int = remaining * self.defiFeeShareBps / 10000;
-        let treasuryAmt: Int = remaining - buybackAmt - lotteryAmt - stakingAmt - defiAmt;
+        let treasuryAmt: Int = remaining - buybackAmt - stakingAmt - defiAmt;
         
         if (burnAmount > 0) {
             self.totalSupply = self.totalSupply - burnAmount;
@@ -518,9 +487,6 @@ contract QuasarMaster with Deployable {
         
         if (buybackAmt > 0 && self.buybackEnabled) { self.buybackPool = self.buybackPool + buybackAmt }
         else if (buybackAmt > 0) { treasuryAmt = treasuryAmt + buybackAmt }
-        
-        if (lotteryAmt > 0 && self.lotteryEnabled) { self.lotteryJackpot = self.lotteryJackpot + lotteryAmt }
-        else if (lotteryAmt > 0) { treasuryAmt = treasuryAmt + lotteryAmt }
         
         if (stakingAmt > 0 && self.stakingEnabled) { self.stakingRewardsPool = self.stakingRewardsPool + stakingAmt }
         else if (stakingAmt > 0) { treasuryAmt = treasuryAmt + stakingAmt }
@@ -557,15 +523,9 @@ contract QuasarMaster with Deployable {
         
         if (treasuryAmt > 0 && self.treasury != newAddress(0, 0)) {
             // Treasury may only spend the unencumbered part of the reserve:
-            // pool allocations (buyback/lottery/staking) stay fully backed.
+            // pool allocations (buyback/staking) stay fully backed.
             require(self.reserveBalance - self._poolEncumbrance() >= treasuryAmt, "Reserve encumbered");
             self._sendTokens(self.treasury, treasuryAmt, msg.queryId, msg.originalSender);
-        }
-        
-        // Lottery ticket
-        if (self.lotteryEnabled && msg.amount >= self.lotteryTicketPrice) {
-            self.lotteryTickets.set(self.lotteryTicketCount, msg.originalSender);
-            self.lotteryTicketCount = self.lotteryTicketCount + 1;
         }
         
         // Auto-buyback
@@ -573,13 +533,8 @@ contract QuasarMaster with Deployable {
             self._executeBuyback(msg.queryId);
         }
         
-        // No auto-lottery draw here on purpose: a draw executed inside the
-        // fee-transfer transaction would let the validator processing the
-        // transfer influence the winner via TVM randomness. Draws run only
-        // through an explicit TriggerLottery message.
-        
         // Emit fee distribution event
-        send(SendParameters{ to: sender(), value: 0, mode: SendRemainingValue, body: EventFeeDistributed{ totalFee: msg.amount, burn: burnAmount, buyback: buybackAmt, lottery: lotteryAmt, staking: stakingAmt, referral: referralDistributed, treasury: treasuryAmt, defiPool: defiAmt }.toCell() });
+        send(SendParameters{ to: sender(), value: 0, mode: SendRemainingValue, body: EventFeeDistributed{ totalFee: msg.amount, burn: burnAmount, buyback: buybackAmt, staking: stakingAmt, referral: referralDistributed, treasury: treasuryAmt, defiPool: defiAmt }.toCell() });
     }
     
     // ═══════════════════════════════════════════════════════════
@@ -832,55 +787,6 @@ contract QuasarMaster with Deployable {
         self._sendCustodiedTokens(beneficiary, claimable, 0);
         
         send(SendParameters{ to: sender(), value: 0, mode: SendRemainingValue, body: EventVestingClaimed{ beneficiary: beneficiary, amount: claimable }.toCell() });
-    }
-    
-    // ═══════════════════════════════════════════════════════════
-    // LOTTERY
-    // ═══════════════════════════════════════════════════════════
-    
-    receive(msg: TriggerLottery) {
-        self._requireNotPaused();
-        require(self.lotteryEnabled, "Lottery off");
-        require(self.lotteryTicketCount > 0, "No tickets");
-        require(now() - self.lotteryLastDraw >= self.lotteryDrawInterval, "Too early");
-        self._executeLotteryDraw(msg.queryId);
-    }
-    
-    fun _executeLotteryDraw(queryId: Int) {
-        if (self.lotteryTicketCount == 0) { return }
-        // Use TVM randomness rather than the block timestamp, which is
-        // predictable and can be influenced by the draw caller.
-        let winnerIndex: Int = randomInt() % self.lotteryTicketCount;
-        let winner: Address? = self.lotteryTickets.get(winnerIndex);
-        if (winner == null) { return }
-        
-        let jackpot: Int = self.lotteryJackpot * self.lotteryJackpotShare / 100;
-        self.lotteryJackpot = self.lotteryJackpot - jackpot;
-        
-        // Small transfers can create tickets without producing a whole
-        // nano-QSR of jackpot. A draw must still close the round instead of
-        // reverting on a zero payout.
-        if (jackpot > 0) {
-            self._sendTokens(winner!!, jackpot, queryId, myAddress());
-        }
-        
-        self.lotteryWinners.set(self.lotteryRound, winner!!);
-        self.lotteryRound = self.lotteryRound + 1;
-        self.lotteryLastDraw = now();
-        self.lotteryTickets = emptyMap();
-        self.lotteryTicketCount = 0;
-        
-        send(SendParameters{ to: sender(), value: 0, mode: SendRemainingValue, body: EventLotteryDrawn{ round: self.lotteryRound - 1, winner: winner!!, jackpot: jackpot }.toCell() });
-    }
-    
-    receive(msg: SetLotteryConfig) {
-        self._requireOwner();
-        require(!self.aiFullAutonomy, "AI controls");
-        require(msg.ticketPrice > 0 && msg.drawInterval > 0 && msg.jackpotShare > 0 && msg.jackpotShare <= 100, "Invalid lottery config");
-        self.lotteryEnabled = msg.enabled;
-        self.lotteryTicketPrice = msg.ticketPrice;
-        self.lotteryDrawInterval = msg.drawInterval;
-        self.lotteryJackpotShare = msg.jackpotShare;
     }
     
     // ═══════════════════════════════════════════════════════════
@@ -1326,11 +1232,6 @@ contract QuasarMaster with Deployable {
     }
     get fun get_vesting_info(beneficiary: Address): VestingInfo? { return self.vestingSchedules.get(beneficiary) }
     
-    get fun get_lottery_config(): LotteryConfig {
-        return LotteryConfig{ enabled: self.lotteryEnabled, ticketPrice: self.lotteryTicketPrice, drawInterval: self.lotteryDrawInterval, jackpotShare: self.lotteryJackpotShare, currentRound: self.lotteryRound, lastDraw: self.lotteryLastDraw, totalJackpot: self.lotteryJackpot }
-    }
-    
-    get fun get_lottery_winner(round: Int): Address? { return self.lotteryWinners.get(round) }
     get fun get_ai_action(actionId: Int): AIActionLog? { return self.aiActionLog.get(actionId) }
     get fun get_veto_state(actionId: Int): VetoState? { return self.vetoLog.get(actionId) }
     get fun get_ai_recommendation(index: Int): AIRecommendation? { return self.anomalyLog.get(index) }

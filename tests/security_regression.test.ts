@@ -1,12 +1,11 @@
 /**
  * Security regression tests — one test per audited finding (fix 86ac8ac).
  *
- *   F1  🔴 pools (buyback/lottery/staking) were not encumbering the reserve
+ *   F1  🔴 pools (buyback/staking) were not encumbering the reserve
  *   F2  🔴 maxWalletBps not enforced (documented only) — doc honesty guard
  *   F3  🟠 wallet fee fixed at 30 bps — config/reality mismatch guard
  *   F4  🟠 feeBps "stuck" after emergency severity 3 — recovery guard
  *   F5  🟠 DefiPayout could drain the whole reserve; DeFi address irrevocable
- *   F6  🟠 auto lottery draw inside FeeTransfer (validator influence) — removed
  *   F7  🟡 ClaimVested ignored emergencyPause / vestingEnabled
  *   F8  🟡 AddLiquidity donated unbalanced surplus to the pool
  *   F9  🟡 RemoveLiquidity dust rounding blocked withdrawals
@@ -55,7 +54,8 @@ function section(src: string, from: string, to?: string): string {
 test('F1 source: treasury payout requires unencumbered reserve', () => {
     const fee = section(masterSrc, 'receive(msg: FeeTransfer)', 'receive(msg: TriggerBuyback)');
     assert.ok(fee.includes('self.reserveBalance - self._poolEncumbrance() >= treasuryAmt'), 'treasury must be limited to the free reserve');
-    assert.ok(masterSrc.includes('fun _poolEncumbrance(): Int { return self.buybackPool + self.lotteryJackpot + self.stakingRewardsPool }'), 'encumbrance must cover all three pools');
+    assert.ok(masterSrc.includes('fun _poolEncumbrance(): Int { return self.buybackPool + self.stakingRewardsPool }'), 'encumbrance must cover both pools');
+    assert.ok(!masterSrc.includes('lottery'), 'the lottery feature must be fully removed from the contract');
     // burned fees must leave the spendable reserve
     assert.ok(fee.includes('self.reserveBalance = self.reserveBalance - burnAmount'), 'burn must debit the reserve');
 });
@@ -70,14 +70,8 @@ test('F5 source: DefiPayout is capped and revocable', () => {
     assert.ok(!setDefi.includes('msg.defiAddress != newAddress(0, 0)'), 'zero address must be allowed to revoke DeFi');
 });
 
-test('F6 source: no auto lottery draw inside FeeTransfer', () => {
-    const fee = section(masterSrc, 'receive(msg: FeeTransfer)', 'receive(msg: TriggerBuyback)');
-    assert.ok(!fee.includes('_executeLotteryDraw'), 'FeeTransfer must not draw the lottery (validator influence)');
-    assert.ok(masterSrc.includes('receive(msg: TriggerLottery)'), 'explicit draw entrypoint must exist');
-});
-
 test('F7 source: ClaimVested honors pause and the vesting flag', () => {
-    const claim = section(masterSrc, 'receive(msg: ClaimVested)', '// LOTTERY');
+    const claim = section(masterSrc, 'receive(msg: ClaimVested)', 'receive(msg: TriggerBuyback)');
     assert.ok(claim.includes('self._requireNotPaused()'), 'claim must respect emergency pause');
     assert.ok(claim.includes('self.vestingEnabled'), 'claim must respect the vesting flag');
 });
@@ -281,14 +275,6 @@ test('F5+F1 on-chain: DefiPayout from a revocable DeFi address cannot touch encu
         $$type: 'DefiPayout', queryId: 1n, amount: 1n, destination: eco.owner.address
     }).catch(() => {});
     assert.equal(await eco.master.getGetReserveBalance(), 0n, 'revoked DeFi must not be paid');
-});
-
-test('F6 on-chain: TriggerLottery on an empty round reverts (draw is explicit-only)', async () => {
-    const eco = await deployEco(false);
-    await eco.master.send(eco.owner.getSender(), { value: toNano('0.1') }, { $$type: 'TriggerLottery', queryId: 5n }).catch(() => {});
-    const cfg = await eco.master.getGetLotteryConfig();
-    assert.equal(cfg.currentRound, 1n, 'empty draw must revert, round unchanged');
-    assert.equal(cfg.totalJackpot, 0n);
 });
 
 test('F8+F9+F10 on-chain: DeFi proportional deposit accounting, dust withdrawal, bare-TON rejection', async () => {

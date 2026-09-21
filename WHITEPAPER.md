@@ -10,7 +10,7 @@
 
 ## 1. Executive Summary
 
-QUASAR is a Jetton and DeFi ecosystem built on the TON blockchain. The project combines the QSR token, an embedded TON/QSR constant-product market maker, LP farming, staking, referrals, vesting, lottery mechanics, and a configurable AI Oracle governance layer.
+QUASAR is a Jetton and DeFi ecosystem built on the TON blockchain. The project combines the QSR token, an embedded TON/QSR constant-product market maker, LP farming, staking, referrals, vesting, and a configurable AI Oracle governance layer.
 
 The architecture is intended to keep core QSR operations in transparent on-chain contracts and expose system state through getters and events. The user interface connects to TON wallets through TON Connect.
 
@@ -37,7 +37,6 @@ The main QUASAR contract is responsible for:
 - staking and rewards;
 - referrals;
 - vesting;
-- lottery operations;
 - AI Oracle controls, cooldowns, veto, and emergency pause;
 - configuration of the DeFi pool address.
 
@@ -71,7 +70,6 @@ QSR is the Jetton of the QUASAR ecosystem with a base precision of 9 decimals. T
 - staking;
 - referral activity;
 - farming rewards;
-- lottery tickets;
 - liquidity provision in the TON/QSR pool.
 
 ### Supply cap
@@ -89,7 +87,6 @@ The master contract initializer sets the base fee to 30 basis points, or 0.30%. 
 After the burn, the remaining amount is routed by default as follows:
 
 - 15% of the remainder to the buyback pool;
-- 15% of the remainder to the lottery jackpot;
 - 10% of the remainder to the staking rewards pool;
 - 5% of the remainder to the DeFi pool when a DeFi address is configured;
 - the balance to the treasury;
@@ -155,21 +152,6 @@ The contract supports vesting records with:
 
 Tokens become claimable progressively after the cliff according to the current implementation. Each vesting schedule and beneficiary entitlement should be published separately before mainnet.
 
-## 10. Lottery
-
-When enabled, a transaction that reaches the ticket price adds the sender to the ticket list. The initial lottery configuration is:
-
-- ticket price: 1 QSR;
-- draw interval: 24 hours;
-- jackpot share: 50% of the accumulated jackpot.
-
-### Current implementation limitation
-
-The current winner-selection logic uses TVM `randomInt()`. This is preferable
-to timestamp modulo arithmetic, but it still requires an independent review of
-TON randomness guarantees and draw timing before the lottery is used for
-meaningful monetary prizes.
-
 ## 11. AI Oracle and Governance
 
 The AI Oracle has a separate oracle address and can receive signals about price, volatility, sentiment, and anomalies. Supported action types include changes to the fee, treasury, anti-whale limits, buyback settings, trading status, emergency pause, and oracle rotation.
@@ -202,7 +184,6 @@ QUASAR is at a pre-testnet/mainnet stage and should not be used with significant
 - review of owner and AI Oracle permissions;
 - review of coins, basis-point arithmetic, and rounding;
 - review of TON bounce and reentrancy scenarios;
-- secure randomness for the lottery;
 - corrected and tested buyback semantics;
 - confirmed supply cap and final token allocation;
 - published contract addresses and build hashes;
@@ -215,7 +196,6 @@ Key user risks include:
 - impermanent loss for liquidity providers;
 - parameter changes by the owner or AI Oracle;
 - an insufficient rewards pool;
-- predictable lottery randomness;
 - deployment errors or incorrect contract addresses;
 - legal and tax restrictions in the user's jurisdiction.
 
@@ -255,4 +235,4 @@ QSR should not be described as a guaranteed investment product or as a promise o
 
 ## 16. Conclusion
 
-QUASAR proposes a modular TON DeFi architecture combining QSR, a constant-product pool, farming, staking, referrals, vesting, lottery, and a configurable AI Oracle. Its strength is the breadth of the on-chain model and the availability of an open technical foundation. Its most important pre-launch task is to bring the product claims, token economics, and actual implementation into one verifiable standard, then validate the result through independent security review.
+QUASAR proposes a modular TON DeFi architecture combining QSR, a constant-product pool, farming, staking, referrals, vesting, and a configurable AI Oracle. Its strength is the breadth of the on-chain model and the availability of an open technical foundation. Its most important pre-launch task is to bring the product claims, token economics, and actual implementation into one verifiable standard, then validate the result through independent security review.
