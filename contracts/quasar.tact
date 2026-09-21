@@ -744,7 +744,7 @@ contract QuasarMaster with Deployable {
         let pending: Int? = self.pendingReferralRewards.get(claimant);
         require(pending != null && pending!! > 0, "No referral rewards");
         // F-17: referral rewards are paid out of the fee reserve, which also
-        // backs the buyback, lottery and staking pools. Without the same
+        // backs the buyback and staking pools. Without the same
         // free-reserve guard the treasury path uses, a claim could spend
         // encumbered pool backing.
         require(self.reserveBalance - self._poolEncumbrance() >= pending!!, "Reserve encumbered");
