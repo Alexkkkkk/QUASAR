@@ -745,9 +745,9 @@ contract QuasarWallet {
         let init: StateInit = initOf QuasarWallet(msg.destination, self.master);
         send(SendParameters{
             to: contractAddress(init),
-            value: 0,
+            value: ton("0.02"),
             bounce: true,
-            mode: SendRemainingValue,
+            mode: SendPayGasSeparately,
             body: InternalTransfer{
                 queryId: msg.queryId,
                 amount: sendAmount,
