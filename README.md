@@ -112,6 +112,10 @@ Stake LP tokens and earn **~0.1 QSR/sec** rewards.
 ClaimFarmRewards {}
 ```
 
+Unconsumed QSR deposits sent to the DeFi contract can be returned with
+`RefundPendingQsr {}`. The refund path remains available while the pool is
+paused so a failed or abandoned two-step operation does not strand user funds.
+
 ### Fee Distribution (Updated)
 
 ```

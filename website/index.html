@@ -125,6 +125,7 @@
                         <hr style="border: none; border-top: 1px solid var(--border); margin: 15px 0;">
                         <input type="number" class="defi-input" id="lp-remove" placeholder="LP Amount to Remove" step="0.000000001">
                         <button class="defi-btn defi-btn-claim" id="btn-remove-lp" onclick="removeLiquidityFromUI()">Remove Liquidity</button>
+                        <button class="defi-btn defi-btn-claim" id="btn-refund-qsr" onclick="refundPendingQsrFromUI()" style="margin-top: 8px;">Refund Pending QSR</button>
                     </div>
                     
                     <!-- Staking Card -->
@@ -256,7 +257,22 @@
                 showToast('Slippage must be between 0% and 100%', 'error');
                 return;
             }
-            const minOut = amountNano * BigInt(10000 - slippageBps) / 10000n;
+            if (!window.quoteSwap) {
+                showToast('Swap quote is unavailable', 'error');
+                return;
+            }
+            let quotedOut;
+            try {
+                quotedOut = await window.quoteSwap(direction, amountNano);
+            } catch (e) {
+                showToast('Could not load swap quote', 'error');
+                return;
+            }
+            if (quotedOut <= 0n) {
+                showToast('Pool has insufficient liquidity', 'error');
+                return;
+            }
+            const minOut = quotedOut * BigInt(10000 - slippageBps) / 10000n;
             if (direction === 'to-ton') {
                 if (!(await ensureQsrDeposit('defi', amountNano))) return;
                 window.swapToTon(amountNano, minOut);
@@ -296,6 +312,12 @@
         
         function claimFarmRewardsFromUI() {
             window.claimFarmRewards();
+        }
+
+        function refundPendingQsrFromUI() {
+            if (typeof window.refundPendingQsr === 'function') {
+                window.refundPendingQsr();
+            }
         }
         
         function showToast(message, type = 'success') {

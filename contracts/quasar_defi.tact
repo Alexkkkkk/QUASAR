@@ -22,6 +22,7 @@ message SetPaused { paused: Bool }
 message SetMaxTradeBps { maxTradeBps: Int as uint16 }
 message DefiPayout { queryId: Int as uint64; amount: Int as coins; destination: Address }
 message SweepTON { amount: Int as coins }
+message RefundPendingQsr { }
 
 // ─── Jetton Integration Messages ───
 message(0x7bdd97de) BurnNotification { queryId: Int as uint64; amount: Int as coins; sender: Address; responseDestination: Address }
@@ -197,15 +198,27 @@ contract QuasarDeFi with Deployable {
                 }
             }
         } else {
-            // F-13: deposits are stamped; a pending balance older than the TTL is
-            // stale and must not silently enlarge a fresh deposit.
-            let stamp: Int? = self.pendingQsrDepositsAt.get(msg.from);
+            // Deposits remain refundable until consumed. A previous version
+            // discarded balances older than 24 hours while leaving the QSR in
+            // this contract's wallet, permanently stranding user funds.
             let prev: Int? = self.pendingQsrDeposits.get(msg.from);
-            let base: Int = 0;
-            if (stamp != null && now() - stamp!! < 86400 && prev != null) { base = prev!! }
-            self.pendingQsrDeposits.set(msg.from, base + msg.amount);
+            self.pendingQsrDeposits.set(msg.from, prev == null ? msg.amount : prev!! + msg.amount);
             self.pendingQsrDepositsAt.set(msg.from, now());
         }
+    }
+
+    // A user may recover an unconsumed deposit at any time. This is
+    // intentionally allowed while paused: it only returns the user's own
+    // QSR and prevents a UI failure or an abandoned two-step operation from
+    // becoming a permanent loss.
+    receive(msg: RefundPendingQsr) {
+        let pending: Int? = self.pendingQsrDeposits.get(sender());
+        require(pending != null && pending!! > 0, "No pending QSR");
+        self._lock();
+        self.pendingQsrDeposits.set(sender(), 0);
+        self.pendingQsrDepositsAt.set(sender(), 0);
+        self._sendQsr(sender(), pending!!, 0);
+        self._unlock();
     }
     
     // ─── ADD LIQUIDITY ───
@@ -520,11 +533,12 @@ contract QuasarDeFi with Deployable {
         self.maxTradeBps = msg.maxTradeBps;
     }
     
-    // Recover stray TON. QSR funds stay governed by the reserve accounting
-    // and can never be swept.
+    // Recover only TON that is not backing LP positions. The previous check
+    // used the whole contract balance and allowed the owner to sweep
+    // tonReserve, draining liquidity-provider funds.
     receive(msg: SweepTON) {
         require(sender() == self.owner, "Only owner");
-        require(msg.amount > 0 && msg.amount <= myBalance() - ton("0.05"), "Invalid sweep");
+        require(msg.amount > 0 && myBalance() >= self.tonReserve + msg.amount + ton("0.05"), "Invalid sweep");
         send(SendParameters{ to: self.owner, value: msg.amount, bounce: false, mode: SendPayGasSeparately, body: emptyCell() });
     }
     
