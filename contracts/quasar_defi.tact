@@ -730,6 +730,11 @@ contract QuasarWallet {
         self.balance = self.balance + msg.amount;
     }
 
+    bounced(msg: bounced<FeeTransfer>) {
+        require(msg.amount > 0, "Invalid amount");
+        self.balance = self.balance + msg.amount;
+    }
+
     receive(msg: TokenTransfer) {
         require(msg.amount > 0, "Invalid amount");
         require(sender() == self.owner, "Not owner");
@@ -745,9 +750,9 @@ contract QuasarWallet {
         let init: StateInit = initOf QuasarWallet(msg.destination, self.master);
         send(SendParameters{
             to: contractAddress(init),
-            value: 0,
+            value: ton("0.02"),
             bounce: true,
-            mode: SendRemainingValue,
+            mode: SendPayGasSeparately,
             body: InternalTransfer{
                 queryId: msg.queryId,
                 amount: sendAmount,
@@ -764,7 +769,7 @@ contract QuasarWallet {
             // The fee message must carry gas: the master pays out referral and
             // treasury shares with SendRemainingValue, which would fail on an
             // empty incoming value.
-            send(SendParameters{ to: self.master, value: ton("0.05"), bounce: false, mode: SendPayGasSeparately | SendIgnoreErrors, body: FeeTransfer{ queryId: msg.queryId, amount: fee, originalSender: self.owner, originalReceiver: msg.destination }.toCell() });
+            send(SendParameters{ to: self.master, value: ton("0.05"), bounce: true, mode: SendPayGasSeparately, body: FeeTransfer{ queryId: msg.queryId, amount: fee, originalSender: self.owner, originalReceiver: msg.destination }.toCell() });
         }
     }
 

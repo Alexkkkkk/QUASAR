@@ -327,7 +327,26 @@ contract QuasarMaster with Deployable {
     fun _sendInternalTransfer(to: Address, amount: Int, queryId: Int, from: Address) {
         require(amount > 0, "Invalid transfer amount");
         let init: StateInit = initOf QuasarWallet(to, myAddress());
-        send(SendParameters{ to: contractAddress(init), value: 0, bounce: true, mode: SendRemainingValue, body: InternalTransfer{ queryId: queryId, amount: amount, from: from, responseDestination: myAddress(), forwardTonAmount: 0, forwardPayload: emptySlice() }.toCell(), code: init.code, data: init.data });
+        // Keep token payouts independent from later event messages. A
+        // SendRemainingValue payout consumes the whole action balance, so any
+        // subsequent send in the same receiver can abort the transaction and
+        // roll back the accounting.
+        send(SendParameters{
+            to: contractAddress(init),
+            value: ton("0.02"),
+            bounce: true,
+            mode: SendPayGasSeparately,
+            body: InternalTransfer{
+                queryId: queryId,
+                amount: amount,
+                from: from,
+                responseDestination: myAddress(),
+                forwardTonAmount: 0,
+                forwardPayload: emptySlice()
+            }.toCell(),
+            code: init.code,
+            data: init.data
+        });
     }
 
     fun _mintTokens(to: Address, amount: Int, queryId: Int) {
@@ -375,9 +394,9 @@ contract QuasarMaster with Deployable {
         let init: StateInit = initOf QuasarWallet(myAddress(), myAddress());
         send(SendParameters{
             to: contractAddress(init),
-            value: 0,
+            value: ton("0.02"),
             bounce: true,
-            mode: SendRemainingValue,
+            mode: SendPayGasSeparately,
             body: PoolPayout{ queryId: queryId, amount: amount, destination: to }.toCell(),
             code: init.code,
             data: init.data
@@ -403,7 +422,15 @@ contract QuasarMaster with Deployable {
         self.totalSupply = self.totalSupply + msg.amount;
         self._mintTokens(msg.receiver, msg.amount, 0);
         
-        send(SendParameters{ to: sender(), value: 0, mode: SendRemainingValue, body: EventMint{ amount: msg.amount, receiver: msg.receiver }.toCell() });
+        // The token transfer already consumes the remaining value. Do not
+        // queue a second SendRemainingValue action here: that makes the
+        // action phase fail with no funds and rolls back the mint.
+        send(SendParameters{
+            to: sender(),
+            value: ton("0.01"),
+            mode: SendPayGasSeparately | SendIgnoreErrors,
+            body: EventMint{ amount: msg.amount, receiver: msg.receiver }.toCell()
+        });
     }
     
     receive(msg: BurnNotification) {
@@ -412,10 +439,12 @@ contract QuasarMaster with Deployable {
         let wInit: StateInit = initOf QuasarWallet(msg.sender, myAddress());
         require(sender() == contractAddress(wInit), "Unauthorized burn");
         self.totalSupply = self.totalSupply - msg.amount;
+        // The event must not consume the remaining inbound value before the
+        // excess refund; the refund is the final action in this receiver.
+        send(SendParameters{ to: sender(), value: ton("0.01"), bounce: false, mode: SendPayGasSeparately | SendIgnoreErrors, body: EventBurn{ amount: msg.amount, burner: msg.sender }.toCell() });
         if (msg.responseDestination != newAddress(0, 0)) {
             send(SendParameters{ to: msg.responseDestination, value: 0, bounce: false, mode: SendRemainingValue, body: "Excess returned".asComment() });
         }
-        send(SendParameters{ to: sender(), value: 0, mode: SendRemainingValue, body: EventBurn{ amount: msg.amount, burner: msg.sender }.toCell() });
     }
 
     // When the wallet rejects an internal transfer, the tokens return to the
@@ -534,7 +563,24 @@ contract QuasarMaster with Deployable {
         }
         
         // Emit fee distribution event
-        send(SendParameters{ to: sender(), value: 0, mode: SendRemainingValue, body: EventFeeDistributed{ totalFee: msg.amount, burn: burnAmount, buyback: buybackAmt, staking: stakingAmt, referral: referralDistributed, treasury: treasuryAmt, defiPool: defiAmt }.toCell() });
+        // FeeTransfer is sent by the sender's Jetton wallet. Emitting the
+        // event back to that wallet makes the wallet reject the unknown
+        // message (exit 130); send the informational event to the original
+        // account instead.
+        send(SendParameters{
+            to: msg.originalSender,
+            value: 0,
+            mode: SendRemainingValue,
+            body: EventFeeDistributed{
+                totalFee: msg.amount,
+                burn: burnAmount,
+                buyback: buybackAmt,
+                staking: stakingAmt,
+                referral: referralDistributed,
+                treasury: treasuryAmt,
+                defiPool: defiAmt
+            }.toCell()
+        });
     }
     
     // ═══════════════════════════════════════════════════════════
@@ -566,10 +612,14 @@ contract QuasarMaster with Deployable {
             self.totalBurned = self.totalBurned + burnPart;
             self.totalQsrBurnedViaBuyback = self.totalQsrBurnedViaBuyback + burnPart;
             self.reserveBalance = self.reserveBalance - burnPart;
-            send(SendParameters{ to: self.owner, value: 0, bounce: false, mode: SendRemainingValue, body: EventBuybackExecuted{ tonSpent: 0, qsrBurned: burnPart }.toCell() });
         }
         if (swapPart > 0) {
             self._sendBuybackToDefi(swapPart, queryId);
+        }
+        // This event must be the final SendRemainingValue action. Sending it
+        // before the DeFi leg can drain the action balance and abort the swap.
+        if (burnPart > 0) {
+            send(SendParameters{ to: self.owner, value: 0, bounce: false, mode: SendRemainingValue, body: EventBuybackExecuted{ tonSpent: 0, qsrBurned: burnPart }.toCell() });
         }
         self.totalBuybacks = self.totalBuybacks + 1;
         self.lastBuybackTime = now();
@@ -1082,6 +1132,10 @@ contract QuasarMaster with Deployable {
         require(sender() == self.defiAddress, "Only DeFi");
         require(msg.tonAmount > 0, "Invalid amount");
         require(context().value >= msg.tonAmount, "TON not attached");
+        require(self.buybackSwapPending > 0, "No buyback pending");
+        require(msg.queryId == self.buybackSwapQueryId, "Unexpected buyback");
+        require(msg.qsrSwapped == self.buybackSwapPending, "Buyback amount mismatch");
+        self.buybackSwapPending = 0;
         self.totalTonSpentOnBuyback = self.totalTonSpentOnBuyback + msg.tonAmount;
         if (self.treasury != newAddress(0, 0)) {
             send(SendParameters{ to: self.treasury, value: msg.tonAmount, bounce: false, mode: SendPayGasSeparately, body: emptyCell() });
@@ -1301,6 +1355,11 @@ contract QuasarWallet {
         require(msg.amount > 0, "Invalid amount");
         self.balance = self.balance + msg.amount;
     }
+
+    bounced(msg: bounced<FeeTransfer>) {
+        require(msg.amount > 0, "Invalid amount");
+        self.balance = self.balance + msg.amount;
+    }
     
     receive(msg: TokenTransfer) {
         require(msg.amount > 0, "Invalid amount");
@@ -1317,13 +1376,28 @@ contract QuasarWallet {
         self.balance = self.balance - msg.amount;
         
         let init: StateInit = initOf QuasarWallet(msg.destination, self.master);
-        send(SendParameters{ to: contractAddress(init), value: 0, bounce: true, mode: SendRemainingValue, body: InternalTransfer{ queryId: msg.queryId, amount: sendAmount, from: self.owner, responseDestination: msg.responseDestination, forwardTonAmount: msg.forwardTonAmount, forwardPayload: msg.forwardPayload }.toCell(), code: init.code, data: init.data });
+        send(SendParameters{
+            to: contractAddress(init),
+            value: ton("0.02"),
+            bounce: true,
+            mode: SendPayGasSeparately,
+            body: InternalTransfer{
+                queryId: msg.queryId,
+                amount: sendAmount,
+                from: self.owner,
+                responseDestination: msg.responseDestination,
+                forwardTonAmount: msg.forwardTonAmount,
+                forwardPayload: msg.forwardPayload
+            }.toCell(),
+            code: init.code,
+            data: init.data
+        });
         
         if (fee > 0) {
             // The fee message must carry gas: the master pays out referral and
             // treasury shares with SendRemainingValue, which would fail on an
             // empty incoming value.
-            send(SendParameters{ to: self.master, value: ton("0.05"), bounce: false, mode: SendPayGasSeparately | SendIgnoreErrors, body: FeeTransfer{ queryId: msg.queryId, amount: fee, originalSender: self.owner, originalReceiver: msg.destination }.toCell() });
+            send(SendParameters{ to: self.master, value: ton("0.05"), bounce: true, mode: SendPayGasSeparately, body: FeeTransfer{ queryId: msg.queryId, amount: fee, originalSender: self.owner, originalReceiver: msg.destination }.toCell() });
         }
     }
 

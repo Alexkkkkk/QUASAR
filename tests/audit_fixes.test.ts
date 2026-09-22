@@ -76,3 +76,40 @@ test('F-18 on-chain: only the owner can bring minting back after a full freeze',
     await m.send(owner.getSender(), { value: toNano('0.1') }, 'Resume Minting');
     assert.equal((await m.getGetJettonData()).mintable, true, 'the owner must be able to resume minting');
 });
+
+test('F-19 source: rejected fee messages restore the deducted fee', () => {
+    const wallet = section(masterSrc, 'contract QuasarWallet');
+    const transfer = section(wallet, 'receive(msg: TokenTransfer)', 'receive(msg: PoolPayout)');
+    assert.ok(
+        transfer.includes('bounce: true, mode: SendPayGasSeparately, body: FeeTransfer'),
+        'fee transfer must be bounceable and funded'
+    );
+    assert.ok(
+        !transfer.includes('SendPayGasSeparately | SendIgnoreErrors'),
+        'fee transfer must not silently ignore delivery errors'
+    );
+    assert.ok(
+        wallet.includes('bounced(msg: bounced<FeeTransfer>)'),
+        'a bounced fee must be restored to the sender wallet'
+    );
+});
+
+test('F-20 source: remaining-value actions are kept last in multi-send flows', () => {
+    const burn = section(masterSrc, 'receive(msg: BurnNotification)', 'receive(msg: TokenNotification)');
+    assert.ok(
+        burn.indexOf('EventBurn{') < burn.indexOf('"Excess returned"'),
+        'burn event must be emitted before the final excess refund'
+    );
+
+    const buyback = section(masterSrc, 'fun _executeBuyback', 'fun _sendBuybackToDefi');
+    assert.ok(
+        buyback.indexOf('self._sendBuybackToDefi') < buyback.indexOf('EventBuybackExecuted{'),
+        'buyback event must not drain value before the DeFi leg'
+    );
+
+    const custody = section(masterSrc, 'fun _sendCustodiedTokens', 'receive(msg: Mint)');
+    assert.ok(
+        custody.includes('value: ton("0.02")') && custody.includes('mode: SendPayGasSeparately'),
+        'custodied payouts must leave value for the following event'
+    );
+});
