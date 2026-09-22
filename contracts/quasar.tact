@@ -187,6 +187,10 @@ contract QuasarMaster with Deployable {
     referralRewardBps: Int as uint16;
     referrals: map<Address, ReferralInfo>;
     pendingReferralRewards: map<Address, Int>;
+    // Total referral liability must stay reserved across all claimants.
+    // Without an aggregate counter, one claimant or a DeFi payout could
+    // consume the free reserve backing somebody else's reward.
+    pendingReferralTotal: Int as coins;
     
     // Vesting
     vestingEnabled: Bool;
@@ -267,6 +271,7 @@ contract QuasarMaster with Deployable {
         
         self.referralEnabled = true;
         self.referralRewardBps = 100;
+        self.pendingReferralTotal = 0;
         
         self.vestingEnabled = true;
         self.teamAllocation = 0;
@@ -292,7 +297,9 @@ contract QuasarMaster with Deployable {
     // Buyback and staking pools are sub-accounts inside the fee reserve.
     // Treasury and DeFi payouts may only spend the part of the reserve that
     // is not encumbered by these pools.
-    fun _poolEncumbrance(): Int { return self.buybackPool + self.stakingRewardsPool }
+    fun _poolEncumbrance(): Int {
+        return self.buybackPool + self.stakingRewardsPool + self.pendingReferralTotal
+    }
     
     fun _logAiAction(actionType: String, oldVal: Int, newVal: Int, reason: String): Int {
         let id: Int = self.aiActionIndex;
@@ -546,6 +553,7 @@ contract QuasarMaster with Deployable {
                     }
                     let pendingReward: Int? = self.pendingReferralRewards.get(referrer);
                     self.pendingReferralRewards.set(referrer, pendingReward == null ? refReward : pendingReward!! + refReward);
+                    self.pendingReferralTotal = self.pendingReferralTotal + refReward;
                 }
             }
         }
@@ -766,6 +774,7 @@ contract QuasarMaster with Deployable {
     receive(msg: RegisterReferral) {
         self._requireNotPaused();
         require(self.referralEnabled, "Referral off");
+        require(msg.referrer != newAddress(0, 0), "Invalid referrer");
         require(msg.referrer != sender(), "Self referral");
         let existing: ReferralInfo? = self.referrals.get(sender());
         require(existing == null, "Already registered");
@@ -799,6 +808,7 @@ contract QuasarMaster with Deployable {
         // encumbered pool backing.
         require(self.reserveBalance - self._poolEncumbrance() >= pending!!, "Reserve encumbered");
         self.pendingReferralRewards.set(claimant, 0);
+        self.pendingReferralTotal = self.pendingReferralTotal - pending!!;
         self._sendTokens(claimant, pending!!, 0, myAddress());
     }
     
