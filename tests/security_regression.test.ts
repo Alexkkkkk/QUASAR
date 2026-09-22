@@ -54,7 +54,7 @@ function section(src: string, from: string, to?: string): string {
 test('F1 source: treasury payout requires unencumbered reserve', () => {
     const fee = section(masterSrc, 'receive(msg: FeeTransfer)', 'receive(msg: TriggerBuyback)');
     assert.ok(fee.includes('self.reserveBalance - self._poolEncumbrance() >= treasuryAmt'), 'treasury must be limited to the free reserve');
-    assert.ok(masterSrc.includes('fun _poolEncumbrance(): Int { return self.buybackPool + self.stakingRewardsPool }'), 'encumbrance must cover both pools');
+    assert.ok(masterSrc.includes('self.buybackPool + self.stakingRewardsPool + self.pendingReferralTotal'), 'encumbrance must cover pools and referral liabilities');
     assert.ok(!masterSrc.includes('lottery'), 'the lottery feature must be fully removed from the contract');
     // burned fees must leave the spendable reserve
     assert.ok(fee.includes('self.reserveBalance = self.reserveBalance - burnAmount'), 'burn must debit the reserve');
