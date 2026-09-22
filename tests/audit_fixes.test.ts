@@ -35,6 +35,26 @@ test('F-17 source: referral claims cannot touch encumbered pool backing', () => 
         claim.includes('require(self.reserveBalance - self._poolEncumbrance() >= pending!!, "Reserve encumbered");'),
         'referral claim must respect the free-reserve guard'
     );
+    assert.ok(
+        masterSrc.includes('pendingReferralTotal: Int as coins;'),
+        'all referral claims must have an aggregate liability counter'
+    );
+    assert.ok(
+        masterSrc.includes('self.buybackPool + self.stakingRewardsPool + self.pendingReferralTotal'),
+        'aggregate referral liabilities must encumber the reserve'
+    );
+    assert.ok(
+        masterSrc.includes('self.pendingReferralTotal = self.pendingReferralTotal - pending!!;'),
+        'claiming must release the aggregate referral liability'
+    );
+});
+
+test('referrals reject the zero address', () => {
+    const register = section(masterSrc, 'receive(msg: RegisterReferral)', 'receive(msg: SetReferralConfig)');
+    assert.ok(
+        register.includes('require(msg.referrer != newAddress(0, 0), "Invalid referrer");'),
+        'referral rewards must not be assigned to an unclaimable zero address'
+    );
 });
 
 test('F-18 source: minting can be resumed by the owner', () => {
