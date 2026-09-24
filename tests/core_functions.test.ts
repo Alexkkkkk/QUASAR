@@ -338,6 +338,80 @@ test('defi: the swap quote getter matches the CPMM formula with the 0.30% fee', 
     assert.equal(empty.tonOut, 0n);
 });
 
+test('defi: seeded swaps preserve quote parity and the constant-product invariant', async () => {
+    const eco = await deployEco(true);
+    const lp = await eco.bc.treasury('property-lp');
+    const initialTon = 10n * toNano('1');
+    const initialQsr = 100n * QSR;
+
+    await creditDefiDeposit(eco, lp.address, initialQsr);
+    const add = await eco.defi.send(lp.getSender(), { value: initialTon + toNano('1') }, {
+        $type: 'AddLiquidity', tonAmount: initialTon, qsrAmount: initialQsr
+    });
+    assert.ok(!anyComputeFailed(add), 'initial liquidity must be accepted');
+
+    // Fixed seed makes any failing property case reproducible.
+    let seed = 0x5eed1234;
+    const nextTradeBps = () => {
+        seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+        return 100 + (seed % 2400); // 1.00% to 24.99%, below the 30% trade cap.
+    };
+    const feeBps = await eco.defi.getFeeConfig();
+    assert.equal(feeBps, 30n);
+
+    for (let i = 0; i < 16; i++) {
+        const before = await eco.defi.getPoolInfo();
+        const tradeBps = BigInt(nextTradeBps());
+        const tonToQsr = i % 2 === 0;
+        const inputReserve = tonToQsr ? before.tonReserve : before.qsrReserve;
+        const input = inputReserve * tradeBps / 10000n;
+        assert.ok(input > 0n, 'generated trade input must be positive');
+
+        let after;
+        if (tonToQsr) {
+            const gross = input * before.qsrReserve / (before.tonReserve + input);
+            const fee = gross * feeBps / 10000n;
+            const expectedOut = gross - fee;
+            const quote = await eco.defi.getEstimateSwapToQsr(input);
+            assert.equal(quote.qsrOut, expectedOut, 'TON-to-QSR quote formula at case ' + i);
+            assert.equal(quote.fee, fee, 'TON-to-QSR fee at case ' + i);
+            assert.equal(quote.priceImpactBps, input * 10000n / before.tonReserve);
+            assert.ok(expectedOut > 0n && expectedOut < before.qsrReserve);
+
+            const swap = await eco.defi.send(lp.getSender(), { value: input + toNano('0.5') }, {
+                $type: 'SwapToQSR', tonAmount: input, minQsrOut: expectedOut
+            });
+            assert.ok(!anyComputeFailed(swap), 'quoted TON-to-QSR swap executes at case ' + i);
+            after = await eco.defi.getPoolInfo();
+            assert.equal(after.tonReserve, before.tonReserve + input);
+            assert.equal(after.qsrReserve, before.qsrReserve - expectedOut);
+        } else {
+            const gross = input * before.tonReserve / (before.qsrReserve + input);
+            const fee = gross * feeBps / 10000n;
+            const expectedOut = gross - fee;
+            const quote = await eco.defi.getEstimateSwapToTon(input);
+            assert.equal(quote.tonOut, expectedOut, 'QSR-to-TON quote formula at case ' + i);
+            assert.equal(quote.fee, fee, 'QSR-to-TON fee at case ' + i);
+            assert.equal(quote.priceImpactBps, input * 10000n / before.qsrReserve);
+            assert.ok(expectedOut > 0n && expectedOut < before.tonReserve);
+
+            await creditDefiDeposit(eco, lp.address, input);
+            const swap = await eco.defi.send(lp.getSender(), { value: toNano('0.5') }, {
+                $type: 'SwapToTON', qsrAmount: input, minTonOut: expectedOut
+            });
+            assert.ok(!anyComputeFailed(swap), 'quoted QSR-to-TON swap executes at case ' + i);
+            after = await eco.defi.getPoolInfo();
+            assert.equal(after.qsrReserve, before.qsrReserve + input);
+            assert.equal(after.tonReserve, before.tonReserve - expectedOut);
+        }
+
+        assert.ok(
+            after.tonReserve * after.qsrReserve >= before.tonReserve * before.qsrReserve,
+            'fee-adjusted constant product must not decrease at case ' + i
+        );
+    }
+});
+
 test('defi: swaps are guarded by slippage and trade-size limits', async () => {
     const eco = await deployEco(true);
     const lp = await eco.bc.treasury('lp');
