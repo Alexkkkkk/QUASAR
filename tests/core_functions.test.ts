@@ -346,7 +346,7 @@ test('defi: seeded swaps preserve quote parity and the constant-product invarian
 
     await creditDefiDeposit(eco, lp.address, initialQsr);
     const add = await eco.defi.send(lp.getSender(), { value: initialTon + toNano('1') }, {
-        $type: 'AddLiquidity', tonAmount: initialTon, qsrAmount: initialQsr
+        $$type: 'AddLiquidity', tonAmount: initialTon, qsrAmount: initialQsr
     });
     assert.ok(!anyComputeFailed(add), 'initial liquidity must be accepted');
 
@@ -379,7 +379,7 @@ test('defi: seeded swaps preserve quote parity and the constant-product invarian
             assert.ok(expectedOut > 0n && expectedOut < before.qsrReserve);
 
             const swap = await eco.defi.send(lp.getSender(), { value: input + toNano('0.5') }, {
-                $type: 'SwapToQSR', tonAmount: input, minQsrOut: expectedOut
+                $$type: 'SwapToQSR', tonAmount: input, minQsrOut: expectedOut
             });
             assert.ok(!anyComputeFailed(swap), 'quoted TON-to-QSR swap executes at case ' + i);
             after = await eco.defi.getPoolInfo();
@@ -397,7 +397,7 @@ test('defi: seeded swaps preserve quote parity and the constant-product invarian
 
             await creditDefiDeposit(eco, lp.address, input);
             const swap = await eco.defi.send(lp.getSender(), { value: toNano('0.5') }, {
-                $type: 'SwapToTON', qsrAmount: input, minTonOut: expectedOut
+                $$type: 'SwapToTON', qsrAmount: input, minTonOut: expectedOut
             });
             assert.ok(!anyComputeFailed(swap), 'quoted QSR-to-TON swap executes at case ' + i);
             after = await eco.defi.getPoolInfo();
