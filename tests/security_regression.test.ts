@@ -54,7 +54,7 @@ function section(src: string, from: string, to?: string): string {
 test('F1 source: treasury payout requires unencumbered reserve', () => {
     const fee = section(masterSrc, 'receive(msg: FeeTransfer)', 'receive(msg: TriggerBuyback)');
     assert.ok(fee.includes('self.reserveBalance - self._poolEncumbrance() >= treasuryAmt'), 'treasury must be limited to the free reserve');
-    assert.ok(masterSrc.includes('fun _poolEncumbrance(): Int { return self.buybackPool + self.stakingRewardsPool }'), 'encumbrance must cover both pools');
+    assert.ok(masterSrc.includes('self.buybackPool + self.stakingRewardsPool + self.pendingReferralTotal'), 'encumbrance must cover pools and referral liabilities');
     assert.ok(!masterSrc.includes('lottery'), 'the lottery feature must be fully removed from the contract');
     // burned fees must leave the spendable reserve
     assert.ok(fee.includes('self.reserveBalance = self.reserveBalance - burnAmount'), 'burn must debit the reserve');
@@ -392,6 +392,45 @@ test('F7 source: the AI cooldown is unconditional and every logged action is ove
     assert.ok(masterSrc.includes('fun _logAiActionSilent('), 'market signals must be recorded in the action log');
     const signal = section(masterSrc, 'receive(msg: AIPriceSignal)', 'receive(msg: AIAnomalyAlert)');
     assert.ok(!signal.includes('_requireAiCooldown'), 'market signals must not consume the administrative cooldown');
+});
+
+test('F7 on-chain: owner override restores the complete AI action state', async () => {
+    const eco = await deployEco(false);
+    await eco.master.send(eco.owner.getSender(), { value: toNano('0.2') }, 'Toggle AI');
+
+    // A bearish price signal freezes minting and changes the burn share.
+    await eco.master.send(eco.owner.getSender(), { value: toNano('0.2') }, {
+        $$type: 'AIPriceSignal',
+        queryId: 1n,
+        priceTon: 1n,
+        volatility: 0,
+        sentiment: -60,
+        action: 1
+    });
+    assert.equal((await eco.master.getGetJettonData()).mintable, false);
+    assert.equal((await eco.master.getGetFeeConfig()).burnShare, 80n);
+    await eco.master.send(eco.owner.getSender(), { value: toNano('0.2') }, { $$type: 'OwnerOverride', actionId: 0n, reason: 'rollback' });
+    assert.equal((await eco.master.getGetJettonData()).mintable, true, 'override must restore mintability');
+    assert.equal((await eco.master.getGetFeeConfig()).burnShare, 50n, 'override must restore burn share');
+
+    // Severity 3 also changes pause, trading, fee, and minting state.
+    await eco.master.send(eco.owner.getSender(), { value: toNano('0.2') }, {
+        $$type: 'AIAnomalyAlert',
+        queryId: 2n,
+        severity: 3,
+        anomalyType: 1,
+        affectedWallets: 1,
+        recommendedAction: 'freeze'
+    });
+    assert.equal(await eco.master.getIsPaused(), true);
+    assert.equal(await eco.master.getIsTradingEnabled(), false);
+    assert.equal((await eco.master.getGetFeeConfig()).feeBps, 100n);
+    assert.equal((await eco.master.getGetJettonData()).mintable, false);
+    await eco.master.send(eco.owner.getSender(), { value: toNano('0.2') }, { $$type: 'OwnerOverride', actionId: 1n, reason: 'rollback' });
+    assert.equal(await eco.master.getIsPaused(), false, 'override must restore pause state');
+    assert.equal(await eco.master.getIsTradingEnabled(), true, 'override must restore trading state');
+    assert.equal((await eco.master.getGetFeeConfig()).feeBps, 30n, 'override must restore fee');
+    assert.equal((await eco.master.getGetJettonData()).mintable, true, 'override must restore mintability');
 });
 
 test('F9 source: the buyback threshold uses the same unit as the buyback pool', () => {

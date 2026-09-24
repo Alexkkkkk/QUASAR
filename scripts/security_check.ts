@@ -16,6 +16,9 @@ assertContains(master, 'forwardTonAmount: ton("0.01")', 'DeFi fee transfer emits
 assertContains(master, 'self._sendTokensToDefi(defiAmt, msg.queryId);', 'fee split uses the accounting path');
 assertContains(master, 'receive(msg: ClaimReferralRewards)', 'referral rewards have a claim path');
 assertContains(master, 'self.pendingReferralRewards.set(referrer', 'referral rewards are escrowed before claim');
+assertContains(master, 'pendingReferralTotal: Int as coins;', 'referral liabilities have an aggregate reserve counter');
+assertContains(master, 'self.buybackPool + self.stakingRewardsPool + self.pendingReferralTotal', 'all referral liabilities encumber the reserve');
+assertContains(master, 'require(msg.referrer != newAddress(0, 0), "Invalid referrer");', 'referrals cannot be assigned to the zero address');
 assertContains(defi, 'if (msg.from == self.qsrMaster)', 'master-funded DeFi notification is distinguished');
 assertContains(defi, 'message RefundPendingQsr', 'pending QSR deposits have a refund path');
 assertContains(defi, 'self._sendQsr(sender(), pending!!, 0)', 'pending QSR refunds return the deposited tokens');
