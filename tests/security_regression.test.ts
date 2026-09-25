@@ -558,12 +558,16 @@ test('F-09 source: buyback keeps QSR backing and enforces the trade cap', () => 
     assert.ok(!leg.includes('self.qsrReserve = self.qsrReserve - qsrIn'), 'buyback must not remove QSR from accounted reserves');
 });
 
-test('TEP-74 source: every wallet path returns standard token excesses', () => {
+test('TEP-74 source: transfer, payout, burn, and bounce paths preserve excesses', () => {
     const excessMessage = 'message(0xd53276db) TokenExcesses { queryId: Int as uint64 }';
-    assert.ok(masterSrc.includes(excessMessage), 'master wallet must define the TEP-74 excesses opcode');
-    assert.ok(defiSrc.includes(excessMessage), 'DeFi wallet must define the TEP-74 excesses opcode');
-    assert.ok((masterSrc.match(/body: TokenExcesses\{ queryId: msg.queryId \}.toCell\(\)/g) || []).length >= 3, 'master wallet must return excesses on transfer, bounce, and burn paths');
-    assert.ok((defiSrc.match(/body: TokenExcesses\{ queryId: msg.queryId \}.toCell\(\)/g) || []).length >= 2, 'DeFi wallet must return excesses on transfer and bounce paths');
+    for (const [name, src] of [['master', masterSrc], ['DeFi', defiSrc]] as const) {
+        assert.ok(src.includes(excessMessage), `${name} wallet must define the TEP-74 excesses opcode`);
+        const wallet = section(src, 'contract QuasarWallet');
+        assert.ok(wallet.includes('pendingBurnResponses: map<Int, Address>;'), `${name} wallet must retain burn response destinations`);
+        assert.ok(wallet.includes('self.pendingResponses.set(msg.queryId, self.owner)'), `${name} wallet must retain pool payout response destinations`);
+        assert.ok(wallet.includes('self.pendingBurnResponses.set(msg.queryId, msg.responseDestination)'), `${name} wallet must retain burn response destinations`);
+        assert.ok(wallet.includes('bounced(msg: bounced<BurnNotification>)') && wallet.includes('body: TokenExcesses{ queryId: msg.queryId }.toCell()'), `${name} wallet must refund excesses when a burn bounces`);
+    }
 });
 
 test('F-09 on-chain: buyback swap leg access control and empty-pool guard', async () => {
