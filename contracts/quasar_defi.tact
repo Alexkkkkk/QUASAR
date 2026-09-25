@@ -30,6 +30,9 @@ message(0x0f8a7ea5) TokenTransfer { queryId: Int as uint64; amount: Int as coins
 message(0x595f07bc) TokenBurn { queryId: Int as uint64; amount: Int as coins; responseDestination: Address; customPayload: Cell? }
 message(0x7362d09c) TokenNotification { queryId: Int as uint64; amount: Int as coins; from: Address; forwardPayload: Slice as remaining }
 message(0x178d4519) InternalTransfer { queryId: Int as uint64; amount: Int as coins; from: Address; responseDestination: Address; forwardTonAmount: Int as coins; forwardPayload: Slice as remaining }
+// TEP-74 `excesses` message: a receiving wallet returns the unused part of an
+// incoming message value with it (opcode 0xd53276db).
+message(0xd53276db) TokenExcesses { queryId: Int as uint64 }
 message(0x51a5c3d1) PoolPayout { queryId: Int as uint64; amount: Int as coins; destination: Address }
 message(0x2c7e91a4) BuybackTon { queryId: Int as uint64; tonAmount: Int as coins; qsrSwapped: Int as coins }
 message FeeTransfer { queryId: Int as uint64; amount: Int as coins; originalSender: Address; originalReceiver: Address }
@@ -139,13 +142,18 @@ contract QuasarDeFi with Deployable {
     // counterparty, the price is bounded by CPMM math, and a revert here
     // would bounce the jetton credit and desync the reserve accounting.
     fun _executeBuybackSwap(qsrIn: Int, queryId: Int) {
+        require(qsrIn > 0, "Invalid swap input");
         require(self.tonReserve > 0, "Empty TON reserve");
+        // qsrReserve already contains the credited qsrIn (TokenNotification),
+        // so this is the standard CPMM output dy = y*dx/(x+dx) with x = x+dx.
         let grossTonOut: Int = (qsrIn * self.tonReserve) / (self.qsrReserve);
         let fee: Int = (grossTonOut * self.feeBps) / 10000;
         let tonOut: Int = grossTonOut - fee;
-        // CPMM math guarantees 0 < tonOut < tonReserve, so the swap always
-        // succeeds whenever the pool holds any TON.
-        self.qsrReserve = self.qsrReserve - qsrIn;
+        require(tonOut > 0 && tonOut < self.tonReserve, "Insufficient TON reserve");
+        // The swap input must stay in the pool, exactly as in SwapToTON.
+        // Debiting it here made the pool keep no QSR at all: the tokens sat
+        // in the pool's Jetton wallet with no accounting entry (stranded),
+        // while tonReserve was paid out, so k was not preserved.
         self.tonReserve = self.tonReserve - tonOut;
         self.feeAccumulatedTon = self.feeAccumulatedTon + fee;
         send(SendParameters{
@@ -205,6 +213,12 @@ contract QuasarDeFi with Deployable {
             self.pendingQsrDeposits.set(msg.from, prev == null ? msg.amount : prev!! + msg.amount);
             self.pendingQsrDepositsAt.set(msg.from, now());
         }
+    }
+
+    // TEP-74: the pool's own Jetton wallet returns unused message value as an
+    // `excesses` message. It is informational; accept it instead of aborting the
+    // transaction as an unmatched message.
+    receive(msg: TokenExcesses) {
     }
 
     // A user may recover an unconsumed deposit at any time. This is
@@ -278,7 +292,7 @@ contract QuasarDeFi with Deployable {
         send(SendParameters{
             to: sender(),
             value: 0,
-            mode: SendRemainingValue,
+            mode: SendRemainingValue | SendIgnoreErrors,
             body: EventLiquidityAdded{
                 provider: sender(),
                 tonAmount: tonUsed,
@@ -340,7 +354,7 @@ contract QuasarDeFi with Deployable {
         send(SendParameters{
             to: sender(),
             value: 0,
-            mode: SendRemainingValue,
+            mode: SendRemainingValue | SendIgnoreErrors,
             body: EventLiquidityRemoved{
                 provider: sender(),
                 tonOut: tonOut,
@@ -389,7 +403,7 @@ contract QuasarDeFi with Deployable {
         send(SendParameters{
             to: sender(),
             value: 0,
-            mode: SendRemainingValue,
+            mode: SendRemainingValue | SendIgnoreErrors,
             body: EventSwap{
                 trader: sender(),
                 tonIn: 0,
@@ -436,7 +450,7 @@ contract QuasarDeFi with Deployable {
         send(SendParameters{
             to: sender(),
             value: 0,
-            mode: SendRemainingValue,
+            mode: SendRemainingValue | SendIgnoreErrors,
             body: EventSwap{
                 trader: sender(),
                 tonIn: msg.tonAmount,
@@ -474,10 +488,13 @@ contract QuasarDeFi with Deployable {
         // Farm rewards are QSR. The pool's own Jetton wallet performs the
         // transfer; the DeFi contract never asks the master to mint tokens.
         self._sendQsr(sender(), totalReward, 0);
+        // Informational: mode +2 (SEND_MODE_IGNORE_ERRORS) keeps a failed
+        // event send from rolling back the reward accounting.
         send(SendParameters{
             to: sender(),
             value: 0,
-            mode: SendPayGasSeparately,
+            bounce: false,
+            mode: SendPayGasSeparately | SendIgnoreErrors,
             body: EventFarmReward{ farmer: sender(), amount: totalReward }.toCell()
         });
     }
@@ -721,6 +738,25 @@ contract QuasarWallet {
                 }.toCell()
             });
         }
+
+        // TEP-74: whatever is left of the incoming message value after the
+        // notification must go back to `response_destination` as an `excesses`
+        // message. Ignoring errors and disabling bounce keeps a failed refund
+        // from reverting the balance credit accounted above.
+        if (msg.responseDestination != newAddress(0, 0)) {
+            send(SendParameters{
+                to: msg.responseDestination,
+                value: 0,
+                bounce: false,
+                mode: SendRemainingValue | SendIgnoreErrors,
+                body: TokenExcesses{ queryId: msg.queryId }.toCell()
+            });
+        }
+    }
+
+    // TEP-74 excesses from a peer wallet are informational; accept them instead
+    // of aborting the transaction as an unmatched message.
+    receive(msg: TokenExcesses) {
     }
 
     // Restore tokens when a bounce rejects an outgoing transfer. This keeps

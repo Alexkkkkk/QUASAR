@@ -44,6 +44,9 @@ message(0x0f8a7ea5) TokenTransfer { queryId: Int as uint64; amount: Int as coins
 message(0x595f07bc) TokenBurn { queryId: Int as uint64; amount: Int as coins; responseDestination: Address; customPayload: Cell? }
 message(0x7362d09c) TokenNotification { queryId: Int as uint64; amount: Int as coins; from: Address; forwardPayload: Slice as remaining }
 message(0x178d4519) InternalTransfer { queryId: Int as uint64; amount: Int as coins; from: Address; responseDestination: Address; forwardTonAmount: Int as coins; forwardPayload: Slice as remaining }
+// TEP-74 `excesses` message: a receiving wallet returns the unused part of an
+// incoming message value with it (opcode 0xd53276db).
+message(0xd53276db) TokenExcesses { queryId: Int as uint64 }
 message(0x51a5c3d1) PoolPayout { queryId: Int as uint64; amount: Int as coins; destination: Address }
 message DefiPayout { queryId: Int as uint64; amount: Int as coins; destination: Address }
 
@@ -459,7 +462,10 @@ contract QuasarMaster with Deployable {
         // excess refund; the refund is the final action in this receiver.
         send(SendParameters{ to: sender(), value: ton("0.01"), bounce: false, mode: SendPayGasSeparately | SendIgnoreErrors, body: EventBurn{ amount: msg.amount, burner: msg.sender }.toCell() });
         if (msg.responseDestination != newAddress(0, 0)) {
-            send(SendParameters{ to: msg.responseDestination, value: 0, bounce: false, mode: SendRemainingValue, body: "Excess returned".asComment() });
+            // TEP-74: the burn refund must use the standard `excesses` layout so an
+        // integrating wallet can match the refund to the request query id instead of
+        // seeing an opaque comment body.
+        send(SendParameters{ to: msg.responseDestination, value: 0, bounce: false, mode: SendRemainingValue | SendIgnoreErrors, body: TokenExcesses{ queryId: msg.queryId }.toCell() });
         }
     }
 
@@ -477,6 +483,13 @@ contract QuasarMaster with Deployable {
         }
     }
     
+    // TEP-74: a receiving wallet returns the unused part of the message value as
+    // an `excesses` message. Everything this master sends carries
+    // responseDestination = master, so the refund arrives here; accept it instead
+    // of aborting the transaction as an unmatched message.
+    receive(msg: TokenExcesses) {
+    }
+
     receive("Stop Minting") { self._requireOwner(); self.mintable = false }
 
     // F-18: `mintable` can be turned off by the owner, by the AI emergency
@@ -587,7 +600,7 @@ contract QuasarMaster with Deployable {
         send(SendParameters{
             to: msg.originalSender,
             value: 0,
-            mode: SendRemainingValue,
+            mode: SendRemainingValue | SendIgnoreErrors,
             body: EventFeeDistributed{
                 totalFee: msg.amount,
                 burn: burnAmount,
@@ -636,7 +649,13 @@ contract QuasarMaster with Deployable {
         // This event must be the final SendRemainingValue action. Sending it
         // before the DeFi leg can drain the action balance and abort the swap.
         if (burnPart > 0) {
-            send(SendParameters{ to: self.owner, value: 0, bounce: false, mode: SendRemainingValue, body: EventBuybackExecuted{ tonSpent: 0, qsrBurned: burnPart }.toCell() });
+            // Two SendRemainingValue actions in one transaction zero the remaining
+            // inbound value after the first one, so the fee-distribution event that
+            // follows a triggered buyback failed with exit code 37 and rolled the
+            // whole action phase back. Fund this receipt from the contract balance
+            // and leave the single remaining-value slot to the final event of the
+            // receiver.
+            send(SendParameters{ to: self.owner, value: ton("0.01"), bounce: false, mode: SendPayGasSeparately | SendIgnoreErrors, body: EventBuybackExecuted{ tonSpent: 0, qsrBurned: burnPart }.toCell() });
         }
         self.totalBuybacks = self.totalBuybacks + 1;
         self.lastBuybackTime = now();
@@ -711,7 +730,7 @@ contract QuasarMaster with Deployable {
         self.totalStaked = self.totalStaked + msg.amount;
         self.pendingQsrDeposits.set(staker, depositPending!! - msg.amount);
         
-        send(SendParameters{ to: sender(), value: 0, mode: SendRemainingValue, body: EventStake{ staker: staker, amount: msg.amount }.toCell() });
+        send(SendParameters{ to: sender(), value: 0, mode: SendRemainingValue | SendIgnoreErrors, body: EventStake{ staker: staker, amount: msg.amount }.toCell() });
     }
     
     receive(msg: Unstake) {
@@ -740,7 +759,7 @@ contract QuasarMaster with Deployable {
         self.totalStaked = self.totalStaked - msg.amount;
         self._sendCustodiedTokens(staker, msg.amount, 0);
         
-        send(SendParameters{ to: sender(), value: 0, mode: SendRemainingValue, body: EventUnstake{ staker: staker, amount: msg.amount }.toCell() });
+        send(SendParameters{ to: sender(), value: 0, mode: SendRemainingValue | SendIgnoreErrors, body: EventUnstake{ staker: staker, amount: msg.amount }.toCell() });
     }
     
     receive(msg: ClaimRewards) {
@@ -763,7 +782,13 @@ contract QuasarMaster with Deployable {
         if (info == null) { return 0 }
         let elapsed: Int = now() - info!!.lastClaim;
         let yearly: Int = info!!.amount * self.stakingApyBps / 10000;
-        return yearly * elapsed / 31536000;
+        let accrued: Int = yearly * elapsed / 31536000;
+        // The advertised APY is a target rate funded by the fee pool, so a claim
+        // is capped by what the pool actually holds. With an uncapped accrual a
+        // reward could exceed the pool, and Unstake — which settles the reward in
+        // the same call — reverted with "Rewards pool empty", locking the
+        // principal behind a payout that could never succeed.
+        return accrued > self.stakingRewardsPool ? self.stakingRewardsPool : accrued;
     }
     
     receive(msg: SetStakingConfig) {
@@ -795,7 +820,7 @@ contract QuasarMaster with Deployable {
             self.referrals.set(msg.referrer, ReferralInfo{ referrer: refData!!.referrer, totalEarned: refData!!.totalEarned, totalReferrals: refData!!.totalReferrals + 1 });
         }
         
-        send(SendParameters{ to: sender(), value: 0, mode: SendRemainingValue, body: EventReferralRegistered{ user: sender(), referrer: msg.referrer }.toCell() });
+        send(SendParameters{ to: sender(), value: 0, mode: SendRemainingValue | SendIgnoreErrors, body: EventReferralRegistered{ user: sender(), referrer: msg.referrer }.toCell() });
     }
     
     receive(msg: SetReferralConfig) {
@@ -855,7 +880,7 @@ contract QuasarMaster with Deployable {
         self.teamClaimed = self.teamClaimed + claimable;
         self._sendCustodiedTokens(beneficiary, claimable, 0);
         
-        send(SendParameters{ to: sender(), value: 0, mode: SendRemainingValue, body: EventVestingClaimed{ beneficiary: beneficiary, amount: claimable }.toCell() });
+        send(SendParameters{ to: sender(), value: 0, mode: SendRemainingValue | SendIgnoreErrors, body: EventVestingClaimed{ beneficiary: beneficiary, amount: claimable }.toCell() });
     }
     
     // ═══════════════════════════════════════════════════════════
@@ -897,7 +922,7 @@ contract QuasarMaster with Deployable {
         self.aiActionOldMintable.set(id, oldMintable ? 1 : 0);
         self.aiActionOldEmergencyPause.set(id, oldPause ? 1 : 0);
         self.aiActionOldTrading.set(id, oldTrading ? 1 : 0);
-        send(SendParameters{ to: sender(), value: 0, mode: SendRemainingValue, body: EventAiAction{ actionId: id, actionType: "EmergencyPause", oldValue: oldTrading ? 1 : 0, newValue: msg.pause ? 1 : 0 }.toCell() });
+        send(SendParameters{ to: sender(), value: 0, mode: SendRemainingValue | SendIgnoreErrors, body: EventAiAction{ actionId: id, actionType: "EmergencyPause", oldValue: oldTrading ? 1 : 0, newValue: msg.pause ? 1 : 0 }.toCell() });
     }
     
     receive(msg: AISetFee) {
@@ -907,7 +932,7 @@ contract QuasarMaster with Deployable {
         let old: Int = self.feeBps;
         self.feeBps = msg.feeBps;
         let id: Int = self._logAiAction("SetFee", old, msg.feeBps, msg.reason);
-        send(SendParameters{ to: sender(), value: 0, mode: SendRemainingValue, body: EventAiAction{ actionId: id, actionType: "SetFee", oldValue: old, newValue: msg.feeBps }.toCell() });
+        send(SendParameters{ to: sender(), value: 0, mode: SendRemainingValue | SendIgnoreErrors, body: EventAiAction{ actionId: id, actionType: "SetFee", oldValue: old, newValue: msg.feeBps }.toCell() });
     }
     
     receive(msg: AISetTreasuryDirect) {
@@ -919,7 +944,7 @@ contract QuasarMaster with Deployable {
         let id: Int = self._logAiAction("SetTreasury", 0, 1, msg.reason);
         // Keep the previous address so the owner can actually reverse it (F-07).
         self.aiActionOldAddress.set(id, oldTreasury);
-        send(SendParameters{ to: sender(), value: 0, mode: SendRemainingValue, body: EventAiAction{ actionId: id, actionType: "SetTreasury", oldValue: 0, newValue: 1 }.toCell() });
+        send(SendParameters{ to: sender(), value: 0, mode: SendRemainingValue | SendIgnoreErrors, body: EventAiAction{ actionId: id, actionType: "SetTreasury", oldValue: 0, newValue: 1 }.toCell() });
     }
     
     receive(msg: AISetAntiWhale) {
@@ -930,7 +955,7 @@ contract QuasarMaster with Deployable {
         self.maxWalletBps = msg.maxWalletBps;
         self.cooldownSeconds = msg.cooldown;
         let id: Int = self._logAiAction("SetAntiWhale", 0, msg.maxTxBps, msg.reason);
-        send(SendParameters{ to: sender(), value: 0, mode: SendRemainingValue, body: EventAiAction{ actionId: id, actionType: "SetAntiWhale", oldValue: 0, newValue: msg.maxTxBps }.toCell() });
+        send(SendParameters{ to: sender(), value: 0, mode: SendRemainingValue | SendIgnoreErrors, body: EventAiAction{ actionId: id, actionType: "SetAntiWhale", oldValue: 0, newValue: msg.maxTxBps }.toCell() });
     }
     
     receive(msg: AISetBuybackDirect) {
@@ -949,7 +974,7 @@ contract QuasarMaster with Deployable {
         self.aiActionOldBuybackThreshold.set(id, oldThreshold);
         self.aiActionOldBuybackCooldown.set(id, oldCooldown);
         self.aiActionOldBuybackBurnPercent.set(id, oldBurnPercent);
-        send(SendParameters{ to: sender(), value: 0, mode: SendRemainingValue, body: EventAiAction{ actionId: id, actionType: "SetBuyback", oldValue: oldEnabled ? 1 : 0, newValue: msg.enabled ? 1 : 0 }.toCell() });
+        send(SendParameters{ to: sender(), value: 0, mode: SendRemainingValue | SendIgnoreErrors, body: EventAiAction{ actionId: id, actionType: "SetBuyback", oldValue: oldEnabled ? 1 : 0, newValue: msg.enabled ? 1 : 0 }.toCell() });
     }
     
     receive(msg: AIToggleTrading) {
@@ -958,7 +983,7 @@ contract QuasarMaster with Deployable {
         let oldTrading: Bool = self.tradingEnabled;
         self.tradingEnabled = msg.enabled;
         let id: Int = self._logAiAction("ToggleTrading", oldTrading ? 1 : 0, msg.enabled ? 1 : 0, msg.reason);
-        send(SendParameters{ to: sender(), value: 0, mode: SendRemainingValue, body: EventAiAction{ actionId: id, actionType: "ToggleTrading", oldValue: oldTrading ? 1 : 0, newValue: msg.enabled ? 1 : 0 }.toCell() });
+        send(SendParameters{ to: sender(), value: 0, mode: SendRemainingValue | SendIgnoreErrors, body: EventAiAction{ actionId: id, actionType: "ToggleTrading", oldValue: oldTrading ? 1 : 0, newValue: msg.enabled ? 1 : 0 }.toCell() });
     }
     
     receive(msg: AIRotateOracle) {
@@ -970,7 +995,7 @@ contract QuasarMaster with Deployable {
         self.aiOracle = msg.newOracle;
         let id: Int = self._logAiAction("RotateOracle", 0, 1, msg.reason);
         self.aiActionOldAddress.set(id, oldOracle);
-        send(SendParameters{ to: sender(), value: 0, mode: SendRemainingValue, body: EventAiAction{ actionId: id, actionType: "RotateOracle", oldValue: 0, newValue: 1 }.toCell() });
+        send(SendParameters{ to: sender(), value: 0, mode: SendRemainingValue | SendIgnoreErrors, body: EventAiAction{ actionId: id, actionType: "RotateOracle", oldValue: 0, newValue: 1 }.toCell() });
     }
     
     receive(msg: AISetOracle) {
@@ -993,7 +1018,7 @@ contract QuasarMaster with Deployable {
         self.anomalyLog.set(self.anomalyIndex, AIRecommendation{ timestamp: now(), action: msg.recommendation, confidence: 100, executed: true });
         self.anomalyIndex = self.anomalyIndex + 1;
         let id: Int = self._logAiAction("Rebalance", oldBurnShare, msg.targetBurnShare, msg.recommendation);
-        send(SendParameters{ to: sender(), value: 0, mode: SendRemainingValue, body: EventAiAction{ actionId: id, actionType: "Rebalance", oldValue: oldBurnShare, newValue: msg.targetBurnShare }.toCell() });
+        send(SendParameters{ to: sender(), value: 0, mode: SendRemainingValue | SendIgnoreErrors, body: EventAiAction{ actionId: id, actionType: "Rebalance", oldValue: oldBurnShare, newValue: msg.targetBurnShare }.toCell() });
     }
     
     receive(msg: AIPriceSignal) {
@@ -1415,6 +1440,25 @@ contract QuasarWallet {
                 }.toCell()
             });
         }
+
+        // TEP-74: whatever is left of the incoming message value after the
+        // notification must go back to `response_destination` as an `excesses`
+        // message. Ignoring errors and disabling bounce keeps a failed refund
+        // from reverting the balance credit accounted above.
+        if (msg.responseDestination != newAddress(0, 0)) {
+            send(SendParameters{
+                to: msg.responseDestination,
+                value: 0,
+                bounce: false,
+                mode: SendRemainingValue | SendIgnoreErrors,
+                body: TokenExcesses{ queryId: msg.queryId }.toCell()
+            });
+        }
+    }
+
+    // TEP-74 excesses from a peer wallet are informational; accept them instead
+    // of aborting the transaction as an unmatched message.
+    receive(msg: TokenExcesses) {
     }
 
     // Restore tokens when a bounce rejects an outgoing transfer. This is
