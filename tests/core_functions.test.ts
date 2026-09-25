@@ -69,9 +69,26 @@ async function creditMasterDeposit(eco: Eco, user: Address, amount: bigint) {
     });
 }
 
-/** Credit a QSR deposit inside DeFi (verified primitive: bc.sender). */
+/** Credit a QSR deposit inside DeFi (verified primitive: bc.sender).
+ *
+ * Two-step primitive that mirrors the real token flow:
+ * 1. An InternalTransfer funded by the pool wallet itself tops up the
+ *    wallet's QSR balance, so later PoolPayout withdrawals from swaps,
+ *    refunds and farm claims can never hit "Insufficient".
+ * 2. A TokenNotification from the wallet address credits the user's
+ *    pending deposit inside the pool, exactly like the real jetton
+ *    notification path does.
+ */
 async function creditDefiDeposit(eco: Eco, user: Address, amount: bigint) {
     const wallet = await QuasarWallet.fromInit(eco.defiAddr, eco.masterAddr);
+    const walletC = eco.bc.openContract(wallet);
+    // 1. fund the pool wallet balance: sender == wallet(defiAddr, master)
+    //    passes the wallet's own authorization check with from = defiAddr
+    await walletC.send(eco.bc.sender(wallet.address), { value: toNano('0.1') }, {
+        $$type: 'InternalTransfer', queryId: 0n, amount, from: eco.defiAddr,
+        responseDestination: ZERO, forwardTonAmount: 0n, forwardPayload: beginCell().endCell().asSlice()
+    });
+    // 2. notify the pool about the user deposit
     await eco.defi.send(eco.bc.sender(wallet.address), { value: toNano('0.1') }, {
         $$type: 'TokenNotification', queryId: 0n, amount, from: user, forwardPayload: beginCell().endCell().asSlice()
     });

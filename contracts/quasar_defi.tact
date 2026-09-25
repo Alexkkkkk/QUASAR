@@ -86,6 +86,11 @@ contract QuasarDeFi with Deployable {
     locked: Bool;
     paused: Bool;
     maxTradeBps: Int as uint16;
+    // Monotonically growing sequence for QSR payouts. PoolPayout rejects a
+    // reused query ID ("Query ID already used"), and the pool issues several
+    // payouts per session (swaps, refunds, farm claims), so each payout needs
+    // its own identifier.
+    payoutSeq: Int as uint64;
     
     init(owner: Address, qsrMaster: Address) {
         self.owner = owner;
@@ -107,6 +112,7 @@ contract QuasarDeFi with Deployable {
         self.locked = false;
         self.paused = false;
         self.maxTradeBps = 3000;
+        self.payoutSeq = 0;
     }
     
     // ─── Reentrancy Guard ───
@@ -117,6 +123,11 @@ contract QuasarDeFi with Deployable {
 
     fun _sendQsr(to: Address, amount: Int, queryId: Int) {
         require(amount > 0, "Invalid QSR amount");
+        // PoolPayout rejects a reused query ID, so every payout carries a
+        // unique sequential one; the passed queryId stays as the caller's
+        // context marker only.
+        let qid: Int = self.payoutSeq + 1;
+        self.payoutSeq = qid;
         let init: StateInit = initOf QuasarWallet(myAddress(), self.qsrMaster);
         send(SendParameters{
             to: contractAddress(init),
@@ -124,7 +135,7 @@ contract QuasarDeFi with Deployable {
             bounce: true,
             mode: SendPayGasSeparately,
             body: PoolPayout{
-                queryId: queryId,
+                queryId: qid,
                 amount: amount,
                 destination: to,
             }.toCell(),
@@ -276,11 +287,16 @@ contract QuasarDeFi with Deployable {
         self._updateFarm();
         if (self.farmEnabled) { self._stakeLp(sender(), lpToMint); }
         
-        // Emit event
+        // Emit event. SendRemainingValue here would hand back almost the
+        // entire incoming balance (including the deposited TON) and, when a
+        // separate refund message is queued, drain the contract below the
+        // action fee and abort the whole action phase (result 37, noFunds).
+        // A flat, mode-only carry is safe: the refund above already returned
+        // every unspent nanoTON to the provider.
         send(SendParameters{
             to: sender(),
             value: 0,
-            mode: SendRemainingValue,
+            mode: SendPayGasSeparately,
             body: EventLiquidityAdded{
                 provider: sender(),
                 tonAmount: tonUsed,
