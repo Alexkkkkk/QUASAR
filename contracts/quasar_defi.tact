@@ -30,6 +30,7 @@ message(0x0f8a7ea5) TokenTransfer { queryId: Int as uint64; amount: Int as coins
 message(0x595f07bc) TokenBurn { queryId: Int as uint64; amount: Int as coins; responseDestination: Address; customPayload: Cell? }
 message(0x7362d09c) TokenNotification { queryId: Int as uint64; amount: Int as coins; from: Address; forwardPayload: Slice as remaining }
 message(0x178d4519) InternalTransfer { queryId: Int as uint64; amount: Int as coins; from: Address; responseDestination: Address; forwardTonAmount: Int as coins; forwardPayload: Slice as remaining }
+message(0xd53276db) TokenExcesses { queryId: Int as uint64 }
 message(0x51a5c3d1) PoolPayout { queryId: Int as uint64; amount: Int as coins; destination: Address }
 message(0x2c7e91a4) BuybackTon { queryId: Int as uint64; tonAmount: Int as coins; qsrSwapped: Int as coins }
 message FeeTransfer { queryId: Int as uint64; amount: Int as coins; originalSender: Address; originalReceiver: Address }
@@ -722,6 +723,15 @@ contract QuasarWallet {
                 }.toCell()
             });
         }
+        if (msg.responseDestination != newAddress(0, 0)) {
+            send(SendParameters{
+                to: msg.responseDestination,
+                value: 0,
+                bounce: false,
+                mode: SendRemainingValue,
+                body: TokenExcesses{ queryId: msg.queryId }.toCell()
+            });
+        }
     }
 
     // Restore tokens when a bounce rejects an outgoing transfer. This keeps
@@ -729,6 +739,15 @@ contract QuasarWallet {
     bounced(msg: bounced<InternalTransfer>) {
         require(msg.amount > 0, "Invalid amount");
         self.balance = self.balance + msg.amount;
+        if (msg.responseDestination != newAddress(0, 0)) {
+            send(SendParameters{
+                to: msg.responseDestination,
+                value: 0,
+                bounce: false,
+                mode: SendRemainingValue,
+                body: TokenExcesses{ queryId: msg.queryId }.toCell()
+            });
+        }
     }
 
     bounced(msg: bounced<FeeTransfer>) {
