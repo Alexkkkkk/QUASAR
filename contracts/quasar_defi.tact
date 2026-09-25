@@ -696,6 +696,9 @@ contract QuasarWallet {
     owner: Address;
     master: Address;
     lastTxTime: Int;
+    // Response destinations are retained so bounced internal transfers can
+    // still receive the TEP-74 excesses message after bounce truncation.
+    pendingResponses: map<Int, Address>;
 
     init(owner: Address, master: Address) {
         self.balance = 0;
@@ -739,9 +742,11 @@ contract QuasarWallet {
     bounced(msg: bounced<InternalTransfer>) {
         require(msg.amount > 0, "Invalid amount");
         self.balance = self.balance + msg.amount;
-        if (msg.responseDestination != newAddress(0, 0)) {
+        let response: Address? = self.pendingResponses.get(msg.queryId);
+        if (response != null) {
+            self.pendingResponses.set(msg.queryId, null);
             send(SendParameters{
-                to: msg.responseDestination,
+                to: response!!,
                 value: 0,
                 bounce: false,
                 mode: SendRemainingValue,
@@ -762,6 +767,9 @@ contract QuasarWallet {
         require(self.balance >= msg.amount, "Insufficient");
         require(now() - self.lastTxTime >= 5, "Cooldown");
         self.lastTxTime = now();
+        if (msg.responseDestination != newAddress(0, 0)) {
+            self.pendingResponses.set(msg.queryId, msg.responseDestination);
+        }
         let fee: Int = msg.amount * 30 / 10000;
         if (fee < 1) { fee = 1 }
         let sendAmount: Int = msg.amount - fee;
