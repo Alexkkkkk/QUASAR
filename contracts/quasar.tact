@@ -503,6 +503,14 @@ contract QuasarMaster with Deployable {
         self.custodyBalance = self.custodyBalance + msg.amount;
     }
 
+    // TEP-74: the master is the responseDestination of its own mint
+    // internal transfers, so wallet contracts return unused TON here as
+    // TokenExcesses. Without this receiver the message aborts with exit
+    // 130 in the master transaction.
+    receive(msg: TokenExcesses) {
+        // Intentionally a no-op: excess value is absorbed into the reserve.
+    }
+
     // ═══════════════════════════════════════════════════════════
     // FEE PROCESSING — 0.30% with Buyback + Staking + DeFi
     // ═══════════════════════════════════════════════════════════

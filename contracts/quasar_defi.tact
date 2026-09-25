@@ -220,6 +220,14 @@ contract QuasarDeFi with Deployable {
         }
     }
 
+    // TEP-74: the pool is the responseDestination of its own PoolPayout
+    // transfers, so the wallet returns unused TON here as TokenExcesses.
+    // Without this receiver every payout aborts with exit 130 and rolls
+    // back the completed swap/refund accounting.
+    receive(msg: TokenExcesses) {
+        // Intentionally a no-op: excess value is absorbed as pool TON.
+    }
+
     // A user may recover an unconsumed deposit at any time. This is
     // intentionally allowed while paused: it only returns the user's own
     // QSR and prevents a UI failure or an abandoned two-step operation from
