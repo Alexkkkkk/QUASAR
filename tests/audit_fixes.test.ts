@@ -117,7 +117,7 @@ test('F-19 source: rejected fee messages restore the deducted fee', () => {
 test('F-20 source: remaining-value actions are kept last in multi-send flows', () => {
     const burn = section(masterSrc, 'receive(msg: BurnNotification)', 'receive(msg: TokenNotification)');
     assert.ok(
-        burn.indexOf('EventBurn{') < burn.indexOf('"Excess returned"'),
+        burn.indexOf('EventBurn{') < burn.indexOf('TokenExcesses{'),
         'burn event must be emitted before the final excess refund'
     );
 
