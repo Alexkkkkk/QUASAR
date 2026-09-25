@@ -30,6 +30,9 @@ message(0x0f8a7ea5) TokenTransfer { queryId: Int as uint64; amount: Int as coins
 message(0x595f07bc) TokenBurn { queryId: Int as uint64; amount: Int as coins; responseDestination: Address; customPayload: Cell? }
 message(0x7362d09c) TokenNotification { queryId: Int as uint64; amount: Int as coins; from: Address; forwardPayload: Slice as remaining }
 message(0x178d4519) InternalTransfer { queryId: Int as uint64; amount: Int as coins; from: Address; responseDestination: Address; forwardTonAmount: Int as coins; forwardPayload: Slice as remaining }
+// TEP-74 `excesses` message: a receiving wallet returns the unused part of an
+// incoming message value with it (opcode 0xd53276db).
+message(0xd53276db) TokenExcesses { queryId: Int as uint64 }
 message(0x51a5c3d1) PoolPayout { queryId: Int as uint64; amount: Int as coins; destination: Address }
 message(0x2c7e91a4) BuybackTon { queryId: Int as uint64; tonAmount: Int as coins; qsrSwapped: Int as coins }
 message FeeTransfer { queryId: Int as uint64; amount: Int as coins; originalSender: Address; originalReceiver: Address }
@@ -205,6 +208,12 @@ contract QuasarDeFi with Deployable {
             self.pendingQsrDeposits.set(msg.from, prev == null ? msg.amount : prev!! + msg.amount);
             self.pendingQsrDepositsAt.set(msg.from, now());
         }
+    }
+
+    // TEP-74: the pool's own Jetton wallet returns unused message value as an
+    // `excesses` message. It is informational; accept it instead of aborting the
+    // transaction as an unmatched message.
+    receive(msg: TokenExcesses) {
     }
 
     // A user may recover an unconsumed deposit at any time. This is
@@ -721,6 +730,25 @@ contract QuasarWallet {
                 }.toCell()
             });
         }
+
+        // TEP-74: whatever is left of the incoming message value after the
+        // notification must go back to `response_destination` as an `excesses`
+        // message. Ignoring errors and disabling bounce keeps a failed refund
+        // from reverting the balance credit accounted above.
+        if (msg.responseDestination != newAddress(0, 0)) {
+            send(SendParameters{
+                to: msg.responseDestination,
+                value: 0,
+                bounce: false,
+                mode: SendRemainingValue | SendIgnoreErrors,
+                body: TokenExcesses{ queryId: msg.queryId }.toCell()
+            });
+        }
+    }
+
+    // TEP-74 excesses from a peer wallet are informational; accept them instead
+    // of aborting the transaction as an unmatched message.
+    receive(msg: TokenExcesses) {
     }
 
     // Restore tokens when a bounce rejects an outgoing transfer. This keeps

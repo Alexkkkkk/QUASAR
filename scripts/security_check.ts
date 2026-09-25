@@ -42,6 +42,11 @@ assertContains(defi, 'message(0x2c7e91a4) BuybackTon', 'buyback TON return uses 
 assertContains(master, 'aiActionOldAddress: map<Int, Address>;', 'AI address actions are reversible (F-07)');
 assertContains(defi, 'require(msg.feeBps > 0 && msg.feeBps <= 30, "Fee must not exceed 0.30%");', 'DeFi fee ceiling matches the docs (F-13)');
 
+assertContains(master, 'message(0xd53276db) TokenExcesses', 'excesses use the TEP-74 opcode (F-21)');
+assertContains(master, 'body: TokenExcesses{ queryId: msg.queryId }.toCell()', 'excesses carry the request query id (F-21)');
+assertContains(master, 'return accrued > self.stakingRewardsPool ? self.stakingRewardsPool : accrued;', 'staking rewards are capped by the fee pool (F-23)');
+assertContains(master, 'mode: SendPayGasSeparately | SendIgnoreErrors, body: EventBuybackExecuted', 'the buyback receipt keeps the remaining-value slot free (F-22)');
+
 const aiPriceSignal = master.slice(master.indexOf('receive(msg: AIPriceSignal)'), master.indexOf('receive(msg: AIAnomalyAlert)'));
 if (aiPriceSignal.includes('self.mintable = true')) throw new Error('AIPriceSignal can re-enable minting');
 
