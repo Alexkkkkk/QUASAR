@@ -132,20 +132,19 @@ contract QuasarDeFi with Deployable {
         });
     }
 
-    // F-09: master-initiated buyback swap. Runs inside the TokenNotification
-    // transaction (the QSR is already credited to qsrReserve above), pays TON
-    // out of the pool reserves and returns the proceeds to the master. No
-    // slippage or trade-size guard on purpose: the master is the pool's own
-    // counterparty, the price is bounded by CPMM math, and a revert here
-    // would bounce the jetton credit and desync the reserve accounting.
+    // F-09: master-initiated buyback swap. The QSR transfer is already
+    // in the pool wallet, so this method accounts it as the swap input and
+    // keeps it in qsrReserve. The same CPMM and trade-size rules as a user
+    // swap apply to the internal counterparty.
     fun _executeBuybackSwap(qsrIn: Int, queryId: Int) {
-        require(self.tonReserve > 0, "Empty TON reserve");
-        let grossTonOut: Int = (qsrIn * self.tonReserve) / (self.qsrReserve);
+        require(qsrIn > 0, "Invalid buyback amount");
+        require(self.tonReserve > 0 && self.qsrReserve > 0, "Empty pool reserve");
+        require(qsrIn * 10000 <= self.qsrReserve * self.maxTradeBps, "Buyback too large");
+        let grossTonOut: Int = (qsrIn * self.tonReserve) / (self.qsrReserve + qsrIn);
         let fee: Int = (grossTonOut * self.feeBps) / 10000;
         let tonOut: Int = grossTonOut - fee;
-        // CPMM math guarantees 0 < tonOut < tonReserve, so the swap always
-        // succeeds whenever the pool holds any TON.
-        self.qsrReserve = self.qsrReserve - qsrIn;
+        require(tonOut > 0 && tonOut < self.tonReserve, "Insufficient TON reserve");
+        self.qsrReserve = self.qsrReserve + qsrIn;
         self.tonReserve = self.tonReserve - tonOut;
         self.feeAccumulatedTon = self.feeAccumulatedTon + fee;
         send(SendParameters{
@@ -187,15 +186,17 @@ contract QuasarDeFi with Deployable {
         // Master-funded fee liquidity is already owned by the pool and must
         // enter qsrReserve directly, not become a user withdrawal credit.
         if (msg.from == self.qsrMaster) {
-            self.qsrReserve = self.qsrReserve + msg.amount;
-            // F-09: a buyback marker in the forward payload converts this
-            // master liquidity transfer into an atomic AMM swap: the credit
-            // and the swap run in one transaction, so message ordering
-            // cannot split them and pool accounting stays consistent.
+            // A marked master transfer is an atomic AMM swap. The swap method
+            // adds the input to qsrReserve exactly once; an ordinary master
+            // liquidity transfer is simply credited without a swap.
+            let isBuyback: Bool = false;
             if (msg.forwardPayload.bits() >= 32) {
-                if (msg.forwardPayload.loadUint(32) == 0x5f4a3b21) {
-                    self._executeBuybackSwap(msg.amount, msg.queryId);
-                }
+                isBuyback = msg.forwardPayload.loadUint(32) == 0x5f4a3b21;
+            }
+            if (isBuyback) {
+                self._executeBuybackSwap(msg.amount, msg.queryId);
+            } else {
+                self.qsrReserve = self.qsrReserve + msg.amount;
             }
         } else {
             // Deposits remain refundable until consumed. A previous version
