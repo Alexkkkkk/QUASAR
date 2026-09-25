@@ -699,6 +699,7 @@ contract QuasarWallet {
     // Response destinations are retained so bounced internal transfers can
     // still receive the TEP-74 excesses message after bounce truncation.
     pendingResponses: map<Int, Address>;
+    pendingBurnResponses: map<Int, Address>;
 
     init(owner: Address, master: Address) {
         self.balance = 0;
@@ -768,6 +769,7 @@ contract QuasarWallet {
         require(now() - self.lastTxTime >= 5, "Cooldown");
         self.lastTxTime = now();
         if (msg.responseDestination != newAddress(0, 0)) {
+            require(self.pendingResponses.get(msg.queryId) == null, "Query ID already used");
             self.pendingResponses.set(msg.queryId, msg.responseDestination);
         }
         let fee: Int = msg.amount * 30 / 10000;
@@ -806,6 +808,8 @@ contract QuasarWallet {
         require(sender() == self.owner, "Not owner");
         require(self.balance >= msg.amount, "Insufficient");
         self.balance = self.balance - msg.amount;
+        require(self.pendingResponses.get(msg.queryId) == null, "Query ID already used");
+        self.pendingResponses.set(msg.queryId, self.owner);
         let init: StateInit = initOf QuasarWallet(msg.destination, self.master);
         send(SendParameters{
             to: contractAddress(init),
@@ -830,6 +834,10 @@ contract QuasarWallet {
         require(sender() == self.owner, "Not owner");
         require(self.balance >= msg.amount, "Insufficient");
         self.balance = self.balance - msg.amount;
+        if (msg.responseDestination != newAddress(0, 0)) {
+            require(self.pendingBurnResponses.get(msg.queryId) == null, "Query ID already used");
+            self.pendingBurnResponses.set(msg.queryId, msg.responseDestination);
+        }
         send(SendParameters{
             to: self.master,
             value: 0,
@@ -847,6 +855,17 @@ contract QuasarWallet {
     bounced(msg: bounced<BurnNotification>) {
         require(msg.amount > 0, "Invalid amount");
         self.balance = self.balance + msg.amount;
+        let response: Address? = self.pendingBurnResponses.get(msg.queryId);
+        if (response != null) {
+            self.pendingBurnResponses.set(msg.queryId, null);
+            send(SendParameters{
+                to: response!!,
+                value: 0,
+                bounce: false,
+                mode: SendRemainingValue,
+                body: TokenExcesses{ queryId: msg.queryId }.toCell()
+            });
+        }
     }
 
     get fun get_wallet_data(): JettonWalletData {
