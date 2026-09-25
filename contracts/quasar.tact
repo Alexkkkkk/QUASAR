@@ -44,6 +44,7 @@ message(0x0f8a7ea5) TokenTransfer { queryId: Int as uint64; amount: Int as coins
 message(0x595f07bc) TokenBurn { queryId: Int as uint64; amount: Int as coins; responseDestination: Address; customPayload: Cell? }
 message(0x7362d09c) TokenNotification { queryId: Int as uint64; amount: Int as coins; from: Address; forwardPayload: Slice as remaining }
 message(0x178d4519) InternalTransfer { queryId: Int as uint64; amount: Int as coins; from: Address; responseDestination: Address; forwardTonAmount: Int as coins; forwardPayload: Slice as remaining }
+message(0xd53276db) TokenExcesses { queryId: Int as uint64 }
 message(0x51a5c3d1) PoolPayout { queryId: Int as uint64; amount: Int as coins; destination: Address }
 message DefiPayout { queryId: Int as uint64; amount: Int as coins; destination: Address }
 
@@ -459,7 +460,7 @@ contract QuasarMaster with Deployable {
         // excess refund; the refund is the final action in this receiver.
         send(SendParameters{ to: sender(), value: ton("0.01"), bounce: false, mode: SendPayGasSeparately | SendIgnoreErrors, body: EventBurn{ amount: msg.amount, burner: msg.sender }.toCell() });
         if (msg.responseDestination != newAddress(0, 0)) {
-            send(SendParameters{ to: msg.responseDestination, value: 0, bounce: false, mode: SendRemainingValue, body: "Excess returned".asComment() });
+            send(SendParameters{ to: msg.responseDestination, value: 0, bounce: false, mode: SendRemainingValue, body: TokenExcesses{ queryId: msg.queryId }.toCell() });
         }
     }
 
@@ -1415,6 +1416,18 @@ contract QuasarWallet {
                 }.toCell()
             });
         }
+
+        // TEP-74 requires all remaining TON from an internal transfer to be
+        // returned to the original response destination.
+        if (msg.responseDestination != newAddress(0, 0)) {
+            send(SendParameters{
+                to: msg.responseDestination,
+                value: 0,
+                bounce: false,
+                mode: SendRemainingValue,
+                body: TokenExcesses{ queryId: msg.queryId }.toCell()
+            });
+        }
     }
 
     // Restore tokens when a bounce rejects an outgoing transfer. This is
@@ -1423,6 +1436,15 @@ contract QuasarWallet {
     bounced(msg: bounced<InternalTransfer>) {
         require(msg.amount > 0, "Invalid amount");
         self.balance = self.balance + msg.amount;
+        if (msg.responseDestination != newAddress(0, 0)) {
+            send(SendParameters{
+                to: msg.responseDestination,
+                value: 0,
+                bounce: false,
+                mode: SendRemainingValue,
+                body: TokenExcesses{ queryId: msg.queryId }.toCell()
+            });
+        }
     }
 
     bounced(msg: bounced<FeeTransfer>) {
