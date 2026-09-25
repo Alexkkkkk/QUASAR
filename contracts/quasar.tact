@@ -600,7 +600,7 @@ contract QuasarMaster with Deployable {
         send(SendParameters{
             to: msg.originalSender,
             value: 0,
-            mode: SendRemainingValue,
+            mode: SendRemainingValue | SendIgnoreErrors,
             body: EventFeeDistributed{
                 totalFee: msg.amount,
                 burn: burnAmount,
@@ -730,7 +730,7 @@ contract QuasarMaster with Deployable {
         self.totalStaked = self.totalStaked + msg.amount;
         self.pendingQsrDeposits.set(staker, depositPending!! - msg.amount);
         
-        send(SendParameters{ to: sender(), value: 0, mode: SendRemainingValue, body: EventStake{ staker: staker, amount: msg.amount }.toCell() });
+        send(SendParameters{ to: sender(), value: 0, mode: SendRemainingValue | SendIgnoreErrors, body: EventStake{ staker: staker, amount: msg.amount }.toCell() });
     }
     
     receive(msg: Unstake) {
@@ -759,7 +759,7 @@ contract QuasarMaster with Deployable {
         self.totalStaked = self.totalStaked - msg.amount;
         self._sendCustodiedTokens(staker, msg.amount, 0);
         
-        send(SendParameters{ to: sender(), value: 0, mode: SendRemainingValue, body: EventUnstake{ staker: staker, amount: msg.amount }.toCell() });
+        send(SendParameters{ to: sender(), value: 0, mode: SendRemainingValue | SendIgnoreErrors, body: EventUnstake{ staker: staker, amount: msg.amount }.toCell() });
     }
     
     receive(msg: ClaimRewards) {
@@ -820,7 +820,7 @@ contract QuasarMaster with Deployable {
             self.referrals.set(msg.referrer, ReferralInfo{ referrer: refData!!.referrer, totalEarned: refData!!.totalEarned, totalReferrals: refData!!.totalReferrals + 1 });
         }
         
-        send(SendParameters{ to: sender(), value: 0, mode: SendRemainingValue, body: EventReferralRegistered{ user: sender(), referrer: msg.referrer }.toCell() });
+        send(SendParameters{ to: sender(), value: 0, mode: SendRemainingValue | SendIgnoreErrors, body: EventReferralRegistered{ user: sender(), referrer: msg.referrer }.toCell() });
     }
     
     receive(msg: SetReferralConfig) {
@@ -880,7 +880,7 @@ contract QuasarMaster with Deployable {
         self.teamClaimed = self.teamClaimed + claimable;
         self._sendCustodiedTokens(beneficiary, claimable, 0);
         
-        send(SendParameters{ to: sender(), value: 0, mode: SendRemainingValue, body: EventVestingClaimed{ beneficiary: beneficiary, amount: claimable }.toCell() });
+        send(SendParameters{ to: sender(), value: 0, mode: SendRemainingValue | SendIgnoreErrors, body: EventVestingClaimed{ beneficiary: beneficiary, amount: claimable }.toCell() });
     }
     
     // ═══════════════════════════════════════════════════════════
@@ -922,7 +922,7 @@ contract QuasarMaster with Deployable {
         self.aiActionOldMintable.set(id, oldMintable ? 1 : 0);
         self.aiActionOldEmergencyPause.set(id, oldPause ? 1 : 0);
         self.aiActionOldTrading.set(id, oldTrading ? 1 : 0);
-        send(SendParameters{ to: sender(), value: 0, mode: SendRemainingValue, body: EventAiAction{ actionId: id, actionType: "EmergencyPause", oldValue: oldTrading ? 1 : 0, newValue: msg.pause ? 1 : 0 }.toCell() });
+        send(SendParameters{ to: sender(), value: 0, mode: SendRemainingValue | SendIgnoreErrors, body: EventAiAction{ actionId: id, actionType: "EmergencyPause", oldValue: oldTrading ? 1 : 0, newValue: msg.pause ? 1 : 0 }.toCell() });
     }
     
     receive(msg: AISetFee) {
@@ -932,7 +932,7 @@ contract QuasarMaster with Deployable {
         let old: Int = self.feeBps;
         self.feeBps = msg.feeBps;
         let id: Int = self._logAiAction("SetFee", old, msg.feeBps, msg.reason);
-        send(SendParameters{ to: sender(), value: 0, mode: SendRemainingValue, body: EventAiAction{ actionId: id, actionType: "SetFee", oldValue: old, newValue: msg.feeBps }.toCell() });
+        send(SendParameters{ to: sender(), value: 0, mode: SendRemainingValue | SendIgnoreErrors, body: EventAiAction{ actionId: id, actionType: "SetFee", oldValue: old, newValue: msg.feeBps }.toCell() });
     }
     
     receive(msg: AISetTreasuryDirect) {
@@ -944,7 +944,7 @@ contract QuasarMaster with Deployable {
         let id: Int = self._logAiAction("SetTreasury", 0, 1, msg.reason);
         // Keep the previous address so the owner can actually reverse it (F-07).
         self.aiActionOldAddress.set(id, oldTreasury);
-        send(SendParameters{ to: sender(), value: 0, mode: SendRemainingValue, body: EventAiAction{ actionId: id, actionType: "SetTreasury", oldValue: 0, newValue: 1 }.toCell() });
+        send(SendParameters{ to: sender(), value: 0, mode: SendRemainingValue | SendIgnoreErrors, body: EventAiAction{ actionId: id, actionType: "SetTreasury", oldValue: 0, newValue: 1 }.toCell() });
     }
     
     receive(msg: AISetAntiWhale) {
@@ -955,7 +955,7 @@ contract QuasarMaster with Deployable {
         self.maxWalletBps = msg.maxWalletBps;
         self.cooldownSeconds = msg.cooldown;
         let id: Int = self._logAiAction("SetAntiWhale", 0, msg.maxTxBps, msg.reason);
-        send(SendParameters{ to: sender(), value: 0, mode: SendRemainingValue, body: EventAiAction{ actionId: id, actionType: "SetAntiWhale", oldValue: 0, newValue: msg.maxTxBps }.toCell() });
+        send(SendParameters{ to: sender(), value: 0, mode: SendRemainingValue | SendIgnoreErrors, body: EventAiAction{ actionId: id, actionType: "SetAntiWhale", oldValue: 0, newValue: msg.maxTxBps }.toCell() });
     }
     
     receive(msg: AISetBuybackDirect) {
@@ -974,7 +974,7 @@ contract QuasarMaster with Deployable {
         self.aiActionOldBuybackThreshold.set(id, oldThreshold);
         self.aiActionOldBuybackCooldown.set(id, oldCooldown);
         self.aiActionOldBuybackBurnPercent.set(id, oldBurnPercent);
-        send(SendParameters{ to: sender(), value: 0, mode: SendRemainingValue, body: EventAiAction{ actionId: id, actionType: "SetBuyback", oldValue: oldEnabled ? 1 : 0, newValue: msg.enabled ? 1 : 0 }.toCell() });
+        send(SendParameters{ to: sender(), value: 0, mode: SendRemainingValue | SendIgnoreErrors, body: EventAiAction{ actionId: id, actionType: "SetBuyback", oldValue: oldEnabled ? 1 : 0, newValue: msg.enabled ? 1 : 0 }.toCell() });
     }
     
     receive(msg: AIToggleTrading) {
@@ -983,7 +983,7 @@ contract QuasarMaster with Deployable {
         let oldTrading: Bool = self.tradingEnabled;
         self.tradingEnabled = msg.enabled;
         let id: Int = self._logAiAction("ToggleTrading", oldTrading ? 1 : 0, msg.enabled ? 1 : 0, msg.reason);
-        send(SendParameters{ to: sender(), value: 0, mode: SendRemainingValue, body: EventAiAction{ actionId: id, actionType: "ToggleTrading", oldValue: oldTrading ? 1 : 0, newValue: msg.enabled ? 1 : 0 }.toCell() });
+        send(SendParameters{ to: sender(), value: 0, mode: SendRemainingValue | SendIgnoreErrors, body: EventAiAction{ actionId: id, actionType: "ToggleTrading", oldValue: oldTrading ? 1 : 0, newValue: msg.enabled ? 1 : 0 }.toCell() });
     }
     
     receive(msg: AIRotateOracle) {
@@ -995,7 +995,7 @@ contract QuasarMaster with Deployable {
         self.aiOracle = msg.newOracle;
         let id: Int = self._logAiAction("RotateOracle", 0, 1, msg.reason);
         self.aiActionOldAddress.set(id, oldOracle);
-        send(SendParameters{ to: sender(), value: 0, mode: SendRemainingValue, body: EventAiAction{ actionId: id, actionType: "RotateOracle", oldValue: 0, newValue: 1 }.toCell() });
+        send(SendParameters{ to: sender(), value: 0, mode: SendRemainingValue | SendIgnoreErrors, body: EventAiAction{ actionId: id, actionType: "RotateOracle", oldValue: 0, newValue: 1 }.toCell() });
     }
     
     receive(msg: AISetOracle) {
@@ -1018,7 +1018,7 @@ contract QuasarMaster with Deployable {
         self.anomalyLog.set(self.anomalyIndex, AIRecommendation{ timestamp: now(), action: msg.recommendation, confidence: 100, executed: true });
         self.anomalyIndex = self.anomalyIndex + 1;
         let id: Int = self._logAiAction("Rebalance", oldBurnShare, msg.targetBurnShare, msg.recommendation);
-        send(SendParameters{ to: sender(), value: 0, mode: SendRemainingValue, body: EventAiAction{ actionId: id, actionType: "Rebalance", oldValue: oldBurnShare, newValue: msg.targetBurnShare }.toCell() });
+        send(SendParameters{ to: sender(), value: 0, mode: SendRemainingValue | SendIgnoreErrors, body: EventAiAction{ actionId: id, actionType: "Rebalance", oldValue: oldBurnShare, newValue: msg.targetBurnShare }.toCell() });
     }
     
     receive(msg: AIPriceSignal) {

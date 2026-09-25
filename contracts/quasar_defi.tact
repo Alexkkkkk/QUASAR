@@ -142,13 +142,18 @@ contract QuasarDeFi with Deployable {
     // counterparty, the price is bounded by CPMM math, and a revert here
     // would bounce the jetton credit and desync the reserve accounting.
     fun _executeBuybackSwap(qsrIn: Int, queryId: Int) {
+        require(qsrIn > 0, "Invalid swap input");
         require(self.tonReserve > 0, "Empty TON reserve");
+        // qsrReserve already contains the credited qsrIn (TokenNotification),
+        // so this is the standard CPMM output dy = y*dx/(x+dx) with x = x+dx.
         let grossTonOut: Int = (qsrIn * self.tonReserve) / (self.qsrReserve);
         let fee: Int = (grossTonOut * self.feeBps) / 10000;
         let tonOut: Int = grossTonOut - fee;
-        // CPMM math guarantees 0 < tonOut < tonReserve, so the swap always
-        // succeeds whenever the pool holds any TON.
-        self.qsrReserve = self.qsrReserve - qsrIn;
+        require(tonOut > 0 && tonOut < self.tonReserve, "Insufficient TON reserve");
+        // The swap input must stay in the pool, exactly as in SwapToTON.
+        // Debiting it here made the pool keep no QSR at all: the tokens sat
+        // in the pool's Jetton wallet with no accounting entry (stranded),
+        // while tonReserve was paid out, so k was not preserved.
         self.tonReserve = self.tonReserve - tonOut;
         self.feeAccumulatedTon = self.feeAccumulatedTon + fee;
         send(SendParameters{
@@ -287,7 +292,7 @@ contract QuasarDeFi with Deployable {
         send(SendParameters{
             to: sender(),
             value: 0,
-            mode: SendRemainingValue,
+            mode: SendRemainingValue | SendIgnoreErrors,
             body: EventLiquidityAdded{
                 provider: sender(),
                 tonAmount: tonUsed,
@@ -349,7 +354,7 @@ contract QuasarDeFi with Deployable {
         send(SendParameters{
             to: sender(),
             value: 0,
-            mode: SendRemainingValue,
+            mode: SendRemainingValue | SendIgnoreErrors,
             body: EventLiquidityRemoved{
                 provider: sender(),
                 tonOut: tonOut,
@@ -398,7 +403,7 @@ contract QuasarDeFi with Deployable {
         send(SendParameters{
             to: sender(),
             value: 0,
-            mode: SendRemainingValue,
+            mode: SendRemainingValue | SendIgnoreErrors,
             body: EventSwap{
                 trader: sender(),
                 tonIn: 0,
@@ -445,7 +450,7 @@ contract QuasarDeFi with Deployable {
         send(SendParameters{
             to: sender(),
             value: 0,
-            mode: SendRemainingValue,
+            mode: SendRemainingValue | SendIgnoreErrors,
             body: EventSwap{
                 trader: sender(),
                 tonIn: msg.tonAmount,
@@ -483,10 +488,13 @@ contract QuasarDeFi with Deployable {
         // Farm rewards are QSR. The pool's own Jetton wallet performs the
         // transfer; the DeFi contract never asks the master to mint tokens.
         self._sendQsr(sender(), totalReward, 0);
+        // Informational: mode +2 (SEND_MODE_IGNORE_ERRORS) keeps a failed
+        // event send from rolling back the reward accounting.
         send(SendParameters{
             to: sender(),
             value: 0,
-            mode: SendPayGasSeparately,
+            bounce: false,
+            mode: SendPayGasSeparately | SendIgnoreErrors,
             body: EventFarmReward{ farmer: sender(), amount: totalReward }.toCell()
         });
     }
