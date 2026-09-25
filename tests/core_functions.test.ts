@@ -345,10 +345,13 @@ test('defi: seeded swaps preserve quote parity and the constant-product invarian
     const initialQsr = 100n * QSR;
 
     await creditDefiDeposit(eco, lp.address, initialQsr);
-    const add = await eco.defi.send(lp.getSender(), { value: initialTon + toNano('1') }, {
+    const add = await eco.defi.send(lp.getSender(), { value: initialTon }, {
         $$type: 'AddLiquidity', tonAmount: initialTon, qsrAmount: initialQsr
     });
     assert.ok(!anyComputeFailed(add), 'initial liquidity must be accepted');
+    const initialPool = await eco.defi.getPoolInfo();
+    assert.equal(initialPool.tonReserve, initialTon);
+    assert.equal(initialPool.qsrReserve, initialQsr);
 
     // Fixed seed makes any failing property case reproducible.
     let seed = 0x5eed1234;
