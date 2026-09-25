@@ -550,6 +550,22 @@ test('F8 on-chain: the owner key cannot be rotated without the 48h timelock', as
     ), 'the previous owner must lose control after acceptance');
 });
 
+test('F-09 source: buyback keeps QSR backing and enforces the trade cap', () => {
+    const leg = section(defiSrc, 'fun _executeBuybackSwap', 'fun _min');
+    assert.ok(leg.includes('(self.qsrReserve + qsrIn)'), 'buyback must quote against the pre-trade QSR reserve');
+    assert.ok(leg.includes('qsrIn * 10000 <= self.qsrReserve * self.maxTradeBps'), 'buyback must honor maxTradeBps');
+    assert.ok(leg.includes('self.qsrReserve = self.qsrReserve + qsrIn'), 'buyback QSR must remain backed by the pool wallet');
+    assert.ok(!leg.includes('self.qsrReserve = self.qsrReserve - qsrIn'), 'buyback must not remove QSR from accounted reserves');
+});
+
+test('TEP-74 source: every wallet path returns standard token excesses', () => {
+    const excessMessage = 'message(0xd53276db) TokenExcesses { queryId: Int as uint64 }';
+    assert.ok(masterSrc.includes(excessMessage), 'master wallet must define the TEP-74 excesses opcode');
+    assert.ok(defiSrc.includes(excessMessage), 'DeFi wallet must define the TEP-74 excesses opcode');
+    assert.ok((masterSrc.match(/body: TokenExcesses\{ queryId: msg.queryId \}.toCell\(\)/g) || []).length >= 3, 'master wallet must return excesses on transfer, bounce, and burn paths');
+    assert.ok((defiSrc.match(/body: TokenExcesses\{ queryId: msg.queryId \}.toCell\(\)/g) || []).length >= 2, 'DeFi wallet must return excesses on transfer and bounce paths');
+});
+
 test('F-09 on-chain: buyback swap leg access control and empty-pool guard', async () => {
     // Negative on-chain coverage. The positive swap flow is covered by the
     // F-09 source invariant + security_check invariants: an on-chain positive
