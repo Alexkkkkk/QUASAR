@@ -29,6 +29,10 @@ Referral rewards are now escrowed in the master and released only through
 `ClaimReferralRewards`; the public message and documentation no longer promise
 an unimplemented claim path.
 
+### AI mint-stop authority — fixed (2026-09-26)
+
+`AIPriceSignal`, `AIAnomalyAlert`, and `AIEmergencyPause` no longer mutate `mintable`. AI may still pause trading and adjust risk parameters, while the owner must explicitly send `Stop Minting` to disable issuance. Regression coverage protects both the source invariant and the sandbox behavior.
+
 ## Test coverage added
 
 - npm run security:check validates the source-level invariants above.
