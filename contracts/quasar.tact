@@ -1423,6 +1423,11 @@ contract QuasarWallet {
     owner: Address;
     master: Address;
     lastTxTime: Int;
+    // Bounced message bodies are limited to 224 bits, so the original
+    // response destination cannot always be read from bounced<T>. Retain it
+    // while an outbound operation is in flight to complete TEP-74 refunds.
+    pendingResponses: map<Int, Address>;
+    pendingBurnResponses: map<Int, Address>;
     
     init(owner: Address, master: Address) {
         self.balance = 0;
@@ -1481,6 +1486,17 @@ contract QuasarWallet {
     bounced(msg: bounced<InternalTransfer>) {
         require(msg.amount > 0, "Invalid amount");
         self.balance = self.balance + msg.amount;
+        let response: Address? = self.pendingResponses.get(msg.queryId);
+        if (response != null) {
+            self.pendingResponses.set(msg.queryId, null);
+            send(SendParameters{
+                to: response!!,
+                value: 0,
+                bounce: false,
+                mode: SendRemainingValue | SendIgnoreErrors,
+                body: TokenExcesses{ queryId: msg.queryId }.toCell()
+            });
+        }
     }
 
     bounced(msg: bounced<FeeTransfer>) {
@@ -1495,6 +1511,10 @@ contract QuasarWallet {
         require(self.balance >= msg.amount, "Insufficient");
         require(now() - self.lastTxTime >= 5, "Cooldown");
         self.lastTxTime = now();
+        if (msg.responseDestination != newAddress(0, 0)) {
+            require(self.pendingResponses.get(msg.queryId) == null, "Query ID already used");
+            self.pendingResponses.set(msg.queryId, msg.responseDestination);
+        }
         
         let fee: Int = msg.amount * 30 / 10000;
         if (fee < 1) { fee = 1 }
@@ -1536,6 +1556,8 @@ contract QuasarWallet {
         require(sender() == self.owner, "Not owner");
         require(self.balance >= msg.amount, "Insufficient");
         self.balance = self.balance - msg.amount;
+        require(self.pendingResponses.get(msg.queryId) == null, "Query ID already used");
+        self.pendingResponses.set(msg.queryId, self.owner);
         let init: StateInit = initOf QuasarWallet(msg.destination, self.master);
         send(SendParameters{
             to: contractAddress(init),
@@ -1560,12 +1582,27 @@ contract QuasarWallet {
         require(sender() == self.owner, "Not owner");
         require(self.balance >= msg.amount, "Insufficient");
         self.balance = self.balance - msg.amount;
+        if (msg.responseDestination != newAddress(0, 0)) {
+            require(self.pendingBurnResponses.get(msg.queryId) == null, "Query ID already used");
+            self.pendingBurnResponses.set(msg.queryId, msg.responseDestination);
+        }
         send(SendParameters{ to: self.master, value: 0, bounce: true, mode: SendRemainingValue, body: BurnNotification{ queryId: msg.queryId, amount: msg.amount, sender: self.owner, responseDestination: msg.responseDestination }.toCell() });
     }
 
     bounced(msg: bounced<BurnNotification>) {
         require(msg.amount > 0, "Invalid amount");
         self.balance = self.balance + msg.amount;
+        let response: Address? = self.pendingBurnResponses.get(msg.queryId);
+        if (response != null) {
+            self.pendingBurnResponses.set(msg.queryId, null);
+            send(SendParameters{
+                to: response!!,
+                value: 0,
+                bounce: false,
+                mode: SendRemainingValue | SendIgnoreErrors,
+                body: TokenExcesses{ queryId: msg.queryId }.toCell()
+            });
+        }
     }
     
     get fun get_wallet_data(): JettonWalletData {
