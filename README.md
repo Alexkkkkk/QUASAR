@@ -205,8 +205,8 @@ The AI Oracle has sovereign control with democratic safeguards:
 | Oracle rotation | 6h | Yes |
 
 ### Safeguards (as implemented)
-- **Community Veto**: `AIVetoVote` currently always reverts — disabled until stake escrow is implemented
-- **Owner Override**: 24h window, but `OwnerOverride` only reverts `SetFee` and `ToggleTrading` actions
+- **Community Veto**: removed from the deployed interface (F-25); no dead receiver or misleading governance path remains
+- **Owner Override**: 24h window for every logged AI action; the current implementation restores the full pre-action snapshot for reversible AI controls
 - **Dead Man's Switch**: `Claim AI Control` lets the owner reclaim control if the AI is silent 7 days
 - **AI cooldown**: `aiActionCooldown` (6h) gates every administrative AI action in every mode; market signals are logged but not rate-limited
 
