@@ -97,6 +97,22 @@ test('F-18 on-chain: only the owner can bring minting back after a full freeze',
     assert.equal((await m.getGetJettonData()).mintable, true, 'the owner must be able to resume minting');
 });
 
+test('F-07/F-28 source: AI rebalance rollback restores every changed field', () => {
+    const rebalance = section(masterSrc, 'receive(msg: AIRebalance)', 'receive(msg: AIPriceSignal)');
+    assert.ok(rebalance.includes('let oldFeeBps: Int = self.feeBps;'), 'rebalance must snapshot feeBps');
+    assert.ok(rebalance.includes('self.aiActionOldFeeBps.set(id, oldFeeBps);'), 'rebalance must persist the feeBps snapshot');
+
+    const override = section(masterSrc, 'receive(msg: OwnerOverride)', 'receive("Claim AI Control")');
+    assert.ok(override.includes('act.actionType == "Rebalance"'), 'rebalance must be owner-overridable');
+    assert.ok(override.includes('self.feeBps = oldFeeBps!!'), 'owner override must restore feeBps');
+});
+
+test('F-28 source: price history has its own count', () => {
+    assert.ok(masterSrc.includes('priceHistoryCount: Int;'), 'price history count must be stored separately');
+    assert.ok(masterSrc.includes('self.priceHistoryCount = self.priceHistoryCount + 1;'), 'price samples must increment their own counter');
+    assert.ok(masterSrc.includes('priceHistoryCount: self.priceHistoryCount'), 'AI state must expose the price history count');
+});
+
 test('F-19 source: rejected fee messages restore the deducted fee', () => {
     const wallet = section(masterSrc, 'contract QuasarWallet');
     const transfer = section(wallet, 'receive(msg: TokenTransfer)', 'receive(msg: PoolPayout)');
