@@ -160,6 +160,8 @@ contract QuasarMaster with Deployable {
     aiFullAutonomy: Bool;
     lastRebalanceTime: Int;
     signalCount: Int;
+    // Number of price samples, kept separate from the aggregate AI signal count.
+    priceHistoryCount: Int;
     priceHistory: map<Int, Int>;
     anomalyLog: map<Int, AIRecommendation>;
     anomalyIndex: Int;
@@ -266,6 +268,7 @@ contract QuasarMaster with Deployable {
         self.aiFullAutonomy = false;
         self.lastRebalanceTime = 0;
         self.signalCount = 0;
+        self.priceHistoryCount = 0;
         self.anomalyIndex = 0;
         self.minConfidence = 75;
         self.emergencyPause = false;
@@ -1017,6 +1020,7 @@ contract QuasarMaster with Deployable {
         require(!self.emergencyPause, "Paused");
         require(msg.targetFeeBps == 30 && msg.targetBurnShare <= 100, "Range");
         let oldBurnShare: Int = self.feeBurnShare;
+        let oldFeeBps: Int = self.feeBps;
         self.feeBps = msg.targetFeeBps;
         self.feeBurnShare = msg.targetBurnShare;
         self.lastRebalanceTime = now();
@@ -1024,6 +1028,7 @@ contract QuasarMaster with Deployable {
         self.anomalyLog.set(self.anomalyIndex, AIRecommendation{ timestamp: now(), action: msg.recommendation, confidence: 100, executed: true });
         self.anomalyIndex = self.anomalyIndex + 1;
         let id: Int = self._logAiAction("Rebalance", oldBurnShare, msg.targetBurnShare, msg.recommendation);
+        self.aiActionOldFeeBps.set(id, oldFeeBps);
         send(SendParameters{ to: sender(), value: 0, mode: SendRemainingValue | SendIgnoreErrors, body: EventAiAction{ actionId: id, actionType: "Rebalance", oldValue: oldBurnShare, newValue: msg.targetBurnShare }.toCell() });
     }
     
@@ -1038,6 +1043,7 @@ contract QuasarMaster with Deployable {
         let oldTrading: Bool = self.tradingEnabled;
         self.signalCount = self.signalCount + 1;
         self.priceHistory.set(now(), msg.priceTon);
+        self.priceHistoryCount = self.priceHistoryCount + 1;
         if (msg.action == 2 && msg.volatility > 5000) {
             self.feeBurnShare = 70;
         }
@@ -1161,7 +1167,11 @@ contract QuasarMaster with Deployable {
             if (oldCooldown != null) { self.buybackCooldown = oldCooldown!! }
             if (oldBurnPercent != null) { self.buybackBurnPercent = oldBurnPercent!! }
         }
-        else if (act.actionType == "Rebalance") { self.feeBurnShare = act.oldValue }
+        else if (act.actionType == "Rebalance") {
+            self.feeBurnShare = act.oldValue;
+            let oldFeeBps: Int? = self.aiActionOldFeeBps.get(msg.actionId);
+            if (oldFeeBps != null) { self.feeBps = oldFeeBps!! }
+        }
         else if (act.actionType == "PriceSignal" || act.actionType == "AnomalyAlert") {
             self.feeBurnShare = act.oldValue;
             let oldFeeBps: Int? = self.aiActionOldFeeBps.get(msg.actionId);
@@ -1363,7 +1373,7 @@ contract QuasarMaster with Deployable {
     }
     
     get fun get_ai_state(): AIState {
-        return AIState{ oracleAddress: self.aiOracle, aiModeEnabled: self.aiEnabled, fullAutonomy: self.aiFullAutonomy, lastRebalanceAt: self.lastRebalanceTime, totalSignalsReceived: self.signalCount, currentFeeBps: self.feeBps, priceHistoryCount: self.signalCount, anomalyCount: self.anomalyIndex, lastHeartbeat: self.lastHeartbeat, isAlive: self._checkAiAlive() }
+        return AIState{ oracleAddress: self.aiOracle, aiModeEnabled: self.aiEnabled, fullAutonomy: self.aiFullAutonomy, lastRebalanceAt: self.lastRebalanceTime, totalSignalsReceived: self.signalCount, currentFeeBps: self.feeBps, priceHistoryCount: self.priceHistoryCount, anomalyCount: self.anomalyIndex, lastHeartbeat: self.lastHeartbeat, isAlive: self._checkAiAlive() }
     }
     
     get fun get_autonomy_state(): AutonomyState {
