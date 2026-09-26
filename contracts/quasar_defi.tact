@@ -88,6 +88,9 @@ contract QuasarDeFi with Deployable {
     locked: Bool;
     paused: Bool;
     maxTradeBps: Int as uint16;
+    // Every pool payout gets a fresh ID. A single fixed query ID makes
+    // downstream wallets unable to distinguish concurrent payouts.
+    payoutSeq: Int as uint64;
     
     init(owner: Address, qsrMaster: Address) {
         self.owner = owner;
@@ -109,6 +112,7 @@ contract QuasarDeFi with Deployable {
         self.locked = false;
         self.paused = false;
         self.maxTradeBps = 3000;
+        self.payoutSeq = 0;
     }
     
     // ─── Reentrancy Guard ───
@@ -119,6 +123,8 @@ contract QuasarDeFi with Deployable {
 
     fun _sendQsr(to: Address, amount: Int, queryId: Int) {
         require(amount > 0, "Invalid QSR amount");
+        let payoutId: Int = self.payoutSeq + 1;
+        self.payoutSeq = payoutId;
         let init: StateInit = initOf QuasarWallet(myAddress(), self.qsrMaster);
         send(SendParameters{
             to: contractAddress(init),
@@ -126,7 +132,7 @@ contract QuasarDeFi with Deployable {
             bounce: true,
             mode: SendPayGasSeparately,
             body: PoolPayout{
-                queryId: queryId,
+                queryId: payoutId,
                 amount: amount,
                 destination: to,
             }.toCell(),
@@ -144,8 +150,12 @@ contract QuasarDeFi with Deployable {
     fun _executeBuybackSwap(qsrIn: Int, queryId: Int) {
         require(qsrIn > 0, "Invalid swap input");
         require(self.tonReserve > 0, "Empty TON reserve");
-        // qsrReserve already contains the credited qsrIn (TokenNotification),
-        // so this is the standard CPMM output dy = y*dx/(x+dx) with x = x+dx.
+        // TokenNotification credits qsrReserve before this hook runs. Compare
+        // the buyback against the pre-trade reserve, just like user swaps.
+        let qsrReserveBefore: Int = self.qsrReserve - qsrIn;
+        require(qsrReserveBefore > 0, "Empty QSR reserve");
+        require(qsrIn * 10000 <= qsrReserveBefore * self.maxTradeBps, "Buyback too large");
+        // CPMM output with x = pre-trade QSR reserve and dx = qsrIn.
         let grossTonOut: Int = (qsrIn * self.tonReserve) / (self.qsrReserve);
         let fee: Int = (grossTonOut * self.feeBps) / 10000;
         let tonOut: Int = grossTonOut - fee;
@@ -288,11 +298,13 @@ contract QuasarDeFi with Deployable {
         self._updateFarm();
         if (self.farmEnabled) { self._stakeLp(sender(), lpToMint); }
         
-        // Emit event
+        // The refund above already consumes the declared TON amount. Do not
+        // add a second SendRemainingValue action: it can drain the action
+        // balance and abort the whole transaction with noFunds.
         send(SendParameters{
             to: sender(),
             value: 0,
-            mode: SendRemainingValue | SendIgnoreErrors,
+            mode: SendPayGasSeparately,
             body: EventLiquidityAdded{
                 provider: sender(),
                 tonAmount: tonUsed,
