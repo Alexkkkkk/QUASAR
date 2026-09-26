@@ -499,13 +499,13 @@ contract QuasarMaster with Deployable {
     receive(msg: TokenExcesses) {
     }
 
+    // Issuance authority is owner-confirmed: AI risk signals can pause trading
+    // and adjust fees, but only this owner-authenticated path can set mintable=false.
     receive("Stop Minting") { self._requireOwner(); self.mintable = false }
 
-    // F-18: `mintable` can be turned off by the owner, by the AI emergency
-    // pause (severity 3) and by AI price/anomaly signals, but before this
-    // patch nothing could ever turn it back on — a single signal permanently
-    // bricked issuance. Recovery is owner-only and is refused while the AI
-    // holds full autonomy.
+    // F-18: issuance is owner-confirmed. AI controls may pause trading and
+    // change bounded risk parameters, but cannot mutate `mintable`.
+    // Recovery remains owner-only and is refused while AI has full autonomy.
     receive("Resume Minting") {
         self._requireOwner();
         require(!self.aiFullAutonomy, "AI controls");
@@ -912,12 +912,10 @@ contract QuasarMaster with Deployable {
         let oldTrading: Bool = self.tradingEnabled;
         let oldPause: Bool = self.emergencyPause;
         let oldFeeBps: Int = self.feeBps;
-        let oldMintable: Bool = self.mintable;
         if (msg.pause) {
             self.emergencyPause = true;
             self.tradingEnabled = false;
             if (msg.severity == 3) {
-                self.mintable = false;
                 self.feeBps = 100;
                 self.feeBurnShare = 90;
             }
@@ -928,7 +926,6 @@ contract QuasarMaster with Deployable {
         }
         let id: Int = self._logAiAction("EmergencyPause", oldTrading ? 1 : 0, msg.pause ? 1 : 0, msg.reason);
         self.aiActionOldFeeBps.set(id, oldFeeBps);
-        self.aiActionOldMintable.set(id, oldMintable ? 1 : 0);
         self.aiActionOldEmergencyPause.set(id, oldPause ? 1 : 0);
         self.aiActionOldTrading.set(id, oldTrading ? 1 : 0);
         send(SendParameters{ to: sender(), value: 0, mode: SendRemainingValue | SendIgnoreErrors, body: EventAiAction{ actionId: id, actionType: "EmergencyPause", oldValue: oldTrading ? 1 : 0, newValue: msg.pause ? 1 : 0 }.toCell() });
@@ -1038,7 +1035,6 @@ contract QuasarMaster with Deployable {
         // but every state change it causes has to be logged (F-07).
         let oldBurnShare: Int = self.feeBurnShare;
         let oldFeeBps: Int = self.feeBps;
-        let oldMintable: Bool = self.mintable;
         let oldPause: Bool = self.emergencyPause;
         let oldTrading: Bool = self.tradingEnabled;
         self.signalCount = self.signalCount + 1;
@@ -1052,16 +1048,16 @@ contract QuasarMaster with Deployable {
             // AI may not re-enable minting after the owner stopped it.
         }
         if (msg.action == 1 && msg.sentiment < -50) {
-            self.mintable = false;
+            // The oracle may recommend a freeze and raise burn pressure, but
+            // issuance remains an explicit owner decision.
             self.feeBurnShare = 80;
         }
         if (msg.action == 1 && msg.sentiment < -30 && self.buybackEnabled && self.buybackPool >= self.buybackThreshold && now() - self.lastBuybackTime >= self.buybackCooldown) {
             self._executeBuyback(msg.queryId);
         }
-        if (self.feeBurnShare != oldBurnShare || self.mintable != oldMintable) {
+        if (self.feeBurnShare != oldBurnShare) {
             let id: Int = self._logAiActionSilent("PriceSignal", oldBurnShare, self.feeBurnShare, "price-signal");
             self.aiActionOldFeeBps.set(id, oldFeeBps);
-            self.aiActionOldMintable.set(id, oldMintable ? 1 : 0);
             self.aiActionOldEmergencyPause.set(id, oldPause ? 1 : 0);
             self.aiActionOldTrading.set(id, oldTrading ? 1 : 0);
         }
@@ -1071,7 +1067,6 @@ contract QuasarMaster with Deployable {
         self._requireAiAccess();
         let oldBurnShare: Int = self.feeBurnShare;
         let oldFeeBps: Int = self.feeBps;
-        let oldMintable: Bool = self.mintable;
         let oldPause: Bool = self.emergencyPause;
         let oldTrading: Bool = self.tradingEnabled;
         self.anomalyLog.set(self.anomalyIndex, AIRecommendation{ timestamp: now(), action: msg.recommendedAction, confidence: 100, executed: false });
@@ -1079,16 +1074,16 @@ contract QuasarMaster with Deployable {
         if (msg.severity == 3) {
             self.emergencyPause = true;
             self.tradingEnabled = false;
-            self.mintable = false;
+            // Emergency AI handling pauses mint execution through
+            // emergencyPause; it does not change the owner-controlled flag.
             self.feeBps = 100;
             self.feeBurnShare = 90;
         } else if (msg.severity == 2) {
             self.feeBurnShare = 60;
         }
-        if (self.feeBurnShare != oldBurnShare || self.mintable != oldMintable) {
+        if (self.feeBurnShare != oldBurnShare || self.feeBps != oldFeeBps || self.emergencyPause != oldPause || self.tradingEnabled != oldTrading) {
             let id: Int = self._logAiActionSilent("AnomalyAlert", oldBurnShare, self.feeBurnShare, "anomaly-alert");
             self.aiActionOldFeeBps.set(id, oldFeeBps);
-            self.aiActionOldMintable.set(id, oldMintable ? 1 : 0);
             self.aiActionOldEmergencyPause.set(id, oldPause ? 1 : 0);
             self.aiActionOldTrading.set(id, oldTrading ? 1 : 0);
         }
@@ -1144,11 +1139,9 @@ contract QuasarMaster with Deployable {
             let oldPause: Int? = self.aiActionOldEmergencyPause.get(msg.actionId);
             let oldTrading: Int? = self.aiActionOldTrading.get(msg.actionId);
             let oldFeeBps: Int? = self.aiActionOldFeeBps.get(msg.actionId);
-            let oldMintable: Int? = self.aiActionOldMintable.get(msg.actionId);
             self.emergencyPause = oldPause != null && oldPause!! != 0;
             self.tradingEnabled = oldTrading == null ? act.oldValue != 0 : oldTrading!! != 0;
             if (oldFeeBps != null) { self.feeBps = oldFeeBps!! }
-            if (oldMintable != null) { self.mintable = oldMintable!! != 0 }
         }
         else if (act.actionType == "SetTreasury") {
             let prevTreasury: Address? = self.aiActionOldAddress.get(msg.actionId);
@@ -1175,11 +1168,9 @@ contract QuasarMaster with Deployable {
         else if (act.actionType == "PriceSignal" || act.actionType == "AnomalyAlert") {
             self.feeBurnShare = act.oldValue;
             let oldFeeBps: Int? = self.aiActionOldFeeBps.get(msg.actionId);
-            let oldMintable: Int? = self.aiActionOldMintable.get(msg.actionId);
             let oldPause: Int? = self.aiActionOldEmergencyPause.get(msg.actionId);
             let oldTrading: Int? = self.aiActionOldTrading.get(msg.actionId);
             if (oldFeeBps != null) { self.feeBps = oldFeeBps!! }
-            if (oldMintable != null) { self.mintable = oldMintable!! != 0 }
             if (oldPause != null) { self.emergencyPause = oldPause!! != 0 }
             if (oldTrading != null) { self.tradingEnabled = oldTrading!! != 0 }
         }

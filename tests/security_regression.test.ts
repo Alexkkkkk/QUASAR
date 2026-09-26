@@ -398,7 +398,7 @@ test('F7 on-chain: owner override restores the complete AI action state', async 
     const eco = await deployEco(false);
     await eco.master.send(eco.owner.getSender(), { value: toNano('0.2') }, 'Toggle AI');
 
-    // A bearish price signal freezes minting and changes the burn share.
+    // A bearish price signal changes the burn share, but cannot stop issuance.
     await eco.master.send(eco.owner.getSender(), { value: toNano('0.2') }, {
         $$type: 'AIPriceSignal',
         queryId: 1n,
@@ -407,13 +407,13 @@ test('F7 on-chain: owner override restores the complete AI action state', async 
         sentiment: -60,
         action: 1
     });
-    assert.equal((await eco.master.getGetJettonData()).mintable, false);
+    assert.equal((await eco.master.getGetJettonData()).mintable, true);
     assert.equal((await eco.master.getGetFeeConfig()).burnShare, 80n);
     await eco.master.send(eco.owner.getSender(), { value: toNano('0.2') }, { $$type: 'OwnerOverride', actionId: 0n, reason: 'rollback' });
-    assert.equal((await eco.master.getGetJettonData()).mintable, true, 'override must restore mintability');
+    assert.equal((await eco.master.getGetJettonData()).mintable, true, 'override must preserve mintability');
     assert.equal((await eco.master.getGetFeeConfig()).burnShare, 50n, 'override must restore burn share');
 
-    // Severity 3 also changes pause, trading, fee, and minting state.
+    // Severity 3 changes pause, trading, and fee state, but not mintability.
     await eco.master.send(eco.owner.getSender(), { value: toNano('0.2') }, {
         $$type: 'AIAnomalyAlert',
         queryId: 2n,
@@ -425,12 +425,12 @@ test('F7 on-chain: owner override restores the complete AI action state', async 
     assert.equal(await eco.master.getIsPaused(), true);
     assert.equal(await eco.master.getIsTradingEnabled(), false);
     assert.equal((await eco.master.getGetFeeConfig()).feeBps, 100n);
-    assert.equal((await eco.master.getGetJettonData()).mintable, false);
+    assert.equal((await eco.master.getGetJettonData()).mintable, true);
     await eco.master.send(eco.owner.getSender(), { value: toNano('0.2') }, { $$type: 'OwnerOverride', actionId: 1n, reason: 'rollback' });
     assert.equal(await eco.master.getIsPaused(), false, 'override must restore pause state');
     assert.equal(await eco.master.getIsTradingEnabled(), true, 'override must restore trading state');
     assert.equal((await eco.master.getGetFeeConfig()).feeBps, 30n, 'override must restore fee');
-    assert.equal((await eco.master.getGetJettonData()).mintable, true, 'override must restore mintability');
+    assert.equal((await eco.master.getGetJettonData()).mintable, true, 'override must preserve mintability');
 });
 
 test('F9 source: the buyback threshold uses the same unit as the buyback pool', () => {

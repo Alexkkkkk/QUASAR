@@ -192,7 +192,7 @@ ClaimVested {}
 
 ## AI Sovereignty
 
-The AI Oracle has sovereign control with democratic safeguards:
+The AI Oracle can apply bounded risk controls with owner-confirmed issuance:
 
 | Control | Cooldown | Veto |
 |---------|----------|------|
@@ -208,6 +208,7 @@ The AI Oracle has sovereign control with democratic safeguards:
 - **Community Veto**: removed from the deployed interface (F-25); no dead receiver or misleading governance path remains
 - **Owner Override**: 24h window for every logged AI action; the current implementation restores the full pre-action snapshot for reversible AI controls
 - **Dead Man's Switch**: `Claim AI Control` lets the owner reclaim control if the AI is silent 7 days
+- **Minting authority**: AI may pause trading and adjust fees, but only the owner-authenticated `Stop Minting` path can set `mintable = false`
 - **AI cooldown**: `aiActionCooldown` (6h) gates every administrative AI action in every mode; market signals are logged but not rate-limited
 
 ---
