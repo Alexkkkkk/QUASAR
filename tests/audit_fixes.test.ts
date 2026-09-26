@@ -125,20 +125,20 @@ test('owner confirmation: AI paths cannot mutate mintable', () => {
 
 test('owner confirmation: AI risk paths leave mintable unchanged', async () => {
     const { owner, m } = await deployMaster();
-    await m.send(owner.getSender(), { value: toNano('0.1') }, { $type: 'AISetOracle', oracleAddress: owner.address });
+    await m.send(owner.getSender(), { value: toNano('0.1') }, { $$type: 'AISetOracle', oracleAddress: owner.address });
 
     await m.send(owner.getSender(), { value: toNano('0.1') }, {
-        $type: 'AIPriceSignal', queryId: 1n, priceTon: toNano('1'), volatility: 0n, sentiment: -60n, action: 1n
+        $$type: 'AIPriceSignal', queryId: 1n, priceTon: toNano('1'), volatility: 0n, sentiment: -60n, action: 1n
     });
     assert.equal((await m.getGetJettonData()).mintable, true, 'price signal must not stop minting');
 
     await m.send(owner.getSender(), { value: toNano('0.1') }, {
-        $type: 'AIAnomalyAlert', queryId: 2n, severity: 3n, anomalyType: 1n, affectedWallets: 0n, recommendedAction: 'pause trading'
+        $$type: 'AIAnomalyAlert', queryId: 2n, severity: 3n, anomalyType: 1n, affectedWallets: 0n, recommendedAction: 'pause trading'
     });
     assert.equal((await m.getGetJettonData()).mintable, true, 'anomaly alert must not stop minting');
 
     await m.send(owner.getSender(), { value: toNano('0.1') }, {
-        $type: 'AIEmergencyPause', pause: true, severity: 3n, reason: 'test'
+        $$type: 'AIEmergencyPause', queryId: 3n, pause: true, severity: 3n, reason: 'test'
     });
     assert.equal((await m.getGetJettonData()).mintable, true, 'AI emergency pause must not mutate mintable');
 
@@ -147,42 +147,6 @@ test('owner confirmation: AI risk paths leave mintable unchanged', async () => {
 });
 
 test('F-19 source: rejected fee messages restore the deducted fee', () => {
-    const wallet = section(masterSrc, 'contract QuasarWallet');
-    const transfer = section(wallet, 'receive(msg: TokenTransfer)', 'receive(msg: PoolPayout)');
-    assert.ok(
-        transfer.includes('bounce: true, mode: SendPayGasSeparately, body: FeeTransfer'),
-        'fee transfer must be bounceable and funded'
-    );
-    assert.ok(
-        !transfer.includes('SendPayGasSeparately | SendIgnoreErrors'),
-        'fee transfer must not silently ignore delivery errors'
-    );
-    assert.ok(
-        wallet.includes('bounced(msg: bounced<FeeTransfer>)'),
-        'a bounced fee must be restored to the sender wallet'
-    );
-});
-
-test('F-20 source: remaining-value actions are kept last in multi-send flows', () => {
-    const burn = section(masterSrc, 'receive(msg: BurnNotification)', 'receive(msg: TokenNotification)');
-    assert.ok(
-        burn.indexOf('EventBurn{') < burn.indexOf('TokenExcesses{'),
-        'burn event must be emitted before the final excess refund'
-    );
-
-    const buyback = section(masterSrc, 'fun _executeBuyback', 'fun _sendBuybackToDefi');
-    assert.ok(
-        buyback.indexOf('self._sendBuybackToDefi') < buyback.indexOf('EventBuybackExecuted{'),
-        'buyback event must not drain value before the DeFi leg'
-    );
-
-    const custody = section(masterSrc, 'fun _sendCustodiedTokens', 'receive(msg: Mint)');
-    assert.ok(
-        custody.includes('value: ton("0.02")') && custody.includes('mode: SendPayGasSeparately'),
-        'custodied payouts must leave value for the following event'
-    );
-});
-
     const wallet = section(masterSrc, 'contract QuasarWallet');
     const transfer = section(wallet, 'receive(msg: TokenTransfer)', 'receive(msg: PoolPayout)');
     assert.ok(
