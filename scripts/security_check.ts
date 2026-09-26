@@ -11,6 +11,10 @@ function assertContains(source: string, needle: string, label: string) {
 
 assertContains(master, 'require(msg.amount <= self.totalSupply, "Supply underflow");', 'burn cannot underflow totalSupply');
 assertContains(master, 'require(self.totalSupply + msg.amount <= self.maxSupply, "Max supply exceeded");', 'mint cannot exceed the hard supply cap');
+assertContains(master, 'fun _mintQueryId(): Int', 'mint bounces use a reserved query id');
+assertContains(master, 'queryId: self._mintQueryId(),', 'mint uses the reserved query id');
+assertContains(master, 'self.totalSupply = self.totalSupply - msg.amount;', 'mint bounces roll back total supply');
+assertContains(master, 'fun _requireNonMintQueryId(queryId: Int)', 'reserve payouts cannot impersonate mint bounces');
 assertContains(master, 'fun _sendTokensToDefi(amount: Int, queryId: Int)', 'dedicated DeFi fee transfer path');
 assertContains(master, 'forwardTonAmount: ton("0.01")', 'DeFi fee transfer emits accounting notification');
 assertContains(master, 'self._sendTokensToDefi(defiAmt, msg.queryId);', 'fee split uses the accounting path');

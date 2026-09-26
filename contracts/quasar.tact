@@ -315,6 +315,16 @@ contract QuasarMaster with Deployable {
     fun _requireNotPaused() { require(!self.emergencyPause, "Paused") }
     fun _requireTrading() { require(self.tradingEnabled, "Trading off") }
 
+    // Mint transfers need a distinct query id because a bounced mint has a
+    // different accounting consequence from a bounced reserve payout:
+    // minting must roll back totalSupply, while a reserve payout must restore
+    // reserveBalance. Keep the value outside the normal application-owned
+    // query-id space and reject it from every non-mint payout path.
+    fun _mintQueryId(): Int { return 18446744073709551615 }
+    fun _requireNonMintQueryId(queryId: Int) {
+        require(queryId != self._mintQueryId(), "Reserved mint query id")
+    }
+
     // Buyback and staking pools are sub-accounts inside the fee reserve.
     // Treasury and DeFi payouts may only spend the part of the reserve that
     // is not encumbered by these pools.
@@ -377,12 +387,32 @@ contract QuasarMaster with Deployable {
         });
     }
 
-    fun _mintTokens(to: Address, amount: Int, queryId: Int) {
-        self._sendInternalTransfer(to, amount, queryId, myAddress());
+    fun _mintTokens(to: Address, amount: Int) {
+        require(amount > 0, "Invalid transfer amount");
+        let init: StateInit = initOf QuasarWallet(to, myAddress());
+        // Keep the mint namespace visible at the serialization site: a
+        // bounced mint must be distinguishable from every reserve payout.
+        send(SendParameters{
+            to: contractAddress(init),
+            value: ton("0.02"),
+            bounce: true,
+            mode: SendPayGasSeparately,
+            body: InternalTransfer{
+                queryId: self._mintQueryId(),
+                amount: amount,
+                from: myAddress(),
+                responseDestination: myAddress(),
+                forwardTonAmount: 0,
+                forwardPayload: emptySlice()
+            }.toCell(),
+            code: init.code,
+            data: init.data
+        });
     }
 
     fun _sendTokens(to: Address, amount: Int, queryId: Int, from: Address) {
         require(amount > 0, "Invalid transfer amount");
+        self._requireNonMintQueryId(queryId);
         require(self.reserveBalance >= amount, "Insufficient QSR reserve");
         self.reserveBalance = self.reserveBalance - amount;
         self._sendInternalTransfer(to, amount, queryId, from);
@@ -392,6 +422,7 @@ contract QuasarMaster with Deployable {
     // can account for the tokens in qsrReserve.
     fun _sendTokensToDefi(amount: Int, queryId: Int) {
         require(amount > 0, "Invalid DeFi transfer amount");
+        self._requireNonMintQueryId(queryId);
         require(self.defiAddress != newAddress(0, 0), "DeFi not configured");
         require(self.reserveBalance >= amount, "Insufficient QSR reserve");
         self.reserveBalance = self.reserveBalance - amount;
@@ -448,7 +479,7 @@ contract QuasarMaster with Deployable {
         
         require(self.totalSupply + msg.amount <= self.maxSupply, "Max supply exceeded");
         self.totalSupply = self.totalSupply + msg.amount;
-        self._mintTokens(msg.receiver, msg.amount, 0);
+        self._mintTokens(msg.receiver, msg.amount);
         
         // The token transfer already consumes the remaining value. Do not
         // queue a second SendRemainingValue action here: that makes the
@@ -482,13 +513,19 @@ contract QuasarMaster with Deployable {
     // wallet via its own bounce handler. The master must restore the reserve
     // accounting to stay consistent with the jetton ledger.
     bounced(msg: bounced<InternalTransfer>) {
-        self.reserveBalance = self.reserveBalance + msg.amount;
-        // A bounced buyback swap leg returns its amount to the buyback pool,
-        // not to the free reserve; the queryId match rules out unrelated
-        // bounced transfers being misattributed to the swap leg.
-        if (self.buybackSwapPending > 0 && msg.queryId == self.buybackSwapQueryId) {
-            self.buybackPool = self.buybackPool + self.buybackSwapPending;
-            self.buybackSwapPending = 0;
+        if (msg.queryId == self._mintQueryId()) {
+            // Minting increased supply before dispatch. A failed wallet credit
+            // must undo issuance; it must never manufacture reserve liquidity.
+            require(self.totalSupply >= msg.amount, "Mint supply underflow");
+            self.totalSupply = self.totalSupply - msg.amount;
+        } else {
+            self.reserveBalance = self.reserveBalance + msg.amount;
+            // A bounced buyback swap leg returns its amount to the buyback
+            // pool, not to the free reserve.
+            if (self.buybackSwapPending > 0 && msg.queryId == self.buybackSwapQueryId) {
+                self.buybackPool = self.buybackPool + self.buybackSwapPending;
+                self.buybackSwapPending = 0;
+            }
         }
     }
     
