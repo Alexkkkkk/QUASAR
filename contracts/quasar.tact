@@ -23,7 +23,6 @@ message EventAiAction { actionId: Int; actionType: String; oldValue: Int; newVal
 message AISetOracle { oracleAddress: Address }
 message AIGrantFullAutonomy { enabled: Bool }
 message AIHeartbeat { queryId: Int as uint64; status: String }
-message AIVetoVote { actionId: Int as uint64; voter: Address; stake: Int as coins; reason: String }
 message OwnerOverride { actionId: Int as uint64; reason: String }
 message AIRebalance { queryId: Int as uint64; targetFeeBps: Int as uint16; targetBurnShare: Int as uint8; recommendation: String }
 message AIPriceSignal { queryId: Int as uint64; priceTon: Int as coins; volatility: Int as uint32; sentiment: Int as int8; action: Int as uint8 }
@@ -49,6 +48,15 @@ message(0x178d4519) InternalTransfer { queryId: Int as uint64; amount: Int as co
 message(0xd53276db) TokenExcesses { queryId: Int as uint64 }
 message(0x51a5c3d1) PoolPayout { queryId: Int as uint64; amount: Int as coins; destination: Address }
 message DefiPayout { queryId: Int as uint64; amount: Int as coins; destination: Address }
+
+// ─── TEP-89 discoverable Jetton wallets ───
+// `provide_wallet_address` / `take_wallet_address` are the on-chain discovery
+// pair defined by TEP-89. The response keeps the owner address in a ref
+// (`owner_address:(Maybe ^MsgAddress)`) exactly as the standard's TL-B schema
+// specifies, which is why the field is a `Cell?` rather than an `Address?`
+// (Tact would serialise the latter inline, not as a ref).
+message(0x2c76b973) ProvideWalletAddress { queryId: Int as uint64; ownerAddress: Address; includeAddress: Bool }
+message(0xd1735400) TakeWalletAddress { queryId: Int as uint64; walletAddress: Address; ownerAddress: Cell? }
 
 // ─── Fee & Buyback Messages ───
 message FeeTransfer { queryId: Int as uint64; amount: Int as coins; originalSender: Address; originalReceiver: Address }
@@ -85,7 +93,6 @@ struct FeeConfig { feeBps: Int; burnShare: Int; treasuryShare: Int; maxTxBps: In
 struct BuybackState { enabled: Bool; pool: Int; threshold: Int; cooldown: Int; burnPercent: Int; buybackSwapPending: Int; buybackSwapQueryId: Int; lastBuybackAt: Int; totalBuybacks: Int; totalQsrBurnedViaBuyback: Int; totalTonSpent: Int }
 struct AutonomyState { fullAutonomyEnabled: Bool; aiActionCooldown: Int; lastAiActionTime: Int; heartbeatTimeout: Int; lastHeartbeat: Int; ownerOverrideWindow: Int; vetoThresholdBps: Int; totalVetoStake: Int; pendingActions: Int }
 struct AIActionLog { actionId: Int; timestamp: Int; actionType: String; oldValue: Int; newValue: Int; reason: String; executed: Bool; vetoed: Bool; overridden: Bool }
-struct VetoState { actionId: Int; totalStake: Int; vetoCount: Int; threshold: Int; active: Bool }
 struct AIRecommendation { timestamp: Int; action: String; confidence: Int; executed: Bool }
 
 // Staking
@@ -167,7 +174,6 @@ contract QuasarMaster with Deployable {
     aiActionLog: map<Int, AIActionLog>;
     aiActionIndex: Int;
     pendingAiActions: map<Int, Int>;
-    vetoLog: map<Int, VetoState>;
     // Previous address for AI actions that move a privileged address, so
     // OwnerOverride can restore it (F-07).
     aiActionOldAddress: map<Int, Address>;
@@ -1108,29 +1114,12 @@ contract QuasarMaster with Deployable {
     // VETO & OVERRIDE
     // ═══════════════════════════════════════════════════════════
     
-    receive(msg: AIVetoVote) {
-        require(false, "Veto voting disabled until stake escrow is implemented");
-        let action: AIActionLog? = self.aiActionLog.get(msg.actionId);
-        require(action != null, "Not found");
-        require(!(action!!.vetoed) && !(action!!.overridden), "Closed");
-        require(self._isOwnerOverrideWindow(msg.actionId), "Window closed");
-        
-        let veto: VetoState? = self.vetoLog.get(msg.actionId);
-        let currentStake: Int = 0;
-        let currentCount: Int = 0;
-        if (veto != null) { currentStake = veto!!.totalStake; currentCount = veto!!.vetoCount }
-        
-        let newStake: Int = currentStake + msg.stake;
-        let threshold: Int = self.totalSupply * self.vetoThresholdBps / 10000;
-        self.vetoLog.set(msg.actionId, VetoState{ actionId: msg.actionId, totalStake: newStake, vetoCount: currentCount + 1, threshold: threshold, active: newStake < threshold });
-        
-        if (newStake >= threshold) {
-            let act: AIActionLog = action!!;
-            self.aiActionLog.set(msg.actionId, AIActionLog{ actionId: act.actionId, timestamp: act.timestamp, actionType: act.actionType, oldValue: act.oldValue, newValue: act.newValue, reason: act.reason, executed: act.executed, vetoed: true, overridden: false });
-            self.totalVetoStake = self.totalVetoStake + msg.stake;
-        }
-    }
-    
+    // The stake-escrow veto receiver that used to sit here opened with
+    // `require(false, "Veto voting disabled...")`, so it could never succeed: it
+    // only burned gas and advertised a governance feature this contract does not
+    // implement. Vote accounting is therefore removed rather than left as dead
+    // code; `OwnerOverride` below is the single, exercised reversal path.
+
     receive(msg: OwnerOverride) {
         self._requireOwner();
         let action: AIActionLog? = self.aiActionLog.get(msg.actionId);
@@ -1329,6 +1318,31 @@ contract QuasarMaster with Deployable {
     }
     
     // ═══════════════════════════════════════════════════════════
+    // TEP-89 — DISCOVERABLE JETTON WALLETS
+    // ═══════════════════════════════════════════════════════════
+
+    receive(msg: ProvideWalletAddress) {
+        // TEP-89 requires the caller to attach at least 5,000 gas units plus the
+        // forward lump and cell prices (0.0061 TON at the current basechain
+        // settings); below that the response cannot be funded at all.
+        require(context().value >= ton("0.0061"), "Not enough TON for discovery");
+        let init: StateInit = initOf QuasarWallet(msg.ownerAddress, myAddress());
+        // `include_address = true` asks the response to echo the owner so the
+        // caller can verify the pairing without a second query.
+        let owner: Cell? = null;
+        if (msg.includeAddress) { owner = beginCell().storeAddress(msg.ownerAddress).endCell() }
+        // Mode 64 (carry the remaining inbound value) is the mode the TEP-89
+        // reference implementation uses for this response.
+        send(SendParameters{
+            to: sender(),
+            value: 0,
+            bounce: false,
+            mode: SendRemainingValue,
+            body: TakeWalletAddress{ queryId: msg.queryId, walletAddress: contractAddress(init), ownerAddress: owner }.toCell()
+        });
+    }
+
+    // ═══════════════════════════════════════════════════════════
     // GETTERS
     // ═══════════════════════════════════════════════════════════
     
@@ -1381,7 +1395,6 @@ contract QuasarMaster with Deployable {
     get fun get_vesting_info(beneficiary: Address): VestingInfo? { return self.vestingSchedules.get(beneficiary) }
     
     get fun get_ai_action(actionId: Int): AIActionLog? { return self.aiActionLog.get(actionId) }
-    get fun get_veto_state(actionId: Int): VetoState? { return self.vetoLog.get(actionId) }
     get fun get_ai_recommendation(index: Int): AIRecommendation? { return self.anomalyLog.get(index) }
     get fun get_price_at(timestamp: Int): Int? { return self.priceHistory.get(timestamp) }
     get fun is_paused(): Bool { return self.emergencyPause }
