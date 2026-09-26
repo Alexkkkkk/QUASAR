@@ -1481,6 +1481,17 @@ contract QuasarWallet {
     bounced(msg: bounced<InternalTransfer>) {
         require(msg.amount > 0, "Invalid amount");
         self.balance = self.balance + msg.amount;
+        // TEP-74: a bounced transfer still returns the unused TON to the
+        // original response destination, using the standard excesses body.
+        if (msg.responseDestination != newAddress(0, 0)) {
+            send(SendParameters{
+                to: msg.responseDestination,
+                value: 0,
+                bounce: false,
+                mode: SendRemainingValue | SendIgnoreErrors,
+                body: TokenExcesses{ queryId: msg.queryId }.toCell()
+            });
+        }
     }
 
     bounced(msg: bounced<FeeTransfer>) {
@@ -1566,6 +1577,16 @@ contract QuasarWallet {
     bounced(msg: bounced<BurnNotification>) {
         require(msg.amount > 0, "Invalid amount");
         self.balance = self.balance + msg.amount;
+        // A failed burn must not strand the requester's remaining TON.
+        if (msg.responseDestination != newAddress(0, 0)) {
+            send(SendParameters{
+                to: msg.responseDestination,
+                value: 0,
+                bounce: false,
+                mode: SendRemainingValue | SendIgnoreErrors,
+                body: TokenExcesses{ queryId: msg.queryId }.toCell()
+            });
+        }
     }
     
     get fun get_wallet_data(): JettonWalletData {
