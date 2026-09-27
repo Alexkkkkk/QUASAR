@@ -1129,20 +1129,33 @@ contract QuasarMaster with Deployable {
     receive(msg: AIGovernanceProposal) {
         self._requireAiAccess();
         self._requireAiCooldown();
-        self.lastAiActionTime = now();
         require(msg.confidence >= self.minConfidence, "Low confidence");
         self.signalCount = self.signalCount + 1;
+        let oldValue: Int = 0;
+        let actionType: String = "";
         if (msg.proposalType == 1) {
             require(msg.newValue == 30, "Wallet fee is fixed at 30 bps");
+            oldValue = self.feeBps;
             self.feeBps = 30;
+            actionType = "GovernanceFee";
         } else if (msg.proposalType == 2) {
             require(msg.newValue >= 0 && msg.newValue <= 100, "Invalid burn share");
+            oldValue = self.feeBurnShare;
             self.feeBurnShare = msg.newValue;
+            actionType = "GovernanceBurn";
         } else if (msg.proposalType == 4) {
             require(msg.newValue > 0, "Invalid buyback threshold");
+            oldValue = self.buybackThreshold;
             self.buybackThreshold = msg.newValue;
+            actionType = "GovernanceBuybackThreshold";
         } else {
             require(false, "Unsupported governance proposal");
+        }
+        let id: Int = self._logAiAction(actionType, oldValue, msg.newValue, msg.description);
+        if (msg.proposalType == 1) {
+            self.aiActionOldFeeBps.set(id, oldValue);
+        } else if (msg.proposalType == 4) {
+            self.aiActionOldBuybackThreshold.set(id, oldValue);
         }
         self.anomalyLog.set(self.anomalyIndex, AIRecommendation{ timestamp: now(), action: msg.description, confidence: msg.confidence, executed: true });
         self.anomalyIndex = self.anomalyIndex + 1;
@@ -1201,6 +1214,16 @@ contract QuasarMaster with Deployable {
             self.feeBurnShare = act.oldValue;
             let oldFeeBps: Int? = self.aiActionOldFeeBps.get(msg.actionId);
             if (oldFeeBps != null) { self.feeBps = oldFeeBps!! }
+        }
+        else if (act.actionType == "GovernanceFee") {
+            self.feeBps = act.oldValue;
+        }
+        else if (act.actionType == "GovernanceBurn") {
+            self.feeBurnShare = act.oldValue;
+        }
+        else if (act.actionType == "GovernanceBuybackThreshold") {
+            let oldThreshold: Int? = self.aiActionOldBuybackThreshold.get(msg.actionId);
+            if (oldThreshold != null) { self.buybackThreshold = oldThreshold!! }
         }
         else if (act.actionType == "PriceSignal" || act.actionType == "AnomalyAlert") {
             self.feeBurnShare = act.oldValue;
@@ -1460,12 +1483,6 @@ contract QuasarWallet {
     owner: Address;
     master: Address;
     lastTxTime: Int;
-    // Bounced message bodies are limited to 224 bits, so the original
-    // response destination cannot always be read from bounced<T>. Retain it
-    // while an outbound operation is in flight to complete TEP-74 refunds.
-    pendingResponses: map<Int, Address>;
-    pendingBurnResponses: map<Int, Address>;
-    
     init(owner: Address, master: Address) {
         self.balance = 0;
         self.owner = owner;
@@ -1523,17 +1540,6 @@ contract QuasarWallet {
     bounced(msg: bounced<InternalTransfer>) {
         require(msg.amount > 0, "Invalid amount");
         self.balance = self.balance + msg.amount;
-        let response: Address? = self.pendingResponses.get(msg.queryId);
-        if (response != null) {
-            self.pendingResponses.set(msg.queryId, null);
-            send(SendParameters{
-                to: response!!,
-                value: 0,
-                bounce: false,
-                mode: SendRemainingValue | SendIgnoreErrors,
-                body: TokenExcesses{ queryId: msg.queryId }.toCell()
-            });
-        }
     }
 
     bounced(msg: bounced<FeeTransfer>) {
@@ -1548,10 +1554,6 @@ contract QuasarWallet {
         require(self.balance >= msg.amount, "Insufficient");
         require(now() - self.lastTxTime >= 5, "Cooldown");
         self.lastTxTime = now();
-        if (msg.responseDestination != newAddress(0, 0)) {
-            require(self.pendingResponses.get(msg.queryId) == null, "Query ID already used");
-            self.pendingResponses.set(msg.queryId, msg.responseDestination);
-        }
         
         let fee: Int = msg.amount * 30 / 10000;
         if (fee < 1) { fee = 1 }
@@ -1593,8 +1595,6 @@ contract QuasarWallet {
         require(sender() == self.owner, "Not owner");
         require(self.balance >= msg.amount, "Insufficient");
         self.balance = self.balance - msg.amount;
-        require(self.pendingResponses.get(msg.queryId) == null, "Query ID already used");
-        self.pendingResponses.set(msg.queryId, self.owner);
         let init: StateInit = initOf QuasarWallet(msg.destination, self.master);
         send(SendParameters{
             to: contractAddress(init),
@@ -1619,27 +1619,12 @@ contract QuasarWallet {
         require(sender() == self.owner, "Not owner");
         require(self.balance >= msg.amount, "Insufficient");
         self.balance = self.balance - msg.amount;
-        if (msg.responseDestination != newAddress(0, 0)) {
-            require(self.pendingBurnResponses.get(msg.queryId) == null, "Query ID already used");
-            self.pendingBurnResponses.set(msg.queryId, msg.responseDestination);
-        }
         send(SendParameters{ to: self.master, value: 0, bounce: true, mode: SendRemainingValue, body: BurnNotification{ queryId: msg.queryId, amount: msg.amount, sender: self.owner, responseDestination: msg.responseDestination }.toCell() });
     }
 
     bounced(msg: bounced<BurnNotification>) {
         require(msg.amount > 0, "Invalid amount");
         self.balance = self.balance + msg.amount;
-        let response: Address? = self.pendingBurnResponses.get(msg.queryId);
-        if (response != null) {
-            self.pendingBurnResponses.set(msg.queryId, null);
-            send(SendParameters{
-                to: response!!,
-                value: 0,
-                bounce: false,
-                mode: SendRemainingValue | SendIgnoreErrors,
-                body: TokenExcesses{ queryId: msg.queryId }.toCell()
-            });
-        }
     }
     
     get fun get_wallet_data(): JettonWalletData {
