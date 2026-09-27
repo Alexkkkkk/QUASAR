@@ -38,8 +38,11 @@ message(0x178d4519) InternalTransfer { queryId: Int as uint64; amount: Int as co
 // incoming message value with it (opcode 0xd53276db).
 message(0xd53276db) TokenExcesses { queryId: Int as uint64 }
 message(0x51a5c3d1) PoolPayout { queryId: Int as uint64; amount: Int as coins; destination: Address }
+message PayoutFailed { queryId: Int as uint64; amount: Int as coins; destination: Address }
 message(0x2c7e91a4) BuybackTon { queryId: Int as uint64; tonAmount: Int as coins; qsrSwapped: Int as coins }
 message FeeTransfer { queryId: Int as uint64; amount: Int as coins; originalSender: Address; originalReceiver: Address }
+message TransferConfirmed { queryId: Int as uint64 }
+message BurnConfirmed { queryId: Int as uint64 }
 
 // ─── Events ───
 message EventLiquidityAdded { provider: Address; tonAmount: Int; qsrAmount: Int; lpMinted: Int }
@@ -52,6 +55,7 @@ message EventFeeCollected { amount: Int }
 struct LPInfo { totalSupply: Int; tonReserve: Int; qsrReserve: Int; }
 struct FarmInfo { staked: Int; rewardPerSecond: Int; lastUpdate: Int; accRewardPerShare: Int; startTime: Int; endTime: Int }
 struct UserFarmInfo { staked: Int; debt: Int; pending: Int }
+struct PendingPayout { amount: Int; kind: Int; beneficiary: Address }
 struct SwapQuote { tonIn: Int; qsrIn: Int; tonOut: Int; qsrOut: Int; fee: Int; priceImpactBps: Int }
 struct JettonWalletData { balance: Int; owner: Address; master: Address; walletCode: Cell }
 
@@ -106,6 +110,7 @@ contract QuasarDeFi with Deployable {
     // Every pool payout gets a fresh ID. A single fixed query ID makes
     // downstream wallets unable to distinguish concurrent payouts.
     payoutSeq: Int as uint64;
+    pendingPayouts: map<Int, PendingPayout>;
     
     init(owner: Address, qsrMaster: Address) {
         self.owner = owner;
@@ -167,10 +172,11 @@ contract QuasarDeFi with Deployable {
         }
     }
 
-    fun _sendQsr(to: Address, amount: Int, queryId: Int) {
+    fun _sendQsr(to: Address, amount: Int, queryId: Int, kind: Int) {
         require(amount > 0, "Invalid QSR amount");
         let payoutId: Int = self.payoutSeq + 1;
         self.payoutSeq = payoutId;
+        self.pendingPayouts.set(payoutId, PendingPayout{ amount: amount, kind: kind, beneficiary: to });
         let init: StateInit = initOf QuasarWallet(myAddress(), self.qsrMaster);
         send(SendParameters{
             to: contractAddress(init),
@@ -277,6 +283,28 @@ contract QuasarDeFi with Deployable {
     receive(msg: TokenExcesses) {
     }
 
+    // The source wallet can accept PoolPayout while the downstream
+    // InternalTransfer later bounces. Restore the exact logical reserve that
+    // funded this payout and consume the record once.
+    receive(msg: PayoutFailed) {
+        let wInit: StateInit = initOf QuasarWallet(myAddress(), self.qsrMaster);
+        require(sender() == contractAddress(wInit), "Invalid payout source");
+        let payout: PendingPayout? = self.pendingPayouts.get(msg.queryId);
+        require(payout != null && payout!!.amount == msg.amount, "Unknown payout");
+        self.pendingPayouts.set(msg.queryId, null);
+        if (payout!!.kind == 1) {
+            self.qsrReserve = self.qsrReserve + msg.amount;
+        } else if (payout!!.kind == 2) {
+            self.farmRewardReserve = self.farmRewardReserve + msg.amount;
+        } else if (payout!!.kind == 3) {
+            let pending: Int? = self.pendingQsrDeposits.get(payout!!.beneficiary);
+            self.pendingQsrDeposits.set(payout!!.beneficiary, pending == null ? msg.amount : pending!! + msg.amount);
+            self.pendingQsrDepositsAt.set(payout!!.beneficiary, now());
+        } else {
+            require(false, "Invalid payout kind");
+        }
+    }
+
     // A user may recover an unconsumed deposit at any time. This is
     // intentionally allowed while paused: it only returns the user's own
     // QSR and prevents a UI failure or an abandoned two-step operation from
@@ -287,7 +315,7 @@ contract QuasarDeFi with Deployable {
         self._lock();
         self.pendingQsrDeposits.set(sender(), 0);
         self.pendingQsrDepositsAt.set(sender(), 0);
-        self._sendQsr(sender(), pending!!, 0);
+        self._sendQsr(sender(), pending!!, 0, 3);
         self._unlock();
     }
     
@@ -405,7 +433,7 @@ contract QuasarDeFi with Deployable {
         }
         
         if (qsrOut > 0) {
-            self._sendQsr(sender(), qsrOut, 0);
+            self._sendQsr(sender(), qsrOut, 0, 1);
         }
         
         // Emit event
@@ -484,7 +512,7 @@ contract QuasarDeFi with Deployable {
             send(SendParameters{ to: sender(), value: excess, bounce: false, mode: SendPayGasSeparately, body: emptyCell() });
         }
         
-        self._sendQsr(sender(), qsrOut, 0);
+        self._sendQsr(sender(), qsrOut, 0, 1);
         
         // Emit event
         emit(EventSwap{ trader: sender(), tonIn: msg.tonAmount, qsrIn: 0, tonOut: 0, qsrOut: qsrOut, fee: fee }.toCell());
@@ -514,7 +542,7 @@ contract QuasarDeFi with Deployable {
         
         // Farm rewards are QSR. The pool's own Jetton wallet performs the
         // transfer; the DeFi contract never asks the master to mint tokens.
-        self._sendQsr(sender(), totalReward, 0);
+        self._sendQsr(sender(), totalReward, 0, 2);
         // Informational: mode +2 (SEND_MODE_IGNORE_ERRORS) keeps a failed
         // event send from rolling back the reward accounting.
         emit(EventFarmReward{ farmer: sender(), amount: totalReward }.toCell());
@@ -799,7 +827,10 @@ contract QuasarWallet {
     // response destination cannot always be read from bounced<T>. Retain it
     // while an outbound operation is in flight to complete TEP-74 refunds.
     pendingResponses: map<Int, Address>;
+    pendingResponseFees: map<Int, Int>;
+    pendingResponseReceivers: map<Int, Address>;
     pendingBurnResponses: map<Int, Address>;
+    pendingPoolPayouts: map<Int, Int>;
     
     init(owner: Address, master: Address) {
         self.balance = 0;
@@ -847,9 +878,44 @@ contract QuasarWallet {
         }
     }
 
-    // TEP-74 excesses from a peer wallet are informational; accept them instead
-    // of aborting the transaction as an unmatched message.
+    receive(msg: TransferConfirmed) {
+        self.pendingResponseFees.set(msg.queryId, null);
+        self.pendingResponseReceivers.set(msg.queryId, null);
+        self.pendingResponses.set(msg.queryId, null);
+    }
+
+    receive(msg: BurnConfirmed) {
+        self.pendingBurnResponses.set(msg.queryId, null);
+    }
+
     receive(msg: TokenExcesses) {
+        let fee: Int? = self.pendingResponseFees.get(msg.queryId);
+        if (fee != null) {
+            self.pendingResponseFees.set(msg.queryId, null);
+            self.pendingResponses.set(msg.queryId, null);
+            self.pendingResponseReceivers.set(msg.queryId, null);
+            return;
+        }
+
+        let poolAmount: Int? = self.pendingPoolPayouts.get(msg.queryId);
+        if (poolAmount != null) {
+            self.pendingPoolPayouts.set(msg.queryId, null);
+            return;
+        }
+
+        let burnResponse: Address? = self.pendingBurnResponses.get(msg.queryId);
+        if (burnResponse != null) {
+            self.pendingBurnResponses.set(msg.queryId, null);
+            if (burnResponse!! != newAddress(0, 0) && burnResponse!! != myAddress()) {
+                send(SendParameters{
+                    to: burnResponse!!,
+                    value: 0,
+                    bounce: false,
+                    mode: SendRemainingValue | SendIgnoreErrors,
+                    body: TokenExcesses{ queryId: msg.queryId }.toCell()
+                });
+            }
+        }
     }
 
     // Restore tokens when a bounce rejects an outgoing transfer. This is
@@ -857,10 +923,27 @@ contract QuasarWallet {
     // recipient transaction permanently burns the sender's wallet balance.
     bounced(msg: bounced<InternalTransfer>) {
         require(msg.amount > 0, "Invalid amount");
-        self.balance = self.balance + msg.amount;
+        let poolAmount: Int? = self.pendingPoolPayouts.get(msg.queryId);
+        if (poolAmount != null) {
+            self.pendingPoolPayouts.set(msg.queryId, null);
+            self.balance = self.balance + msg.amount;
+            send(SendParameters{
+                to: self.owner,
+                value: 0,
+                bounce: false,
+                mode: SendRemainingValue | SendIgnoreErrors,
+                body: PayoutFailed{ queryId: msg.queryId, amount: msg.amount, destination: self.owner }.toCell()
+            });
+            return;
+        }
+
+        let fee: Int? = self.pendingResponseFees.get(msg.queryId);
         let response: Address? = self.pendingResponses.get(msg.queryId);
-        if (response != null) {
-            self.pendingResponses.set(msg.queryId, null);
+        self.pendingResponseFees.set(msg.queryId, null);
+        self.pendingResponses.set(msg.queryId, null);
+        self.pendingResponseReceivers.set(msg.queryId, null);
+        self.balance = self.balance + msg.amount + (fee == null ? 0 : fee!!);
+        if (response != null && response!! != myAddress()) {
             send(SendParameters{
                 to: response!!,
                 value: 0,
@@ -883,16 +966,16 @@ contract QuasarWallet {
         require(self.balance >= msg.amount, "Insufficient");
         require(now() - self.lastTxTime >= 5, "Cooldown");
         self.lastTxTime = now();
-        if (msg.responseDestination != newAddress(0, 0)) {
-            require(self.pendingResponses.get(msg.queryId) == null, "Query ID already used");
-            self.pendingResponses.set(msg.queryId, msg.responseDestination);
-        }
+        require(self.pendingResponseFees.get(msg.queryId) == null, "Query ID already used");
         
         let fee: Int = msg.amount * 30 / 10000;
         if (fee < 1) { fee = 1 }
         let sendAmount: Int = msg.amount - fee;
         require(sendAmount > 0, "Amount too small");
         self.balance = self.balance - msg.amount;
+        self.pendingResponseFees.set(msg.queryId, fee);
+        self.pendingResponseReceivers.set(msg.queryId, msg.destination);
+        self.pendingResponses.set(msg.queryId, msg.responseDestination);
         
         let init: StateInit = initOf QuasarWallet(msg.destination, self.master);
         send(SendParameters{
@@ -911,13 +994,7 @@ contract QuasarWallet {
             code: init.code,
             data: init.data
         });
-        
-        if (fee > 0) {
-            // The fee message must carry gas: the master pays out referral and
-            // treasury shares with SendRemainingValue, which would fail on an
-            // empty incoming value.
-            send(SendParameters{ to: self.master, value: ton("0.05"), bounce: true, mode: SendPayGasSeparately, body: FeeTransfer{ queryId: msg.queryId, amount: fee, originalSender: self.owner, originalReceiver: msg.destination }.toCell() });
-        }
+        send(SendParameters{ to: self.master, value: ton("0.05"), bounce: true, mode: SendPayGasSeparately, body: FeeTransfer{ queryId: msg.queryId, amount: fee, originalSender: self.owner, originalReceiver: msg.destination }.toCell() });
     }
 
     // Pool payouts are initiated by a contract that owns this wallet. They
@@ -928,8 +1005,8 @@ contract QuasarWallet {
         require(sender() == self.owner, "Not owner");
         require(self.balance >= msg.amount, "Insufficient");
         self.balance = self.balance - msg.amount;
-        require(self.pendingResponses.get(msg.queryId) == null, "Query ID already used");
-        self.pendingResponses.set(msg.queryId, self.owner);
+        require(self.pendingPoolPayouts.get(msg.queryId) == null, "Query ID already used");
+        self.pendingPoolPayouts.set(msg.queryId, msg.amount);
         let init: StateInit = initOf QuasarWallet(msg.destination, self.master);
         send(SendParameters{
             to: contractAddress(init),
@@ -940,7 +1017,7 @@ contract QuasarWallet {
                 queryId: msg.queryId,
                 amount: msg.amount,
                 from: self.owner,
-                responseDestination: self.owner,
+                responseDestination: myAddress(),
                 forwardTonAmount: 0,
                 forwardPayload: emptySlice()
             }.toCell(),
@@ -954,10 +1031,8 @@ contract QuasarWallet {
         require(sender() == self.owner, "Not owner");
         require(self.balance >= msg.amount, "Insufficient");
         self.balance = self.balance - msg.amount;
-        if (msg.responseDestination != newAddress(0, 0)) {
-            require(self.pendingBurnResponses.get(msg.queryId) == null, "Query ID already used");
-            self.pendingBurnResponses.set(msg.queryId, msg.responseDestination);
-        }
+        require(self.pendingBurnResponses.get(msg.queryId) == null, "Query ID already used");
+        self.pendingBurnResponses.set(msg.queryId, msg.responseDestination);
         send(SendParameters{ to: self.master, value: 0, bounce: true, mode: SendRemainingValue, body: BurnNotification{ queryId: msg.queryId, amount: msg.amount, sender: self.owner, responseDestination: msg.responseDestination }.toCell() });
     }
 
@@ -965,8 +1040,8 @@ contract QuasarWallet {
         require(msg.amount > 0, "Invalid amount");
         self.balance = self.balance + msg.amount;
         let response: Address? = self.pendingBurnResponses.get(msg.queryId);
-        if (response != null) {
-            self.pendingBurnResponses.set(msg.queryId, null);
+        self.pendingBurnResponses.set(msg.queryId, null);
+        if (response != null && response!! != newAddress(0, 0) && response!! != myAddress()) {
             send(SendParameters{
                 to: response!!,
                 value: 0,
