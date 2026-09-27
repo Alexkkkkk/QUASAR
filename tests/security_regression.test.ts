@@ -139,7 +139,7 @@ test('F-09 source: buyback executes a real AMM swap leg with atomic credit', () 
 test('hardening source: pending QSR deposits can always be refunded', () => {
     assert.ok(defiSrc.includes('message RefundPendingQsr'), 'users need a refund path for unconsumed deposits');
     assert.ok(defiSrc.includes('self.pendingQsrDeposits.set(sender(), 0)'), 'refund must clear the pending balance');
-    assert.ok(defiSrc.includes('self._sendQsr(sender(), pending!!, 0)'), 'refund must return the QSR');
+    assert.ok(defiSrc.includes('self._sendQsr(sender(), pending!!, 0, 3)'), 'refund must return the QSR');
     assert.ok(!defiSrc.includes('now() - stamp!! < 86400'), 'stale deposits must not be silently discarded');
 });
 
