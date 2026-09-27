@@ -67,6 +67,27 @@ loads from the truncated body are sufficient and the handler really executes.
 The `pendingResponses` / `pendingBurnResponses` maps and the extra refund logic
 added on the `wip/swap-to-ton-debug` branch are therefore unnecessary.
 
+### F-29 — mint bounce must roll back supply, not create reserve
+
+The master used the same `bounced<InternalTransfer>` accounting branch for
+minting and reserve-funded payouts. A bounced mint therefore added the amount to
+`reserveBalance` even though no reserve had been debited, leaving
+`totalSupply` inflated and manufacturing spendable liquidity.
+
+The corrected implementation:
+
+- serialises every mint with the reserved `uint64` query id
+  `18446744073709551615`;
+- subtracts the bounced amount from `totalSupply` when that id returns;
+- restores `reserveBalance` only for non-mint internal-transfer bounces;
+- rejects the reserved id from reserve payout paths so an external query cannot
+  impersonate a mint bounce;
+- keeps the hard supply-cap and standard wallet-credit checks intact.
+
+`tests/mint_bounce_regression.test.ts` pins the wire-level query id and the
+source accounting split, while the full suite verifies that ordinary minting
+still credits the recipient exactly once.
+
 ### Verified as already conformant (no change needed)
 
 | Item | Status |
@@ -85,15 +106,17 @@ added on the `wip/swap-to-ton-debug` branch are therefore unnecessary.
 
 ## 2. Branch and pull-request review
 
-Branches present at review time: `main`, `agent-amm-properties-testnet-smoke-20260924`,
-`fix/ai-owner-override-2026-09-22`, `fix/contract-audit-2026-09-22`,
-`fix/quasar-testnet-blockers`, `wip/swap-to-ton-debug`.
+The repository currently has four branches: `main`,
+`fix/mint-bounce-accounting-2026-09-26`, `fix/quasar-testnet-blockers`, and
+`wip/swap-to-ton-debug`. All 30 pull requests returned by the repository API
+were reviewed; only #32 is open at this pass.
 
 | PR | Branch | Verdict | Reason |
 | --- | --- | --- | --- |
 | #21 | `agent-amm-properties-testnet-smoke-20260924` | superseded | adds 74 lines of deterministic AMM property tests on top of `main`; `main` already carries the F-22/F-23 behaviour those properties describe, and the branch does not touch the contracts |
 | #23 | `fix/quasar-testnet-blockers` | **do not merge** | conflicts with `main` (`mergeable_state: dirty`) and **regresses** four already-landed fixes: it reverts `mode: SendRemainingValue | SendIgnoreErrors` back to plain `SendRemainingValue` in every event send, reverts the F-23 staking-reward cap (`accrued > self.stakingRewardsPool ? …`) so `Unstake` can revert with *Rewards pool empty* again and lock the principal, and deletes the master's `receive(msg: TokenExcesses)` |
 | #24 | `wip/swap-to-ton-debug` | **do not merge** | same regressions as #23 plus an unfinished debug harness (`tests/debug_loop.test.ts`); the `pendingResponses`/`pendingBurnResponses` maps it adds to the wallet solve a problem that does not exist — Tact's `bounced<T>` loader already reads `queryId`/`amount` from the truncated bounce body (see F-25 evidence below) |
+| #32 | `fix/mint-bounce-accounting-2026-09-26` | **ready after F-29 fix** | the regression test correctly exposed the mint-bounce accounting bug; the contract now reserves a dedicated mint query id, rolls back `totalSupply` on that bounce, and blocks the id in reserve payout paths |
 | #19, #18 | `fix/ai-owner-override-2026-09-22`, `fix/contract-audit-2026-09-22` | stale | both are strictly *older* than `main` (they delete `tests/hardening_2026_09_25.test.ts`, `run_pipeline.sh` and the hardening docs); nothing in them is missing from `main` |
 | #16 and earlier | `replit/security-hardening`, `feature/*`, `fix/*` | merged/superseded | their content is already in `main` |
 
@@ -103,8 +126,9 @@ Branches present at review time: `main`, `agent-amm-properties-testnet-smoke-202
 
 - `npm run build` — Tact compilation of both projects: clean.
 - `npm run security:check` — source invariants: pass.
-- `npm test` — full suite including the new `tests/conformance_2026_09_26.test.ts`:
-  build + invariants + every contract test pass.
+- `npm test` — full suite including the new `tests/conformance_2026_09_26.test.ts`
+  and F-29 regression: 69 tests pass.
+- `npm run lint` — Tact syntax/type checks pass for both contracts.
 - `npx tsc --noEmit` — scripts and tests type-check.
 
 `tests/conformance_2026_09_26.test.ts` asserts the observable behaviour, not the
