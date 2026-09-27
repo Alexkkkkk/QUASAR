@@ -65,7 +65,7 @@ assertContains(defi, 'priceCumulativeQsrPerTon: Int;', 'DeFi exposes cumulative 
 assertContains(master, 'message(0xd53276db) TokenExcesses', 'excesses use the TEP-74 opcode (F-21)');
 assertContains(master, 'body: TokenExcesses{ queryId: msg.queryId }.toCell()', 'excesses carry the request query id (F-21)');
 assertContains(master, 'return accrued > self.stakingRewardsPool ? self.stakingRewardsPool : accrued;', 'staking rewards are capped by the fee pool (F-23)');
-assertContains(master, 'mode: SendPayGasSeparately | SendIgnoreErrors, body: EventBuybackExecuted', 'the buyback receipt keeps the remaining-value slot free (F-22)');
+assertContains(master, 'emit(EventBuybackExecuted{ tonSpent: 0, qsrBurned: burnPart }.toCell());', 'the buyback receipt keeps the remaining-value slot free (F-22: v5 uses an emit() external message, which cannot consume it)');
 
 const aiPriceSignal = master.slice(master.indexOf('receive(msg: AIPriceSignal)'), master.indexOf('receive(msg: AIAnomalyAlert)'));
 if (aiPriceSignal.includes('self.mintable = true')) throw new Error('AIPriceSignal can re-enable minting');

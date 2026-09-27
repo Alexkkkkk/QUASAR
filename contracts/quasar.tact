@@ -224,6 +224,22 @@ contract QuasarMaster with Deployable {
     defiFeeShareBps: Int as uint16; // Basis points sent to DeFi pool (e.g. 500 = 5%);
     defiMaxPayoutBps: Int as uint16; // Cap (bps of the free reserve) per single DefiPayout call;
     
+    // Governance (v5): QSR-stake-weighted voting on AI-oracle settings.
+    govQuorumBps: Int as uint16;
+    govVotes: map<Address, Int>;
+    govProposalStake: map<Int, Int>;
+    govProposalCount: Int;
+    // Fee-config timelock (v5): owner changes apply only after an on-chain confirm.
+    pendingFee: Int as uint16;
+    pendingFeeBurnShare: Int;
+    pendingMaxTx: Int as uint16;
+    pendingMaxWallet: Int as uint16;
+    pendingCooldown: Int as uint16;
+    pendingFeeConfigAt: Int;
+    // Wallet-code migration (v5): two-step + timelock, mirrors F-08 ownership.
+    pendingWalletCode: Cell?;
+    walletCodeAt: Int;
+    
     init(owner: Address, content: Cell, walletCode: Cell) {
         self.totalSupply = 0;
         self.maxSupply = ton("1000000000");
@@ -303,6 +319,21 @@ contract QuasarMaster with Deployable {
         self.defiAddress = newAddress(0, 0);
         self.defiFeeShareBps = 500; // 5% of fees go to DeFi pool;
         self.defiMaxPayoutBps = 5000; // max 50% of the free reserve per payout call;
+        
+        // v5 state
+        self.govQuorumBps = 1000; // 10% of the staked supply reaches quorum;
+        self.govVotes = emptyMap();
+        self.govProposalStake = emptyMap();
+        self.govProposalCount = 0;
+        self.pendingFee = 0;
+        self.pendingFee = 0;
+        self.pendingFeeBurnShare = 0;
+        self.pendingMaxTx = 0;
+        self.pendingMaxWallet = 0;
+        self.pendingCooldown = 0;
+        self.pendingFeeConfigAt = 0;
+        self.pendingWalletCode = null;
+        self.walletCodeAt = 0;
     }
     
     // ═══════════════════════════════════════════════════════════
@@ -486,12 +517,7 @@ contract QuasarMaster with Deployable {
         // The token transfer already consumes the remaining value. Do not
         // queue a second SendRemainingValue action here: that makes the
         // action phase fail with no funds and rolls back the mint.
-        send(SendParameters{
-            to: sender(),
-            value: ton("0.01"),
-            mode: SendPayGasSeparately | SendIgnoreErrors,
-            body: EventMint{ amount: msg.amount, receiver: msg.receiver }.toCell()
-        });
+        emit(EventMint{ amount: msg.amount, receiver: msg.receiver }.toCell());
     }
     
     receive(msg: BurnNotification) {
@@ -502,7 +528,7 @@ contract QuasarMaster with Deployable {
         self.totalSupply = self.totalSupply - msg.amount;
         // The event must not consume the remaining inbound value before the
         // excess refund; the refund is the final action in this receiver.
-        send(SendParameters{ to: sender(), value: ton("0.01"), bounce: false, mode: SendPayGasSeparately | SendIgnoreErrors, body: EventBurn{ amount: msg.amount, burner: msg.sender }.toCell() });
+        emit(EventBurn{ amount: msg.amount, burner: msg.sender }.toCell());
         if (msg.responseDestination != newAddress(0, 0)) {
             // TEP-74: the burn refund must use the standard `excesses` layout so an
         // integrating wallet can match the refund to the request query id instead of
@@ -706,7 +732,7 @@ contract QuasarMaster with Deployable {
             // whole action phase back. Fund this receipt from the contract balance
             // and leave the single remaining-value slot to the final event of the
             // receiver.
-            send(SendParameters{ to: self.owner, value: ton("0.01"), bounce: false, mode: SendPayGasSeparately | SendIgnoreErrors, body: EventBuybackExecuted{ tonSpent: 0, qsrBurned: burnPart }.toCell() });
+            emit(EventBuybackExecuted{ tonSpent: 0, qsrBurned: burnPart }.toCell());
         }
         self.totalBuybacks = self.totalBuybacks + 1;
         self.lastBuybackTime = now();
@@ -781,7 +807,7 @@ contract QuasarMaster with Deployable {
         self.totalStaked = self.totalStaked + msg.amount;
         self.pendingQsrDeposits.set(staker, depositPending!! - msg.amount);
         
-        send(SendParameters{ to: sender(), value: 0, mode: SendRemainingValue | SendIgnoreErrors, body: EventStake{ staker: staker, amount: msg.amount }.toCell() });
+        emit(EventStake{ staker: staker, amount: msg.amount }.toCell());
     }
     
     receive(msg: Unstake) {
@@ -810,7 +836,7 @@ contract QuasarMaster with Deployable {
         self.totalStaked = self.totalStaked - msg.amount;
         self._sendCustodiedTokens(staker, msg.amount, 0);
         
-        send(SendParameters{ to: sender(), value: 0, mode: SendRemainingValue | SendIgnoreErrors, body: EventUnstake{ staker: staker, amount: msg.amount }.toCell() });
+        emit(EventUnstake{ staker: staker, amount: msg.amount }.toCell());
     }
     
     receive(msg: ClaimRewards) {
@@ -871,7 +897,7 @@ contract QuasarMaster with Deployable {
             self.referrals.set(msg.referrer, ReferralInfo{ referrer: refData!!.referrer, totalEarned: refData!!.totalEarned, totalReferrals: refData!!.totalReferrals + 1 });
         }
         
-        send(SendParameters{ to: sender(), value: 0, mode: SendRemainingValue | SendIgnoreErrors, body: EventReferralRegistered{ user: sender(), referrer: msg.referrer }.toCell() });
+        emit(EventReferralRegistered{ user: sender(), referrer: msg.referrer }.toCell());
     }
     
     receive(msg: SetReferralConfig) {
@@ -1228,6 +1254,64 @@ contract QuasarMaster with Deployable {
     }
     
     // ═══════════════════════════════════════════════════════════
+    // GOVERNANCE (v5) — QSR-stake-weighted voting
+    // ═══════════════════════════════════════════════════════════
+    
+    // One wallet votes once per proposal with its currently staked QSR.
+    // When the supporting stake reaches govQuorumBps of totalStaked, the
+    // proposal executes immediately through the same validated paths and
+    // the same reversible action log the AI oracle uses, so OwnerOverride
+    // can reverse a governance decision within the usual window.
+    receive(msg: GovernanceVote) {
+        self._requireNotPaused();
+        require(now() <= msg.deadline, "Vote expired");
+        require(self.govVotes.get(sender()) == null, "Already voted");
+        let staker: StakeInfo? = self.stakers.get(sender());
+        require(staker != null && staker!!.amount > 0, "Stake first");
+        
+        self.govVotes.set(sender(), msg.proposalId);
+        let prev: Int? = self.govProposalStake.get(msg.proposalId);
+        let prevStake: Int = prev == null ? 0 : prev!!;
+        if (prev == null) {
+            self.govProposalCount = self.govProposalCount + 1;
+        }
+        let newStake: Int = prevStake + staker!!.amount;
+        self.govProposalStake.set(msg.proposalId, newStake);
+        
+        emit(EventGovernanceVote{ voter: sender(), proposalId: msg.proposalId, weight: staker!!.amount }.toCell());
+        
+        if (newStake * 10000 >= self.totalStaked * self.govQuorumBps) {
+            let id: Int = 0;
+            if (msg.kind == 1) {
+                require(msg.feeBps == 30, "Range");
+                let oldFee: Int = self.feeBps;
+                self.feeBps = msg.feeBps;
+                id = self._logAiActionSilent("SetFee", oldFee, msg.feeBps, msg.reason);
+            } else if (msg.kind == 2) {
+                let oldTrading: Int = self.tradingEnabled == true ? 1 : 0;
+                self.tradingEnabled = msg.flag;
+                id = self._logAiActionSilent("ToggleTrading", oldTrading, msg.flag == true ? 1 : 0, msg.reason);
+            } else if (msg.kind == 3) {
+                let oldPause: Int = self.emergencyPause == true ? 1 : 0;
+                let oldTrading: Int = self.tradingEnabled == true ? 1 : 0;
+                let oldFee: Int = self.feeBps;
+                self.emergencyPause = msg.flag;
+                id = self._logAiActionSilent("EmergencyPause", oldPause, msg.flag == true ? 1 : 0, msg.reason);
+                // EmergencyPause overrides read the full snapshot maps (F-07).
+                self.aiActionOldEmergencyPause.set(id, oldPause);
+                self.aiActionOldTrading.set(id, oldTrading);
+                self.aiActionOldFeeBps.set(id, oldFee);
+            } else {
+                require(false, "Unknown proposal");
+            }
+            // Quorum satisfied: the tally is consumed so the same proposal
+            // cannot re-execute on late votes.
+            self.govProposalStake.set(msg.proposalId, 0);
+            emit(EventGovernanceExecuted{ proposalId: msg.proposalId, actionId: id }.toCell());
+        }
+    }
+    
+    // ═══════════════════════════════════════════════════════════
     // DeFi SYNC
     // ═══════════════════════════════════════════════════════════
     
@@ -1266,7 +1350,7 @@ contract QuasarMaster with Deployable {
         if (self.treasury != newAddress(0, 0)) {
             send(SendParameters{ to: self.treasury, value: msg.tonAmount, bounce: false, mode: SendPayGasSeparately, body: emptyCell() });
         }
-        send(SendParameters{ to: self.owner, value: 0, bounce: false, mode: SendRemainingValue, body: EventBuybackSwapped{ queryId: msg.queryId, qsrIn: msg.qsrSwapped, tonOut: msg.tonAmount }.toCell() });
+        emit(EventBuybackSwapped{ queryId: msg.queryId, qsrIn: msg.qsrSwapped, tonOut: msg.tonAmount }.toCell());
     }
 
     bounced(msg: bounced<PoolPayout>) {
@@ -1299,6 +1383,32 @@ contract QuasarMaster with Deployable {
         self.pendingOwner = newAddress(0, 0);
         self.ownerTransferAt = 0;
     }
+    
+    // ─── WALLET CODE MIGRATION (v5): two-step + timelock ───
+    receive(msg: ProposeWalletCode) {
+        self._requireOwner();
+        require(!self.aiFullAutonomy, "AI controls");
+        self.pendingWalletCode = msg.newWalletCode;
+        self.walletCodeAt = now() + self.ownerTransferDelay;
+    }
+
+    receive("Cancel Wallet Code") {
+        self._requireOwner();
+        self.pendingWalletCode = null;
+        self.walletCodeAt = 0;
+    }
+
+    // Jetton wallets already derived keep their deployed code; after this
+    // confirmation every newly derived wallet uses the migrated code. Existing
+    // wallets are reached through TEP-89 discovery plus a migration broadcast.
+    receive("Apply Wallet Code") {
+        self._requireOwner();
+        require(self.pendingWalletCode != null, "Nothing pending");
+        require(self.walletCodeAt > 0 && now() >= self.walletCodeAt, "Wallet code timelock active");
+        self.walletCode = self.pendingWalletCode!!;
+        self.pendingWalletCode = null;
+        self.walletCodeAt = 0;
+    }
 
     receive(msg: SetTreasury) {
         self._requireOwner();
@@ -1307,15 +1417,35 @@ contract QuasarMaster with Deployable {
         self.treasury = msg.treasury;
     }
     
+    // v5: config changes are staged and apply only after the timelocked
+    // "Confirm Fee Config", so a compromised owner key cannot retune the
+    // economy in a single transaction.
     receive(msg: SetFeeConfig) {
         self._requireOwner();
         require(!self.aiFullAutonomy, "AI controls");
         require(msg.feeBps == 30 && msg.burnShare <= 100 && msg.maxTxBps == 100 && msg.maxWalletBps == 300 && msg.cooldown == 5, "Only implemented limits are allowed");
-        self.feeBps = msg.feeBps;
-        self.feeBurnShare = msg.burnShare;
-        self.maxTxBps = msg.maxTxBps;
-        self.maxWalletBps = msg.maxWalletBps;
-        self.cooldownSeconds = msg.cooldown;
+        self.pendingFee = msg.feeBps;
+        self.pendingFeeBurnShare = msg.burnShare;
+        self.pendingMaxTx = msg.maxTxBps;
+        self.pendingMaxWallet = msg.maxWalletBps;
+        self.pendingCooldown = msg.cooldown;
+        self.pendingFeeConfigAt = now() + self.ownerTransferDelay;
+    }
+
+    receive("Confirm Fee Config") {
+        self._requireOwner();
+        require(self.pendingFeeConfigAt > 0 && now() >= self.pendingFeeConfigAt, "Fee config timelock active");
+        self.feeBps = self.pendingFee;
+        self.feeBurnShare = self.pendingFeeBurnShare;
+        self.maxTxBps = self.pendingMaxTx;
+        self.maxWalletBps = self.pendingMaxWallet;
+        self.cooldownSeconds = self.pendingCooldown;
+        self.pendingFee = 0;
+        self.pendingFeeBurnShare = 0;
+        self.pendingMaxTx = 0;
+        self.pendingMaxWallet = 0;
+        self.pendingCooldown = 0;
+        self.pendingFeeConfigAt = 0;
     }
     
     receive(msg: ToggleTrading) {
@@ -1446,6 +1576,16 @@ contract QuasarMaster with Deployable {
     get fun can_owner_override(actionId: Int): Bool { return self._isOwnerOverrideWindow(actionId) }
     get fun get_defi_address(): Address { return self.defiAddress }
     get fun get_defi_fee_share(): Int { return self.defiFeeShareBps }
+    get fun get_governance_state(): GovernanceState {
+        return GovernanceState{ quorumBps: self.govQuorumBps, totalStaked: self.totalStaked, proposals: self.govProposalCount }
+    }
+    get fun get_proposal_stake(proposalId: Int): Int {
+        let v: Int? = self.govProposalStake.get(proposalId);
+        return v == null ? 0 : v!!;
+    }
+    get fun get_pending_fee_config_at(): Int { return self.pendingFeeConfigAt }
+    get fun get_pending_wallet_code(): Cell? { return self.pendingWalletCode }
+    get fun get_wallet_code_at(): Int { return self.walletCodeAt }
 }
 
 message SetDefiPayoutCap { maxPayoutBps: Int as uint16 }
@@ -1455,6 +1595,15 @@ message SweepTON { amount: Int as coins }
 message ProposeOwner { newOwner: Address }
 message AcceptOwner { }
 message CancelOwnerTransfer { }
+
+// ─── Governance (v5): stake-weighted voting on AI-oracle settings ───
+message GovernanceVote { proposalId: Int as uint64; kind: Int as uint8; flag: Bool; feeBps: Int as uint16; deadline: Int as uint32; reason: String }
+message EventGovernanceVote { voter: Address; proposalId: Int; weight: Int }
+message EventGovernanceExecuted { proposalId: Int; actionId: Int }
+struct GovernanceState { quorumBps: Int; totalStaked: Int; proposals: Int }
+
+// ─── Wallet-code migration (v5): two-step + timelock ───
+message ProposeWalletCode { newWalletCode: Cell }
 
 // ═══════════════════════════════════════════════════════════════
 // QUASAR WALLET — Optimized with fee deduction

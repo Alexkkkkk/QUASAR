@@ -354,17 +354,7 @@ contract QuasarDeFi with Deployable {
         // The refund above already consumes the declared TON amount. Do not
         // add a second SendRemainingValue action: it can drain the action
         // balance and abort the whole transaction with noFunds.
-        send(SendParameters{
-            to: sender(),
-            value: 0,
-            mode: SendPayGasSeparately,
-            body: EventLiquidityAdded{
-                provider: sender(),
-                tonAmount: tonUsed,
-                qsrAmount: qsrUsed,
-                lpMinted: lpToMint
-            }.toCell(),
-        });
+        emit(EventLiquidityAdded{ provider: sender(), tonAmount: tonUsed, qsrAmount: qsrUsed, lpMinted: lpToMint }.toCell());
         
         self._unlock();
     }
@@ -419,17 +409,7 @@ contract QuasarDeFi with Deployable {
         }
         
         // Emit event
-        send(SendParameters{
-            to: sender(),
-            value: 0,
-            mode: SendRemainingValue | SendIgnoreErrors,
-            body: EventLiquidityRemoved{
-                provider: sender(),
-                tonOut: tonOut,
-                qsrOut: qsrOut,
-                lpBurned: msg.lpAmount
-            }.toCell(),
-        });
+        emit(EventLiquidityRemoved{ provider: sender(), tonOut: tonOut, qsrOut: qsrOut, lpBurned: msg.lpAmount }.toCell());
         
         self._unlock();
     }
@@ -470,19 +450,7 @@ contract QuasarDeFi with Deployable {
             body: emptyCell()
         });
 
-        send(SendParameters{
-            to: sender(),
-            value: 0,
-            mode: SendRemainingValue | SendIgnoreErrors,
-            body: EventSwap{
-                trader: sender(),
-                tonIn: 0,
-                qsrIn: msg.qsrAmount,
-                tonOut: tonOut,
-                qsrOut: 0,
-                fee: fee
-            }.toCell(),
-        });
+        emit(EventSwap{ trader: sender(), tonIn: 0, qsrIn: msg.qsrAmount, tonOut: tonOut, qsrOut: 0, fee: fee }.toCell());
         
         self._unlock();
     }
@@ -519,19 +487,7 @@ contract QuasarDeFi with Deployable {
         self._sendQsr(sender(), qsrOut, 0);
         
         // Emit event
-        send(SendParameters{
-            to: sender(),
-            value: 0,
-            mode: SendRemainingValue | SendIgnoreErrors,
-            body: EventSwap{
-                trader: sender(),
-                tonIn: msg.tonAmount,
-                qsrIn: 0,
-                tonOut: 0,
-                qsrOut: qsrOut,
-                fee: fee
-            }.toCell(),
-        });
+        emit(EventSwap{ trader: sender(), tonIn: msg.tonAmount, qsrIn: 0, tonOut: 0, qsrOut: qsrOut, fee: fee }.toCell());
         
         self._unlock();
     }
@@ -561,13 +517,7 @@ contract QuasarDeFi with Deployable {
         self._sendQsr(sender(), totalReward, 0);
         // Informational: mode +2 (SEND_MODE_IGNORE_ERRORS) keeps a failed
         // event send from rolling back the reward accounting.
-        send(SendParameters{
-            to: sender(),
-            value: 0,
-            bounce: false,
-            mode: SendPayGasSeparately | SendIgnoreErrors,
-            body: EventFarmReward{ farmer: sender(), amount: totalReward }.toCell()
-        });
+        emit(EventFarmReward{ farmer: sender(), amount: totalReward }.toCell());
     }
 
     // Emergency path: preserve the user's LP principal while discarding only
