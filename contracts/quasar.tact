@@ -1714,6 +1714,7 @@ contract QuasarWallet {
     pendingResponseReceivers: map<Int, Address>;
     pendingBurnResponses: map<Int, Address>;
     pendingPoolPayouts: map<Int, Int>;
+    pendingPoolPayoutReceivers: map<Int, Address>;
     
     init(owner: Address, master: Address) {
         self.balance = 0;
@@ -1770,18 +1771,28 @@ contract QuasarWallet {
     }
 
     receive(msg: TransferConfirmed) {
+        let receiver: Address? = self.pendingResponseReceivers.get(msg.queryId);
+        require(receiver != null, "Unknown transfer");
+        let receiverInit: StateInit = initOf QuasarWallet(receiver!!, self.master);
+        require(sender() == contractAddress(receiverInit), "Unauthorized confirmation");
         self.pendingResponseFees.set(msg.queryId, null);
         self.pendingResponseReceivers.set(msg.queryId, null);
         self.pendingResponses.set(msg.queryId, null);
     }
 
     receive(msg: BurnConfirmed) {
+        require(self.pendingBurnResponses.get(msg.queryId) != null, "Unknown burn");
+        require(sender() == self.master, "Unauthorized confirmation");
         self.pendingBurnResponses.set(msg.queryId, null);
     }
 
     receive(msg: TokenExcesses) {
         let fee: Int? = self.pendingResponseFees.get(msg.queryId);
         if (fee != null) {
+            let receiver: Address? = self.pendingResponseReceivers.get(msg.queryId);
+            require(receiver != null, "Missing transfer receiver");
+            let receiverInit: StateInit = initOf QuasarWallet(receiver!!, self.master);
+            require(sender() == contractAddress(receiverInit), "Unauthorized excess");
             self.pendingResponseFees.set(msg.queryId, null);
             self.pendingResponses.set(msg.queryId, null);
             self.pendingResponseReceivers.set(msg.queryId, null);
@@ -1790,12 +1801,18 @@ contract QuasarWallet {
 
         let poolAmount: Int? = self.pendingPoolPayouts.get(msg.queryId);
         if (poolAmount != null) {
+            let receiver: Address? = self.pendingPoolPayoutReceivers.get(msg.queryId);
+            require(receiver != null, "Missing pool receiver");
+            let receiverInit: StateInit = initOf QuasarWallet(receiver!!, self.master);
+            require(sender() == contractAddress(receiverInit), "Unauthorized excess");
             self.pendingPoolPayouts.set(msg.queryId, null);
+            self.pendingPoolPayoutReceivers.set(msg.queryId, null);
             return;
         }
 
         let burnResponse: Address? = self.pendingBurnResponses.get(msg.queryId);
         if (burnResponse != null) {
+            require(sender() == self.master, "Unauthorized excess");
             self.pendingBurnResponses.set(msg.queryId, null);
             if (burnResponse!! != newAddress(0, 0) && burnResponse!! != myAddress()) {
                 send(SendParameters{
@@ -1817,6 +1834,7 @@ contract QuasarWallet {
         let poolAmount: Int? = self.pendingPoolPayouts.get(msg.queryId);
         if (poolAmount != null) {
             self.pendingPoolPayouts.set(msg.queryId, null);
+            self.pendingPoolPayoutReceivers.set(msg.queryId, null);
             self.balance = self.balance + msg.amount;
             send(SendParameters{
                 to: self.owner,
@@ -1904,6 +1922,7 @@ contract QuasarWallet {
         self.balance = self.balance - msg.amount;
         require(self.pendingPoolPayouts.get(msg.queryId) == null, "Query ID already used");
         self.pendingPoolPayouts.set(msg.queryId, msg.amount);
+        self.pendingPoolPayoutReceivers.set(msg.queryId, msg.destination);
         let init: StateInit = initOf QuasarWallet(msg.destination, self.master);
         send(SendParameters{
             to: contractAddress(init),
