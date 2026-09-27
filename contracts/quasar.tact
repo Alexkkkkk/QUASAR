@@ -91,7 +91,7 @@ message ClaimVested { }
 // ─── Data Structures ───
 struct JettonData { totalSupply: Int; mintable: Bool; adminAddress: Address; jettonContent: Cell; jettonWalletCode: Cell }
 struct JettonWalletData { balance: Int; owner: Address; master: Address; walletCode: Cell }
-struct AIState { oracleAddress: Address; aiModeEnabled: Bool; fullAutonomy: Bool; lastRebalanceAt: Int; totalSignalsReceived: Int; currentFeeBps: Int; priceHistoryCount: Int; anomalyCount: Int; lastHeartbeat: Int; isAlive: Bool }
+struct AIState { oracleAddress: Address; aiModeEnabled: Bool; fullAutonomy: Bool; lastRebalanceAt: Int; totalSignalsReceived: Int; currentFeeBps: Int; priceHistoryCount: Int; anomalyCount: Int; lastHeartbeat: Int; isAlive: Bool; lastQueryId: Int }
 struct FeeConfig { feeBps: Int; burnShare: Int; treasuryShare: Int; maxTxBps: Int; maxWalletBps: Int; cooldown: Int; totalBurned: Int; totalFeesCollected: Int }
 struct BuybackState { enabled: Bool; pool: Int; threshold: Int; cooldown: Int; burnPercent: Int; buybackSwapPending: Int; buybackSwapQueryId: Int; lastBuybackAt: Int; totalBuybacks: Int; totalQsrBurnedViaBuyback: Int; totalTonSpent: Int }
 struct AutonomyState { fullAutonomyEnabled: Bool; aiActionCooldown: Int; lastAiActionTime: Int; heartbeatTimeout: Int; lastHeartbeat: Int; ownerOverrideWindow: Int; vetoThresholdBps: Int; totalVetoStake: Int; pendingActions: Int }
@@ -174,6 +174,7 @@ contract QuasarMaster with Deployable {
     emergencyPause: Bool;
     aiActionCooldown: Int as uint32;
     lastAiActionTime: Int;
+    lastAiQueryId: Int as uint64;
     heartbeatTimeout: Int as uint32;
     lastHeartbeat: Int;
     ownerOverrideWindow: Int as uint32;
@@ -302,7 +303,8 @@ contract QuasarMaster with Deployable {
         self.aiActionCooldown = 21600;
         // Start the cooldown window at deployment so the first AI action is
         // not blocked by a zero timestamp.
-        self.lastAiActionTime = now();
+        self.lastAiActionTime = 0;
+        self.lastAiQueryId = 0;
         self.heartbeatTimeout = 604800;
         self.lastHeartbeat = now();
         self.ownerOverrideWindow = 86400;
@@ -350,6 +352,13 @@ contract QuasarMaster with Deployable {
     // ═══════════════════════════════════════════════════════════
     
     fun _requireOwner() { require(sender() == self.owner, "Only owner") }
+    // AI messages carry a caller-supplied query id. It must be strictly
+    // increasing so a captured AI message can never be replayed twice.
+    fun _requireFreshAiQuery(queryId: Int) {
+        require(queryId > self.lastAiQueryId, "Stale AI query");
+        self.lastAiQueryId = queryId;
+    }
+
     fun _requireAiAccess() { require(sender() == self.aiOracle, "Only AI oracle"); require(self.aiEnabled, "AI disabled") }
     // The administrative cooldown applies in every mode. Tying it to
     // aiFullAutonomy made the documented 6h safeguard inert (F-07).
@@ -990,11 +999,13 @@ contract QuasarMaster with Deployable {
     
     receive(msg: AIHeartbeat) {
         require(sender() == self.aiOracle, "Only AI");
+        self._requireFreshAiQuery(msg.queryId);
         self.lastHeartbeat = now();
     }
     
     receive(msg: AIEmergencyPause) {
         self._requireAiAccess();
+        self._requireFreshAiQuery(msg.queryId);
         let oldTrading: Bool = self.tradingEnabled;
         let oldPause: Bool = self.emergencyPause;
         let oldFeeBps: Int = self.feeBps;
@@ -1022,6 +1033,7 @@ contract QuasarMaster with Deployable {
     receive(msg: AISetFee) {
         self._requireAiAccess();
         self._requireAiCooldown();
+        self._requireFreshAiQuery(msg.queryId);
         require(msg.feeBps == 30, "Wallet fee is fixed at 30 bps");
         let old: Int = self.feeBps;
         self.feeBps = msg.feeBps;
@@ -1032,6 +1044,7 @@ contract QuasarMaster with Deployable {
     receive(msg: AISetTreasuryDirect) {
         self._requireAiAccess();
         self._requireAiCooldown();
+        self._requireFreshAiQuery(msg.queryId);
         require(msg.treasury != newAddress(0, 0), "Invalid");
         let oldTreasury: Address = self.treasury;
         self.treasury = msg.treasury;
@@ -1044,6 +1057,7 @@ contract QuasarMaster with Deployable {
     receive(msg: AISetAntiWhale) {
         self._requireAiAccess();
         self._requireAiCooldown();
+        self._requireFreshAiQuery(msg.queryId);
         require(msg.maxTxBps == 100 && msg.maxWalletBps == 300 && msg.cooldown == 5, "Transfer limits are fixed");
         let oldMaxTxBps: Int = self.maxTxBps;
         let oldMaxWalletBps: Int = self.maxWalletBps;
@@ -1061,6 +1075,7 @@ contract QuasarMaster with Deployable {
     receive(msg: AISetBuybackDirect) {
         self._requireAiAccess();
         self._requireAiCooldown();
+        self._requireFreshAiQuery(msg.queryId);
         require(msg.threshold > 0 && msg.cooldown > 0 && msg.burnPercent > 0 && msg.burnPercent <= 100, "Invalid buyback config");
         let oldEnabled: Bool = self.buybackEnabled;
         let oldThreshold: Int = self.buybackThreshold;
@@ -1080,6 +1095,7 @@ contract QuasarMaster with Deployable {
     receive(msg: AIToggleTrading) {
         self._requireAiAccess();
         self._requireAiCooldown();
+        self._requireFreshAiQuery(msg.queryId);
         let oldTrading: Bool = self.tradingEnabled;
         self.tradingEnabled = msg.enabled;
         let id: Int = self._logAiAction("ToggleTrading", oldTrading ? 1 : 0, msg.enabled ? 1 : 0, msg.reason);
@@ -1089,6 +1105,7 @@ contract QuasarMaster with Deployable {
     receive(msg: AIRotateOracle) {
         self._requireAiAccess();
         self._requireAiCooldown();
+        self._requireFreshAiQuery(msg.queryId);
         require(self.aiFullAutonomy, "No autonomy");
         require(msg.newOracle != newAddress(0, 0), "Invalid oracle");
         let oldOracle: Address = self.aiOracle;
@@ -1108,6 +1125,7 @@ contract QuasarMaster with Deployable {
     receive(msg: AIRebalance) {
         self._requireAiAccess();
         self._requireAiCooldown();
+        self._requireFreshAiQuery(msg.queryId);
         require(!self.emergencyPause, "Paused");
         require(msg.targetFeeBps == 30 && msg.targetBurnShare <= 100, "Range");
         let oldBurnShare: Int = self.feeBurnShare;
@@ -1125,6 +1143,7 @@ contract QuasarMaster with Deployable {
     
     receive(msg: AIPriceSignal) {
         self._requireAiAccess();
+        self._requireFreshAiQuery(msg.queryId);
         // Market data must not consume or reset the administrative cooldown,
         // but every state change it causes has to be logged (F-07).
         let oldBurnShare: Int = self.feeBurnShare;
@@ -1159,6 +1178,7 @@ contract QuasarMaster with Deployable {
     
     receive(msg: AIAnomalyAlert) {
         self._requireAiAccess();
+        self._requireFreshAiQuery(msg.queryId);
         let oldBurnShare: Int = self.feeBurnShare;
         let oldFeeBps: Int = self.feeBps;
         let oldPause: Bool = self.emergencyPause;
@@ -1186,6 +1206,8 @@ contract QuasarMaster with Deployable {
     receive(msg: AIGovernanceProposal) {
         self._requireAiAccess();
         self._requireAiCooldown();
+        self._requireFreshAiQuery(msg.queryId);
+        self.lastAiActionTime = now();
         require(msg.confidence >= self.minConfidence, "Low confidence");
         self.signalCount = self.signalCount + 1;
         let oldValue: Int = 0;
@@ -1606,7 +1628,7 @@ contract QuasarMaster with Deployable {
     }
     
     get fun get_ai_state(): AIState {
-        return AIState{ oracleAddress: self.aiOracle, aiModeEnabled: self.aiEnabled, fullAutonomy: self.aiFullAutonomy, lastRebalanceAt: self.lastRebalanceTime, totalSignalsReceived: self.signalCount, currentFeeBps: self.feeBps, priceHistoryCount: self.priceHistoryCount, anomalyCount: self.anomalyIndex, lastHeartbeat: self.lastHeartbeat, isAlive: self._checkAiAlive() }
+        return AIState{ oracleAddress: self.aiOracle, aiModeEnabled: self.aiEnabled, fullAutonomy: self.aiFullAutonomy, lastRebalanceAt: self.lastRebalanceTime, totalSignalsReceived: self.signalCount, currentFeeBps: self.feeBps, priceHistoryCount: self.priceHistoryCount, anomalyCount: self.anomalyIndex, lastHeartbeat: self.lastHeartbeat, isAlive: self._checkAiAlive(), lastQueryId: self.lastAiQueryId }
     }
     
     get fun get_autonomy_state(): AutonomyState {
@@ -1704,6 +1726,14 @@ contract QuasarWallet {
         let sourceInit: StateInit = initOf QuasarWallet(msg.from, self.master);
         require(sender() == self.master || sender() == contractAddress(sourceInit), "Unauthorized");
         require(msg.amount > 0, "Invalid amount");
+        // The hard cap is 1B QSR with 9 decimals. Master-owned distributions
+        // (mint, treasury, custody, and DeFi accounting) are exempt because
+        // those paths already enforce their own reserve/supply rules. User
+        // wallet-to-wallet transfers must respect the documented 3% wallet
+        // ceiling at the receiving wallet.
+        if (msg.from != self.master) {
+            require(self.balance + msg.amount <= 30_000_000_000_000_000, "Max wallet exceeded");
+        }
         self.balance = self.balance + msg.amount;
 
         // A Jetton wallet notifies the owner contract only when the sender
@@ -1826,6 +1856,12 @@ contract QuasarWallet {
         require(msg.destination != newAddress(0, 0), "Invalid destination");
         require(self.balance >= msg.amount, "Insufficient");
         require(now() - self.lastTxTime >= 5, "Cooldown");
+        // User transfers are capped at 1% of the 1B QSR hard cap. The
+        // master-owned wallet is exempt because reserve payouts and DeFi
+        // settlement are not ordinary user transfers.
+        if (self.owner != self.master) {
+            require(msg.amount <= 10_000_000_000_000_000, "Max tx exceeded");
+        }
         self.lastTxTime = now();
         require(self.pendingResponseFees.get(msg.queryId) == null, "Query ID already used");
         

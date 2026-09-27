@@ -843,6 +843,12 @@ contract QuasarWallet {
         let sourceInit: StateInit = initOf QuasarWallet(msg.from, self.master);
         require(sender() == self.master || sender() == contractAddress(sourceInit), "Unauthorized");
         require(msg.amount > 0, "Invalid amount");
+        // Keep the DeFi copy byte-for-byte aligned with the master wallet.
+        // Master-owned settlement is exempt; ordinary user transfers are
+        // capped by the 3% wallet ceiling at the receiving wallet.
+        if (msg.from != self.master) {
+            require(self.balance + msg.amount <= 30_000_000_000_000_000, "Max wallet exceeded");
+        }
         self.balance = self.balance + msg.amount;
 
         // A Jetton wallet notifies the owner contract only when the sender
@@ -965,6 +971,11 @@ contract QuasarWallet {
         require(msg.destination != newAddress(0, 0), "Invalid destination");
         require(self.balance >= msg.amount, "Insufficient");
         require(now() - self.lastTxTime >= 5, "Cooldown");
+        // User transfers are capped at 1% of the 1B QSR hard cap. The
+        // master-owned wallet is exempt for protocol settlement paths.
+        if (self.owner != self.master) {
+            require(msg.amount <= 10_000_000_000_000_000, "Max tx exceeded");
+        }
         self.lastTxTime = now();
         require(self.pendingResponseFees.get(msg.queryId) == null, "Query ID already used");
         
