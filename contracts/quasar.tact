@@ -1,4 +1,521 @@
-  }
+import "@stdlib/deploy";
+import "@stdlib/content";
+
+// ═══════════════════════════════════════════════════════════════
+// QUASAR — The Ultimate Jetton v3.0
+// AI Sovereignty | DeFi Sync | 0.30% Fee | Auto-Buyback | Staking | Referral | Vesting
+// ═══════════════════════════════════════════════════════════════
+
+// ─── Events ───
+message EventMint { amount: Int; receiver: Address }
+message EventBurn { amount: Int; burner: Address }
+message EventFeeDistributed { totalFee: Int; burn: Int; buyback: Int; staking: Int; referral: Int; treasury: Int; defiPool: Int }
+message EventBuybackExecuted { tonSpent: Int; qsrBurned: Int }
+message EventBuybackSwapped { queryId: Int as uint64; qsrIn: Int; tonOut: Int }
+message(0x2c7e91a4) BuybackTon { queryId: Int as uint64; tonAmount: Int as coins; qsrSwapped: Int as coins }
+message EventStake { staker: Address; amount: Int }
+message EventUnstake { staker: Address; amount: Int }
+message EventReferralRegistered { user: Address; referrer: Address }
+message EventVestingClaimed { beneficiary: Address; amount: Int }
+message EventAiAction { actionId: Int; actionType: String; oldValue: Int; newValue: Int }
+
+// ─── AI Messages ───
+message AISetOracle { oracleAddress: Address }
+message AIGrantFullAutonomy { enabled: Bool }
+message AIHeartbeat { queryId: Int as uint64; status: String }
+message OwnerOverride { actionId: Int as uint64; reason: String }
+message AIRebalance { queryId: Int as uint64; targetFeeBps: Int as uint16; targetBurnShare: Int as uint8; recommendation: String }
+message AIPriceSignal { queryId: Int as uint64; priceTon: Int as coins; volatility: Int as uint32; sentiment: Int as int8; action: Int as uint8 }
+message AIAnomalyAlert { queryId: Int as uint64; severity: Int as uint8; anomalyType: Int as uint8; affectedWallets: Int as uint32; recommendedAction: String }
+message AIGovernanceProposal { queryId: Int as uint64; proposalType: Int as uint8; newValue: Int; description: String; confidence: Int as uint8 }
+message AISetFee { queryId: Int as uint64; feeBps: Int as uint16; reason: String }
+message AISetTreasuryDirect { queryId: Int as uint64; treasury: Address; reason: String }
+message AISetAntiWhale { queryId: Int as uint64; maxTxBps: Int as uint16; maxWalletBps: Int as uint16; cooldown: Int as uint16; reason: String }
+message AISetBuybackDirect { queryId: Int as uint64; enabled: Bool; threshold: Int as coins; cooldown: Int as uint32; burnPercent: Int as uint8; reason: String }
+message AIToggleTrading { queryId: Int as uint64; enabled: Bool; reason: String }
+message AIEmergencyPause { queryId: Int as uint64; pause: Bool; severity: Int as uint8; reason: String }
+message AIRotateOracle { queryId: Int as uint64; newOracle: Address; reason: String }
+
+// ─── Jetton Messages ───
+message(0x642b7d07) Mint { amount: Int as coins; receiver: Address }
+message(0x7bdd97de) BurnNotification { queryId: Int as uint64; amount: Int as coins; sender: Address; responseDestination: Address }
+message(0x0f8a7ea5) TokenTransfer { queryId: Int as uint64; amount: Int as coins; destination: Address; responseDestination: Address; customPayload: Cell?; forwardTonAmount: Int as coins; forwardPayload: Slice as remaining }
+message(0x595f07bc) TokenBurn { queryId: Int as uint64; amount: Int as coins; responseDestination: Address; customPayload: Cell? }
+message(0x7362d09c) TokenNotification { queryId: Int as uint64; amount: Int as coins; from: Address; forwardPayload: Slice as remaining }
+message(0x178d4519) InternalTransfer { queryId: Int as uint64; amount: Int as coins; from: Address; responseDestination: Address; forwardTonAmount: Int as coins; forwardPayload: Slice as remaining }
+// TEP-74 `excesses` message: a receiving wallet returns the unused part of an
+// incoming message value with it (opcode 0xd53276db).
+message(0xd53276db) TokenExcesses { queryId: Int as uint64 }
+message(0x51a5c3d1) PoolPayout { queryId: Int as uint64; amount: Int as coins; destination: Address }
+message DefiPayout { queryId: Int as uint64; amount: Int as coins; destination: Address }
+
+// ─── TEP-89 discoverable Jetton wallets ───
+// `provide_wallet_address` / `take_wallet_address` are the on-chain discovery
+// pair defined by TEP-89. The response keeps the owner address in a ref
+// (`owner_address:(Maybe ^MsgAddress)`) exactly as the standard's TL-B schema
+// specifies, which is why the field is a `Cell?` rather than an `Address?`
+// (Tact would serialise the latter inline, not as a ref).
+message(0x2c76b973) ProvideWalletAddress { queryId: Int as uint64; ownerAddress: Address; includeAddress: Bool }
+message(0xd1735400) TakeWalletAddress { queryId: Int as uint64; walletAddress: Address; ownerAddress: Cell? }
+
+// ─── Fee & Buyback Messages ───
+message FeeTransfer { queryId: Int as uint64; amount: Int as coins; originalSender: Address; originalReceiver: Address }
+message SetTreasury { treasury: Address }
+message SetFeeConfig { feeBps: Int as uint16; burnShare: Int as uint8; maxTxBps: Int as uint16; maxWalletBps: Int as uint16; cooldown: Int as uint16 }
+message ToggleTrading { enabled: Bool }
+message TriggerBuyback { queryId: Int as uint64 }
+message SetBuybackConfig { enabled: Bool; threshold: Int as coins; cooldown: Int as uint32; burnPercent: Int as uint8 }
+
+// ─── DeFi Sync Messages ───
+message SetDefiAddress { defiAddress: Address }
+message SyncFeeToDefi { amount: Int as coins }
+
+// ─── Staking Messages ───
+message Stake { amount: Int as coins }
+message Unstake { amount: Int as coins }
+message ClaimRewards { }
+message SetStakingConfig { enabled: Bool; apyBps: Int as uint16; minStake: Int as coins; lockPeriod: Int as uint32 }
+
+// ─── Referral Messages ───
+message RegisterReferral { referrer: Address }
+message ClaimReferralRewards { }
+message SetReferralConfig { enabled: Bool; rewardBps: Int as uint16 }
+
+// ─── Vesting Messages ───
+message AddVesting { beneficiary: Address; totalAmount: Int as coins; cliff: Int as uint32; duration: Int as uint32 }
+message ClaimVested { }
+
+// ─── Data Structures ───
+struct JettonData { totalSupply: Int; mintable: Bool; adminAddress: Address; jettonContent: Cell; jettonWalletCode: Cell }
+struct JettonWalletData { balance: Int; owner: Address; master: Address; walletCode: Cell }
+struct AIState { oracleAddress: Address; aiModeEnabled: Bool; fullAutonomy: Bool; lastRebalanceAt: Int; totalSignalsReceived: Int; currentFeeBps: Int; priceHistoryCount: Int; anomalyCount: Int; lastHeartbeat: Int; isAlive: Bool; lastQueryId: Int }
+struct FeeConfig { feeBps: Int; burnShare: Int; treasuryShare: Int; maxTxBps: Int; maxWalletBps: Int; cooldown: Int; totalBurned: Int; totalFeesCollected: Int }
+struct BuybackState { enabled: Bool; pool: Int; threshold: Int; cooldown: Int; burnPercent: Int; buybackSwapPending: Int; buybackSwapQueryId: Int; lastBuybackAt: Int; totalBuybacks: Int; totalQsrBurnedViaBuyback: Int; totalTonSpent: Int }
+struct AutonomyState { fullAutonomyEnabled: Bool; aiActionCooldown: Int; lastAiActionTime: Int; heartbeatTimeout: Int; lastHeartbeat: Int; ownerOverrideWindow: Int; vetoThresholdBps: Int; totalVetoStake: Int; pendingActions: Int }
+struct AIActionLog { actionId: Int; timestamp: Int; actionType: String; oldValue: Int; newValue: Int; reason: String; executed: Bool; vetoed: Bool; overridden: Bool }
+struct AIRecommendation { timestamp: Int; action: String; confidence: Int; executed: Bool }
+
+// Staking
+struct StakeInfo { amount: Int; startTime: Int; lastClaim: Int; lockEnd: Int }
+struct StakingConfig { enabled: Bool; apyBps: Int; minStake: Int; lockPeriod: Int; totalStaked: Int }
+
+// Referral
+struct ReferralInfo { referrer: Address; totalEarned: Int; totalReferrals: Int }
+struct ReferralConfig { enabled: Bool; rewardBps: Int }
+
+// Vesting
+struct VestingInfo { totalAmount: Int; claimed: Int; startTime: Int; cliff: Int; duration: Int }
+
+// ═══════════════════════════════════════════════════════════════
+// QUASAR MASTER
+// ═══════════════════════════════════════════════════════════════
+
+contract QuasarMaster with Deployable {
+    
+    // Core
+    totalSupply: Int as coins;
+    // Hard cap: 1,000,000,000 QSR with 9 decimals.
+    maxSupply: Int as coins;
+    mintable: Bool;
+    owner: Address;
+    // Two-step ownership transfer with a timelock (F-08): a proposed owner
+    // must wait before accepting, so a single compromised key cannot rotate
+    // control instantly.
+    pendingOwner: Address;
+    ownerTransferAt: Int;
+    ownerTransferDelay: Int as uint32;
+    content: Cell;
+    walletCode: Cell;
+    reserveBalance: Int as coins;
+    // QSR deposited into the master wallet for staking/vesting custody.
+    custodyBalance: Int as coins;
+    
+    // Fee
+    feeBps: Int as uint16;
+    feeBurnShare: Int as uint8;
+    treasury: Address;
+    totalBurned: Int as coins;
+    totalFeesCollected: Int as coins;
+    maxTxBps: Int as uint16;
+    maxWalletBps: Int as uint16;
+    cooldownSeconds: Int as uint16;
+    tradingEnabled: Bool;
+    
+    // Buyback
+    buybackEnabled: Bool;
+    buybackPool: Int as coins;
+    buybackThreshold: Int as coins;
+    buybackCooldown: Int as uint32;
+    buybackBurnPercent: Int as uint8;
+    buybackSwapPending: Int as coins;
+    buybackSwapQueryId: Int as uint64;
+    lastBuybackTime: Int;
+    totalBuybacks: Int;
+    totalQsrBurnedViaBuyback: Int as coins;
+    totalTonSpentOnBuyback: Int as coins;
+    
+    // AI
+    aiOracle: Address;
+    aiEnabled: Bool;
+    aiFullAutonomy: Bool;
+    lastRebalanceTime: Int;
+    signalCount: Int;
+    // Number of price samples, kept separate from the aggregate AI signal count.
+    priceHistoryCount: Int;
+    priceHistory: map<Int, Int>;
+    anomalyLog: map<Int, AIRecommendation>;
+    anomalyIndex: Int;
+    minConfidence: Int as uint8;
+    emergencyPause: Bool;
+    aiActionCooldown: Int as uint32;
+    lastAiActionTime: Int;
+    lastAiQueryId: Int as uint64;
+    heartbeatTimeout: Int as uint32;
+    lastHeartbeat: Int;
+    ownerOverrideWindow: Int as uint32;
+    vetoThresholdBps: Int as uint16;
+    aiActionLog: map<Int, AIActionLog>;
+    aiActionIndex: Int;
+    pendingAiActions: map<Int, Int>;
+    // Previous address for AI actions that move a privileged address, so
+    // OwnerOverride can restore it (F-07).
+    aiActionOldAddress: map<Int, Address>;
+    // Snapshots for reversible AI actions. OwnerOverride must restore the
+    // complete pre-action state, not only the field used in the event log.
+    aiActionOldFeeBps: map<Int, Int>;
+    aiActionOldMintable: map<Int, Int>;
+    aiActionOldEmergencyPause: map<Int, Int>;
+    aiActionOldTrading: map<Int, Int>;
+    aiActionOldBuybackThreshold: map<Int, Int>;
+    aiActionOldBuybackCooldown: map<Int, Int>;
+    aiActionOldBuybackBurnPercent: map<Int, Int>;
+    totalVetoStake: Int as coins;
+    
+    // Staking
+    stakingEnabled: Bool;
+    stakingApyBps: Int as uint16;
+    stakingMinStake: Int as coins;
+    stakingLockPeriod: Int as uint32;
+    stakers: map<Address, StakeInfo>;
+    totalStaked: Int as coins;
+    stakingRewardsPool: Int as coins;
+    // QSR sent to the master is held as an unassigned deposit until a
+    // staking or vesting operation consumes it.
+    pendingQsrDeposits: map<Address, Int>;
+    
+    // Referral
+    referralEnabled: Bool;
+    referralRewardBps: Int as uint16;
+    referrals: map<Address, ReferralInfo>;
+    pendingReferralRewards: map<Address, Int>;
+    // Total referral liability must stay reserved across all claimants.
+    // Without an aggregate counter, one claimant or a DeFi payout could
+    // consume the free reserve backing somebody else's reward.
+    pendingReferralTotal: Int as coins;
+    
+    // Vesting
+    vestingEnabled: Bool;
+    teamAllocation: Int as coins;
+    teamClaimed: Int as coins;
+    vestingSchedules: map<Address, VestingInfo>;
+    
+    // DeFi Sync
+    defiAddress: Address;
+    defiFeeShareBps: Int as uint16; // Basis points sent to DeFi pool (e.g. 500 = 5%);
+    defiMaxPayoutBps: Int as uint16; // Cap (bps of the free reserve) per single DefiPayout call;
+    
+    init(owner: Address, content: Cell, walletCode: Cell) {
+        self.totalSupply = 0;
+        self.maxSupply = ton("1000000000");
+        self.mintable = true;
+        self.owner = owner;
+        self.pendingOwner = newAddress(0, 0);
+        self.ownerTransferAt = 0;
+        // 48h timelock before a proposed owner may take control.
+        self.ownerTransferDelay = 172800;
+        self.content = content;
+        self.walletCode = walletCode;
+        self.reserveBalance = 0;
+        self.custodyBalance = 0;
+        
+        self.feeBps = 30;
+        self.feeBurnShare = 50;
+        self.treasury = owner;
+        self.totalBurned = 0;
+        self.totalFeesCollected = 0;
+        self.maxTxBps = 100;
+        self.maxWalletBps = 300;
+        // The wallet enforces a five-second transfer cooldown. Keep the
+        // master configuration aligned with that deployed wallet behavior.
+        self.cooldownSeconds = 5;
+        self.tradingEnabled = true;
+        
+        self.buybackEnabled = true;
+        self.buybackPool = 0;
+        // The buyback pool is accounted in QSR, so the threshold must be
+        // QSR-denominated: comparing it against ton("10") mixed units (F-09).
+        self.buybackThreshold = 10_000_000_000; // 10 QSR
+        self.buybackCooldown = 3600;
+        self.buybackBurnPercent = 100;
+        self.buybackSwapPending = 0;
+        self.buybackSwapQueryId = 0;
+        self.lastBuybackTime = 0;
+        self.totalBuybacks = 0;
+        self.totalQsrBurnedViaBuyback = 0;
+        self.totalTonSpentOnBuyback = 0;
+        
+        self.aiOracle = owner;
+        self.aiEnabled = false;
+        self.aiFullAutonomy = false;
+        self.lastRebalanceTime = 0;
+        self.signalCount = 0;
+        self.priceHistoryCount = 0;
+        self.anomalyIndex = 0;
+        self.minConfidence = 75;
+        self.emergencyPause = false;
+        self.aiActionCooldown = 21600;
+        // Start the cooldown window at deployment so the first AI action is
+        // not blocked by a zero timestamp.
+        self.lastAiActionTime = 0;
+        self.lastAiQueryId = 0;
+        self.heartbeatTimeout = 604800;
+        self.lastHeartbeat = now();
+        self.ownerOverrideWindow = 86400;
+        self.vetoThresholdBps = 1000;
+        self.aiActionIndex = 0;
+        self.totalVetoStake = 0;
+        
+        self.stakingEnabled = true;
+        self.stakingApyBps = 2000;
+        self.stakingMinStake = ton("100");
+        self.stakingLockPeriod = 2592000;
+        self.totalStaked = 0;
+        self.stakingRewardsPool = 0;
+        
+        self.referralEnabled = true;
+        self.referralRewardBps = 100;
+        self.pendingReferralTotal = 0;
+        
+        self.vestingEnabled = true;
+        self.teamAllocation = 0;
+        self.teamClaimed = 0;
+        
+        self.defiAddress = newAddress(0, 0);
+        self.defiFeeShareBps = 500; // 5% of fees go to DeFi pool;
+        self.defiMaxPayoutBps = 5000; // max 50% of the free reserve per payout call;
+    }
+    
+    // ═══════════════════════════════════════════════════════════
+    // HELPERS
+    // ═══════════════════════════════════════════════════════════
+    
+    fun _requireOwner() { require(sender() == self.owner, "Only owner") }
+    // AI messages carry a caller-supplied query id. It must be strictly
+    // increasing so a captured AI message can never be replayed twice.
+    fun _requireFreshAiQuery(queryId: Int) {
+        require(queryId > self.lastAiQueryId, "Stale AI query");
+        self.lastAiQueryId = queryId;
+    }
+
+    fun _requireAiAccess() { require(sender() == self.aiOracle, "Only AI oracle"); require(self.aiEnabled, "AI disabled") }
+    // The administrative cooldown applies in every mode. Tying it to
+    // aiFullAutonomy made the documented 6h safeguard inert (F-07).
+    fun _requireAiCooldown() { require(now() - self.lastAiActionTime >= self.aiActionCooldown, "AI cooldown") }
+    fun _requireNotPaused() { require(!self.emergencyPause, "Paused") }
+    fun _requireTrading() { require(self.tradingEnabled, "Trading off") }
+
+    // Mint transfers need a distinct query id because a bounced mint has a
+    // different accounting consequence from a bounced reserve payout:
+    // minting must roll back totalSupply, while a reserve payout must restore
+    // reserveBalance. Keep the value outside the normal application-owned
+    // query-id space and reject it from every non-mint payout path.
+    fun _mintQueryId(): Int { return 18446744073709551615 }
+    fun _requireNonMintQueryId(queryId: Int) {
+        require(queryId != self._mintQueryId(), "Reserved mint query id")
+    }
+
+    // Buyback and staking pools are sub-accounts inside the fee reserve.
+    // Treasury and DeFi payouts may only spend the part of the reserve that
+    // is not encumbered by these pools.
+    fun _poolEncumbrance(): Int {
+        return self.buybackPool + self.stakingRewardsPool + self.pendingReferralTotal
+    }
+    
+    fun _logAiAction(actionType: String, oldVal: Int, newVal: Int, reason: String): Int {
+        let id: Int = self.aiActionIndex;
+        self.aiActionLog.set(id, AIActionLog{ actionId: id, timestamp: now(), actionType: actionType, oldValue: oldVal, newValue: newVal, reason: reason, executed: true, vetoed: false, overridden: false });
+        self.pendingAiActions.set(id, now());
+        self.aiActionIndex = id + 1;
+        self.lastAiActionTime = now();
+        return id;
+    }
+    
+    // Market signals change state too, so they must be recorded in the action
+    // log (and therefore be vetoable/overridable) without consuming or
+    // resetting the administrative cooldown window (F-07).
+    fun _logAiActionSilent(actionType: String, oldVal: Int, newVal: Int, reason: String): Int {
+        let id: Int = self.aiActionIndex;
+        self.aiActionLog.set(id, AIActionLog{ actionId: id, timestamp: now(), actionType: actionType, oldValue: oldVal, newValue: newVal, reason: reason, executed: true, vetoed: false, overridden: false });
+        self.pendingAiActions.set(id, now());
+        self.aiActionIndex = id + 1;
+        return id;
+    }
+    
+    fun _isOwnerOverrideWindow(actionId: Int): Bool {
+        let t: Int? = self.pendingAiActions.get(actionId);
+        if (t == null) { return false }
+        return now() - t!! < self.ownerOverrideWindow;
+    }
+    
+    fun _checkAiAlive(): Bool { return now() - self.lastHeartbeat <= self.heartbeatTimeout }
+    
+    // Send a standard TEP-74 internal transfer. Minting and reserve payouts
+    // use the same wire format, while reserve accounting stays explicit.
+    fun _sendInternalTransfer(to: Address, amount: Int, queryId: Int, from: Address) {
+        require(amount > 0, "Invalid transfer amount");
+        let init: StateInit = initOf QuasarWallet(to, myAddress());
+        // Keep token payouts independent from later event messages. A
+        // SendRemainingValue payout consumes the whole action balance, so any
+        // subsequent send in the same receiver can abort the transaction and
+        // roll back the accounting.
+        send(SendParameters{
+            to: contractAddress(init),
+            value: ton("0.02"),
+            bounce: true,
+            mode: SendPayGasSeparately,
+            body: InternalTransfer{
+                queryId: queryId,
+                amount: amount,
+                from: from,
+                responseDestination: myAddress(),
+                forwardTonAmount: 0,
+                forwardPayload: emptySlice()
+            }.toCell(),
+            code: init.code,
+            data: init.data
+        });
+    }
+
+    fun _mintTokens(to: Address, amount: Int) {
+        require(amount > 0, "Invalid transfer amount");
+        let init: StateInit = initOf QuasarWallet(to, myAddress());
+        // Keep the mint namespace visible at the serialization site: a
+        // bounced mint must be distinguishable from every reserve payout.
+        send(SendParameters{
+            to: contractAddress(init),
+            value: ton("0.02"),
+            bounce: true,
+            mode: SendPayGasSeparately,
+            body: InternalTransfer{
+                queryId: self._mintQueryId(),
+                amount: amount,
+                from: myAddress(),
+                responseDestination: myAddress(),
+                forwardTonAmount: 0,
+                forwardPayload: emptySlice()
+            }.toCell(),
+            code: init.code,
+            data: init.data
+        });
+    }
+
+    fun _sendTokens(to: Address, amount: Int, queryId: Int, from: Address) {
+        require(amount > 0, "Invalid transfer amount");
+        self._requireNonMintQueryId(queryId);
+        require(self.reserveBalance >= amount, "Insufficient QSR reserve");
+        self.reserveBalance = self.reserveBalance - amount;
+        self._sendInternalTransfer(to, amount, queryId, from);
+    }
+
+    // Fee-funded DeFi liquidity is delivered with a notification so the pool
+    // can account for the tokens in qsrReserve.
+    fun _sendTokensToDefi(amount: Int, queryId: Int) {
+        require(amount > 0, "Invalid DeFi transfer amount");
+        self._requireNonMintQueryId(queryId);
+        require(self.defiAddress != newAddress(0, 0), "DeFi not configured");
+        require(self.reserveBalance >= amount, "Insufficient QSR reserve");
+        self.reserveBalance = self.reserveBalance - amount;
+        let init: StateInit = initOf QuasarWallet(self.defiAddress, myAddress());
+        send(SendParameters{
+            to: contractAddress(init),
+            value: ton("0.02"),
+            bounce: true,
+            mode: SendPayGasSeparately,
+            body: InternalTransfer{
+                queryId: queryId,
+                amount: amount,
+                from: myAddress(),
+                responseDestination: myAddress(),
+                forwardTonAmount: ton("0.01"),
+                forwardPayload: emptySlice()
+            }.toCell(),
+            code: init.code,
+            data: init.data
+        });
+    }
+
+    // Custodied deposits must leave the master-owned Jetton wallet.
+    fun _sendCustodiedTokens(to: Address, amount: Int, queryId: Int) {
+        require(amount > 0, "Invalid custody transfer amount");
+        require(self.custodyBalance >= amount, "Insufficient custody balance");
+        self.custodyBalance = self.custodyBalance - amount;
+        let init: StateInit = initOf QuasarWallet(myAddress(), myAddress());
+        send(SendParameters{
+            to: contractAddress(init),
+            value: ton("0.02"),
+            bounce: true,
+            mode: SendPayGasSeparately,
+            body: PoolPayout{ queryId: queryId, amount: amount, destination: to }.toCell(),
+            code: init.code,
+            data: init.data
+        });
+    }
+    
+    // ═══════════════════════════════════════════════════════════
+    // JETTON CORE
+    // ═══════════════════════════════════════════════════════════
+    
+    receive(msg: Mint) {
+        self._requireNotPaused();
+        require(msg.amount > 0, "Invalid amount");
+        require(msg.receiver != newAddress(0, 0), "Invalid receiver");
+        self._requireTrading();
+        self._requireOwner();
+        require(self.mintable, "Minting off");
+        
+        let maxTx: Int = self.totalSupply * self.maxTxBps / 10000;
+        if (self.totalSupply > 0) { require(msg.amount <= maxTx, "Max tx exceeded") }
+        
+        require(self.totalSupply + msg.amount <= self.maxSupply, "Max supply exceeded");
+        self.totalSupply = self.totalSupply + msg.amount;
+        self._mintTokens(msg.receiver, msg.amount);
+        
+        // The token transfer already consumes the remaining value. Do not
+        // queue a second SendRemainingValue action here: that makes the
+        // action phase fail with no funds and rolls back the mint.
+        send(SendParameters{
+            to: sender(),
+            value: ton("0.01"),
+            mode: SendPayGasSeparately | SendIgnoreErrors,
+            body: EventMint{ amount: msg.amount, receiver: msg.receiver }.toCell()
+        });
+    }
+    
+    receive(msg: BurnNotification) {
+        require(msg.amount > 0, "Invalid amount");
+        require(msg.amount <= self.totalSupply, "Supply underflow");
+        let wInit: StateInit = initOf QuasarWallet(msg.sender, myAddress());
+        require(sender() == contractAddress(wInit), "Unauthorized burn");
+        self.totalSupply = self.totalSupply - msg.amount;
+        // The event must not consume the remaining inbound value before the
+        // excess refund; the refund is the final action in this receiver.
+        send(SendParameters{ to: sender(), value: ton("0.01"), bounce: false, mode: SendPayGasSeparately | SendIgnoreErrors, body: EventBurn{ amount: msg.amount, burner: msg.sender }.toCell() });
+        if (msg.responseDestination != newAddress(0, 0)) {
+            // TEP-74: the burn refund must use the standard `excesses` layout so an
+        // integrating wallet can match the refund to the request query id instead of
+        // seeing an opaque comment body.
+        send(SendParameters{ to: msg.responseDestination, value: 0, bounce: false, mode: SendRemainingValue | SendIgnoreErrors, body: TokenExcesses{ queryId: msg.queryId }.toCell() });
+        }
     }
 
     // When the wallet rejects an internal transfer, the tokens return to the
