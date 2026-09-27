@@ -80,26 +80,32 @@ test('DeFi liquidity and swap messages preserve coin amounts', () => {
         .store(storeAddLiquidity({
             $$type: 'AddLiquidity',
             tonAmount: 2_000_000_000n,
-            qsrAmount: 5_000_000_000n
+            qsrAmount: 5_000_000_000n,
+            minLpOut: 1n,
+            deadline: 2_000_000_000n
         }))
         .endCell();
     const swap = beginCell()
         .store(storeSwapToTON({
             $$type: 'SwapToTON',
             qsrAmount: 250_000_000n,
-            minTonOut: 100_000_000n
+            minTonOut: 100_000_000n,
+            deadline: 2_000_000_000n
         }))
         .endCell();
 
     assert.deepEqual(loadAddLiquidity(liquidity.beginParse()), {
         $$type: 'AddLiquidity',
         tonAmount: 2_000_000_000n,
-        qsrAmount: 5_000_000_000n
+        qsrAmount: 5_000_000_000n,
+        minLpOut: 1n,
+        deadline: 2_000_000_000n
     });
     assert.deepEqual(loadSwapToTON(swap.beginParse()), {
         $$type: 'SwapToTON',
         qsrAmount: 250_000_000n,
-        minTonOut: 100_000_000n
+        minTonOut: 100_000_000n,
+        deadline: 2_000_000_000n
     });
 });
 

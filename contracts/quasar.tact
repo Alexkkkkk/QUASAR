@@ -149,6 +149,7 @@ contract QuasarMaster with Deployable {
     buybackBurnPercent: Int as uint8;
     buybackSwapPending: Int as coins;
     buybackSwapQueryId: Int as uint64;
+    buybackQueries: map<Int, Bool>;
     lastBuybackTime: Int;
     totalBuybacks: Int;
     totalQsrBurnedViaBuyback: Int as coins;
@@ -258,6 +259,7 @@ contract QuasarMaster with Deployable {
         self.buybackBurnPercent = 100;
         self.buybackSwapPending = 0;
         self.buybackSwapQueryId = 0;
+        self.buybackQueries = emptyMap();
         self.lastBuybackTime = 0;
         self.totalBuybacks = 0;
         self.totalQsrBurnedViaBuyback = 0;
@@ -668,6 +670,9 @@ contract QuasarMaster with Deployable {
         require(self.buybackEnabled, "Buyback off");
         require(self.buybackPool >= self.buybackThreshold, "Pool low");
         require(now() - self.lastBuybackTime >= self.buybackCooldown, "Cooldown");
+        require(self.buybackSwapPending == 0, "Buyback pending");
+        require(self.buybackQueries.get(msg.queryId) == null, "Query already used");
+        self.buybackQueries.set(msg.queryId, true);
         self._executeBuyback(msg.queryId);
     }
     
