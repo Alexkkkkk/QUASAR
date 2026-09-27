@@ -37,14 +37,14 @@
 | Feature | QUASAR | Others |
 |---------|--------|--------|
 | **AI Oracle** | Optional, bounded controls; disabled by default | N/A |
-| **Built-in DEX** | CPMM AMM with 0.3% fee | External only |
+| **Built-in DEX** | CPMM AMM with 0.3% fee, deadline/min-output guards, locked minimum liquidity and price observations | External only |
 | **Yield Farming** | LP auto-stake; rewards claimed explicitly | N/A |
 | **Buyback accounting** | Fee bucket (QSR-denominated): a share is burned, the rest is swapped for TON through the DeFi AMM and the proceeds go to the treasury | N/A |
 | **Staking Vault** | Earn APY from transaction fees | Rare |
 | **Referral System** | 1% lifetime earnings per referral | None |
 | **Team Vesting** | Linear 2-year unlock | Rare |
 | **Community Veto** | Escrow is not enabled in the current contract | N/A |
-| **Owner Control** | Two-step transfer with a 48h timelock (`ProposeOwner` → `AcceptOwner`); no multisig yet | Rare |
+| **Owner Control** | Master and DeFi use two-step transfer with a 48h timelock; DeFi fee and trade-limit changes are also staged; no multisig yet | Rare |
 | **Anti-Whale** | Max tx 1% applies only to owner `Mint` (minting is stopped after deployment); max-wallet 3% is stored but not enforced in wallet code; the wallet adds a 5s per-wallet transfer cooldown | Rare |
 | **0.30% Fee** | Fixed at 0.30% in wallet code; auto-distributed to ecosystem | Manual |
 
@@ -60,41 +60,54 @@ Built-in **Constant Product Market Maker (CPMM)** AMM. No external DEX needed.
 |-----------|-------|
 | Model | CPMM (x * y = k) |
 | Fee | 0.30% per swap (owner-configurable only downwards) |
-| Slippage protection | Configurable min output |
+| Slippage protection | Configurable min output plus transaction deadline |
 | Reentrancy guard | Yes |
+| First LP protection | 1,000 permanently locked minimum LP units |
+| Price observations | Cumulative QSR/TON and TON/QSR observations for TWAP consumers |
 
 #### Swap QSR → TON
 ```bash
 # 1. Send QSR from the user's Jetton wallet to QuasarDeFi.
 # 2. Submit the swap using the deposited amount.
-SwapToTON { qsrAmount: 1000000000, minTonOut: 50000000 }
+SwapToTON { qsrAmount: 1000000000, minTonOut: 50000000, deadline: 2000000000 }
 ```
 
 #### Swap TON → QSR
 ```bash
 # Buy QSR with TON (send TON with message)
-SwapToQSR { tonAmount: 50000000, minQsrOut: 900000000 }
+SwapToQSR { tonAmount: 50000000, minQsrOut: 900000000, deadline: 2000000000 }
 ```
 
 #### Add Liquidity
 ```bash
 # 1. Deposit QSR to QuasarDeFi from the user's Jetton wallet.
 # 2. Send TON with this message; the QSR deposit is consumed atomically.
-AddLiquidity { tonAmount: 1000000000, qsrAmount: 100000000000 }
+AddLiquidity {
+  tonAmount: 1000000000,
+  qsrAmount: 100000000000,
+  minLpOut: 9000000000,
+  deadline: 2000000000
+}
 ```
 
 #### Remove Liquidity
 ```bash
 # Burn LP tokens, receive proportional TON + QSR
-RemoveLiquidity { lpAmount: 50000000000 }
+RemoveLiquidity {
+  lpAmount: 50000000000,
+  minTonOut: 490000000,
+  minQsrOut: 49000000000,
+  deadline: 2000000000
+}
 ```
 
 ### Liquidity Pools
 
 - **LP Token**: Proportional share of TON + QSR reserves
-- **First Deposit**: LP = sqrt(ton * qsr)
+- **First Deposit**: LP = sqrt(ton * qsr) minus 1,000 units sent to a permanently locked minimum-liquidity bucket
 - **Subsequent**: LP proportional to existing reserves
 - **Auto-stake**: LP tokens automatically staked in farm
+- **Emergency farm exit**: `EmergencyWithdrawFarm {}` returns LP principal to the user's available LP balance and forfeits unclaimed rewards
 
 ### Yield Farming
 
@@ -318,9 +331,15 @@ npm run website      # Serves website/ on localhost
 - [x] CPMM DEX and LP farming implemented in source
 - [x] Enforce the 1,000,000,000 QSR maximum supply in the master contract
 - [x] Reconcile core tokenomics documentation with the on-chain implementation
+- [x] Add deadline and min-output protection to swaps and liquidity operations
+- [x] Lock minimum first-deposit liquidity against initial-price manipulation
+- [x] Add DeFi owner timelock, staged fee/trade-limit changes and price observations
+- [x] Keep LP removal, reward claims and pending-deposit refunds live during a DeFi pause
 - [ ] TON testnet deployment and public scenario testing
 - [ ] Independent security audit and remediation
-- [ ] Production-ready buyback swap
+- [ ] Production-ready buyback swap with timeout/recovery path
+- [ ] Multisig execution for Master and DeFi critical administration
+- [ ] Standard LP Jetton and separate governance/veto vault
 - [ ] Mainnet launch with published addresses and build hashes
 - [ ] Cross-chain bridges (future)
 - [ ] Production AI agent deployment (future)

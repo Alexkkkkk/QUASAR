@@ -40,11 +40,27 @@ assertContains(master, 'self.buybackThreshold = 10_000_000_000;', 'buyback thres
 assertContains(master, 'fun _sendBuybackToDefi', 'buyback swap leg is routed through the DeFi AMM (F-09)');
 assertContains(master, 'storeUint(0x5f4a3b21, 32)', 'buyback marker payload identifies the swap leg (F-09)');
 assertContains(master, 'receive(msg: BuybackTon)', 'master accounts the AMM buyback TON proceeds (F-09)');
+assertContains(master, 'require(self.buybackSwapPending == 0, "Buyback pending");', 'buybacks cannot overlap while a swap is pending');
+assertContains(master, 'buybackQueries: map<Int, Bool>;', 'buyback query ids are replay-protected');
+assertContains(master, 'require(self.buybackQueries.get(msg.queryId) == null, "Query already used");', 'buyback trigger query ids are unique');
 assertContains(defi, 'fun _executeBuybackSwap', 'DeFi executes the master-initiated buyback swap (F-09)');
 assertContains(defi, 'self._executeBuybackSwap(msg.amount, msg.queryId);', 'the buyback swap runs atomically inside the credit transaction (F-09)');
 assertContains(defi, 'message(0x2c7e91a4) BuybackTon', 'buyback TON return uses a dedicated opcode (F-09)');
 assertContains(master, 'aiActionOldAddress: map<Int, Address>;', 'AI address actions are reversible (F-07)');
 assertContains(defi, 'require(msg.feeBps > 0 && msg.feeBps <= 30, "Fee must not exceed 0.30%");', 'DeFi fee ceiling matches the docs (F-13)');
+assertContains(defi, 'fun _requireDeadline(deadline: Int)', 'DeFi operations have an explicit expiry guard');
+assertContains(defi, 'require(deadline > now(), "Operation expired");', 'expired swaps and liquidity operations are rejected');
+assertContains(defi, 'minimumLiquidity: Int as coins;', 'the first LP has permanently locked minimum liquidity');
+assertContains(defi, 'require(rootLp > self.minimumLiquidity, "Initial liquidity too small");', 'initial liquidity cannot bypass the locked minimum');
+assertContains(defi, 'require(lpToMint >= msg.minLpOut, "LP slippage exceeded");', 'LP minting has user-controlled minimum output');
+assertContains(defi, 'require(tonOut >= msg.minTonOut, "TON slippage exceeded");', 'liquidity removal has a TON minimum output');
+assertContains(defi, 'require(qsrOut >= msg.minQsrOut, "QSR slippage exceeded");', 'liquidity removal has a QSR minimum output');
+assertContains(defi, 'receive(msg: EmergencyWithdrawFarm)', 'farm principal has an emergency withdrawal path');
+assertContains(defi, 'receive(msg: ProposePoolOwner)', 'DeFi ownership transfer requires an explicit proposal');
+assertContains(defi, 'require(now() >= self.ownerTransferAt, "Timelock active");', 'DeFi ownership acceptance honors the timelock');
+assertContains(defi, 'self.pendingFeeAt = now() + self.ownerTransferDelay;', 'DeFi fee changes are staged behind a timelock');
+assertContains(defi, 'self.pendingMaxTradeAt = now() + self.ownerTransferDelay;', 'DeFi trade-limit changes are staged behind a timelock');
+assertContains(defi, 'priceCumulativeQsrPerTon: Int;', 'DeFi exposes cumulative price observations for TWAP consumers');
 
 assertContains(master, 'message(0xd53276db) TokenExcesses', 'excesses use the TEP-74 opcode (F-21)');
 assertContains(master, 'body: TokenExcesses{ queryId: msg.queryId }.toCell()', 'excesses carry the request query id (F-21)');
@@ -70,5 +86,11 @@ console.log('Security invariants passed: ' + [
     'QSR-denominated buyback threshold',
     'buyback AMM swap leg',
     'reversible AI address actions',
-    'DeFi fee ceiling'
+    'DeFi fee ceiling',
+    'deadline and slippage guards',
+    'initial LP minimum liquidity',
+    'farm emergency withdrawal',
+    'DeFi owner timelock',
+    'timelocked DeFi fee controls',
+    'AMM price observations'
 ].join(', '));

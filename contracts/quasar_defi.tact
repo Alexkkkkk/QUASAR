@@ -9,17 +9,21 @@ import "@stdlib/content";
 // ═══════════════════════════════════════════════════════════════
 
 // ─── Messages ───
-message AddLiquidity { tonAmount: Int as coins; qsrAmount: Int as coins }
-message RemoveLiquidity { lpAmount: Int as coins }
-message SwapToTON { qsrAmount: Int as coins; minTonOut: Int as coins }
-message SwapToQSR { tonAmount: Int as coins; minQsrOut: Int as coins }
+message AddLiquidity { tonAmount: Int as coins; qsrAmount: Int as coins; minLpOut: Int as coins; deadline: Int as uint32 }
+message RemoveLiquidity { lpAmount: Int as coins; minTonOut: Int as coins; minQsrOut: Int as coins; deadline: Int as uint32 }
+message SwapToTON { qsrAmount: Int as coins; minTonOut: Int as coins; deadline: Int as uint32 }
+message SwapToQSR { tonAmount: Int as coins; minQsrOut: Int as coins; deadline: Int as uint32 }
 message ClaimFarmRewards { }
+message EmergencyWithdrawFarm { }
 message SetFarmEnabled { enabled: Bool }
 message FundFarm { amount: Int as coins }
 message SetFarmConfig { rewardPerSecond: Int as coins; startTime: Int as uint32; endTime: Int as uint32 }
 message SetFeeBps { feeBps: Int as uint16 }
 message SetPaused { paused: Bool }
 message SetMaxTradeBps { maxTradeBps: Int as uint16 }
+message ProposePoolOwner { newOwner: Address }
+message AcceptPoolOwner { }
+message CancelPoolOwner { }
 message DefiPayout { queryId: Int as uint64; amount: Int as coins; destination: Address }
 message SweepTON { amount: Int as coins }
 message RefundPendingQsr { }
@@ -88,6 +92,17 @@ contract QuasarDeFi with Deployable {
     locked: Bool;
     paused: Bool;
     maxTradeBps: Int as uint16;
+    minimumLiquidity: Int as coins;
+    priceCumulativeQsrPerTon: Int;
+    priceCumulativeTonPerQsr: Int;
+    lastPriceObservation: Int as uint32;
+    pendingFeeBps: Int as uint16;
+    pendingFeeAt: Int as uint32;
+    pendingMaxTradeBps: Int as uint16;
+    pendingMaxTradeAt: Int as uint32;
+    pendingOwner: Address;
+    ownerTransferAt: Int as uint32;
+    ownerTransferDelay: Int as uint32;
     // Every pool payout gets a fresh ID. A single fixed query ID makes
     // downstream wallets unable to distinguish concurrent payouts.
     payoutSeq: Int as uint64;
@@ -112,6 +127,17 @@ contract QuasarDeFi with Deployable {
         self.locked = false;
         self.paused = false;
         self.maxTradeBps = 3000;
+        self.minimumLiquidity = 1000;
+        self.priceCumulativeQsrPerTon = 0;
+        self.priceCumulativeTonPerQsr = 0;
+        self.lastPriceObservation = now();
+        self.pendingFeeBps = 0;
+        self.pendingFeeAt = 0;
+        self.pendingMaxTradeBps = 0;
+        self.pendingMaxTradeAt = 0;
+        self.pendingOwner = newAddress(0, 0);
+        self.ownerTransferAt = 0;
+        self.ownerTransferDelay = 172800;
         self.payoutSeq = 0;
     }
     
@@ -120,6 +146,26 @@ contract QuasarDeFi with Deployable {
     fun _unlock() { self.locked = false; }
 
     fun _requireActive() { require(!self.paused, "DeFi paused") }
+
+    fun _requireDeadline(deadline: Int) {
+        require(deadline > now(), "Operation expired");
+    }
+
+    // Record the time-weighted spot price before each reserve mutation. The
+    // cumulative values are exposed through a getter so an indexer or a future
+    // router can build a TWAP without trusting a single transaction price.
+    fun _recordPriceObservation() {
+        if (self.lastPriceObservation == 0 || self.tonReserve == 0 || self.qsrReserve == 0) {
+            self.lastPriceObservation = now();
+            return;
+        }
+        let elapsed: Int = now() - self.lastPriceObservation;
+        if (elapsed > 0) {
+            self.priceCumulativeQsrPerTon += (self.qsrReserve * elapsed) / self.tonReserve;
+            self.priceCumulativeTonPerQsr += (self.tonReserve * elapsed) / self.qsrReserve;
+            self.lastPriceObservation = now();
+        }
+    }
 
     fun _sendQsr(to: Address, amount: Int, queryId: Int) {
         require(amount > 0, "Invalid QSR amount");
@@ -249,6 +295,7 @@ contract QuasarDeFi with Deployable {
     receive(msg: AddLiquidity) {
         self._requireActive();
         self._lock();
+        self._requireDeadline(msg.deadline);
         require(msg.tonAmount > 0 && msg.qsrAmount > 0, "Invalid amounts");
         require(context().value >= msg.tonAmount, "Insufficient TON sent");
         let deposited: Int? = self.pendingQsrDeposits.get(sender());
@@ -262,8 +309,11 @@ contract QuasarDeFi with Deployable {
         let tonUsed: Int = msg.tonAmount;
         let qsrUsed: Int = msg.qsrAmount;
         if (self.lpTotalSupply == 0) {
-            // First deposit: LP = sqrt(ton * qsr)
-            lpToMint = self._sqrt(msg.tonAmount * msg.qsrAmount);
+            // Lock permanent minimum liquidity so the first provider cannot
+            // manipulate the initial price with a later direct donation.
+            let rootLp: Int = self._sqrt(msg.tonAmount * msg.qsrAmount);
+            require(rootLp > self.minimumLiquidity, "Initial liquidity too small");
+            lpToMint = rootLp - self.minimumLiquidity;
         } else {
             // Subsequent: proportional to existing reserves. Only the
             // proportional share is consumed; the unbalanced surplus is
@@ -276,10 +326,13 @@ contract QuasarDeFi with Deployable {
             qsrUsed = (lpToMint * self.qsrReserve) / self.lpTotalSupply;
         }
         require(lpToMint > 0, "Zero LP tokens");
+        require(lpToMint >= msg.minLpOut, "LP slippage exceeded");
         
         // Update reserves
+        self._recordPriceObservation();
         self.tonReserve += tonUsed;
         self.qsrReserve += qsrUsed;
+        if (self.lpTotalSupply == 0) { self.lpTotalSupply = self.minimumLiquidity; }
         self.lpTotalSupply += lpToMint;
         self.pendingQsrDeposits.set(sender(), deposited!! - qsrUsed);
         
@@ -318,8 +371,8 @@ contract QuasarDeFi with Deployable {
     
     // ─── REMOVE LIQUIDITY ───
     receive(msg: RemoveLiquidity) {
-        self._requireActive();
         self._lock();
+        self._requireDeadline(msg.deadline);
         let current: Int? = self.lpBalances.get(sender());
         require(msg.lpAmount > 0, "Invalid LP amount");
         require(current != null && current!! >= msg.lpAmount, "Insufficient LP balance");
@@ -331,6 +384,8 @@ contract QuasarDeFi with Deployable {
         // only an all-zero output is rejected, and each side pays out only
         // when non-zero.
         require(tonOut > 0 || qsrOut > 0, "Zero output");
+        require(tonOut >= msg.minTonOut, "TON slippage exceeded");
+        require(qsrOut >= msg.minQsrOut, "QSR slippage exceeded");
         
         // Unstake from farm first when this LP was auto-staked.
         self._updateFarm();
@@ -343,6 +398,7 @@ contract QuasarDeFi with Deployable {
         }
         
         // Burn LP tokens
+        self._recordPriceObservation();
         self.lpBalances.set(sender(), current!! - msg.lpAmount);
         self.lpTotalSupply -= msg.lpAmount;
         self.tonReserve -= tonOut;
@@ -382,6 +438,7 @@ contract QuasarDeFi with Deployable {
     receive(msg: SwapToTON) {
         self._requireActive();
         self._lock();
+        self._requireDeadline(msg.deadline);
         require(msg.qsrAmount > 0 && self.qsrReserve > 0, "Invalid swap");
         require(msg.qsrAmount * 10000 <= self.qsrReserve * self.maxTradeBps, "Trade too large");
         let deposited: Int? = self.pendingQsrDeposits.get(sender());
@@ -397,6 +454,7 @@ contract QuasarDeFi with Deployable {
         require(tonOut > 0 && tonOut < self.tonReserve, "Insufficient reserve");
         
         // Update reserves
+        self._recordPriceObservation();
         self.qsrReserve += msg.qsrAmount;
         self.tonReserve -= tonOut;
         self.feeAccumulatedTon += fee;
@@ -433,6 +491,7 @@ contract QuasarDeFi with Deployable {
     receive(msg: SwapToQSR) {
         self._requireActive();
         self._lock();
+        self._requireDeadline(msg.deadline);
         require(msg.tonAmount > 0 && self.tonReserve > 0, "Invalid swap");
         require(context().value >= msg.tonAmount, "Insufficient TON sent");
         require(msg.tonAmount * 10000 <= self.tonReserve * self.maxTradeBps, "Trade too large");
@@ -446,6 +505,7 @@ contract QuasarDeFi with Deployable {
         require(qsrOut > 0 && qsrOut < self.qsrReserve, "Insufficient reserve");
         
         // Update reserves
+        self._recordPriceObservation();
         self.tonReserve += msg.tonAmount;
         self.qsrReserve -= qsrOut;
         self.feeAccumulatedQsr += fee;
@@ -478,7 +538,6 @@ contract QuasarDeFi with Deployable {
     
     // ─── CLAIM FARM REWARDS ───
     receive(msg: ClaimFarmRewards) {
-        self._requireActive();
         self._updateFarm();
         let stake: UserFarmInfo? = self.farmStakes.get(sender());
         require(stake != null, "No LP stake");
@@ -510,8 +569,43 @@ contract QuasarDeFi with Deployable {
             body: EventFarmReward{ farmer: sender(), amount: totalReward }.toCell()
         });
     }
+
+    // Emergency path: preserve the user's LP principal while discarding only
+    // unclaimed farming rewards. This remains live during a pool pause.
+    receive(msg: EmergencyWithdrawFarm) {
+        self._lock();
+        let stake: UserFarmInfo? = self.farmStakes.get(sender());
+        require(stake != null && stake!!.staked > 0, "No LP stake");
+        self._updateFarm();
+        let amount: Int = stake!!.staked;
+        self.farmStakes.set(sender(), UserFarmInfo{ staked: 0, debt: self.farmAccRewardPerShare, pending: 0 });
+        self.farmTotalStaked -= amount;
+        self._unlock();
+    }
     
     // ─── ADMIN ───
+    receive(msg: ProposePoolOwner) {
+        require(sender() == self.owner, "Only owner");
+        require(msg.newOwner != newAddress(0, 0), "Invalid owner");
+        self.pendingOwner = msg.newOwner;
+        self.ownerTransferAt = now() + self.ownerTransferDelay;
+    }
+
+    receive(msg: CancelPoolOwner) {
+        require(sender() == self.owner, "Only owner");
+        self.pendingOwner = newAddress(0, 0);
+        self.ownerTransferAt = 0;
+    }
+
+    receive(msg: AcceptPoolOwner) {
+        require(self.pendingOwner != newAddress(0, 0), "No pending owner");
+        require(sender() == self.pendingOwner, "Not pending owner");
+        require(now() >= self.ownerTransferAt, "Timelock active");
+        self.owner = self.pendingOwner;
+        self.pendingOwner = newAddress(0, 0);
+        self.ownerTransferAt = 0;
+    }
+
     receive(msg: SetFarmConfig) {
         require(sender() == self.owner, "Only owner");
         require(msg.rewardPerSecond > 0, "Invalid reward rate");
@@ -548,7 +642,16 @@ contract QuasarDeFi with Deployable {
         // The documented swap fee is 0.30%; the previous 1% ceiling let the
         // owner charge more than the protocol advertised (F-13).
         require(msg.feeBps > 0 && msg.feeBps <= 30, "Fee must not exceed 0.30%");
-        self.feeBps = msg.feeBps;
+        self.pendingFeeBps = msg.feeBps;
+        self.pendingFeeAt = now() + self.ownerTransferDelay;
+    }
+
+    receive("Apply Fee Bps") {
+        require(sender() == self.owner, "Only owner");
+        require(self.pendingFeeBps > 0 && now() >= self.pendingFeeAt, "Fee timelock active");
+        self.feeBps = self.pendingFeeBps;
+        self.pendingFeeBps = 0;
+        self.pendingFeeAt = 0;
     }
 
     receive(msg: SetPaused) {
@@ -559,7 +662,16 @@ contract QuasarDeFi with Deployable {
     receive(msg: SetMaxTradeBps) {
         require(sender() == self.owner, "Only owner");
         require(msg.maxTradeBps >= 100 && msg.maxTradeBps <= 5000, "Trade limit 1%-50%");
-        self.maxTradeBps = msg.maxTradeBps;
+        self.pendingMaxTradeBps = msg.maxTradeBps;
+        self.pendingMaxTradeAt = now() + self.ownerTransferDelay;
+    }
+
+    receive("Apply Max Trade Bps") {
+        require(sender() == self.owner, "Only owner");
+        require(self.pendingMaxTradeBps > 0 && now() >= self.pendingMaxTradeAt, "Trade limit timelock active");
+        self.maxTradeBps = self.pendingMaxTradeBps;
+        self.pendingMaxTradeBps = 0;
+        self.pendingMaxTradeAt = 0;
     }
     
     // Recover only TON that is not backing LP positions. The previous check
@@ -713,6 +825,16 @@ contract QuasarDeFi with Deployable {
     get fun farmRewardReserve(): Int { return self.farmRewardReserve }
     get fun owner(): Address { return self.owner }
     get fun qsrMaster(): Address { return self.qsrMaster }
+    get fun minimumLiquidity(): Int { return self.minimumLiquidity }
+    get fun priceCumulativeQsrPerTon(): Int { return self.priceCumulativeQsrPerTon }
+    get fun priceCumulativeTonPerQsr(): Int { return self.priceCumulativeTonPerQsr }
+    get fun lastPriceObservation(): Int { return self.lastPriceObservation }
+    get fun pendingFee(): Int { return self.pendingFeeBps }
+    get fun pendingFeeAt(): Int { return self.pendingFeeAt }
+    get fun pendingMaxTrade(): Int { return self.pendingMaxTradeBps }
+    get fun pendingMaxTradeAt(): Int { return self.pendingMaxTradeAt }
+    get fun pendingOwner(): Address { return self.pendingOwner }
+    get fun ownerTransferAt(): Int { return self.ownerTransferAt }
 }
 
 // This is intentionally identical to the wallet in quasar.tact. Keeping the

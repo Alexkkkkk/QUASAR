@@ -27,6 +27,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const walletCode = Cell.fromBoc(readFileSync(join(__dirname, '..', 'build', 'quasar_QuasarWallet.code.boc')))[0];
 const ZERO = Address.parseRaw('0:' + '0'.repeat(64));
 const QSR = 1_000_000_000n;
+const DEADLINE = 2_000_000_000n;
 
 interface Eco {
     bc: Blockchain;
@@ -301,15 +302,15 @@ test('defi: first liquidity provision mints LP proportional to the deposit', asy
 
     await creditDefiDeposit(eco, lp.address, 1n * QSR);
     const addRes = await eco.defi.send(lp.getSender(), { value: 10n * toNano('1') }, {
-        $$type: 'AddLiquidity', tonAmount: 10n * toNano('1'), qsrAmount: QSR
+        $$type: 'AddLiquidity', tonAmount: 10n * toNano('1'), qsrAmount: QSR, minLpOut: 1n, deadline: DEADLINE
     });
     assert.ok(!anyComputeFailed(addRes), 'first liquidity provision must execute without reverts');
 
     const pool = await eco.defi.getPoolInfo();
     assert.equal(pool.tonReserve, 10n * toNano('1'));
     assert.equal(pool.qsrReserve, QSR);
-    assert.equal(pool.totalSupply, 3_162_277_660n, 'first LP mint equals sqrt(ton*qsr) scaled by 1e9');
-    assert.equal(await eco.defi.getLpBalance(lp.address), 3_162_277_660n);
+    assert.equal(pool.totalSupply, 3_162_277_660n, 'total LP supply includes permanently locked minimum liquidity');
+    assert.equal(await eco.defi.getLpBalance(lp.address), 3_162_276_660n);
 });
 
 test('defi: the swap quote getter matches the CPMM formula with the 0.30% fee', async () => {
@@ -317,7 +318,7 @@ test('defi: the swap quote getter matches the CPMM formula with the 0.30% fee', 
     const lp = await eco.bc.treasury('lp');
     await creditDefiDeposit(eco, lp.address, QSR);
     await eco.defi.send(lp.getSender(), { value: 10n * toNano('1') }, {
-        $$type: 'AddLiquidity', tonAmount: 10n * toNano('1'), qsrAmount: QSR
+        $$type: 'AddLiquidity', tonAmount: 10n * toNano('1'), qsrAmount: QSR, minLpOut: 1n, deadline: DEADLINE
     });
 
     const qsrIn = QSR / 2n;
@@ -343,13 +344,13 @@ test('defi: swaps are guarded by slippage and trade-size limits', async () => {
     const lp = await eco.bc.treasury('lp');
     await creditDefiDeposit(eco, lp.address, QSR);
     await eco.defi.send(lp.getSender(), { value: 10n * toNano('1') }, {
-        $$type: 'AddLiquidity', tonAmount: 10n * toNano('1'), qsrAmount: QSR
+        $$type: 'AddLiquidity', tonAmount: 10n * toNano('1'), qsrAmount: QSR, minLpOut: 1n, deadline: DEADLINE
     });
 
     // trade too large: maxTradeBps = 3000 (30% of the reserve)
     await creditDefiDeposit(eco, lp.address, QSR);
     await expectBlocked(
-        eco.defi.send(lp.getSender(), { value: toNano('0.5') }, { $$type: 'SwapToTON', qsrAmount: QSR, minTonOut: 0n }),
+        eco.defi.send(lp.getSender(), { value: toNano('0.5') }, { $$type: 'SwapToTON', qsrAmount: QSR, minTonOut: 0n, deadline: DEADLINE }),
         'a swap above 30% of the pool reserve must revert (Trade too large)'
     );
 
@@ -358,10 +359,49 @@ test('defi: swaps are guarded by slippage and trade-size limits', async () => {
     const quote = await eco.defi.getEstimateSwapToTon(qsrIn);
     await expectBlocked(
         eco.defi.send(lp.getSender(), { value: toNano('0.5') }, {
-            $$type: 'SwapToTON', qsrAmount: qsrIn, minTonOut: quote.tonOut + 1n
+            $$type: 'SwapToTON', qsrAmount: qsrIn, minTonOut: quote.tonOut + 1n, deadline: DEADLINE
         }),
         'a swap below minTonOut must revert (Slippage exceeded)'
     );
+});
+
+test('defi: expired operations are rejected before reserve mutation', async () => {
+    const eco = await deployEco(true);
+    const lp = await eco.bc.treasury('lp-expiry');
+    await creditDefiDeposit(eco, lp.address, QSR);
+    await eco.defi.send(lp.getSender(), { value: 10n * toNano('1') }, {
+        $$type: 'AddLiquidity', tonAmount: 10n * toNano('1'), qsrAmount: QSR, minLpOut: 1n, deadline: DEADLINE
+    });
+
+    const before = await eco.defi.getPoolInfo();
+    eco.bc.now = 2_000_000_001;
+    await expectBlocked(
+        eco.defi.send(lp.getSender(), { value: toNano('0.5') }, {
+            $$type: 'SwapToTON', qsrAmount: QSR / 10n, minTonOut: 0n, deadline: DEADLINE
+        }),
+        'an expired swap must revert'
+    );
+    const after = await eco.defi.getPoolInfo();
+    assert.equal(after.tonReserve, before.tonReserve);
+    assert.equal(after.qsrReserve, before.qsrReserve);
+});
+
+test('defi: owner rotation is two-step and timelocked', async () => {
+    const eco = await deployEco(true);
+    const newOwner = await eco.bc.treasury('defi-new-owner');
+
+    await eco.defi.send(eco.owner.getSender(), { value: toNano('0.1') }, {
+        $$type: 'ProposePoolOwner', newOwner: newOwner.address
+    });
+    assert.ok((await eco.defi.getPendingOwner()).equals(newOwner.address));
+    await expectBlocked(
+        eco.defi.send(newOwner.getSender(), { value: toNano('0.1') }, { $$type: 'AcceptPoolOwner' }),
+        'the new DeFi owner cannot accept before the timelock'
+    );
+
+    eco.bc.now = 1000 + 172801;
+    await eco.defi.send(newOwner.getSender(), { value: toNano('0.1') }, { $$type: 'AcceptPoolOwner' });
+    assert.ok((await eco.defi.getOwner()).equals(newOwner.address));
 });
 
 test('defi: admin functions are owner-only and a paused pool rejects swaps', async () => {
@@ -375,7 +415,7 @@ test('defi: admin functions are owner-only and a paused pool rejects swaps', asy
 
     await eco.defi.send(eco.owner.getSender(), { value: toNano('0.1') }, { $$type: 'SetPaused', paused: true });
     await expectBlocked(
-        eco.defi.send(stranger.getSender(), { value: toNano('0.5') }, { $$type: 'SwapToQSR', tonAmount: toNano('0.1'), minQsrOut: 0n }),
+        eco.defi.send(stranger.getSender(), { value: toNano('0.5') }, { $$type: 'SwapToQSR', tonAmount: toNano('0.1'), minQsrOut: 0n, deadline: DEADLINE }),
         'swaps must revert while the pool is paused'
     );
 

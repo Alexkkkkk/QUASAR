@@ -37,6 +37,7 @@ import { QuasarDeFi } from '../build/quasar_defi_QuasarDeFi.js';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const walletCode = Cell.fromBoc(readFileSync(join(__dirname, '..', 'build', 'quasar_QuasarWallet.code.boc')))[0];
 const ZERO = Address.parseRaw('0:' + '0'.repeat(64));
+const DEADLINE = 2_000_000_000n;
 const emptySlice = beginCell().endCell().asSlice();
 
 const masterSrc = readFileSync(join(__dirname, '..', 'contracts', 'quasar.tact'), 'utf8');
@@ -308,7 +309,7 @@ test('F8+F9+F10 on-chain: DeFi proportional deposit accounting, dust withdrawal,
     const user1 = await eco.bc.treasury('user1');
     await creditDefiDeposit(eco, user1.address, 1_000_000_000n);
     await eco.defi.send(user1.getSender(), { value: 10_000_000_000n }, {
-        $$type: 'AddLiquidity', tonAmount: 10_000_000_000n, qsrAmount: 1_000_000_000n
+        $$type: 'AddLiquidity', tonAmount: 10_000_000_000n, qsrAmount: 1_000_000_000n, minLpOut: 1n, deadline: DEADLINE
     });
     const p1 = await eco.defi.getPoolInfo();
     assert.equal(p1.tonReserve, 10_000_000_000n);
@@ -318,7 +319,7 @@ test('F8+F9+F10 on-chain: DeFi proportional deposit accounting, dust withdrawal,
     const user2 = await eco.bc.treasury('user2');
     await creditDefiDeposit(eco, user2.address, 50_000_000n);
     await eco.defi.send(user2.getSender(), { value: 3_000_000_000n }, {
-        $$type: 'AddLiquidity', tonAmount: 3_000_000_000n, qsrAmount: 30_000_000n
+        $$type: 'AddLiquidity', tonAmount: 3_000_000_000n, qsrAmount: 30_000_000n, minLpOut: 1n, deadline: DEADLINE
     });
     // F8: the pool must not credit the full declared 3 TON — the credited
     // share is bounded by the proportional ~0.3 TON (surplus is refunded;
@@ -333,7 +334,7 @@ test('F8+F9+F10 on-chain: DeFi proportional deposit accounting, dust withdrawal,
     // F9: dust withdrawal must not be blocked by rounding on tiny LP amounts
     const lpBefore = await eco.defi.getLpBalance(user2.address);
     if (lpBefore > 0n) {
-        await eco.defi.send(user2.getSender(), { value: toNano('0.2') }, { $$type: 'RemoveLiquidity', lpAmount: 1n });
+        await eco.defi.send(user2.getSender(), { value: toNano('0.2') }, { $$type: 'RemoveLiquidity', lpAmount: 1n, minTonOut: 0n, minQsrOut: 0n, deadline: DEADLINE });
         assert.equal(await eco.defi.getLpBalance(user2.address), lpBefore - 1n, 'dust must not block withdrawal');
     }
 
@@ -348,7 +349,7 @@ test('hardening on-chain: SweepTON cannot withdraw LP-backed TON', async () => {
     const user = await eco.bc.treasury('lp-owner');
     await creditDefiDeposit(eco, user.address, 1_000_000_000n);
     await eco.defi.send(user.getSender(), { value: 10_000_000_000n }, {
-        $$type: 'AddLiquidity', tonAmount: 10_000_000_000n, qsrAmount: 1_000_000_000n
+        $$type: 'AddLiquidity', tonAmount: 10_000_000_000n, qsrAmount: 1_000_000_000n, minLpOut: 1n, deadline: DEADLINE
     });
 
     assert.ok(await ownerOpBlocked(
@@ -480,6 +481,8 @@ test('F13 on-chain: the DeFi swap fee cannot be raised above the documented 0.30
     await eco.defi.send(eco.owner.getSender(), { value: toNano('0.1') }, { $$type: 'SetFeeBps', feeBps: 50n }).catch(() => {});
     assert.equal(await eco.defi.getFeeConfig(), 30n, 'raising the fee above 30 bps must revert');
     await eco.defi.send(eco.owner.getSender(), { value: toNano('0.1') }, { $$type: 'SetFeeBps', feeBps: 25n });
+    eco.bc.now = 1000 + 172801;
+    await eco.defi.send(eco.owner.getSender(), { value: toNano('0.1') }, 'Apply Fee Bps');
     assert.equal(await eco.defi.getFeeConfig(), 25n, 'a fee at or below the ceiling stays configurable');
 });
 
