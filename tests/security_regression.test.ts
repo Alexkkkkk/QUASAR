@@ -392,12 +392,31 @@ test('F7 source: the AI cooldown is unconditional and every logged action is ove
         'cooldown must not depend on aiFullAutonomy'
     );
     const override = section(masterSrc, 'receive(msg: OwnerOverride)', 'receive("Claim AI Control")');
-    for (const t of ['SetFee', 'ToggleTrading', 'EmergencyPause', 'SetTreasury', 'RotateOracle', 'SetBuyback', 'Rebalance']) {
+    for (const t of ['SetFee', 'ToggleTrading', 'EmergencyPause', 'SetAntiWhale', 'SetTreasury', 'RotateOracle', 'SetBuyback', 'Rebalance', 'GovernanceFee', 'GovernanceBurn', 'GovernanceBuybackThreshold']) {
         assert.ok(override.includes(`"${t}"`), `OwnerOverride must cover ${t}`);
     }
     assert.ok(masterSrc.includes('fun _logAiActionSilent('), 'market signals must be recorded in the action log');
     const signal = section(masterSrc, 'receive(msg: AIPriceSignal)', 'receive(msg: AIAnomalyAlert)');
     assert.ok(!signal.includes('_requireAiCooldown'), 'market signals must not consume the administrative cooldown');
+});
+
+test('F7 on-chain: emergency rollback restores every changed field', async () => {
+    const emergencyEco = await deployEco(false);
+    await emergencyEco.master.send(emergencyEco.owner.getSender(), { value: toNano('0.2') }, 'Toggle AI');
+    await emergencyEco.master.send(emergencyEco.owner.getSender(), { value: toNano('0.2') }, {
+        $$type: 'AIEmergencyPause',
+        queryId: 1n,
+        pause: true,
+        severity: 3n,
+        reason: 'regression'
+    });
+    assert.equal((await emergencyEco.master.getGetFeeConfig()).feeBps, 100n);
+    assert.equal((await emergencyEco.master.getGetFeeConfig()).burnShare, 90n);
+    await emergencyEco.master.send(emergencyEco.owner.getSender(), { value: toNano('0.2') }, { $$type: 'OwnerOverride', actionId: 0n, reason: 'rollback' });
+    assert.equal((await emergencyEco.master.getGetFeeConfig()).feeBps, 30n, 'override must restore emergency fee');
+    assert.equal((await emergencyEco.master.getGetFeeConfig()).burnShare, 50n, 'override must restore emergency burn share');
+    assert.equal(await emergencyEco.master.getIsPaused(), false, 'override must restore pause state');
+    assert.equal(await emergencyEco.master.getIsTradingEnabled(), true, 'override must restore trading state');
 });
 
 test('F7 on-chain: owner override restores the complete AI action state', async () => {

@@ -190,6 +190,10 @@ contract QuasarMaster with Deployable {
     aiActionOldMintable: map<Int, Int>;
     aiActionOldEmergencyPause: map<Int, Int>;
     aiActionOldTrading: map<Int, Int>;
+    aiActionOldBurnShare: map<Int, Int>;
+    aiActionOldMaxTxBps: map<Int, Int>;
+    aiActionOldMaxWalletBps: map<Int, Int>;
+    aiActionOldCooldownSeconds: map<Int, Int>;
     aiActionOldBuybackThreshold: map<Int, Int>;
     aiActionOldBuybackCooldown: map<Int, Int>;
     aiActionOldBuybackBurnPercent: map<Int, Int>;
@@ -994,6 +998,7 @@ contract QuasarMaster with Deployable {
         let oldTrading: Bool = self.tradingEnabled;
         let oldPause: Bool = self.emergencyPause;
         let oldFeeBps: Int = self.feeBps;
+        let oldBurnShare: Int = self.feeBurnShare;
         if (msg.pause) {
             self.emergencyPause = true;
             self.tradingEnabled = false;
@@ -1008,6 +1013,7 @@ contract QuasarMaster with Deployable {
         }
         let id: Int = self._logAiAction("EmergencyPause", oldTrading ? 1 : 0, msg.pause ? 1 : 0, msg.reason);
         self.aiActionOldFeeBps.set(id, oldFeeBps);
+        self.aiActionOldBurnShare.set(id, oldBurnShare);
         self.aiActionOldEmergencyPause.set(id, oldPause ? 1 : 0);
         self.aiActionOldTrading.set(id, oldTrading ? 1 : 0);
         send(SendParameters{ to: sender(), value: 0, mode: SendRemainingValue | SendIgnoreErrors, body: EventAiAction{ actionId: id, actionType: "EmergencyPause", oldValue: oldTrading ? 1 : 0, newValue: msg.pause ? 1 : 0 }.toCell() });
@@ -1039,11 +1045,17 @@ contract QuasarMaster with Deployable {
         self._requireAiAccess();
         self._requireAiCooldown();
         require(msg.maxTxBps == 100 && msg.maxWalletBps == 300 && msg.cooldown == 5, "Transfer limits are fixed");
+        let oldMaxTxBps: Int = self.maxTxBps;
+        let oldMaxWalletBps: Int = self.maxWalletBps;
+        let oldCooldownSeconds: Int = self.cooldownSeconds;
         self.maxTxBps = msg.maxTxBps;
         self.maxWalletBps = msg.maxWalletBps;
         self.cooldownSeconds = msg.cooldown;
-        let id: Int = self._logAiAction("SetAntiWhale", 0, msg.maxTxBps, msg.reason);
-        send(SendParameters{ to: sender(), value: 0, mode: SendRemainingValue | SendIgnoreErrors, body: EventAiAction{ actionId: id, actionType: "SetAntiWhale", oldValue: 0, newValue: msg.maxTxBps }.toCell() });
+        let id: Int = self._logAiAction("SetAntiWhale", oldMaxTxBps, msg.maxTxBps, msg.reason);
+        self.aiActionOldMaxTxBps.set(id, oldMaxTxBps);
+        self.aiActionOldMaxWalletBps.set(id, oldMaxWalletBps);
+        self.aiActionOldCooldownSeconds.set(id, oldCooldownSeconds);
+        send(SendParameters{ to: sender(), value: 0, mode: SendRemainingValue | SendIgnoreErrors, body: EventAiAction{ actionId: id, actionType: "SetAntiWhale", oldValue: oldMaxTxBps, newValue: msg.maxTxBps }.toCell() });
     }
     
     receive(msg: AISetBuybackDirect) {
@@ -1134,9 +1146,9 @@ contract QuasarMaster with Deployable {
             // issuance remains an explicit owner decision.
             self.feeBurnShare = 80;
         }
-        if (msg.action == 1 && msg.sentiment < -30 && self.buybackEnabled && self.buybackPool >= self.buybackThreshold && now() - self.lastBuybackTime >= self.buybackCooldown) {
-            self._executeBuyback(msg.queryId);
-        }
+        // Market data never moves reserve funds. Buybacks remain behind the
+        // owner-authenticated TriggerBuyback path so an oracle message cannot
+        // spend QSR or route TON without an explicit operator decision.
         if (self.feeBurnShare != oldBurnShare) {
             let id: Int = self._logAiActionSilent("PriceSignal", oldBurnShare, self.feeBurnShare, "price-signal");
             self.aiActionOldFeeBps.set(id, oldFeeBps);
@@ -1174,23 +1186,37 @@ contract QuasarMaster with Deployable {
     receive(msg: AIGovernanceProposal) {
         self._requireAiAccess();
         self._requireAiCooldown();
-        self.lastAiActionTime = now();
         require(msg.confidence >= self.minConfidence, "Low confidence");
         self.signalCount = self.signalCount + 1;
+        let oldValue: Int = 0;
+        let actionType: String = "";
         if (msg.proposalType == 1) {
             require(msg.newValue == 30, "Wallet fee is fixed at 30 bps");
+            oldValue = self.feeBps;
             self.feeBps = 30;
+            actionType = "GovernanceFee";
         } else if (msg.proposalType == 2) {
             require(msg.newValue >= 0 && msg.newValue <= 100, "Invalid burn share");
+            oldValue = self.feeBurnShare;
             self.feeBurnShare = msg.newValue;
+            actionType = "GovernanceBurn";
         } else if (msg.proposalType == 4) {
             require(msg.newValue > 0, "Invalid buyback threshold");
+            oldValue = self.buybackThreshold;
             self.buybackThreshold = msg.newValue;
+            actionType = "GovernanceBuybackThreshold";
         } else {
             require(false, "Unsupported governance proposal");
         }
+        let id: Int = self._logAiAction(actionType, oldValue, msg.newValue, msg.description);
+        if (msg.proposalType == 1) {
+            self.aiActionOldFeeBps.set(id, oldValue);
+        } else if (msg.proposalType == 4) {
+            self.aiActionOldBuybackThreshold.set(id, oldValue);
+        }
         self.anomalyLog.set(self.anomalyIndex, AIRecommendation{ timestamp: now(), action: msg.description, confidence: msg.confidence, executed: true });
         self.anomalyIndex = self.anomalyIndex + 1;
+        send(SendParameters{ to: sender(), value: 0, mode: SendRemainingValue | SendIgnoreErrors, body: EventAiAction{ actionId: id, actionType: actionType, oldValue: oldValue, newValue: msg.newValue }.toCell() });
     }
     
     // ═══════════════════════════════════════════════════════════
@@ -1218,12 +1244,22 @@ contract QuasarMaster with Deployable {
         if (act.actionType == "SetFee") { self.feeBps = act.oldValue }
         else if (act.actionType == "ToggleTrading") { self.tradingEnabled = act.oldValue != 0 }
         else if (act.actionType == "EmergencyPause") {
+            let oldBurnShare: Int? = self.aiActionOldBurnShare.get(msg.actionId);
             let oldPause: Int? = self.aiActionOldEmergencyPause.get(msg.actionId);
             let oldTrading: Int? = self.aiActionOldTrading.get(msg.actionId);
             let oldFeeBps: Int? = self.aiActionOldFeeBps.get(msg.actionId);
             self.emergencyPause = oldPause != null && oldPause!! != 0;
             self.tradingEnabled = oldTrading == null ? act.oldValue != 0 : oldTrading!! != 0;
             if (oldFeeBps != null) { self.feeBps = oldFeeBps!! }
+            if (oldBurnShare != null) { self.feeBurnShare = oldBurnShare!! }
+        }
+        else if (act.actionType == "SetAntiWhale") {
+            let oldMaxTxBps: Int? = self.aiActionOldMaxTxBps.get(msg.actionId);
+            let oldMaxWalletBps: Int? = self.aiActionOldMaxWalletBps.get(msg.actionId);
+            let oldCooldownSeconds: Int? = self.aiActionOldCooldownSeconds.get(msg.actionId);
+            if (oldMaxTxBps != null) { self.maxTxBps = oldMaxTxBps!! }
+            if (oldMaxWalletBps != null) { self.maxWalletBps = oldMaxWalletBps!! }
+            if (oldCooldownSeconds != null) { self.cooldownSeconds = oldCooldownSeconds!! }
         }
         else if (act.actionType == "SetTreasury") {
             let prevTreasury: Address? = self.aiActionOldAddress.get(msg.actionId);
@@ -1246,6 +1282,16 @@ contract QuasarMaster with Deployable {
             self.feeBurnShare = act.oldValue;
             let oldFeeBps: Int? = self.aiActionOldFeeBps.get(msg.actionId);
             if (oldFeeBps != null) { self.feeBps = oldFeeBps!! }
+        }
+        else if (act.actionType == "GovernanceFee") {
+            self.feeBps = act.oldValue;
+        }
+        else if (act.actionType == "GovernanceBurn") {
+            self.feeBurnShare = act.oldValue;
+        }
+        else if (act.actionType == "GovernanceBuybackThreshold") {
+            let oldThreshold: Int? = self.aiActionOldBuybackThreshold.get(msg.actionId);
+            if (oldThreshold != null) { self.buybackThreshold = oldThreshold!! }
         }
         else if (act.actionType == "PriceSignal" || act.actionType == "AnomalyAlert") {
             self.feeBurnShare = act.oldValue;
