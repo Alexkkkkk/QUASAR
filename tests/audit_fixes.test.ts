@@ -4,6 +4,8 @@
  *   F-17 🔴 ClaimReferralRewards could spend pool-encumbered reserve
  *   F-18 🔴 `mintable` could be switched off with no way back (aiFullAutonomy
  *           emergency pause / AI signals), permanently bricking issuance
+ *   F-20 🔴 unauthenticated wallet cleanup messages could erase pending
+ *           transfer/payout state before a bounce
  *
  * Source invariants fail if a fix is reverted; the on-chain test drives the
  * real contract through the sandbox.
@@ -20,6 +22,7 @@ import { QuasarMaster } from '../build/quasar_QuasarMaster.js';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const walletCode = Cell.fromBoc(readFileSync(join(__dirname, '..', 'build', 'quasar_QuasarWallet.code.boc')))[0];
 const masterSrc = readFileSync(join(__dirname, '..', 'contracts', 'quasar.tact'), 'utf8');
+const defiSrc = readFileSync(join(__dirname, '..', 'contracts', 'quasar_defi.tact'), 'utf8');
 
 function section(src: string, from: string, to?: string): string {
     const i = src.indexOf(from);
@@ -95,6 +98,44 @@ test('F-18 on-chain: only the owner can bring minting back after a full freeze',
     // the owner restores issuance
     await m.send(owner.getSender(), { value: toNano('0.1') }, 'Resume Minting');
     assert.equal((await m.getGetJettonData()).mintable, true, 'the owner must be able to resume minting');
+});
+
+test('F-20 source: wallet cleanup messages authenticate their expected senders', () => {
+    for (const [name, src] of [['Master', masterSrc], ['DeFi', defiSrc]] as const) {
+        const wallet = section(src, 'contract QuasarWallet');
+        const transferConfirmed = section(wallet, 'receive(msg: TransferConfirmed)', 'receive(msg: BurnConfirmed)');
+        assert.ok(
+            transferConfirmed.includes('self.pendingResponseReceivers.get(msg.queryId)'),
+            `${name} wallet must load the expected transfer receiver`
+        );
+        assert.ok(
+            transferConfirmed.includes('Unauthorized confirmation'),
+            `${name} wallet must authenticate transfer confirmations`
+        );
+
+        const burnConfirmed = section(wallet, 'receive(msg: BurnConfirmed)', 'receive(msg: TokenExcesses)');
+        assert.ok(
+            burnConfirmed.includes('sender() == self.master'),
+            `${name} wallet must accept burn confirmations only from the master`
+        );
+
+        const excesses = section(wallet, 'receive(msg: TokenExcesses)', 'bounced(msg: bounced<InternalTransfer>)');
+        assert.ok(
+            excesses.includes('pendingResponseReceivers.get(msg.queryId)') &&
+                excesses.includes('pendingPoolPayoutReceivers.get(msg.queryId)') &&
+                excesses.includes('Unauthorized excess'),
+            `${name} wallet must authenticate excesses against the expected destination wallet`
+        );
+        assert.ok(
+            wallet.includes('pendingPoolPayoutReceivers: map<Int, Address>;') &&
+                wallet.includes('self.pendingPoolPayoutReceivers.set(msg.queryId, msg.destination);'),
+            `${name} wallet must retain the pool payout destination for bounce authentication`
+        );
+        assert.ok(
+            excesses.includes('self.pendingPoolPayoutReceivers.set(msg.queryId, null);'),
+            `${name} wallet must consume the pool receiver record with the payout`
+        );
+    }
 });
 
 test('F-07/F-28 source: AI rebalance rollback restores every changed field', () => {
