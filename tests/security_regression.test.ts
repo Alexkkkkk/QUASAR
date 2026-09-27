@@ -269,11 +269,16 @@ test('F7+F4 on-chain: vesting claim blocked while paused; fee config recoverable
     assert.equal(info.claimed, 0n, 'claim during pause must be blocked');
     assert.equal(await eco.master.getGetCustodyBalance(), 1_000_000_000n);
 
-    // recovery: fee config returns to 30 bps after the emergency
+    // recovery: fee config returns to 30 bps after the emergency.
+    // v5: SetFeeConfig stages the values; they apply only after the
+    // timelocked "Confirm Fee Config" (same 48h delay as ownership).
     await eco.master.send(eco.owner.getSender(), { value: toNano('0.1') }, 'Resume');
     await eco.master.send(eco.owner.getSender(), { value: toNano('0.1') }, {
         $$type: 'SetFeeConfig', feeBps: 30, burnShare: 50, maxTxBps: 100, maxWalletBps: 300, cooldown: 5
     });
+    assert.equal((await eco.master.getGetFeeConfig()).feeBps, 100n, 'staged config must not apply before confirmation');
+    eco.bc.now = 2000 + 172_800;
+    await eco.master.send(eco.owner.getSender(), { value: toNano('0.1') }, 'Confirm Fee Config');
     assert.equal((await eco.master.getGetFeeConfig()).feeBps, 30n);
 
     // and the claim executes successfully after resume (payout path verified

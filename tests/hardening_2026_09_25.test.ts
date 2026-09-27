@@ -276,7 +276,7 @@ test('hardening source invariants (F-21/F-22/F-23)', () => {
         'staking rewards must be capped by the fee-funded pool (F-23)'
     );
     assert.ok(
-        master.includes('mode: SendPayGasSeparately | SendIgnoreErrors, body: EventBuybackExecuted'),
-        'the buyback receipt must not consume the remaining-value slot (F-22)'
+        master.includes('emit(EventBuybackExecuted{ tonSpent: 0, qsrBurned: burnPart }.toCell());'),
+        'the buyback receipt must not consume the remaining-value slot (F-22: v5 uses emit, an external out message)'
     );
 });
