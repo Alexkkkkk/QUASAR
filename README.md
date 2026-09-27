@@ -210,6 +210,7 @@ The AI Oracle can apply bounded risk controls with owner-confirmed issuance:
 - **Dead Man's Switch**: `Claim AI Control` lets the owner reclaim control if the AI is silent 7 days
 - **Minting authority**: AI may pause trading and adjust fees, but only the owner-authenticated `Stop Minting` path can set `mintable = false`
 - **AI cooldown**: `aiActionCooldown` (6h) gates every administrative AI action in every mode; market signals are logged but not rate-limited
+- **AI fund-flow boundary**: market signals never execute buybacks or move reserve funds; an owner-authenticated `TriggerBuyback` is required
 
 ---
 
