@@ -398,14 +398,15 @@ test('F7 on-chain: emergency rollback restores every changed field', async () =>
     const emergencyEco = await deployEco(false);
     await emergencyEco.master.send(emergencyEco.owner.getSender(), { value: toNano('0.2') }, 'Toggle AI');
     await emergencyEco.master.send(emergencyEco.owner.getSender(), { value: toNano('0.2') }, {
-        $type: 'AIEmergencyPause',
+        $$type: 'AIEmergencyPause',
+        queryId: 1n,
         pause: true,
         severity: 3,
         reason: 'regression'
     });
     assert.equal((await emergencyEco.master.getGetFeeConfig()).feeBps, 100n);
     assert.equal((await emergencyEco.master.getGetFeeConfig()).burnShare, 90n);
-    await emergencyEco.master.send(emergencyEco.owner.getSender(), { value: toNano('0.2') }, { $type: 'OwnerOverride', actionId: 0n, reason: 'rollback' });
+    await emergencyEco.master.send(emergencyEco.owner.getSender(), { value: toNano('0.2') }, { $$type: 'OwnerOverride', actionId: 0n, reason: 'rollback' });
     assert.equal((await emergencyEco.master.getGetFeeConfig()).feeBps, 30n, 'override must restore emergency fee');
     assert.equal((await emergencyEco.master.getGetFeeConfig()).burnShare, 50n, 'override must restore emergency burn share');
     assert.equal(await emergencyEco.master.getIsPaused(), false, 'override must restore pause state');
