@@ -23,6 +23,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const walletCode = Cell.fromBoc(readFileSync(join(__dirname, '..', 'build', 'quasar_QuasarWallet.code.boc')))[0];
 const masterSrc = readFileSync(join(__dirname, '..', 'contracts', 'quasar.tact'), 'utf8');
 const defiSrc = readFileSync(join(__dirname, '..', 'contracts', 'quasar_defi.tact'), 'utf8');
+const commonSrc = readFileSync(join(__dirname, '..', 'contracts', 'quasar_common.tact'), 'utf8');
 
 function section(src: string, from: string, to?: string): string {
     const i = src.indexOf(from);
@@ -102,7 +103,7 @@ test('F-18 on-chain: only the owner can bring minting back after a full freeze',
 
 test('F-20 source: wallet cleanup messages authenticate their expected senders', () => {
     for (const [name, src] of [['Master', masterSrc], ['DeFi', defiSrc]] as const) {
-        const wallet = section(src, 'contract QuasarWallet');
+        const wallet = section(commonSrc, 'contract QuasarWallet'); // wallet lives in the shared source of truth
         const transferConfirmed = section(wallet, 'receive(msg: TransferConfirmed)', 'receive(msg: BurnConfirmed)');
         assert.ok(
             transferConfirmed.includes('self.pendingResponseReceivers.get(msg.queryId)'),
@@ -188,7 +189,7 @@ test('owner confirmation: AI risk paths leave mintable unchanged', async () => {
 });
 
 test('F-19 source: rejected fee messages restore the deducted fee', () => {
-    const wallet = section(masterSrc, 'contract QuasarWallet');
+    const wallet = section(commonSrc, 'contract QuasarWallet'); // wallet lives in the shared source of truth
     const transfer = section(wallet, 'receive(msg: TokenTransfer)', 'receive(msg: PoolPayout)');
     assert.ok(
         transfer.includes('bounce: true, mode: SendPayGasSeparately, body: FeeTransfer'),

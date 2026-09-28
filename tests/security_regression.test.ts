@@ -41,6 +41,7 @@ const emptySlice = beginCell().endCell().asSlice();
 
 const masterSrc = readFileSync(join(__dirname, '..', 'contracts', 'quasar.tact'), 'utf8');
 const defiSrc = readFileSync(join(__dirname, '..', 'contracts', 'quasar_defi.tact'), 'utf8');
+const commonSrc = readFileSync(join(__dirname, '..', 'contracts', 'quasar_common.tact'), 'utf8');
 
 // ═══════════════ Source invariant layer (fails if a fix is reverted) ═══════════════
 
@@ -160,7 +161,7 @@ test('F-03/F-16 source: the web UI deposits QSR first and reads live getters', (
 });
 
 test('F3 source: wallet fee math is pinned to 30 bps and README documents it', () => {
-    const wallet = section(masterSrc, 'receive(msg: TokenTransfer)');
+    const wallet = section(commonSrc, 'receive(msg: TokenTransfer)'); // wallet lives in the shared source of truth
     assert.ok(wallet.includes('msg.amount * 30 / 10000'), 'wallet fee must stay 0.30% while unenforceable config exists');
     const readme = readFileSync(join(__dirname, '..', 'README.md'), 'utf8');
     assert.ok(readme.includes('not enforced in wallet code'), 'README must not claim an unenforced max-wallet limit');

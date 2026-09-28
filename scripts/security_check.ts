@@ -4,6 +4,7 @@ import { join } from 'node:path';
 const root = join(import.meta.dirname, '..');
 const master = readFileSync(join(root, 'contracts', 'quasar.tact'), 'utf8');
 const defi = readFileSync(join(root, 'contracts', 'quasar_defi.tact'), 'utf8');
+const common = readFileSync(join(root, 'contracts', 'quasar_common.tact'), 'utf8');
 
 function assertContains(source: string, needle: string, label: string) {
     if (!source.includes(needle)) throw new Error('Missing security invariant: ' + label);
@@ -62,8 +63,8 @@ assertContains(defi, 'self.pendingFeeAt = now() + self.ownerTransferDelay;', 'De
 assertContains(defi, 'self.pendingMaxTradeAt = now() + self.ownerTransferDelay;', 'DeFi trade-limit changes are staged behind a timelock');
 assertContains(defi, 'priceCumulativeQsrPerTon: Int;', 'DeFi exposes cumulative price observations for TWAP consumers');
 
-assertContains(master, 'message(0xd53276db) TokenExcesses', 'excesses use the TEP-74 opcode (F-21)');
-assertContains(master, 'body: TokenExcesses{ queryId: msg.queryId }.toCell()', 'excesses carry the request query id (F-21)');
+assertContains(common, 'message(0xd53276db) TokenExcesses', 'excesses use the TEP-74 opcode (F-21)');
+assertContains(common, 'body: TokenExcesses{ queryId: msg.queryId }.toCell()', 'excesses carry the request query id (F-21)');
 assertContains(master, 'return accrued > self.stakingRewardsPool ? self.stakingRewardsPool : accrued;', 'staking rewards are capped by the fee pool (F-23)');
 assertContains(master, 'emit(EventBuybackExecuted{ tonSpent: 0, qsrBurned: burnPart }.toCell());', 'the buyback receipt keeps the remaining-value slot free (F-22: v5 uses an emit() external message, which cannot consume it)');
 
