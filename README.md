@@ -308,7 +308,7 @@ npm run website      # Serves website/ on localhost
 |----------|------|-------------|
 | `QuasarMaster` | `contracts/quasar.tact` | Jetton minter, fee distributor, staking, AI oracle |
 | `QuasarDeFi` | `contracts/quasar_defi.tact` | CPMM DEX, liquidity pool, yield farming |
-| `QuasarWallet` | `contracts/quasar.tact` | Individual wallet with fee deduction |
+| `QuasarWallet` | `contracts/quasar_common.tact` | Shared wallet source imported by Master and DeFi |
 
 ---
 

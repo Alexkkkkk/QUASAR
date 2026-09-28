@@ -22,7 +22,7 @@ Companion documents:
       branches with conflicts.
 - [x] TEP-74 excess/refund semantics preserved: no pending-state removal
       without a refund path.
-- [x] CI is green on the reconciled `main` (validate on `3ebde53`).
+- [x] CI is green on the current reconciled `main`.
 - [x] Single source of truth for the two `QuasarWallet` copies
       is live through `contracts/quasar_common.tact`, imported by both
       `quasar.tact` and `quasar_defi.tact`.
