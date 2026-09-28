@@ -342,7 +342,6 @@ contract QuasarMaster with Deployable {
         self.masterPayoutSeq = 0;
         self.govProposalCount = 0;
         self.pendingFee = 0;
-        self.pendingFee = 0;
         self.pendingFeeBurnShare = 0;
         self.pendingMaxTx = 0;
         self.pendingMaxWallet = 0;
@@ -697,6 +696,21 @@ contract QuasarMaster with Deployable {
         require(msg.amount > 0, "Invalid amount");
         let wInit: StateInit = initOf QuasarWallet(msg.originalSender, myAddress());
         require(sender() == contractAddress(wInit), "Invalid fee source");
+
+        // P0.2: the fee transfer proves the sending wallet's outbound operation
+        // reached the accounting stage, so the source wallet can drop its
+        // pending fee/receiver/response records for this query id. The master
+        // dispatches the confirmation because the receiving wallet must keep
+        // the TEP-74 `excesses` refund as its only extra message and a freshly
+        // derived wallet has no spare balance for a cleanup send. The fee
+        // source is authenticated above, so the cleanup is trusted.
+        send(SendParameters{
+            to: contractAddress(wInit),
+            value: ton("0.005"),
+            bounce: false,
+            mode: SendPayGasSeparately | SendIgnoreErrors,
+            body: TransferConfirmed{ queryId: msg.queryId }.toCell()
+        });
         
         self.totalFeesCollected = self.totalFeesCollected + msg.amount;
         self.reserveBalance = self.reserveBalance + msg.amount;
@@ -761,8 +775,10 @@ contract QuasarMaster with Deployable {
             self._sendTokens(self.treasury, treasuryAmt, msg.queryId, msg.originalSender);
         }
         
-        // Auto-buyback
-        if (self.buybackEnabled && self.buybackPool >= self.buybackThreshold && now() - self.lastBuybackTime >= self.buybackCooldown) {
+        // Auto-buyback. A pending swap leg owns buybackSwapPending/QueryId;
+        // starting another swap here would overwrite the tracking record and
+        // desync the reserve accounting when the first proceeds arrive (M-03).
+        if (self.buybackEnabled && self.buybackSwapPending == 0 && self.buybackPool >= self.buybackThreshold && now() - self.lastBuybackTime >= self.buybackCooldown) {
             self._executeBuyback(msg.queryId);
         }
         

@@ -164,7 +164,10 @@ test('F3 source: wallet fee math is pinned to 30 bps and README documents it', (
     const wallet = section(commonSrc, 'receive(msg: TokenTransfer)'); // wallet lives in the shared source of truth
     assert.ok(wallet.includes('msg.amount * 30 / 10000'), 'wallet fee must stay 0.30% while unenforceable config exists');
     const readme = readFileSync(join(__dirname, '..', 'README.md'), 'utf8');
-    assert.ok(readme.includes('not enforced in wallet code'), 'README must not claim an unenforced max-wallet limit');
+    // The audited wording mirrors the contract: the 3% wallet ceiling IS enforced
+    // in QuasarWallet (InternalTransfer), so the README must claim exactly that.
+    assert.ok(readme.includes('receiving wallets at 3%'), 'README must document the enforced max-wallet limit');
+    assert.ok(!readme.includes('not enforced in wallet code'), 'README must not claim an unenforced max-wallet limit');
     assert.ok(readme.includes('Fixed at 0.30% in wallet code'), 'README must document the fixed fee');
 });
 

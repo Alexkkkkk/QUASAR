@@ -63,7 +63,11 @@ assertContains(defi, 'self.pendingFeeAt = now() + self.ownerTransferDelay;', 'De
 assertContains(defi, 'self.pendingMaxTradeAt = now() + self.ownerTransferDelay;', 'DeFi trade-limit changes are staged behind a timelock');
 assertContains(defi, 'priceCumulativeQsrPerTon: Int;', 'DeFi exposes cumulative price observations for TWAP consumers');
 
+assertContains(master, 'self.buybackSwapPending == 0 && self.buybackPool >= self.buybackThreshold', 'a pending buyback swap cannot be overwritten by the fee path (M-03)');
+
 assertContains(common, 'message(0xd53276db) TokenExcesses', 'excesses use the TEP-74 opcode (F-21)');
+assertContains(master, 'body: TransferConfirmed{ queryId: msg.queryId }.toCell()', 'the master dispatches source-wallet cleanup from the authenticated FeeTransfer path (P0.2)');
+assertContains(common, 'if (receiver == null) { return }', 'stale transfer confirmations are a no-op, not a revert (P0.2)');
 assertContains(common, 'body: TokenExcesses{ queryId: msg.queryId }.toCell()', 'excesses carry the request query id (F-21)');
 assertContains(master, 'return accrued > self.stakingRewardsPool ? self.stakingRewardsPool : accrued;', 'staking rewards are capped by the fee pool (F-23)');
 assertContains(master, 'emit(EventBuybackExecuted{ tonSpent: 0, qsrBurned: burnPart }.toCell());', 'the buyback receipt keeps the remaining-value slot free (F-22: v5 uses an emit() external message, which cannot consume it)');
@@ -93,5 +97,7 @@ console.log('Security invariants passed: ' + [
     'farm emergency withdrawal',
     'DeFi owner timelock',
     'timelocked DeFi fee controls',
-    'AMM price observations'
+    'AMM price observations',
+    'buyback swap overlap guard',
+    'authenticated transfer confirmations'
 ].join(', '));

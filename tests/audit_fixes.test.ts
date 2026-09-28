@@ -18,6 +18,7 @@ import { fileURLToPath } from 'node:url';
 import { beginCell, Cell, toNano } from '@ton/core';
 import { Blockchain } from '@ton/sandbox';
 import { QuasarMaster } from '../build/quasar_QuasarMaster.js';
+import { QuasarWallet } from '../build/quasar_QuasarWallet.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const walletCode = Cell.fromBoc(readFileSync(join(__dirname, '..', 'build', 'quasar_QuasarWallet.code.boc')))[0];
@@ -186,6 +187,69 @@ test('owner confirmation: AI risk paths leave mintable unchanged', async () => {
 
     await m.send(owner.getSender(), { value: toNano('0.1') }, 'Stop Minting');
     assert.equal((await m.getGetJettonData()).mintable, false, 'owner must still be able to stop minting explicitly');
+});
+
+test('P0.2 source: the master confirms transfers for source-wallet cleanup', () => {
+    const fee = section(masterSrc, 'receive(msg: FeeTransfer)', 'receive(msg: TriggerBuyback)');
+    assert.ok(
+        fee.includes('body: TransferConfirmed{ queryId: msg.queryId }.toCell()'),
+        'the master must dispatch TransferConfirmed once the fee source is authenticated'
+    );
+    assert.ok(
+        fee.includes('"Invalid fee source"'),
+        'the cleanup dispatch must sit behind fee-source authentication'
+    );
+    const wallet = section(commonSrc, 'receive(msg: InternalTransfer)', 'receive(msg: TransferConfirmed)');
+    assert.ok(
+        !wallet.includes('TransferConfirmed{'),
+        'the receiving wallet must keep the TEP-74 excess refund as its only extra message'
+    );
+    const confirm = section(commonSrc, 'receive(msg: TransferConfirmed)', 'receive(msg: BurnConfirmed)');
+    assert.ok(
+        confirm.includes('if (receiver == null) { return }'),
+        'stale confirmations must be a no-op instead of reverting'
+    );
+    assert.ok(
+        confirm.includes('sender() == self.master'),
+        'confirmations must be authenticated against the master'
+    );
+});
+
+test('P0.2 on-chain: a query id is reusable after a successful transfer', async () => {
+    const QSR = 1_000_000_000n;
+    const { bc, owner, m } = await deployMaster();
+    const alice = await bc.treasury('alice');
+    const bob = await bc.treasury('bob');
+
+    await m.send(owner.getSender(), { value: toNano('0.3') }, { $$type: 'Mint', amount: 1_000n * QSR, receiver: alice.address });
+
+    const aliceC = bc.openContract(await QuasarWallet.fromInit(alice.address, m.address));
+    const mkTransfer = (queryId: bigint) => aliceC.send(bc.sender(alice.address), { value: toNano('0.1') }, {
+        $$type: 'TokenTransfer',
+        queryId,
+        amount: 100n * QSR,
+        destination: bob.address,
+        responseDestination: alice.address,
+        customPayload: null,
+        forwardTonAmount: 0n,
+        forwardPayload: beginCell().endCell().asSlice()
+    });
+
+    const first = await mkTransfer(7n);
+    assert.ok(
+        !first.transactions.some((t: any) => t.description?.computePhase?.success === false),
+        'the first transfer must fully commit'
+    );
+
+    // Clear the 5s wallet cooldown, then reuse the same query id. Before the
+    // master-confirmed cleanup this reverted with "Query ID already used"
+    // because the pending maps kept the id forever.
+    bc.now = 2000;
+    const second = await mkTransfer(7n);
+    assert.ok(
+        !second.transactions.some((t: any) => t.description?.computePhase?.success === false),
+        'reusing the query id after confirmation must not revert - pending state must be cleaned'
+    );
 });
 
 test('F-19 source: rejected fee messages restore the deducted fee', () => {

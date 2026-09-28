@@ -92,13 +92,24 @@ contract QuasarWallet {
                 body: TokenExcesses{ queryId: msg.queryId }.toCell()
             });
         }
+
+        // NOTE (P0.2): this receiver must not send anything else. A freshly
+        // derived wallet has no spare balance, so a balance-funded cleanup
+        // message would be skipped for lack of funds, and a second
+        // value-carrying action would break the TEP-74 refund. Source-wallet
+        // pending cleanup is dispatched by the master when the FeeTransfer
+        // arrives (see quasar.tact).
     }
 
     receive(msg: TransferConfirmed) {
         let receiver: Address? = self.pendingResponseReceivers.get(msg.queryId);
-        require(receiver != null, "Unknown transfer");
-        let receiverInit: StateInit = initOf QuasarWallet(receiver!!, self.master);
-        require(sender() == contractAddress(receiverInit), "Unauthorized confirmation");
+        // A confirmation for an unknown or already-cleaned query id is a no-op:
+        // duplicates and late messages must not fail or double-clean.
+        if (receiver == null) { return }
+        // The cleanup is dispatched by the master, which authenticates the fee
+        // source wallet before forwarding the confirmation; anything else must
+        // not be able to erase pending refund state (F-20).
+        require(sender() == self.master, "Unauthorized confirmation");
         self.pendingResponseFees.set(msg.queryId, null);
         self.pendingResponseReceivers.set(msg.queryId, null);
         self.pendingResponses.set(msg.queryId, null);

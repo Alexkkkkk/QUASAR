@@ -37,7 +37,7 @@ Companion documents:
       deposit on failed payouts.
 - [x] Master keeps `custodyBalance` consistent on bounced/failed vesting,
       unstake and referral payouts.
-- [ ] A successful user transfer does not currently emit `TransferConfirmed` from the receiving wallet; pending response maps are cleaned on bounce/excess paths, while `BurnConfirmed` is wired. Add an authenticated confirmation path without changing TEP-74 response semantics before testnet.
+- [x] A successful user transfer retires the source wallet's pending records: the master dispatches an authenticated `TransferConfirmed` from the `FeeTransfer` path (`quasar.tact`), stale confirmations are a no-op, and the receiving wallet keeps the TEP-74 `excesses` refund as its only extra message. Regression: `tests/audit_fixes.test.ts` (P0.2 on-chain query-id reuse).
 - [x] User query ids and internal operation ids are separated; a duplicate
       user query id cannot break cleanup or enable replay.
 - [x] Mint bounce rolls back supply (regression covered).
@@ -178,7 +178,7 @@ APY, full multisig governance, or enforced wallet limits.
 | --- | --- | --- |
 | Wave 0: PR #34/#37 reconciliation | Done | #40, #41, #42 merged, CI green |
 | P0.1 payout lifecycle | Done | #40, #41 (`PayoutFailed`, pending maps) |
-| P0.2 fee atomicity / excesses proxy | Partial | fee bounce/excess paths are covered; successful-transfer pending cleanup needs a TEP-74-compatible design |
+| P0.2 fee atomicity / excesses proxy | Done | fee bounce/excess paths covered; successful-transfer cleanup dispatched by the master via authenticated `TransferConfirmed` |
 | P0.3 reserves & liabilities | Partial | encumbrance done; getter set + legacy `DefiPayout` decision open |
 | P0.4 anti-whale semantics | Mostly done | #42; boundary matrix + README spec open |
 | P1 admin/timelock/multisig | Done | #39, #42 (`QuasarAdminTimelock`) |
