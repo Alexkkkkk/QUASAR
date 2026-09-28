@@ -75,6 +75,13 @@ function networkEndpoint() {
     return config.toncenter?.[network] || `https://${network}.toncenter.com/api/v2/jsonRPC`;
 }
 
+// Toncenter exposes a REST API beside the jsonRPC endpoint (e.g.
+// .../api/v2/getAddressBalance). Strip the jsonRPC suffix so REST reads do not
+// hit .../api/v2/jsonRPC/getAddressBalance, which does not exist.
+function restEndpoint() {
+    return networkEndpoint().replace(/jsonRPC\/?$/, '');
+}
+
 function addressStackArg(address) {
     return ['slice', { bytes: beginCell().storeAddress(Address.parse(address)).endCell().toB64() }];
 }
@@ -171,7 +178,7 @@ function updateWalletUI(wallet) {
 // ─── Balance Loader ───
 async function loadBalances(address) {
     try {
-        const res = await fetch(`${networkEndpoint()}/getAddressBalance?address=${address}`);
+        const res = await fetch(`${restEndpoint()}getAddressBalance?address=${address}`);
         const data = await res.json();
         if (data && data.result) {
             setText('ton-balance', fmt(BigInt(data.result), 9, 'TON'));

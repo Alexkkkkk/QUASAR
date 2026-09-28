@@ -1,0 +1,53 @@
+name: Deploy website to GitHub Pages
+
+# Serves `website/` at a stable, anonymous HTTPS origin so that the TEP-74
+# jetton metadata URL, the TON Connect manifest and its iconUrl all resolve
+# with the correct MIME type. Per the TON Connect manifest specification the
+# dApp origin must host the manifest, so this workflow is the source of truth
+# for the "url" field in website/tonconnect-manifest.json.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'website/**'
+      - '.github/workflows/pages.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+        with:
+          # Enable Pages automatically if the repository has not switched its
+          # Pages source to "GitHub Actions" yet.
+          enablement: true
+
+      - name: Upload website as the Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: website
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        name: Deploy to GitHub Pages
+        uses: actions/deploy-pages@v4

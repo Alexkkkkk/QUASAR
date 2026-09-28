@@ -363,7 +363,7 @@ npm run website      # Serves website/ on localhost
 - Testnet & audit readiness checklist: [docs/TESTNET_AUDIT_READINESS_CHECKLIST.md](docs/TESTNET_AUDIT_READINESS_CHECKLIST.md)
 - Mainnet-readiness checklist: [docs/MAINNET_READINESS_CHECKLIST.md](docs/MAINNET_READINESS_CHECKLIST.md)
 - Testnet smoke runbook: [docs/TESTNET_SMOKE_RUNBOOK.md](docs/TESTNET_SMOKE_RUNBOOK.md)
-- Website: [quasar-ton.netlify.app](https://quasar-ton.netlify.app)
+- Website: [alexkkkkk.github.io/QUASAR](https://alexkkkkk.github.io/QUASAR)
 - Telegram: [@quasar_ton](https://t.me/quasar_ton)
 - Twitter: [@quasar_ton](https://twitter.com/quasar_ton)
 
