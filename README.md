@@ -288,6 +288,12 @@ The unified deployment mints the configured initial allocation and immediately
 locks minting. Any alternative allocation must be reviewed against the hard
 1,000,000,000 QSR cap before deployment.
 
+Operational checklists:
+
+- `docs/TESTNET_DEPLOY_CHECKLIST.md` — step-by-step disposable testnet deploy checklist.
+- `docs/TESTNET_SMOKE_RUNBOOK.md` — automated + manual post-deploy smoke flow.
+- `docs/MAINNET_READINESS_CHECKLIST.md` — later mainnet release gate.
+
 ### 4. Serve Website
 
 ```bash
@@ -302,7 +308,7 @@ npm run website      # Serves website/ on localhost
 |----------|------|-------------|
 | `QuasarMaster` | `contracts/quasar.tact` | Jetton minter, fee distributor, staking, AI oracle |
 | `QuasarDeFi` | `contracts/quasar_defi.tact` | CPMM DEX, liquidity pool, yield farming |
-| `QuasarWallet` | `contracts/quasar.tact` | Individual wallet with fee deduction |
+| `QuasarWallet` | `contracts/quasar_common.tact` | Shared wallet source imported by Master and DeFi |
 
 ---
 
