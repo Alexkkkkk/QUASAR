@@ -15,10 +15,12 @@ const OP = {
     STAKE_QSR: 3203459332,
     UNSTAKE_QSR: 4284693473,
     CLAIM_STAKE: 155852668,
-    ADD_LIQUIDITY: 146776957,
-    REMOVE_LIQUIDITY: 3287568056,
-    SWAP_TO_TON: 1118291020,
-    SWAP_TO_QSR: 3020093557,
+    // DeFi opcodes aligned with the compiled QuasarDeFi ABI (Tact hashes the
+    // message name; the previous values were hand-written and wrong).
+    ADD_LIQUIDITY: 3092728186,
+    REMOVE_LIQUIDITY: 1352338794,
+    SWAP_TO_TON: 2498242160,
+    SWAP_TO_QSR: 1827817842,
     CLAIM_FARM: 1360209904,
     REFUND_PENDING_QSR: 1093959957,
 };
@@ -73,6 +75,13 @@ function networkEndpoint() {
     const config = window.QUASAR_CONFIG || {};
     const network = config.network === 'mainnet' ? 'mainnet' : 'testnet';
     return config.toncenter?.[network] || `https://${network}.toncenter.com/api/v2/jsonRPC`;
+}
+
+// Toncenter exposes a REST API beside the jsonRPC endpoint (e.g.
+// .../api/v2/getAddressBalance). Strip the jsonRPC suffix so REST reads do not
+// hit .../api/v2/jsonRPC/getAddressBalance, which does not exist.
+function restEndpoint() {
+    return networkEndpoint().replace(/jsonRPC\/?$/, '');
 }
 
 function addressStackArg(address) {
@@ -171,7 +180,7 @@ function updateWalletUI(wallet) {
 // ─── Balance Loader ───
 async function loadBalances(address) {
     try {
-        const res = await fetch(`${networkEndpoint()}/getAddressBalance?address=${address}`);
+        const res = await fetch(`${restEndpoint()}getAddressBalance?address=${address}`);
         const data = await res.json();
         if (data && data.result) {
             setText('ton-balance', fmt(BigInt(data.result), 9, 'TON'));
@@ -268,6 +277,12 @@ export async function quoteSwap(direction, amountNano) {
 
     const gross = (amountNano * qsrReserve) / (tonReserve + amountNano);
     return gross - (gross * feeBps) / 10000n;
+}
+
+// Absolute unix-seconds deadline for DeFi operations. The DeFi contracts
+// reject any message whose deadline has passed (see _requireDeadline).
+function deadline(seconds = 300) {
+    return Math.floor(Date.now() / 1000) + seconds;
 }
 
 // ─── BOC Builder ───
@@ -385,38 +400,42 @@ export async function claimStakingRewards() {
     return sendTx(config.addresses?.master, GAS.CLAIM, buildPayload(OP.CLAIM_STAKE));
 }
 
-export async function addLiquidity(tonAmount, qsrAmount) {
+export async function addLiquidity(tonAmount, qsrAmount, minLpOut = 1n, validFor = 300) {
     if (!tonAmount || !qsrAmount || tonAmount <= 0n || qsrAmount <= 0n) {
         window.showToast?.('Enter valid amounts', 'error'); return;
     }
     const config = window.QUASAR_CONFIG || {};
     const totalAmount = (tonAmount + BigInt(GAS.LIQUIDITY)).toString();
-    return sendTx(config.addresses?.defi, totalAmount, buildPayload(OP.ADD_LIQUIDITY, tonAmount, qsrAmount));
+    // AddLiquidity{tonAmount, qsrAmount, minLpOut, deadline}
+    return sendTx(config.addresses?.defi, totalAmount, buildPayload(OP.ADD_LIQUIDITY, tonAmount, qsrAmount, minLpOut, deadline(validFor)));
 }
 
-export async function removeLiquidity(lpAmount) {
+export async function removeLiquidity(lpAmount, minTonOut = 1n, minQsrOut = 1n, validFor = 300) {
     if (!lpAmount || lpAmount <= 0n) {
         window.showToast?.('Enter valid LP amount', 'error'); return;
     }
     const config = window.QUASAR_CONFIG || {};
-    return sendTx(config.addresses?.defi, GAS.LIQUIDITY, buildPayload(OP.REMOVE_LIQUIDITY, lpAmount));
+    // RemoveLiquidity{lpAmount, minTonOut, minQsrOut, deadline}
+    return sendTx(config.addresses?.defi, GAS.LIQUIDITY, buildPayload(OP.REMOVE_LIQUIDITY, lpAmount, minTonOut, minQsrOut, deadline(validFor)));
 }
 
-export async function swapToTon(qsrAmount, minTonOut) {
+export async function swapToTon(qsrAmount, minTonOut = 1n, validFor = 300) {
     if (!qsrAmount || qsrAmount <= 0n) {
         window.showToast?.('Enter valid QSR amount', 'error'); return;
     }
     const config = window.QUASAR_CONFIG || {};
-    return sendTx(config.addresses?.defi, GAS.SWAP, buildPayload(OP.SWAP_TO_TON, qsrAmount, minTonOut || 1n));
+    // SwapToTON{qsrAmount, minTonOut, deadline}
+    return sendTx(config.addresses?.defi, GAS.SWAP, buildPayload(OP.SWAP_TO_TON, qsrAmount, minTonOut, deadline(validFor)));
 }
 
-export async function swapToQsr(tonAmount, minQsrOut) {
+export async function swapToQsr(tonAmount, minQsrOut = 1n, validFor = 300) {
     if (!tonAmount || tonAmount <= 0n) {
         window.showToast?.('Enter valid TON amount', 'error'); return;
     }
     const config = window.QUASAR_CONFIG || {};
     const totalAmount = (tonAmount + BigInt(GAS.SWAP)).toString();
-    return sendTx(config.addresses?.defi, totalAmount, buildPayload(OP.SWAP_TO_QSR, tonAmount, minQsrOut || 1n));
+    // SwapToQSR{tonAmount, minQsrOut, deadline}
+    return sendTx(config.addresses?.defi, totalAmount, buildPayload(OP.SWAP_TO_QSR, tonAmount, minQsrOut, deadline(validFor)));
 }
 
 export async function claimFarmRewards() {

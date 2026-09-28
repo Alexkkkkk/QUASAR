@@ -9,11 +9,11 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-    const network = process.env.TON_NETWORK?.trim().toLowerCase();
-    if (network !== 'mainnet' && network !== 'testnet') {
-        throw new Error('TON_NETWORK must be explicitly set to "mainnet" or "testnet"');
-    }
-    const isMainnet = network === 'mainnet';
+const network = process.env.TON_NETWORK?.trim().toLowerCase();
+if (network !== 'mainnet' && network !== 'testnet') {
+    throw new Error('TON_NETWORK must be explicitly set to "mainnet" or "testnet"');
+}
+const isMainnet = network === 'mainnet';
 const endpoint = isMainnet
     ? 'https://toncenter.com/api/v2/jsonRPC'
     : 'https://testnet.toncenter.com/api/v2/jsonRPC';

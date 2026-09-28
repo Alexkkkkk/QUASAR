@@ -3,6 +3,7 @@
   "version": "3.0.0",
   "description": "QUASAR — The brightest Jetton in the TON universe. AI Sovereignty | DeFi DEX | Yield Farming | Web3",
   "main": "index.js",
+  "homepage": "https://alexkkkkk.github.io/QUASAR",
   "type": "module",
   "scripts": {
     "build": "tact --config tact.config.json",
