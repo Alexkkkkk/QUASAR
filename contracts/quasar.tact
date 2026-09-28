@@ -700,10 +700,11 @@ contract QuasarMaster with Deployable {
         // P0.2: the fee transfer proves the sending wallet's outbound operation
         // reached the accounting stage, so the source wallet can drop its
         // pending fee/receiver/response records for this query id. The master
-        // dispatches the confirmation because the receiving wallet must keep
-        // the TEP-74 `excesses` refund as its only extra message and a freshly
-        // derived wallet has no spare balance for a cleanup send. The fee
-        // source is authenticated above, so the cleanup is trusted.
+        // dispatches a redundant confirmation: the receiving wallet also sends
+        // one after a successful credit (quasar_common.tact), and whichever
+        // arrives second is a no-op (receiver == null -> return), so the
+        // pending state always ends up cleaned. The fee source is
+        // authenticated above, so the cleanup is trusted.
         send(SendParameters{
             to: contractAddress(wInit),
             value: ton("0.005"),
