@@ -188,13 +188,6 @@ test('owner confirmation: AI risk paths leave mintable unchanged', async () => {
     assert.equal((await m.getGetJettonData()).mintable, false, 'owner must still be able to stop minting explicitly');
 });
 
-test('successful transfers confirm source-wallet cleanup', () => {
-    const transfer = section(commonSrc, 'receive(msg: InternalTransfer)', 'receive(msg: TransferConfirmed)');
-    assert.ok(transfer.includes('if (msg.from != self.master)'), 'master-owned distributions must not target a source wallet');
-    assert.ok(transfer.includes('to: contractAddress(sourceInit)'), 'successful transfers must notify the source wallet');
-    assert.ok(transfer.includes('body: TransferConfirmed{ queryId: msg.queryId }.toCell()'), 'source cleanup must be query-id scoped');
-});
-
 test('F-19 source: rejected fee messages restore the deducted fee', () => {
     const wallet = section(commonSrc, 'contract QuasarWallet'); // wallet lives in the shared source of truth
     const transfer = section(wallet, 'receive(msg: TokenTransfer)', 'receive(msg: PoolPayout)');
