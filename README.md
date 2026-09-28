@@ -45,7 +45,7 @@
 | **Team Vesting** | Linear 2-year unlock | Rare |
 | **Community Veto** | Escrow is not enabled in the current contract | N/A |
 | **Owner Control** | Master and DeFi use two-step transfer with a 48h timelock; DeFi fee and trade-limit changes are also staged; no multisig yet | Rare |
-| **Anti-Whale** | Max tx 1% applies only to owner `Mint` (minting is stopped after deployment); max-wallet 3% is stored but not enforced in wallet code; the wallet adds a 5s per-wallet transfer cooldown | Rare |
+| **Anti-Whale** | User transfers are capped at 1% of hard-cap supply; receiving wallets at 3%; a 5s per-wallet cooldown applies. Master-owned settlement is exempt; the values are fixed and owner/AI override semantics are documented in the contracts | Rare |
 | **0.30% Fee** | Fixed at 0.30% in wallet code; auto-distributed to ecosystem | Manual |
 
 ---
