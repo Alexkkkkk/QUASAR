@@ -5,8 +5,7 @@ commissioning the independent audit**. It is not a claim that QUASAR is
 audited or production-safe. Every unchecked item blocks the next stage.
 
 Scope source: [ТЗ v4.0 — issue #35](https://github.com/Alexkkkkk/QUASAR/issues/35).
-Status baseline: `main` @ `43e5ff3` (2026-09-28), CI `validate` green,
-full local suite 87/87.
+Status baseline: `main` @ `864fbd8` (2026-09-28), CI `validate` green in run #149.
 
 Companion documents:
 
@@ -188,6 +187,6 @@ APY, full multisig governance, or enforced wallet limits.
 | P1 granular pause / roles | Open | this checklist §5 |
 | P1 Jetton 2.0 / Tolk decision | Open | this checklist §6 |
 | P2 DeFi extensions | Post-testnet | ТЗ #35 P2 |
-| Testing gates 7.x | Partial | 77/77 green; fuzz/mutation/gas snapshots open |
+| Testing gates 7.x | Partial | CI `validate` green on the current baseline; fuzz/mutation/gas snapshots open |
 | Real testnet smoke | Open | runbook + §8–§9 |
 | Independent audit | Open | §10 |
