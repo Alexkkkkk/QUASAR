@@ -65,7 +65,6 @@ contract QuasarWallet {
         // response state. Master-owned distributions have no debited source wallet,
         // so they do not receive a confirmation.
         if (msg.from != self.master) {
-            let sourceInit: StateInit = initOf QuasarWallet(msg.from, self.master);
             send(SendParameters{
                 to: contractAddress(sourceInit),
                 value: 0,
