@@ -61,6 +61,20 @@ contract QuasarWallet {
         }
         self.balance = self.balance + msg.amount;
 
+        // Successful user/pool transfers must release the source wallet's pending
+        // response state. Master-owned distributions have no debited source wallet,
+        // so they do not receive a confirmation.
+        if (msg.from != self.master) {
+            let sourceInit: StateInit = initOf QuasarWallet(msg.from, self.master);
+            send(SendParameters{
+                to: contractAddress(sourceInit),
+                value: 0,
+                bounce: false,
+                mode: SendPayGasSeparately | SendIgnoreErrors,
+                body: TransferConfirmed{ queryId: msg.queryId }.toCell()
+            });
+        }
+
         // A Jetton wallet notifies the owner contract only when the sender
         // supplied forward TON. This is the standard deposit hook used by
         // QuasarMaster and QuasarDeFi.
