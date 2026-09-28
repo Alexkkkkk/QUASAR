@@ -25,6 +25,15 @@ message(0x51a5c3d1) PoolPayout { queryId: Int as uint64; amount: Int as coins; d
 
 message PayoutFailed { queryId: Int as uint64; amount: Int as coins; destination: Address }
 
+// ─── TEP-89 discoverable Jetton wallets ───
+// `provide_wallet_address` / `take_wallet_address` are defined here, in the
+// shared source of truth, because BOTH the master and every wallet must answer
+// them. The response keeps the owner address in a ref
+// (`owner_address:(Maybe ^MsgAddress)`) exactly as the TEP-89 TL-B schema
+// requires, which is why the field is a `Cell?` rather than an `Address?`.
+message(0x2c76b973) ProvideWalletAddress { queryId: Int as uint64; ownerAddress: Address; includeAddress: Bool }
+message(0xd1735400) TakeWalletAddress { queryId: Int as uint64; walletAddress: Address; ownerAddress: Cell? }
+
 contract QuasarWallet {
     balance: Int as coins;
     owner: Address;
@@ -308,6 +317,30 @@ contract QuasarWallet {
         }
     }
     
+    // ═══════════════════════════════════════════════════════════
+    // TEP-89 — wallet-side discovery
+    // ═══════════════════════════════════════════════════════════
+    // The master already answers discovery queries; a wallet must do the same so
+    // any contract can learn the jetton wallet it owns for this master. The
+    // answer is this wallet's own address, echoed in a `take_wallet_address`
+    // message sent with mode 64 (carry the remaining inbound value), which is
+    // the mode the TEP-89 reference implementation uses.
+    receive(msg: ProvideWalletAddress) {
+        // TEP-89 requires at least 5000 gas units plus the forward lump and cell
+        // prices (0.0061 TON at the current basechain settings); below that the
+        // response cannot be funded at all.
+        require(context().value >= ton("0.0061"), "Not enough TON for discovery");
+        let owner: Cell? = null;
+        if (msg.includeAddress) { owner = beginCell().storeAddress(self.owner).endCell() }
+        send(SendParameters{
+            to: sender(),
+            value: 0,
+            bounce: false,
+            mode: SendRemainingValue,
+            body: TakeWalletAddress{ queryId: msg.queryId, walletAddress: myAddress(), ownerAddress: owner }.toCell()
+        });
+    }
+
     get fun get_wallet_data(): JettonWalletData {
         return JettonWalletData{ balance: self.balance, owner: self.owner, master: self.master, walletCode: (initOf QuasarWallet(self.owner, self.master)).code }
     }
