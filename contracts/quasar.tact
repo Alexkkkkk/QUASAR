@@ -18,6 +18,8 @@ message EventUnstake { staker: Address; amount: Int }
 message EventReferralRegistered { user: Address; referrer: Address }
 message EventVestingClaimed { beneficiary: Address; amount: Int }
 message EventAiAction { actionId: Int; actionType: String; oldValue: Int; newValue: Int }
+message EventAdminConfig { action: String; actor: Address; valueA: Int; valueB: Int }
+message EventEmergencyPause { guardian: Address; paused: Bool; reason: String }
 
 // ─── AI Messages ───
 message AISetOracle { oracleAddress: Address }
@@ -48,7 +50,6 @@ message(0x178d4519) InternalTransfer { queryId: Int as uint64; amount: Int as co
 message(0xd53276db) TokenExcesses { queryId: Int as uint64 }
 message(0x51a5c3d1) PoolPayout { queryId: Int as uint64; amount: Int as coins; destination: Address }
 message PayoutFailed { queryId: Int as uint64; amount: Int as coins; destination: Address }
-message DefiPayout { queryId: Int as uint64; amount: Int as coins; destination: Address }
 
 // ─── TEP-89 discoverable Jetton wallets ───
 // `provide_wallet_address` / `take_wallet_address` are the on-chain discovery
@@ -71,6 +72,8 @@ message SetBuybackConfig { enabled: Bool; threshold: Int as coins; cooldown: Int
 
 // ─── DeFi Sync Messages ───
 message SetDefiAddress { defiAddress: Address }
+message SetEmergencyGuardian { guardian: Address }
+message GuardianPause { reason: String }
 message SyncFeeToDefi { amount: Int as coins }
 
 // ─── Staking Messages ───
@@ -108,6 +111,8 @@ struct ReferralConfig { enabled: Bool; rewardBps: Int }
 
 // Vesting
 struct VestingInfo { totalAmount: Int; claimed: Int; startTime: Int; cliff: Int; duration: Int }
+struct ReserveSnapshot { reserveBalance: Int; freeReserve: Int; buybackPool: Int; stakingRewardsPool: Int; referralLiability: Int; custodyBalance: Int; totalStaked: Int; totalSupply: Int }
+struct UserLiabilitySnapshot { pendingQsrDeposit: Int; stakedPrincipal: Int; pendingReferralReward: Int; vestedUnclaimed: Int }
 
 // ═══════════════════════════════════════════════════════════════
 // QUASAR MASTER
@@ -199,6 +204,7 @@ contract QuasarMaster with Deployable {
     aiActionOldBuybackCooldown: map<Int, Int>;
     aiActionOldBuybackBurnPercent: map<Int, Int>;
     totalVetoStake: Int as coins;
+    emergencyGuardian: Address;
     
     // Staking
     stakingEnabled: Bool;
@@ -231,7 +237,6 @@ contract QuasarMaster with Deployable {
     // DeFi Sync
     defiAddress: Address;
     defiFeeShareBps: Int as uint16; // Basis points sent to DeFi pool (e.g. 500 = 5%);
-    defiMaxPayoutBps: Int as uint16; // Cap (bps of the free reserve) per single DefiPayout call;
     
     // Governance (v5): QSR-stake-weighted voting on AI-oracle settings.
     govQuorumBps: Int as uint16;
@@ -311,6 +316,9 @@ contract QuasarMaster with Deployable {
         self.vetoThresholdBps = 1000;
         self.aiActionIndex = 0;
         self.totalVetoStake = 0;
+        // The deployer is the initial guardian. The owner can replace it with
+        // a separate emergency key before public deployment.
+        self.emergencyGuardian = owner;
         
         self.stakingEnabled = true;
         self.stakingApyBps = 2000;
@@ -329,7 +337,6 @@ contract QuasarMaster with Deployable {
         
         self.defiAddress = newAddress(0, 0);
         self.defiFeeShareBps = 500; // 5% of fees go to DeFi pool;
-        self.defiMaxPayoutBps = 5000; // max 50% of the free reserve per payout call;
         
         // v5 state
         self.govQuorumBps = 1000; // 10% of the staked supply reaches quorum;
@@ -1401,19 +1408,24 @@ contract QuasarMaster with Deployable {
         self._requireOwner();
         // The zero address revokes DeFi access entirely.
         self.defiAddress = msg.defiAddress;
+        emit(EventAdminConfig{ action: "SetDefiAddress", actor: sender(), valueA: 0, valueB: 0 }.toCell());
     }
 
-    // DeFi can only ask the master to release QSR that it has accounted for
-    // in its pool reserves. The master remains the only contract allowed to
-    // credit a user's Jetton wallet.
-    receive(msg: DefiPayout) {
-        require(sender() == self.defiAddress, "Only DeFi");
-        require(msg.amount > 0, "Invalid amount");
-        require(msg.destination != newAddress(0, 0), "Invalid destination");
-        let freeReserve: Int = self.reserveBalance - self._poolEncumbrance();
-        require(freeReserve >= msg.amount, "Reserve encumbered");
-        require(msg.amount * 10000 <= freeReserve * self.defiMaxPayoutBps, "Payout cap");
-        self._sendTokens(msg.destination, msg.amount, msg.queryId, myAddress());
+    receive(msg: SetEmergencyGuardian) {
+        self._requireOwner();
+        require(msg.guardian != newAddress(0, 0), "Invalid guardian");
+        self.emergencyGuardian = msg.guardian;
+        emit(EventAdminConfig{ action: "SetEmergencyGuardian", actor: sender(), valueA: 0, valueB: 0 }.toCell());
+    }
+
+    // The guardian can only enter the emergency state. Recovery and every
+    // economic/admin change remain owner-controlled, so a compromised guardian
+    // cannot resume trading or redirect funds.
+    receive(msg: GuardianPause) {
+        require(sender() == self.emergencyGuardian, "Only emergency guardian");
+        self.emergencyPause = true;
+        self.tradingEnabled = false;
+        emit(EventEmergencyPause{ guardian: sender(), paused: true, reason: msg.reason }.toCell());
     }
 
     // F-09: TON proceeds of the AMM buyback swap. The master forwards the
@@ -1459,12 +1471,14 @@ contract QuasarMaster with Deployable {
         require(msg.newOwner != newAddress(0, 0), "Invalid owner");
         self.pendingOwner = msg.newOwner;
         self.ownerTransferAt = now() + self.ownerTransferDelay;
+        emit(EventAdminConfig{ action: "ProposeOwner", actor: sender(), valueA: self.ownerTransferAt, valueB: 0 }.toCell());
     }
 
     receive(msg: CancelOwnerTransfer) {
         self._requireOwner();
         self.pendingOwner = newAddress(0, 0);
         self.ownerTransferAt = 0;
+        emit(EventAdminConfig{ action: "CancelOwnerTransfer", actor: sender(), valueA: 0, valueB: 0 }.toCell());
     }
 
     receive(msg: AcceptOwner) {
@@ -1474,6 +1488,7 @@ contract QuasarMaster with Deployable {
         self.owner = self.pendingOwner;
         self.pendingOwner = newAddress(0, 0);
         self.ownerTransferAt = 0;
+        emit(EventAdminConfig{ action: "AcceptOwner", actor: sender(), valueA: 0, valueB: 0 }.toCell());
     }
     
     // ─── WALLET CODE MIGRATION (v5): two-step + timelock ───
@@ -1482,12 +1497,14 @@ contract QuasarMaster with Deployable {
         require(!self.aiFullAutonomy, "AI controls");
         self.pendingWalletCode = msg.newWalletCode;
         self.walletCodeAt = now() + self.ownerTransferDelay;
+        emit(EventAdminConfig{ action: "ProposeWalletCode", actor: sender(), valueA: self.walletCodeAt, valueB: 0 }.toCell());
     }
 
     receive("Cancel Wallet Code") {
         self._requireOwner();
         self.pendingWalletCode = null;
         self.walletCodeAt = 0;
+        emit(EventAdminConfig{ action: "CancelWalletCode", actor: sender(), valueA: 0, valueB: 0 }.toCell());
     }
 
     // Jetton wallets already derived keep their deployed code; after this
@@ -1500,6 +1517,7 @@ contract QuasarMaster with Deployable {
         self.walletCode = self.pendingWalletCode!!;
         self.pendingWalletCode = null;
         self.walletCodeAt = 0;
+        emit(EventAdminConfig{ action: "ApplyWalletCode", actor: sender(), valueA: 0, valueB: 0 }.toCell());
     }
 
     receive(msg: SetTreasury) {
@@ -1507,6 +1525,7 @@ contract QuasarMaster with Deployable {
         require(!self.aiFullAutonomy, "AI controls");
         require(msg.treasury != newAddress(0, 0), "Invalid treasury");
         self.treasury = msg.treasury;
+        emit(EventAdminConfig{ action: "SetTreasury", actor: sender(), valueA: 0, valueB: 0 }.toCell());
     }
     
     // v5: config changes are staged and apply only after the timelocked
@@ -1522,6 +1541,7 @@ contract QuasarMaster with Deployable {
         self.pendingMaxWallet = msg.maxWalletBps;
         self.pendingCooldown = msg.cooldown;
         self.pendingFeeConfigAt = now() + self.ownerTransferDelay;
+        emit(EventAdminConfig{ action: "ProposeFeeConfig", actor: sender(), valueA: msg.feeBps, valueB: msg.burnShare }.toCell());
     }
 
     receive("Confirm Fee Config") {
@@ -1538,12 +1558,26 @@ contract QuasarMaster with Deployable {
         self.pendingMaxWallet = 0;
         self.pendingCooldown = 0;
         self.pendingFeeConfigAt = 0;
+        emit(EventAdminConfig{ action: "ApplyFeeConfig", actor: sender(), valueA: self.feeBps, valueB: self.feeBurnShare }.toCell());
+    }
+
+    receive("Cancel Fee Config") {
+        self._requireOwner();
+        require(self.pendingFeeConfigAt > 0, "Nothing pending");
+        self.pendingFee = 0;
+        self.pendingFeeBurnShare = 0;
+        self.pendingMaxTx = 0;
+        self.pendingMaxWallet = 0;
+        self.pendingCooldown = 0;
+        self.pendingFeeConfigAt = 0;
+        emit(EventAdminConfig{ action: "CancelFeeConfig", actor: sender(), valueA: 0, valueB: 0 }.toCell());
     }
     
     receive(msg: ToggleTrading) {
         self._requireOwner();
         require(!self.aiFullAutonomy, "AI controls");
         self.tradingEnabled = msg.enabled;
+        emit(EventAdminConfig{ action: "ToggleTrading", actor: sender(), valueA: msg.enabled ? 1 : 0, valueB: 0 }.toCell());
     }
     
     receive(msg: SetBuybackConfig) {
@@ -1554,6 +1588,7 @@ contract QuasarMaster with Deployable {
         self.buybackThreshold = msg.threshold;
         self.buybackCooldown = msg.cooldown;
         self.buybackBurnPercent = msg.burnPercent;
+        emit(EventAdminConfig{ action: "SetBuybackConfig", actor: sender(), valueA: msg.threshold, valueB: msg.burnPercent }.toCell());
     }
     
     receive("Resume") {
@@ -1566,12 +1601,6 @@ contract QuasarMaster with Deployable {
         self._requireOwner();
         require(!self.aiFullAutonomy, "Disable autonomy first");
         self.aiEnabled = !self.aiEnabled;
-    }
-    
-    receive(msg: SetDefiPayoutCap) {
-        self._requireOwner();
-        require(msg.maxPayoutBps > 0 && msg.maxPayoutBps <= 10000, "Invalid cap");
-        self.defiMaxPayoutBps = msg.maxPayoutBps;
     }
     
     // Recover stray TON (overpaid gas etc). QSR funds stay governed by the
@@ -1621,6 +1650,32 @@ contract QuasarMaster with Deployable {
     get fun get_max_supply(): Int { return self.maxSupply }
     get fun get_reserve_balance(): Int { return self.reserveBalance }
     get fun get_custody_balance(): Int { return self.custodyBalance }
+    get fun get_reserve_snapshot(): ReserveSnapshot {
+        return ReserveSnapshot{
+            reserveBalance: self.reserveBalance,
+            freeReserve: self.reserveBalance - self._poolEncumbrance(),
+            buybackPool: self.buybackPool,
+            stakingRewardsPool: self.stakingRewardsPool,
+            referralLiability: self.pendingReferralTotal,
+            custodyBalance: self.custodyBalance,
+            totalStaked: self.totalStaked,
+            totalSupply: self.totalSupply
+        }
+    }
+    get fun get_user_liabilities(user: Address): UserLiabilitySnapshot {
+        let deposit: Int? = self.pendingQsrDeposits.get(user);
+        let referral: Int? = self.pendingReferralRewards.get(user);
+        let stake: StakeInfo? = self.stakers.get(user);
+        let vesting: VestingInfo? = self.vestingSchedules.get(user);
+        let unclaimed: Int = vesting == null ? 0 : vesting!!.totalAmount - vesting!!.claimed;
+        return UserLiabilitySnapshot{
+            pendingQsrDeposit: deposit == null ? 0 : deposit!!,
+            stakedPrincipal: stake == null ? 0 : stake!!.amount,
+            pendingReferralReward: referral == null ? 0 : referral!!,
+            vestedUnclaimed: unclaimed
+        }
+    }
+    get fun get_emergency_guardian(): Address { return self.emergencyGuardian }
     
     get fun get_wallet_address(owner: Address): Address {
         let init: StateInit = initOf QuasarWallet(owner, myAddress());
@@ -1680,7 +1735,6 @@ contract QuasarMaster with Deployable {
     get fun get_wallet_code_at(): Int { return self.walletCodeAt }
 }
 
-message SetDefiPayoutCap { maxPayoutBps: Int as uint16 }
 message SweepTON { amount: Int as coins }
 
 // ─── Ownership (two-step + timelock, F-08) ───
