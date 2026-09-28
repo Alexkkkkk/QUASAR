@@ -124,7 +124,7 @@ async function stake(eco: any, user: any, amount: bigint) {
 
 const vote = (proposalId: bigint) => ({
     $$type: 'GovernanceVote', proposalId, kind: 1n, flag: true, feeBps: 30n, deadline: 2_000_000_000n, reason: 'audit regression'
-});
+} as const);
 
 test('L-01 on-chain: one staker may vote on two different proposals', async () => {
     const eco = await deployEco();
