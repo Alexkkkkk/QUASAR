@@ -288,6 +288,12 @@ The unified deployment mints the configured initial allocation and immediately
 locks minting. Any alternative allocation must be reviewed against the hard
 1,000,000,000 QSR cap before deployment.
 
+Operational checklists:
+
+- `docs/TESTNET_DEPLOY_CHECKLIST.md` — step-by-step disposable testnet deploy checklist.
+- `docs/TESTNET_SMOKE_RUNBOOK.md` — automated + manual post-deploy smoke flow.
+- `docs/MAINNET_READINESS_CHECKLIST.md` — later mainnet release gate.
+
 ### 4. Serve Website
 
 ```bash

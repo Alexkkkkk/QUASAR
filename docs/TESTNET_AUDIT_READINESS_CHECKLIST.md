@@ -5,8 +5,8 @@ commissioning the independent audit**. It is not a claim that QUASAR is
 audited or production-safe. Every unchecked item blocks the next stage.
 
 Scope source: [ТЗ v4.0 — issue #35](https://github.com/Alexkkkkk/QUASAR/issues/35).
-Status baseline: `main` @ `3ebde53` (2026-09-27), CI `validate` green,
-sandbox suite 77/77.
+Status baseline: `main` @ `43e5ff3` (2026-09-28), CI `validate` green,
+full local suite 87/87.
 
 Companion documents:
 
@@ -23,11 +23,11 @@ Companion documents:
 - [x] TEP-74 excess/refund semantics preserved: no pending-state removal
       without a refund path.
 - [x] CI is green on the reconciled `main` (validate on `3ebde53`).
-- [ ] Single source of truth for the two `QuasarWallet` copies
-      (`quasar.tact` / `quasar_defi.tact`): either a shared generated wallet
-      source or an enforced byte-alignment check in CI.
-- [ ] README, security specification and this checklist re-verified against
-      the final pre-testnet commit (docs must describe actual behavior).
+- [x] Single source of truth for the two `QuasarWallet` copies
+      is live through `contracts/quasar_common.tact`, imported by both
+      `quasar.tact` and `quasar_defi.tact`.
+- [x] README, security specification and companion checklists re-verified
+      against the current pre-testnet commit (docs describe actual behavior).
 
 ## 2. Monetary invariants and payout lifecycle (P0.1/P0.2)
 
