@@ -25,7 +25,7 @@ assertContains(master, 'self.buybackPool + self.stakingRewardsPool + self.pendin
 assertContains(master, 'require(msg.referrer != newAddress(0, 0), "Invalid referrer");', 'referrals cannot be assigned to the zero address');
 assertContains(defi, 'if (msg.from == self.qsrMaster)', 'master-funded DeFi notification is distinguished');
 assertContains(defi, 'message RefundPendingQsr', 'pending QSR deposits have a refund path');
-assertContains(defi, 'self._sendQsr(sender(), pending!!, 0, 3)', 'pending QSR refunds return the deposited tokens');
+assertContains(defi, 'self._sendQsr(sender(), pending!!, 3, self._nextPayoutId())', 'pending QSR refunds return the deposited tokens');
 assertContains(defi, 'self.tonReserve + msg.amount + ton("0.05")', 'TON sweep preserves LP reserves');
 assertContains(master, 'require(pending == 0 || self.stakingRewardsPool >= pending, "Rewards pool empty")', 'staking cannot erase unpaid rewards');
 assertContains(defi, 'self.qsrReserve = self.qsrReserve + msg.amount;', 'master-funded DeFi fees enter qsrReserve');
