@@ -50,8 +50,9 @@ message(0x642b7d07) Mint { amount: Int as coins; receiver: Address }
 // (`owner_address:(Maybe ^MsgAddress)`) exactly as the standard's TL-B schema
 // specifies, which is why the field is a `Cell?` rather than an `Address?`
 // (Tact would serialise the latter inline, not as a ref).
-message(0x2c76b973) ProvideWalletAddress { queryId: Int as uint64; ownerAddress: Address; includeAddress: Bool }
-message(0xd1735400) TakeWalletAddress { queryId: Int as uint64; walletAddress: Address; ownerAddress: Cell? }
+// `provide_wallet_address` / `take_wallet_address` are declared in
+// quasar_common.tact so that BOTH this master and every QuasarWallet answer
+// TEP-89 discovery queries from the same definition.
 
 // ─── Fee & Buyback Messages ───
 message SetTreasury { treasury: Address }
