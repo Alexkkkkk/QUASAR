@@ -75,6 +75,31 @@ assertContains(master, 'emit(EventBuybackExecuted{ tonSpent: 0, qsrBurned: burnP
 const aiPriceSignal = master.slice(master.indexOf('receive(msg: AIPriceSignal)'), master.indexOf('receive(msg: AIAnomalyAlert)'));
 if (aiPriceSignal.includes('self.mintable = true')) throw new Error('AIPriceSignal can re-enable minting');
 
+// ─── Website / dApp invariants (documentation-driven) ───
+const websiteJs = readFileSync(join(root, 'website', 'tonconnect.js'), 'utf8');
+const websiteHtml = readFileSync(join(root, 'website', 'index.html'), 'utf8');
+const manifest = JSON.parse(readFileSync(join(root, 'website', 'tonconnect-manifest.json'), 'utf8'));
+
+// QuasarWallet.receive(TokenTransfer) spends 0.02 + 0.05 TON from the source
+// wallet balance. Attaching less makes the second action fail with exit code 37.
+const depositGas = Number((websiteJs.match(/DEPOSIT:\s*'(\d+)'/) || [])[1]);
+if (!Number.isFinite(depositGas) || depositGas < 70_000_000) {
+    throw new Error('dApp deposit gas is below the 0.07 TON the wallet spends: ' + depositGas);
+}
+
+// TEP-74 deposit: the transfer must carry a non-zero forward TON amount so the
+// receiving wallet emits the TokenNotification that credits the deposit.
+if (!websiteJs.includes('DEPOSIT_FORWARD_TON')) throw new Error('missing jetton forward TON');
+
+// TON Connect: url/name/iconUrl are required, iconUrl must be a PNG (no SVG),
+// and the CDN bundle must be pinned instead of @latest.
+for (const key of ['url', 'name', 'iconUrl']) {
+    if (!manifest[key]) throw new Error('manifest field missing: ' + key);
+}
+if (!manifest.iconUrl.endsWith('.png')) throw new Error('manifest iconUrl must be a PNG');
+if (manifest.url.endsWith('/')) throw new Error('manifest url should not end with a slash');
+if (websiteHtml.includes('@tonconnect/ui@latest')) throw new Error('TON Connect UI must be pinned');
+
 console.log('Security invariants passed: ' + [
     'burn supply guard',
     'hard supply cap',
@@ -99,5 +124,7 @@ console.log('Security invariants passed: ' + [
     'timelocked DeFi fee controls',
     'AMM price observations',
     'buyback swap overlap guard',
-    'authenticated transfer confirmations'
+    'authenticated transfer confirmations',
+    'dApp deposit gas covers the wallet fee legs',
+    'TON Connect manifest and pinned SDK bundle'
 ].join(', '));
