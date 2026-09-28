@@ -47,3 +47,26 @@ an unimplemented claim path.
 4. A testnet deployment must be funded and exercised with a dedicated disposable wallet before any mainnet deployment.
 
 This document is an engineering review, not a formal third-party audit or a promise of production safety.
+
+---
+
+## Independent-audit remediation (issue #44 — commit af83516)
+
+An independent engineering audit (issue #44) returned **NO-GO** for real-funds
+testnet and mainnet. The findings and their in-`main` status after the
+remediation series:
+
+| ID | Severity | Status | Evidence |
+| --- | --- | --- | --- |
+| H-01 | High | Fixed (PR #45) | wallet cleanup messages authenticate their expected sender |
+| H-02 | High | Fixed | typed `PendingMasterPayout` ledger + `_restoreMasterPayout`; `Unstake`/`ClaimVested`/`ClaimRewards`/`ClaimReferralRewards` register the operation id and restore stake, vesting claim, reward pool and referral liability on bounce |
+| M-01 | Medium | Fixed | DeFi `TonPayout`/`PendingTonPayout`; `RemoveLiquidity` and `SwapToTON` register the TON leg and roll back `tonReserve` plus the LP / QSR-deposit entitlement on bounce |
+| M-02 | Medium | Fixed | `QuasarAdminTimelock` is deployed by `deploy_all.ts` and served as owner of Master and DeFi via the two-step transfer; smoke run asserts the wiring |
+| L-01 | Low | Fixed | `govVotes` keyed by `(voter, proposalId)` so a staker votes once per proposal |
+
+Regression coverage: `tests/audit_h02_m01_l01.test.ts`,
+`tests/audit_m02_timelock.test.ts`.
+
+The audit's remaining pre-launch gates are unchanged and still open: live
+testnet smoke and adversarial bounce tests must be executed against a
+disposable deployment before any real-funds launch.

@@ -113,6 +113,8 @@ struct ReferralConfig { enabled: Bool; rewardBps: Int }
 struct VestingInfo { totalAmount: Int; claimed: Int; startTime: Int; cliff: Int; duration: Int }
 struct ReserveSnapshot { reserveBalance: Int; freeReserve: Int; buybackPool: Int; stakingRewardsPool: Int; referralLiability: Int; custodyBalance: Int; totalStaked: Int; totalSupply: Int }
 struct UserLiabilitySnapshot { pendingQsrDeposit: Int; stakedPrincipal: Int; pendingReferralReward: Int; vestedUnclaimed: Int }
+// H-02: a bounced user payout must restore the exact pre-operation state.
+struct PendingMasterPayout { kind: Int; beneficiary: Address; amount: Int; d1: Int; d2: Int; d3: Int }
 
 // ═══════════════════════════════════════════════════════════════
 // QUASAR MASTER
@@ -240,7 +242,7 @@ contract QuasarMaster with Deployable {
     
     // Governance (v5): QSR-stake-weighted voting on AI-oracle settings.
     govQuorumBps: Int as uint16;
-    govVotes: map<Address, Int>;
+    govVotes: map<Int, Bool>;
     govProposalStake: map<Int, Int>;
     govProposalCount: Int;
     // Fee-config timelock (v5): owner changes apply only after an on-chain confirm.
@@ -253,6 +255,11 @@ contract QuasarMaster with Deployable {
     // Wallet-code migration (v5): two-step + timelock, mirrors F-08 ownership.
     pendingWalletCode: Cell?;
     walletCodeAt: Int;
+    // H-02: typed pending-payout ledger so a bounce restores stake, vesting
+    // claim, staking reward or referral liability - not only the aggregate
+    // custody/reserve counter.
+    pendingMasterPayouts: map<Int, PendingMasterPayout>;
+    masterPayoutSeq: Int as uint64;
     
     init(owner: Address, content: Cell, walletCode: Cell) {
         self.totalSupply = 0;
@@ -342,6 +349,8 @@ contract QuasarMaster with Deployable {
         self.govQuorumBps = 1000; // 10% of the staked supply reaches quorum;
         self.govVotes = emptyMap();
         self.govProposalStake = emptyMap();
+        self.pendingMasterPayouts = emptyMap();
+        self.masterPayoutSeq = 0;
         self.govProposalCount = 0;
         self.pendingFee = 0;
         self.pendingFee = 0;
@@ -503,13 +512,68 @@ contract QuasarMaster with Deployable {
         });
     }
 
-    // Custodied deposits must leave the master-owned Jetton wallet.
-    fun _sendCustodiedTokens(to: Address, amount: Int, queryId: Int) {
+    // L-01: a vote is unique per (voter, proposal). Keying the map only by the
+    // voter blocked a staker from ever voting again after their first proposal.
+    fun _voteKey(voter: Address, proposalId: Int): Int {
+        // Composite 250-bit key: the proposal id occupies the high bits, so two
+        // different proposals can never collapse onto one key, while the voter
+        // identity fills the low bits.
+        return beginCell().storeUint(proposalId, 32).storeAddress(voter).endCell().asSlice().loadUint(250);
+    }
+
+    // H-02: register a typed pending payout before dispatch.
+    fun _newMasterPayout(kind: Int, beneficiary: Address, amount: Int, d1: Int, d2: Int, d3: Int): Int {
+        let id: Int = self.masterPayoutSeq + 1;
+        self.masterPayoutSeq = id;
+        self.pendingMasterPayouts.set(id, PendingMasterPayout{ kind: kind, beneficiary: beneficiary, amount: amount, d1: d1, d2: d2, d3: d3 });
+        return id;
+    }
+
+    // H-02: restore the exact pre-operation state for one bounced payout.
+    // Idempotent: the record is consumed, so a duplicate failure report cannot
+    // double-credit. Returns false when the id is not a tracked payout.
+    fun _restoreMasterPayout(payoutId: Int): Bool {
+        let op: PendingMasterPayout? = self.pendingMasterPayouts.get(payoutId);
+        if (op == null) { return false }
+        self.pendingMasterPayouts.set(payoutId, null);
+        if (op!!.kind == 1) {
+            // Unstake principal: re-credit the stake and the staked total.
+            let s: StakeInfo? = self.stakers.get(op!!.beneficiary);
+            let base: Int = s == null ? 0 : s!!.amount;
+            self.stakers.set(op!!.beneficiary, StakeInfo{ amount: base + op!!.amount, startTime: op!!.d2, lastClaim: op!!.d3, lockEnd: op!!.d1 });
+            self.totalStaked = self.totalStaked + op!!.amount;
+        } else if (op!!.kind == 2) {
+            // Vesting claim: revert the claimed counter and the team total.
+            let v: VestingInfo? = self.vestingSchedules.get(op!!.beneficiary);
+            if (v != null) {
+                self.vestingSchedules.set(op!!.beneficiary, VestingInfo{ totalAmount: v!!.totalAmount, claimed: op!!.d1, startTime: v!!.startTime, cliff: v!!.cliff, duration: v!!.duration });
+            }
+            self.teamClaimed = self.teamClaimed - op!!.amount;
+        } else if (op!!.kind == 3) {
+            // Staking reward: return the reward to the pool, rewind lastClaim.
+            self.stakingRewardsPool = self.stakingRewardsPool + op!!.amount;
+            let s: StakeInfo? = self.stakers.get(op!!.beneficiary);
+            if (s != null) {
+                self.stakers.set(op!!.beneficiary, StakeInfo{ amount: s!!.amount, startTime: s!!.startTime, lastClaim: op!!.d1, lockEnd: s!!.lockEnd });
+            }
+        } else if (op!!.kind == 4) {
+            // Referral reward: restore the user and aggregate liabilities.
+            let r: Int? = self.pendingReferralRewards.get(op!!.beneficiary);
+            self.pendingReferralRewards.set(op!!.beneficiary, (r == null ? 0 : r!!) + op!!.amount);
+            self.pendingReferralTotal = self.pendingReferralTotal + op!!.amount;
+        } else {
+            require(false, "Unknown payout kind")
+        }
+        return true;
+    }
+
+    // Custodied deposits must leave the master-owned Jetton wallet. The payout
+    // id is registered before dispatch so a bounce restores user state (H-02).
+    fun _sendCustodiedTokens(to: Address, amount: Int, kind: Int, d1: Int, d2: Int, d3: Int) {
         require(amount > 0, "Invalid custody transfer amount");
         require(self.custodyBalance >= amount, "Insufficient custody balance");
         self.custodyBalance = self.custodyBalance - amount;
-        let payoutId: Int = self.custodyPayoutSeq + 1;
-        self.custodyPayoutSeq = payoutId;
+        let payoutId: Int = self._newMasterPayout(kind, to, amount, d1, d2, d3);
         let init: StateInit = initOf QuasarWallet(myAddress(), myAddress());
         send(SendParameters{
             to: contractAddress(init),
@@ -520,6 +584,16 @@ contract QuasarMaster with Deployable {
             code: init.code,
             data: init.data
         });
+    }
+
+    // Reserve-backed user payout (staking reward / referral). Registered so the
+    // user entitlement survives a bounce instead of only the aggregate reserve.
+    fun _sendReservePayout(to: Address, amount: Int, kind: Int, d1: Int) {
+        require(amount > 0, "Invalid transfer amount");
+        require(self.reserveBalance >= amount, "Insufficient QSR reserve");
+        self.reserveBalance = self.reserveBalance - amount;
+        let payoutId: Int = self._newMasterPayout(kind, to, amount, d1, 0, 0);
+        self._sendInternalTransfer(to, amount, payoutId, myAddress());
     }
     
     // ═══════════════════════════════════════════════════════════
@@ -581,6 +655,9 @@ contract QuasarMaster with Deployable {
             require(self.totalSupply >= msg.amount, "Mint supply underflow");
             self.totalSupply = self.totalSupply - msg.amount;
         } else {
+            // H-02: a bounced reserve payout restores the user entitlement
+            // (staking reward pool / referral liability) before the aggregate.
+            self._restoreMasterPayout(msg.queryId);
             self.reserveBalance = self.reserveBalance + msg.amount;
             // A bounced buyback swap leg returns its amount to the buyback
             // pool, not to the free reserve.
@@ -819,6 +896,7 @@ contract QuasarMaster with Deployable {
         let staker: Address = sender();
         let info: StakeInfo? = self.stakers.get(staker);
         let current: Int = 0;
+        let priorClaim: Int = info == null ? now() : info!!.lastClaim;
         let lockEnd: Int = now() + self.stakingLockPeriod;
         if (info != null) {
             current = info!!.amount;
@@ -834,7 +912,7 @@ contract QuasarMaster with Deployable {
         require(pending == 0 || self.stakingRewardsPool >= pending, "Rewards pool empty");
         if (pending > 0) {
             self.stakingRewardsPool = self.stakingRewardsPool - pending;
-            self._sendTokens(staker, pending, 0, myAddress());
+            self._sendReservePayout(staker, pending, 3, priorClaim);
         }
         
         self.stakers.set(staker, StakeInfo{ amount: current + msg.amount, startTime: now(), lastClaim: now(), lockEnd: lockEnd });
@@ -850,6 +928,7 @@ contract QuasarMaster with Deployable {
         let staker: Address = sender();
         let info: StakeInfo? = self.stakers.get(staker);
         require(info != null, "No stake");
+        let priorClaim: Int = info!!.lastClaim;
         require(info!!.amount >= msg.amount, "Insufficient stake");
         require(now() >= info!!.lockEnd, "Lock active");
         
@@ -858,17 +937,18 @@ contract QuasarMaster with Deployable {
         require(pending == 0 || self.stakingRewardsPool >= pending, "Rewards pool empty");
         if (pending > 0) {
             self.stakingRewardsPool = self.stakingRewardsPool - pending;
-            self._sendTokens(staker, pending, 0, myAddress());
+            self._sendReservePayout(staker, pending, 3, priorClaim);
         }
         
-        let remaining: Int = info!!.amount - msg.amount;
+        let oldInfo: StakeInfo = info!!;
+        let remaining: Int = oldInfo.amount - msg.amount;
         if (remaining > 0) {
-            self.stakers.set(staker, StakeInfo{ amount: remaining, startTime: info!!.startTime, lastClaim: now(), lockEnd: info!!.lockEnd });
+            self.stakers.set(staker, StakeInfo{ amount: remaining, startTime: oldInfo.startTime, lastClaim: now(), lockEnd: oldInfo.lockEnd });
         } else {
             self.stakers.set(staker, null);
         }
         self.totalStaked = self.totalStaked - msg.amount;
-        self._sendCustodiedTokens(staker, msg.amount, 0);
+        self._sendCustodiedTokens(staker, msg.amount, 1, oldInfo.lockEnd, oldInfo.startTime, oldInfo.lastClaim);
         
         emit(EventUnstake{ staker: staker, amount: msg.amount }.toCell());
     }
@@ -880,12 +960,13 @@ contract QuasarMaster with Deployable {
         require(pending > 0, "No rewards");
         require(self.stakingRewardsPool >= pending, "Pool empty");
         
-        self.stakingRewardsPool = self.stakingRewardsPool - pending;
         let info: StakeInfo? = self.stakers.get(staker);
+        let priorClaim: Int = info == null ? now() : info!!.lastClaim;
+        self.stakingRewardsPool = self.stakingRewardsPool - pending;
         if (info != null) {
             self.stakers.set(staker, StakeInfo{ amount: info!!.amount, startTime: info!!.startTime, lastClaim: now(), lockEnd: info!!.lockEnd });
         }
-        self._sendTokens(staker, pending, 0, myAddress());
+        self._sendReservePayout(staker, pending, 3, priorClaim);
     }
     
     fun _calculateRewards(staker: Address): Int {
@@ -954,7 +1035,7 @@ contract QuasarMaster with Deployable {
         require(self.reserveBalance - self._poolEncumbrance() >= pending!!, "Reserve encumbered");
         self.pendingReferralRewards.set(claimant, 0);
         self.pendingReferralTotal = self.pendingReferralTotal - pending!!;
-        self._sendTokens(claimant, pending!!, 0, myAddress());
+        self._sendReservePayout(claimant, pending!!, 4, 0);
     }
     
     // ═══════════════════════════════════════════════════════════
@@ -987,9 +1068,10 @@ contract QuasarMaster with Deployable {
         let claimable: Int = vested - info!!.claimed;
         require(claimable > 0, "Nothing to claim");
         
-        self.vestingSchedules.set(beneficiary, VestingInfo{ totalAmount: info!!.totalAmount, claimed: info!!.claimed + claimable, startTime: info!!.startTime, cliff: info!!.cliff, duration: info!!.duration });
+        let priorClaimed: Int = info!!.claimed;
+        self.vestingSchedules.set(beneficiary, VestingInfo{ totalAmount: info!!.totalAmount, claimed: priorClaimed + claimable, startTime: info!!.startTime, cliff: info!!.cliff, duration: info!!.duration });
         self.teamClaimed = self.teamClaimed + claimable;
-        self._sendCustodiedTokens(beneficiary, claimable, 0);
+        self._sendCustodiedTokens(beneficiary, claimable, 2, priorClaimed, 0, 0);
         
         send(SendParameters{ to: sender(), value: 0, mode: SendRemainingValue | SendIgnoreErrors, body: EventVestingClaimed{ beneficiary: beneficiary, amount: claimable }.toCell() });
     }
@@ -1354,11 +1436,12 @@ contract QuasarMaster with Deployable {
     receive(msg: GovernanceVote) {
         self._requireNotPaused();
         require(now() <= msg.deadline, "Vote expired");
-        require(self.govVotes.get(sender()) == null, "Already voted");
+        let voteKey: Int = self._voteKey(sender(), msg.proposalId);
+        require(self.govVotes.get(voteKey) == null, "Already voted");
         let staker: StakeInfo? = self.stakers.get(sender());
         require(staker != null && staker!!.amount > 0, "Stake first");
         
-        self.govVotes.set(sender(), msg.proposalId);
+        self.govVotes.set(voteKey, true);
         let prev: Int? = self.govProposalStake.get(msg.proposalId);
         let prevStake: Int = prev == null ? 0 : prev!!;
         if (prev == null) {
@@ -1447,8 +1530,11 @@ contract QuasarMaster with Deployable {
         emit(EventBuybackSwapped{ queryId: msg.queryId, qsrIn: msg.qsrSwapped, tonOut: msg.tonAmount }.toCell());
     }
 
+    // H-02: a bounced custody payout restores both the custody counter and the
+    // originating user state (stake / vesting claim).
     bounced(msg: bounced<PoolPayout>) {
         self.custodyBalance = self.custodyBalance + msg.amount;
+        self._restoreMasterPayout(msg.queryId);
     }
 
     // The source wallet accepted PoolPayout, but its downstream InternalTransfer
@@ -1458,6 +1544,8 @@ contract QuasarMaster with Deployable {
         let wInit: StateInit = initOf QuasarWallet(myAddress(), myAddress());
         require(sender() == contractAddress(wInit), "Invalid payout source");
         require(msg.amount > 0, "Invalid payout amount");
+        // H-02: restore the originating user state alongside the custody counter.
+        self._restoreMasterPayout(msg.queryId);
         self.custodyBalance = self.custodyBalance + msg.amount;
     }
     

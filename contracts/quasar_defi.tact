@@ -38,6 +38,8 @@ message(0x178d4519) InternalTransfer { queryId: Int as uint64; amount: Int as co
 // incoming message value with it (opcode 0xd53276db).
 message(0xd53276db) TokenExcesses { queryId: Int as uint64 }
 message(0x51a5c3d1) PoolPayout { queryId: Int as uint64; amount: Int as coins; destination: Address }
+// M-01: typed TON payout so a bounce can be matched and rolled back.
+message(0x746f6e70) TonPayout { queryId: Int as uint64; amount: Int as coins }
 message PayoutFailed { queryId: Int as uint64; amount: Int as coins; destination: Address }
 message(0x2c7e91a4) BuybackTon { queryId: Int as uint64; tonAmount: Int as coins; qsrSwapped: Int as coins }
 message FeeTransfer { queryId: Int as uint64; amount: Int as coins; originalSender: Address; originalReceiver: Address }
@@ -56,6 +58,7 @@ struct LPInfo { totalSupply: Int; tonReserve: Int; qsrReserve: Int; }
 struct FarmInfo { staked: Int; rewardPerSecond: Int; lastUpdate: Int; accRewardPerShare: Int; startTime: Int; endTime: Int }
 struct UserFarmInfo { staked: Int; debt: Int; pending: Int }
 struct PendingPayout { amount: Int; kind: Int; beneficiary: Address }
+struct PendingTonPayout { kind: Int; beneficiary: Address; tonOut: Int; qsrAmount: Int; lpAmount: Int }
 struct SwapQuote { tonIn: Int; qsrIn: Int; tonOut: Int; qsrOut: Int; fee: Int; priceImpactBps: Int }
 struct JettonWalletData { balance: Int; owner: Address; master: Address; walletCode: Cell }
 
@@ -111,6 +114,10 @@ contract QuasarDeFi with Deployable {
     // downstream wallets unable to distinguish concurrent payouts.
     payoutSeq: Int as uint64;
     pendingPayouts: map<Int, PendingPayout>;
+    // M-01: tracked TON payouts. A bounce restores tonReserve and the user's LP
+    // or QSR-deposit entitlement instead of silently losing them.
+    pendingTonPayouts: map<Int, PendingTonPayout>;
+    tonPayoutSeq: Int as uint64;
     
     init(owner: Address, qsrMaster: Address) {
         self.owner = owner;
@@ -144,6 +151,8 @@ contract QuasarDeFi with Deployable {
         self.ownerTransferAt = 0;
         self.ownerTransferDelay = 172800;
         self.payoutSeq = 0;
+        self.pendingTonPayouts = emptyMap();
+        self.tonPayoutSeq = 0;
     }
     
     // ─── Reentrancy Guard ───
@@ -172,10 +181,20 @@ contract QuasarDeFi with Deployable {
         }
     }
 
-    fun _sendQsr(to: Address, amount: Int, queryId: Int, kind: Int) {
+    fun _nextPayoutId(): Int {
+        let id: Int = self.payoutSeq + 1;
+        self.payoutSeq = id;
+        return id;
+    }
+
+    // M-01: dispatch a TON payout with a typed body; the record lets the bounce
+    // handler restore tonReserve and the user entitlement exactly once.
+    fun _dispatchTon(to: Address, amount: Int, payoutId: Int) {
+        send(SendParameters{ to: to, value: amount, bounce: true, mode: SendPayGasSeparately, body: TonPayout{ queryId: payoutId, amount: amount }.toCell() });
+    }
+
+    fun _sendQsr(to: Address, amount: Int, kind: Int, payoutId: Int) {
         require(amount > 0, "Invalid QSR amount");
-        let payoutId: Int = self.payoutSeq + 1;
-        self.payoutSeq = payoutId;
         self.pendingPayouts.set(payoutId, PendingPayout{ amount: amount, kind: kind, beneficiary: to });
         let init: StateInit = initOf QuasarWallet(myAddress(), self.qsrMaster);
         send(SendParameters{
@@ -294,6 +313,16 @@ contract QuasarDeFi with Deployable {
         self.pendingPayouts.set(msg.queryId, null);
         if (payout!!.kind == 1) {
             self.qsrReserve = self.qsrReserve + msg.amount;
+            // M-01: if the matching TON leg is still undelivered, restore the
+            // whole LP position and cancel that leg too (single rollback).
+            let tp: PendingTonPayout? = self.pendingTonPayouts.get(msg.queryId);
+            if (tp != null && tp!!.kind == 1) {
+                self.pendingTonPayouts.set(msg.queryId, null);
+                self.tonReserve += tp!!.tonOut;
+                let cur: Int? = self.lpBalances.get(payout!!.beneficiary);
+                self.lpBalances.set(payout!!.beneficiary, (cur == null ? 0 : cur!!) + tp!!.lpAmount);
+                self.lpTotalSupply += tp!!.lpAmount;
+            }
         } else if (payout!!.kind == 2) {
             self.farmRewardReserve = self.farmRewardReserve + msg.amount;
         } else if (payout!!.kind == 3) {
@@ -315,7 +344,7 @@ contract QuasarDeFi with Deployable {
         self._lock();
         self.pendingQsrDeposits.set(sender(), 0);
         self.pendingQsrDepositsAt.set(sender(), 0);
-        self._sendQsr(sender(), pending!!, 0, 3);
+        self._sendQsr(sender(), pending!!, 3, self._nextPayoutId());
         self._unlock();
     }
     
@@ -422,18 +451,15 @@ contract QuasarDeFi with Deployable {
         self.tonReserve -= tonOut;
         self.qsrReserve -= qsrOut;
         
-        // Send TON back
+        // M-01: both payout legs share one payout id so a bounce restores the
+        // full pre-removal position and cannot double-credit the reserves.
+        let payoutId: Int = self._nextPayoutId();
         if (tonOut > 0) {
-            send(SendParameters{
-                to: sender(),
-                value: tonOut,
-                mode: SendPayGasSeparately,
-                body: emptyCell()
-            });
+            self.pendingTonPayouts.set(payoutId, PendingTonPayout{ kind: 1, beneficiary: sender(), tonOut: tonOut, qsrAmount: qsrOut, lpAmount: msg.lpAmount });
+            self._dispatchTon(sender(), tonOut, payoutId);
         }
-        
         if (qsrOut > 0) {
-            self._sendQsr(sender(), qsrOut, 0, 1);
+            self._sendQsr(sender(), qsrOut, 1, payoutId);
         }
         
         // Emit event
@@ -471,12 +497,10 @@ contract QuasarDeFi with Deployable {
         // Payout and event must be separate messages: with
         // SendRemainingValue the explicit value field is ignored, so the
         // trader could receive an unpredictable amount.
-        send(SendParameters{
-            to: sender(),
-            value: tonOut,
-            mode: SendPayGasSeparately,
-            body: emptyCell()
-        });
+        // M-01: typed, bounce-tracked TON payout.
+        let payoutId: Int = self._nextPayoutId();
+        self.pendingTonPayouts.set(payoutId, PendingTonPayout{ kind: 2, beneficiary: sender(), tonOut: tonOut, qsrAmount: msg.qsrAmount, lpAmount: 0 });
+        self._dispatchTon(sender(), tonOut, payoutId);
 
         emit(EventSwap{ trader: sender(), tonIn: 0, qsrIn: msg.qsrAmount, tonOut: tonOut, qsrOut: 0, fee: fee }.toCell());
         
@@ -512,7 +536,7 @@ contract QuasarDeFi with Deployable {
             send(SendParameters{ to: sender(), value: excess, bounce: false, mode: SendPayGasSeparately, body: emptyCell() });
         }
         
-        self._sendQsr(sender(), qsrOut, 0, 1);
+        self._sendQsr(sender(), qsrOut, 1, self._nextPayoutId());
         
         // Emit event
         emit(EventSwap{ trader: sender(), tonIn: msg.tonAmount, qsrIn: 0, tonOut: 0, qsrOut: qsrOut, fee: fee }.toCell());
@@ -542,7 +566,7 @@ contract QuasarDeFi with Deployable {
         
         // Farm rewards are QSR. The pool's own Jetton wallet performs the
         // transfer; the DeFi contract never asks the master to mint tokens.
-        self._sendQsr(sender(), totalReward, 0, 2);
+        self._sendQsr(sender(), totalReward, 2, self._nextPayoutId());
         // Informational: mode +2 (SEND_MODE_IGNORE_ERRORS) keeps a failed
         // event send from rolling back the reward accounting.
         emit(EventFarmReward{ farmer: sender(), amount: totalReward }.toCell());
@@ -655,6 +679,32 @@ contract QuasarDeFi with Deployable {
     // Recover only TON that is not backing LP positions. The previous check
     // used the whole contract balance and allowed the owner to sweep
     // tonReserve, draining liquidity-provider funds.
+    // M-01: a bounced TON payout restores tonReserve and the user's LP /
+    // QSR-deposit entitlement. Idempotent through the pending record.
+    bounced(msg: bounced<TonPayout>) {
+        let p: PendingTonPayout? = self.pendingTonPayouts.get(msg.queryId);
+        require(p != null, "Unknown TON payout");
+        self.pendingTonPayouts.set(msg.queryId, null);
+        self.tonReserve += p!!.tonOut;
+        if (p!!.kind == 1) {
+            let qsrLeg: PendingPayout? = self.pendingPayouts.get(msg.queryId);
+            if (qsrLeg != null) {
+                self.pendingPayouts.set(msg.queryId, null);
+                self.qsrReserve += qsrLeg!!.amount;
+                let cur: Int? = self.lpBalances.get(p!!.beneficiary);
+                self.lpBalances.set(p!!.beneficiary, (cur == null ? 0 : cur!!) + p!!.lpAmount);
+                self.lpTotalSupply += p!!.lpAmount;
+            }
+        } else if (p!!.kind == 2) {
+            self.qsrReserve -= p!!.qsrAmount;
+            let dep: Int? = self.pendingQsrDeposits.get(p!!.beneficiary);
+            self.pendingQsrDeposits.set(p!!.beneficiary, (dep == null ? 0 : dep!!) + p!!.qsrAmount);
+            self.pendingQsrDepositsAt.set(p!!.beneficiary, now());
+        } else {
+            require(false, "Unknown payout kind")
+        }
+    }
+
     receive(msg: SweepTON) {
         require(sender() == self.owner, "Only owner");
         require(msg.amount > 0 && myBalance() >= self.tonReserve + msg.amount + ton("0.05"), "Invalid sweep");

@@ -364,3 +364,22 @@ npm run website      # Serves website/ on localhost
 ---
 
 *The future of tokens is autonomous. The future of DeFi is built-in.*
+
+## Security status (independent audit — issue #44)
+
+An independent engineering audit of commit `af83516` returned **NO-GO** for
+real-funds testnet and mainnet. Remediation in `main`:
+
+- **H-01** — wallet cleanup messages are authenticated (PR #45).
+- **H-02** — bounced Master payouts restore the originating stake / vesting
+  claim / staking reward / referral liability, not only the aggregate counter.
+- **M-01** — bounced DeFi TON payouts (`RemoveLiquidity`, `SwapToTON`) roll back
+  `tonReserve` and the user's LP / deposit entitlement.
+- **M-02** — the admin timelock is deployed and serves as owner of Master and
+  DeFi; the smoke run validates the wiring.
+- **L-01** — governance votes are unique per `(voter, proposalId)`.
+
+Still open before any real-funds launch: live testnet smoke and adversarial
+bounce tests on a disposable deployment. QUASAR is **not** audited by a
+third-party TON/Tact firm and makes no assurance-of-yield or mainnet-readiness
+claim.

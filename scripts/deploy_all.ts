@@ -178,6 +178,37 @@ async function deploy() {
     );
     
     console.log('   ✅ QuasarDeFi deployed & linked!');
+
+    // ═══════════════════════════════════════════════════════
+    // STEP 2.5: Deploy the admin timelock and hand it control (M-02)
+    // ═══════════════════════════════════════════════════════
+    // The timelock was compiled but never deployed, so the deployer EOA kept
+    // unilateral control. Deploy it, then hand it ownership of both contracts
+    // through the existing two-step, 48h-delayed transfer. The admin is an
+    // external multisig (TIMELOCK_ADMIN); the timelock only supplies the
+    // on-chain delay, target allow-list and cancellation path.
+    console.log('\n📦 STEP 2.5: Deploying QuasarAdminTimelock...');
+    const adminAddr = process.env.TIMELOCK_ADMIN?.trim()
+        ? Address.parse(process.env.TIMELOCK_ADMIN.trim())
+        : wallet.address;
+    const minDelay = BigInt(process.env.TIMELOCK_MIN_DELAY?.trim() || '86400');
+    if (minDelay < 86400n) {
+        throw new Error('TIMELOCK_MIN_DELAY must be at least 86400 seconds (M-02)');
+    }
+    const { QuasarAdminTimelock } = await import('../build/quasar_admin_QuasarAdminTimelock.js');
+    const timelock = client.open(
+        await QuasarAdminTimelock.fromInit(adminAddr, quasar.address, defi.address, minDelay)
+    );
+    console.log(`   Address: ${timelock.address.toString()}`);
+    await timelock.send(sender, { value: toNano('0.2') }, { $$type: 'Deploy', queryId: 0n });
+    await new Promise(r => setTimeout(r, 15000));
+    console.log(`   Admin: ${adminAddr.toString()} | minDelay: ${minDelay}s`);
+
+    console.log('   🔐 Proposing timelock ownership of QuasarMaster and QuasarDeFi...');
+    await quasar.send(sender, { value: toNano('0.05') }, { $$type: 'ProposeOwner', newOwner: timelock.address });
+    await defi.send(sender, { value: toNano('0.05') }, { $$type: 'ProposePoolOwner', newOwner: timelock.address });
+    await new Promise(r => setTimeout(r, 3000));
+    console.log('   ✅ Timelock deployed and proposed as owner (acceptance queues through the timelock).');
     
     // ═══════════════════════════════════════════════════════
     // STEP 3: Save Deployment Info
@@ -197,6 +228,13 @@ async function deploy() {
             defi: {
                 address: defi.address.toString(),
                 name: 'QuasarDeFi'
+            },
+            timelock: {
+                address: timelock.address.toString(),
+                name: 'QuasarAdminTimelock',
+                admin: adminAddr.toString(),
+                minDelay: minDelay.toString(),
+                ownershipProposed: true
             }
         },
         wallet: {

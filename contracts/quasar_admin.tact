@@ -119,6 +119,8 @@ contract QuasarAdminTimelock with Deployable {
         self.adminTransferAt = 0;
     }
 
+    get fun get_master(): Address { return self.master }
+    get fun get_defi(): Address { return self.defi }
     get fun get_admin(): Address { return self.admin }
     get fun get_pending_admin(): Address { return self.pendingAdmin }
     get fun get_admin_transfer_at(): Int { return self.adminTransferAt }

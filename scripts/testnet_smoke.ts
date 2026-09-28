@@ -5,11 +5,12 @@ import { Address } from '@ton/core';
 import { TonClient } from '@ton/ton';
 import { QuasarMaster } from '../build/quasar_QuasarMaster.js';
 import { QuasarDeFi } from '../build/quasar_defi_QuasarDeFi.js';
+import { QuasarAdminTimelock } from '../build/quasar_admin_QuasarAdminTimelock.js';
 
 type Deployment = {
     network: string;
     totalSupply: number;
-    contracts: { master?: { address?: string }; defi?: { address?: string } };
+    contracts: { master?: { address?: string }; defi?: { address?: string }; timelock?: { address?: string } };
 };
 
 function fail(message: string): never {
@@ -21,7 +22,9 @@ const deployment = JSON.parse(readFileSync(deploymentPath, 'utf8')) as Deploymen
 if (deployment.network !== 'testnet') fail('deployment.json must describe testnet, not ' + deployment.network);
 const masterAddress = deployment.contracts.master?.address;
 const defiAddress = deployment.contracts.defi?.address;
+const timelockAddress = deployment.contracts.timelock?.address;
 if (!masterAddress || !defiAddress) fail('master and defi addresses are required');
+if (!timelockAddress) fail('admin timelock address is required (M-02)');
 
 const client = new TonClient({
     endpoint: process.env.TONCENTER_ENDPOINT || 'https://testnet.toncenter.com/api/v2/jsonRPC',
@@ -29,6 +32,7 @@ const client = new TonClient({
 });
 const master = client.open(QuasarMaster.fromAddress(Address.parse(masterAddress)));
 const defi = client.open(QuasarDeFi.fromAddress(Address.parse(defiAddress)));
+const timelock = client.open(QuasarAdminTimelock.fromAddress(Address.parse(timelockAddress)));
 
 const [masterDeployed, defiDeployed] = await Promise.all([
     client.isContractDeployed(master.address),
@@ -36,6 +40,19 @@ const [masterDeployed, defiDeployed] = await Promise.all([
 ]);
 if (!masterDeployed) fail('QuasarMaster is not deployed at ' + master.address.toString());
 if (!defiDeployed) fail('QuasarDeFi is not deployed at ' + defi.address.toString());
+const timelockDeployed = await client.isContractDeployed(timelock.address);
+if (!timelockDeployed) fail('QuasarAdminTimelock is not deployed at ' + timelock.address.toString());
+
+const [tlMaster, tlDefi, tlAdmin, tlDelay] = await Promise.all([
+    timelock.getGetMaster(),
+    timelock.getGetDefi(),
+    timelock.getGetAdmin(),
+    timelock.getGetMinDelay()
+]);
+if (tlMaster.toRawString() !== master.address.toRawString()) fail('timelock does not manage the master');
+if (tlDefi.toRawString() !== defi.address.toRawString()) fail('timelock does not manage the defi');
+if (tlAdmin.toRawString() === '0:' + '0'.repeat(64)) fail('timelock admin is the zero address');
+if (tlDelay < 86400n) fail('timelock min delay is shorter than 24h: ' + tlDelay);
 
 const [jetton, maxSupply, reserveBalance, custodyBalance, linkedDefi, linkedMaster, pool, feeBps, buyback] = await Promise.all([
     master.getGetJettonData(),
