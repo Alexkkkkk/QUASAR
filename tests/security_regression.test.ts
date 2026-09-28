@@ -29,7 +29,6 @@ import { Address, beginCell, Cell, toNano, internal } from '@ton/core';
 import { Blockchain } from '@ton/sandbox';
 import {
     QuasarMaster,
-    storeDefiPayout,
     storeTokenNotification
 } from '../build/quasar_QuasarMaster.js';
 import { QuasarDeFi } from '../build/quasar_defi_QuasarDeFi.js';
@@ -61,13 +60,17 @@ test('F1 source: treasury payout requires unencumbered reserve', () => {
     assert.ok(fee.includes('self.reserveBalance = self.reserveBalance - burnAmount'), 'burn must debit the reserve');
 });
 
-test('F5 source: DefiPayout is capped and revocable', () => {
-    const payout = section(masterSrc, 'receive(msg: DefiPayout)', 'receive(msg: SetTreasury)');
-    assert.ok(payout.includes('let freeReserve: Int = self.reserveBalance - self._poolEncumbrance();'), 'payout limited to free reserve');
-    assert.ok(payout.includes('require(freeReserve >= msg.amount'), 'free-reserve check must gate the payout');
-    assert.ok(payout.includes('defiMaxPayoutBps'), 'per-call cap must be enforced');
-    assert.ok(masterSrc.includes('SetDefiPayoutCap'), 'cap must be owner-configurable');
-    const setDefi = section(masterSrc, 'receive(msg: SetDefiAddress)', '// DeFi can only ask');
+test('F5 source: the DeFi-initiated reserve withdrawal path is removed and DeFi stays revocable', () => {
+    // issue #35 hardening: DeFi can no longer pull from the master reserve on
+    // its own initiative, so the DefiPayout handler, its per-call cap and the
+    // SetDefiPayoutCap setter are gone. This asserts the removal cannot silently
+    // come back.
+    assert.ok(!masterSrc.includes('message DefiPayout'), 'the DefiPayout message must be removed');
+    assert.ok(!masterSrc.includes('receive(msg: DefiPayout)'), 'the DefiPayout handler must be removed');
+    assert.ok(!masterSrc.includes('defiMaxPayoutBps'), 'the per-call payout cap must be removed');
+    assert.ok(!masterSrc.includes('SetDefiPayoutCap'), 'the cap setter must be removed');
+    // DeFi revocation via the zero address must keep working.
+    const setDefi = section(masterSrc, 'receive(msg: SetDefiAddress)', 'receive(msg: SetEmergencyGuardian)');
     assert.ok(!setDefi.includes('msg.defiAddress != newAddress(0, 0)'), 'zero address must be allowed to revoke DeFi');
 });
 
@@ -289,10 +292,12 @@ test('F7+F4 on-chain: vesting claim blocked while paused; fee config recoverable
     assert.ok(claimTxs.some((t: any) => t.description?.computePhase?.success === true), 'post-resume claim must execute');
 });
 
-test('F5+F1 on-chain: DefiPayout from a revocable DeFi address cannot touch encumbered reserve', async () => {
+test('F5+F1 on-chain: DeFi cannot pull reserve funds and stays revocable', async () => {
     const eco = await deployEco(true);
 
-    // fresh contracts: no fees collected, pools empty, reserve 0 -> any payout reverts
+    // The raw DefiPayout message no longer has a handler. Sending the raw opcode
+    // from the DeFi address must not move any reserve; a fresh contract has an
+    // empty reserve, so the balance stays 0.
     await eco.master.send(eco.bc.sender(eco.defiAddr), { value: toNano('0.1') }, {
         $$type: 'DefiPayout', queryId: 0n, amount: 1n, destination: eco.owner.address
     }).catch(() => {});
@@ -301,9 +306,6 @@ test('F5+F1 on-chain: DefiPayout from a revocable DeFi address cannot touch encu
     // revocation: the zero address revokes DeFi access entirely
     await eco.master.send(eco.owner.getSender(), { value: toNano('0.1') }, { $$type: 'SetDefiAddress', defiAddress: ZERO });
     assert.ok((await eco.master.getGetDefiAddress()).equals(ZERO));
-    await eco.master.send(eco.bc.sender(eco.defiAddr), { value: toNano('0.1') }, {
-        $$type: 'DefiPayout', queryId: 1n, amount: 1n, destination: eco.owner.address
-    }).catch(() => {});
     assert.equal(await eco.master.getGetReserveBalance(), 0n, 'revoked DeFi must not be paid');
 });
 
