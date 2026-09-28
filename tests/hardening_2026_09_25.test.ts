@@ -266,10 +266,11 @@ test('F-23: the principal can always be withdrawn, even with an empty reward poo
 test('hardening source invariants (F-21/F-22/F-23)', () => {
     const master = readFileSync(join(__dirname, '..', 'contracts', 'quasar.tact'), 'utf8');
     const defi = readFileSync(join(__dirname, '..', 'contracts', 'quasar_defi.tact'), 'utf8');
+    const common = readFileSync(join(__dirname, '..', 'contracts', 'quasar_common.tact'), 'utf8');
 
-    assert.ok(master.includes('message(0xd53276db) TokenExcesses'), 'excesses must use the TEP-74 opcode');
-    assert.ok(defi.includes('message(0xd53276db) TokenExcesses'), 'the DeFi file must declare the same message');
-    assert.ok(master.includes('body: TokenExcesses{ queryId: msg.queryId }.toCell()'), 'excesses bodies must carry the request query id');
+    assert.ok(common.includes('message(0xd53276db) TokenExcesses'), 'excesses must use the TEP-74 opcode (declared once in the shared source of truth)');
+    assert.ok(master.includes('import "./quasar_common"') && defi.includes('import "./quasar_common"'), 'both Master and DeFi must import the shared wallet source');
+    assert.ok(common.includes('body: TokenExcesses{ queryId: msg.queryId }.toCell()'), 'excesses bodies must carry the request query id');
     assert.ok(!master.includes('"Excess returned"'), 'the burn refund must not be an opaque comment body');
     assert.ok(
         master.includes('return accrued > self.stakingRewardsPool ? self.stakingRewardsPool : accrued;'),
