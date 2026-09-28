@@ -196,7 +196,9 @@
     <div id="ton-connect"></div>
     
     <!-- Scripts -->
-    <script src="https://unpkg.com/@tonconnect/ui@latest/dist/tonconnect-ui.min.js"></script>
+    <!-- Pinned: an unpinned @latest tag from a third-party CDN lets the
+         remote host change wallet-connecting code at will (supply-chain risk). -->
+    <script src="https://unpkg.com/@tonconnect/ui@3.0.2/dist/tonconnect-ui.min.js"></script>
     <script src="config.js"></script>
     <script type="module" src="tonconnect.js"></script>
     <script>

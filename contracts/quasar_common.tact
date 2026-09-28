@@ -56,6 +56,11 @@ contract QuasarWallet {
         // those paths already enforce their own reserve/supply rules. User
         // wallet-to-wallet transfers must respect the documented 3% wallet
         // ceiling at the receiving wallet.
+        // NOTE: these two ceilings (1% per transfer, 3% per wallet) mirror the
+        // master defaults maxTxBps=100 / maxWalletBps=300. A contract cannot
+        // read another contract's state, so a later SetFeeConfig/AISetAntiWhale
+        // change does NOT move them: raising the configured limits requires
+        // shipping this wallet code through ProposeWalletCode/AcceptWalletCode.
         if (msg.from != self.master) {
             require(self.balance + msg.amount <= 30_000_000_000_000_000, "Max wallet exceeded");
         }

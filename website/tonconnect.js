@@ -37,7 +37,12 @@ const GAS = {
     SWAP: '100000000',      // 0.1 TON
     LIQUIDITY: '100000000', // 0.1 TON base
     CLAIM: '50000000',      // 0.05 TON
-    DEPOSIT: '50000000',    // 0.05 TON for the jetton transfer + forward
+    // QuasarWallet.receive(TokenTransfer) spends two amounts from the SOURCE
+    // wallet balance (both with SendPayGasSeparately): 0.02 TON for the
+    // internal_transfer leg and 0.05 TON for the FeeTransfer leg = 0.07 TON
+    // minimum. A lower attached value makes the second action fail with
+    // exit code 37 and the whole transfer is rolled back.
+    DEPOSIT: '90000000',    // 0.09 TON: 0.07 TON contract spend + headroom
 };
 
 const NANO = 1000000000n;
