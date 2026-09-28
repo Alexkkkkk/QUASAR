@@ -244,6 +244,11 @@ contract QuasarMaster with Deployable {
     // Wallet-code migration (v5): two-step + timelock, mirrors F-08 ownership.
     pendingWalletCode: Cell?;
     walletCodeAt: Int;
+    // Jetton metadata (TEP-64): the content cell is part of the init data, so
+    // without an explicit setter a typo in the metadata URI would be permanent.
+    // Updates mirror the wallet-code migration: propose, wait, then confirm.
+    pendingContent: Cell?;
+    contentAt: Int;
     // H-02: typed pending-payout ledger so a bounce restores stake, vesting
     // claim, staking reward or referral liability - not only the aggregate
     // custody/reserve counter.
@@ -349,6 +354,8 @@ contract QuasarMaster with Deployable {
         self.pendingFeeConfigAt = 0;
         self.pendingWalletCode = null;
         self.walletCodeAt = 0;
+        self.pendingContent = null;
+        self.contentAt = 0;
     }
     
     // ═══════════════════════════════════════════════════════════
@@ -1614,6 +1621,44 @@ contract QuasarMaster with Deployable {
         emit(EventAdminConfig{ action: "ApplyWalletCode", actor: sender(), valueA: 0, valueB: 0 }.toCell());
     }
 
+    // ─── JETTON METADATA (TEP-64): two-step + timelock ───
+    // The content cell must keep one of the TEP-64 layouts:
+    //   0x01 ++ URI          off-chain content
+    //   0x00 ++ dictionary   on-chain content (semi-chain adds a mandatory `uri`)
+    // Only the prefix is validated on-chain: an owner-supplied dictionary is
+    // intentionally opaque, and decoding it inside the receiver would put an
+    // unbounded loop in the message path. scripts/lib/tep64.ts preflights the
+    // exact attribute set (name/symbol/decimals/image) before a proposal is
+    // broadcast, and tests/tep64_content.test.ts asserts the on-chain round trip.
+    receive(msg: ProposeContent) {
+        self._requireOwner();
+        require(!self.aiFullAutonomy, "AI controls");
+        self.pendingContent = msg.newContent;
+        self.contentAt = now() + self.ownerTransferDelay;
+        emit(EventAdminConfig{ action: "ProposeContent", actor: sender(), valueA: self.contentAt, valueB: 0 }.toCell());
+    }
+
+    receive("Cancel Content") {
+        self._requireOwner();
+        require(self.pendingContent != null, "Nothing pending");
+        self.pendingContent = null;
+        self.contentAt = 0;
+        emit(EventAdminConfig{ action: "CancelContent", actor: sender(), valueA: 0, valueB: 0 }.toCell());
+    }
+
+    // Applies the staged metadata only after the same 48h delay as the wallet
+    // code migration, so a compromised owner key cannot rewrite the jetton
+    // metadata in a single transaction.
+    receive("Apply Content") {
+        self._requireOwner();
+        require(self.pendingContent != null, "Nothing pending");
+        require(self.contentAt > 0 && now() >= self.contentAt, "Content timelock active");
+        self.content = self.pendingContent!!;
+        self.pendingContent = null;
+        self.contentAt = 0;
+        emit(EventAdminConfig{ action: "ApplyContent", actor: sender(), valueA: 0, valueB: 0 }.toCell());
+    }
+
     receive(msg: SetTreasury) {
         self._requireOwner();
         require(!self.aiFullAutonomy, "AI controls");
@@ -1827,6 +1872,8 @@ contract QuasarMaster with Deployable {
     get fun get_pending_fee_config_at(): Int { return self.pendingFeeConfigAt }
     get fun get_pending_wallet_code(): Cell? { return self.pendingWalletCode }
     get fun get_wallet_code_at(): Int { return self.walletCodeAt }
+    get fun get_pending_content(): Cell? { return self.pendingContent }
+    get fun get_content_at(): Int { return self.contentAt }
 }
 
 message SweepTON { amount: Int as coins }
@@ -1844,6 +1891,9 @@ struct GovernanceState { quorumBps: Int; totalStaked: Int; proposals: Int }
 
 // ─── Wallet-code migration (v5): two-step + timelock ───
 message ProposeWalletCode { newWalletCode: Cell }
+
+// ─── Jetton metadata (TEP-64): two-step + timelock ───
+message ProposeContent { newContent: Cell }
 
 // ═══════════════════════════════════════════════════════════════
 // QUASAR WALLET — Optimized with fee deduction
