@@ -12,6 +12,14 @@ function assertContains(source: string, needle: string, label: string) {
 }
 
 assertContains(common, 'const QUASAR_STORAGE_RESERVE: Int = ton("0.05");', 'shared storage reserve is explicit');
+assertContains(common, 'const QUASAR_MAX_TX_BPS: Int = 100;', 'wallet transfer policy is explicit');
+assertContains(common, 'const QUASAR_MAX_WALLET_BPS: Int = 300;', 'wallet balance policy is explicit');
+assertContains(common, 'const QUASAR_MAX_TX_AMOUNT: Int = QUASAR_MAX_SUPPLY * QUASAR_MAX_TX_BPS / 10000;', 'wallet transfer cap derives from the shared policy');
+assertContains(common, 'const QUASAR_MAX_WALLET_AMOUNT: Int = QUASAR_MAX_SUPPLY * QUASAR_MAX_WALLET_BPS / 10000;', 'wallet balance cap derives from the shared policy');
+assertContains(common, 'require(self.balance + msg.amount <= QUASAR_MAX_WALLET_AMOUNT, "Max wallet exceeded");', 'wallet enforces the shared balance cap');
+assertContains(common, 'require(msg.amount <= QUASAR_MAX_TX_AMOUNT, "Max tx exceeded");', 'wallet enforces the shared transfer cap');
+assertContains(master, 'require(msg.maxTxBps == QUASAR_MAX_TX_BPS && msg.maxWalletBps == QUASAR_MAX_WALLET_BPS && msg.cooldown == QUASAR_TRANSFER_COOLDOWN, "Transfer limits are fixed");', 'AI cannot advertise an unsupported wallet policy');
+assertContains(master, 'require(msg.feeBps == QUASAR_WALLET_FEE_BPS && msg.burnShare <= 100 && msg.maxTxBps == QUASAR_MAX_TX_BPS && msg.maxWalletBps == QUASAR_MAX_WALLET_BPS && msg.cooldown == QUASAR_TRANSFER_COOLDOWN, "Only implemented limits are allowed");', 'owner cannot store a policy that differs from wallet code');
 assertContains(master, 'override const storageReserve: Int = QUASAR_STORAGE_RESERVE;', 'master retains storage reserve');
 assertContains(defi, 'override const storageReserve: Int = QUASAR_STORAGE_RESERVE;', 'DeFi retains storage reserve');
 assertContains(admin, 'override const storageReserve: Int = QUASAR_STORAGE_RESERVE;', 'admin timelock retains storage reserve');

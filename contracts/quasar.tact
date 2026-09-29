@@ -262,7 +262,7 @@ contract QuasarMaster with Deployable {
     
     init(owner: Address, content: Cell, walletCode: Cell) {
         self.totalSupply = 0;
-        self.maxSupply = ton("1000000000");
+        self.maxSupply = QUASAR_MAX_SUPPLY;
         self.mintable = true;
         self.owner = owner;
         self.pendingOwner = newAddress(0, 0);
@@ -275,16 +275,16 @@ contract QuasarMaster with Deployable {
         self.custodyBalance = 0;
         self.custodyPayoutSeq = 0;
         
-        self.feeBps = 30;
+        self.feeBps = QUASAR_WALLET_FEE_BPS;
         self.feeBurnShare = 50;
         self.treasury = owner;
         self.totalBurned = 0;
         self.totalFeesCollected = 0;
-        self.maxTxBps = 100;
-        self.maxWalletBps = 300;
+        self.maxTxBps = QUASAR_MAX_TX_BPS;
+        self.maxWalletBps = QUASAR_MAX_WALLET_BPS;
         // The wallet enforces a five-second transfer cooldown. Keep the
         // master configuration aligned with that deployed wallet behavior.
-        self.cooldownSeconds = 5;
+        self.cooldownSeconds = QUASAR_TRANSFER_COOLDOWN;
         self.tradingEnabled = true;
         
         self.buybackEnabled = true;
@@ -1141,7 +1141,7 @@ contract QuasarMaster with Deployable {
         self._requireAiAccess();
         self._requireAiCooldown();
         self._requireFreshAiQuery(msg.queryId);
-        require(msg.feeBps == 30, "Wallet fee is fixed at 30 bps");
+        require(msg.feeBps == QUASAR_WALLET_FEE_BPS, "Wallet fee is fixed at 30 bps");
         let old: Int = self.feeBps;
         self.feeBps = msg.feeBps;
         let id: Int = self._logAiAction("SetFee", old, msg.feeBps, msg.reason);
@@ -1165,7 +1165,7 @@ contract QuasarMaster with Deployable {
         self._requireAiAccess();
         self._requireAiCooldown();
         self._requireFreshAiQuery(msg.queryId);
-        require(msg.maxTxBps == 100 && msg.maxWalletBps == 300 && msg.cooldown == 5, "Transfer limits are fixed");
+        require(msg.maxTxBps == QUASAR_MAX_TX_BPS && msg.maxWalletBps == QUASAR_MAX_WALLET_BPS && msg.cooldown == QUASAR_TRANSFER_COOLDOWN, "Transfer limits are fixed");
         let oldMaxTxBps: Int = self.maxTxBps;
         let oldMaxWalletBps: Int = self.maxWalletBps;
         let oldCooldownSeconds: Int = self.cooldownSeconds;
@@ -1681,7 +1681,7 @@ contract QuasarMaster with Deployable {
     receive(msg: SetFeeConfig) {
         self._requireOwner();
         require(!self.aiFullAutonomy, "AI controls");
-        require(msg.feeBps == 30 && msg.burnShare <= 100 && msg.maxTxBps == 100 && msg.maxWalletBps == 300 && msg.cooldown == 5, "Only implemented limits are allowed");
+        require(msg.feeBps == QUASAR_WALLET_FEE_BPS && msg.burnShare <= 100 && msg.maxTxBps == QUASAR_MAX_TX_BPS && msg.maxWalletBps == QUASAR_MAX_WALLET_BPS && msg.cooldown == QUASAR_TRANSFER_COOLDOWN, "Only implemented limits are allowed");
         self.pendingFee = msg.feeBps;
         self.pendingFeeBurnShare = msg.burnShare;
         self.pendingMaxTx = msg.maxTxBps;
