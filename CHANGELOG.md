@@ -12,6 +12,16 @@ verification status.
 
 ### Added
 
+- `tests/property_invariants.test.ts`: deterministic invariant coverage for issue #63 (CPMM `k` monotonicity across a seeded swap path, LP quote/burn quote round-trips, and staking-accounting conservation).
+- `scripts/build_hashes.ts`, `docs/build-hashes.json`, and the `hashes:build` script: reproducible SHA-256 publication for compiled `.code.boc` and `.abi` artifacts. CI now uploads the hash manifest as an artifact for issue #62.
+- `docs/AUDIT_STATUS.md`: single-table status board for the still-open findings and their repository issue links (issue #66).
+
+### Changed
+
+- `README.md` and `WHITEPAPER.md` now point readers to the repository issue tracker and mark the legacy veto fields as inactive compatibility state, not an active governance feature.
+
+### Added
+
 - TEP-64 managed jetton metadata (issue #58): `ProposeContent`,
   `"Cancel Content"` and `"Apply Content"` receivers plus `get_pending_content`
   and `get_content_at` getters. A metadata change is two-step and only applies

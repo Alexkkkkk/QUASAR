@@ -275,6 +275,7 @@
                 return;
             }
             const minOut = quotedOut * BigInt(10000 - slippageBps) / 10000n;
+            showToast(`Swap guardrails: min out ${(Number(minOut) / 1e9).toFixed(4)} ${direction === 'to-ton' ? 'TON' : 'QSR'} · deadline 5 min`, 'success');
             if (direction === 'to-ton') {
                 if (!(await ensureQsrDeposit('defi', amountNano))) return;
                 window.swapToTon(amountNano, minOut);
@@ -288,6 +289,7 @@
             const qsr = parseFloat(document.getElementById('lp-qsr').value);
             if (!ton || !qsr || ton <= 0 || qsr <= 0) { showToast('Enter valid amounts', 'error'); return; }
             const qsrNano = BigInt(Math.floor(qsr * 1e9));
+            showToast('Liquidity guardrails: min LP 1 · deadline 5 min', 'success');
             if (!(await ensureQsrDeposit('defi', qsrNano))) return;
             window.addLiquidity(BigInt(Math.floor(ton * 1e9)), qsrNano);
         }
@@ -295,6 +297,7 @@
         function removeLiquidityFromUI() {
             const lp = parseFloat(document.getElementById('lp-remove').value);
             if (!lp || lp <= 0) { showToast('Enter valid LP amount', 'error'); return; }
+            showToast('Liquidity guardrails: min TON/QSR outputs default to 1 nanotoken · deadline 5 min', 'success');
             window.removeLiquidity(BigInt(Math.floor(lp * 1e9)));
         }
         

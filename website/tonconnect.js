@@ -290,6 +290,19 @@ function deadline(seconds = 300) {
     return Math.floor(Date.now() / 1000) + seconds;
 }
 
+function formatGuardDeadline(unixSeconds) {
+    return new Date(Number(unixSeconds) * 1000).toLocaleString();
+}
+
+function describeTonConnectError(error) {
+    const message = String(error?.message || error || 'Transaction failed');
+    const lower = message.toLowerCase();
+    if (lower.includes('reject') || lower.includes('cancel') || lower.includes('close') || lower.includes('declin')) {
+        return { kind: 'cancel', message: 'Transaction cancelled in wallet' };
+    }
+    return { kind: 'error', message: `Transaction failed: ${message}` };
+}
+
 // ─── BOC Builder ───
 function buildPayload(op, ...args) {
     const cell = beginCell();
@@ -310,7 +323,7 @@ function buildPayload(op, ...args) {
 }
 
 // ─── Transaction Sender ───
-async function sendTx(address, amount, payload) {
+async function sendTx(address, amount, payload, summary = null) {
     if (!tonConnectUI) {
         window.showToast?.('Connect wallet first!', 'error');
         return null;
@@ -327,12 +340,14 @@ async function sendTx(address, amount, payload) {
             validUntil: Math.floor(Date.now() / 1000) + 300,
             messages: [{ address: target, amount, payload }],
         });
-        window.showToast?.('Transaction sent!', 'success');
-        return tx;
+        const detail = summary ? ` ${summary}` : '';
+        window.showToast?.(`Transaction sent!${detail}`, 'success');
+        return { ok: true, tx };
     } catch (e) {
         console.error('[QUASAR] TX error:', e);
-        window.showToast?.('Transaction failed: ' + (e.message || e), 'error');
-        throw e;
+        const status = describeTonConnectError(e);
+        window.showToast?.(status.message, 'error');
+        return { ok: false, cancelled: status.kind === 'cancel', error: e };
     }
 }
 
@@ -374,7 +389,7 @@ export async function depositQsr(target, amountNano) {
             .storeBit(0)                            // forward payload: empty, inline
             .endCell();
 
-        return sendTx(wallet, GAS.DEPOSIT, payload.toBoc().toString('base64'));
+        return sendTx(wallet, GAS.DEPOSIT, payload.toBoc().toString('base64'), `Depositing ${fmtQsr(amountNano)} to ${target}`);
     } catch (e) {
         console.error('[QUASAR] Deposit error:', e);
         window.showToast?.('Deposit failed: ' + (e.message || e), 'error');
@@ -389,7 +404,7 @@ export async function stakeQsr(amountNano) {
         window.showToast?.('Enter valid QSR amount', 'error'); return;
     }
     const config = window.QUASAR_CONFIG || {};
-    return sendTx(config.addresses?.master, GAS.STAKE, buildPayload(OP.STAKE_QSR, amountNano));
+    return sendTx(config.addresses?.master, GAS.STAKE, buildPayload(OP.STAKE_QSR, amountNano), `Stake ${fmtQsr(amountNano)}`);
 }
 
 export async function unstakeQsr(amountNano) {
@@ -397,12 +412,12 @@ export async function unstakeQsr(amountNano) {
         window.showToast?.('Enter valid amount', 'error'); return;
     }
     const config = window.QUASAR_CONFIG || {};
-    return sendTx(config.addresses?.master, GAS.STAKE, buildPayload(OP.UNSTAKE_QSR, amountNano));
+    return sendTx(config.addresses?.master, GAS.STAKE, buildPayload(OP.UNSTAKE_QSR, amountNano), `Unstake ${fmtQsr(amountNano)}`);
 }
 
 export async function claimStakingRewards() {
     const config = window.QUASAR_CONFIG || {};
-    return sendTx(config.addresses?.master, GAS.CLAIM, buildPayload(OP.CLAIM_STAKE));
+    return sendTx(config.addresses?.master, GAS.CLAIM, buildPayload(OP.CLAIM_STAKE), 'Claim staking rewards');
 }
 
 export async function addLiquidity(tonAmount, qsrAmount, minLpOut = 1n, validFor = 300) {
@@ -411,8 +426,14 @@ export async function addLiquidity(tonAmount, qsrAmount, minLpOut = 1n, validFor
     }
     const config = window.QUASAR_CONFIG || {};
     const totalAmount = (tonAmount + BigInt(GAS.LIQUIDITY)).toString();
+    const until = deadline(validFor);
     // AddLiquidity{tonAmount, qsrAmount, minLpOut, deadline}
-    return sendTx(config.addresses?.defi, totalAmount, buildPayload(OP.ADD_LIQUIDITY, tonAmount, qsrAmount, minLpOut, deadline(validFor)));
+    return sendTx(
+        config.addresses?.defi,
+        totalAmount,
+        buildPayload(OP.ADD_LIQUIDITY, tonAmount, qsrAmount, minLpOut, until),
+        `Min LP ${minLpOut.toString()} · deadline ${formatGuardDeadline(until)}`
+    );
 }
 
 export async function removeLiquidity(lpAmount, minTonOut = 1n, minQsrOut = 1n, validFor = 300) {
@@ -420,8 +441,14 @@ export async function removeLiquidity(lpAmount, minTonOut = 1n, minQsrOut = 1n, 
         window.showToast?.('Enter valid LP amount', 'error'); return;
     }
     const config = window.QUASAR_CONFIG || {};
+    const until = deadline(validFor);
     // RemoveLiquidity{lpAmount, minTonOut, minQsrOut, deadline}
-    return sendTx(config.addresses?.defi, GAS.LIQUIDITY, buildPayload(OP.REMOVE_LIQUIDITY, lpAmount, minTonOut, minQsrOut, deadline(validFor)));
+    return sendTx(
+        config.addresses?.defi,
+        GAS.LIQUIDITY,
+        buildPayload(OP.REMOVE_LIQUIDITY, lpAmount, minTonOut, minQsrOut, until),
+        `Min ${fmtTon(minTonOut)} / ${fmtQsr(minQsrOut)} · deadline ${formatGuardDeadline(until)}`
+    );
 }
 
 export async function swapToTon(qsrAmount, minTonOut = 1n, validFor = 300) {
@@ -429,8 +456,14 @@ export async function swapToTon(qsrAmount, minTonOut = 1n, validFor = 300) {
         window.showToast?.('Enter valid QSR amount', 'error'); return;
     }
     const config = window.QUASAR_CONFIG || {};
+    const until = deadline(validFor);
     // SwapToTON{qsrAmount, minTonOut, deadline}
-    return sendTx(config.addresses?.defi, GAS.SWAP, buildPayload(OP.SWAP_TO_TON, qsrAmount, minTonOut, deadline(validFor)));
+    return sendTx(
+        config.addresses?.defi,
+        GAS.SWAP,
+        buildPayload(OP.SWAP_TO_TON, qsrAmount, minTonOut, until),
+        `Min out ${fmtTon(minTonOut)} · deadline ${formatGuardDeadline(until)}`
+    );
 }
 
 export async function swapToQsr(tonAmount, minQsrOut = 1n, validFor = 300) {
@@ -439,18 +472,24 @@ export async function swapToQsr(tonAmount, minQsrOut = 1n, validFor = 300) {
     }
     const config = window.QUASAR_CONFIG || {};
     const totalAmount = (tonAmount + BigInt(GAS.SWAP)).toString();
+    const until = deadline(validFor);
     // SwapToQSR{tonAmount, minQsrOut, deadline}
-    return sendTx(config.addresses?.defi, totalAmount, buildPayload(OP.SWAP_TO_QSR, tonAmount, minQsrOut, deadline(validFor)));
+    return sendTx(
+        config.addresses?.defi,
+        totalAmount,
+        buildPayload(OP.SWAP_TO_QSR, tonAmount, minQsrOut, until),
+        `Min out ${fmtQsr(minQsrOut)} · deadline ${formatGuardDeadline(until)}`
+    );
 }
 
 export async function claimFarmRewards() {
     const config = window.QUASAR_CONFIG || {};
-    return sendTx(config.addresses?.defi, GAS.CLAIM, buildPayload(OP.CLAIM_FARM));
+    return sendTx(config.addresses?.defi, GAS.CLAIM, buildPayload(OP.CLAIM_FARM), 'Claim farm rewards');
 }
 
 export async function refundPendingQsr() {
     const config = window.QUASAR_CONFIG || {};
-    return sendTx(config.addresses?.defi, GAS.CLAIM, buildPayload(OP.REFUND_PENDING_QSR));
+    return sendTx(config.addresses?.defi, GAS.CLAIM, buildPayload(OP.REFUND_PENDING_QSR), 'Refund pending QSR');
 }
 
 // ─── Expose to window ───

@@ -1,7 +1,7 @@
 {
   "name": "quasar-jetton",
   "version": "3.0.0",
-  "description": "QUASAR — The brightest Jetton in the TON universe. AI Sovereignty | DeFi DEX | Yield Farming | Web3",
+  "description": "QUASAR \u2014 The brightest Jetton in the TON universe. AI Sovereignty | DeFi DEX | Yield Farming | Web3",
   "main": "index.js",
   "homepage": "https://alexkkkkk.github.io/QUASAR",
   "type": "module",
@@ -17,7 +17,8 @@
     "abi:update": "npm run build && tsx scripts/check_abi.ts --update",
     "website": "npx serve website",
     "security:check": "tsx scripts/security_check.ts",
-    "testnet:smoke": "tsx scripts/testnet_smoke.ts"
+    "testnet:smoke": "tsx scripts/testnet_smoke.ts",
+    "hashes:build": "npm run build && tsx scripts/build_hashes.ts --write"
   },
   "keywords": [
     "ton",
