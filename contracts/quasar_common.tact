@@ -2,6 +2,17 @@
 /// Both quasar.tact (Master) and quasar_defi.tact (DeFi pool) import this file,
 /// so the wallet code stays byte-identical across projects (issue #35, Wave 0).
 const QUASAR_STORAGE_RESERVE: Int = ton("0.05");
+// Anti-whale policy is compiled into the wallet code. A Jetton wallet cannot
+// read the current data cell of its master, so allowing the master to store
+// arbitrary values here would create a false configuration surface. Any policy
+// change must therefore ship through the timelocked wallet-code migration.
+const QUASAR_MAX_SUPPLY: Int = ton("1000000000");
+const QUASAR_WALLET_FEE_BPS: Int = 30;
+const QUASAR_MAX_TX_BPS: Int = 100;
+const QUASAR_MAX_WALLET_BPS: Int = 300;
+const QUASAR_TRANSFER_COOLDOWN: Int = 5;
+const QUASAR_MAX_TX_AMOUNT: Int = QUASAR_MAX_SUPPLY * QUASAR_MAX_TX_BPS / 10000;
+const QUASAR_MAX_WALLET_AMOUNT: Int = QUASAR_MAX_SUPPLY * QUASAR_MAX_WALLET_BPS / 10000;
 
 struct JettonWalletData { balance: Int; owner: Address; master: Address; walletCode: Cell }
 
@@ -67,13 +78,11 @@ contract QuasarWallet {
         // those paths already enforce their own reserve/supply rules. User
         // wallet-to-wallet transfers must respect the documented 3% wallet
         // ceiling at the receiving wallet.
-        // NOTE: these two ceilings (1% per transfer, 3% per wallet) mirror the
-        // master defaults maxTxBps=100 / maxWalletBps=300. A contract cannot
-        // read another contract's state, so a later SetFeeConfig/AISetAntiWhale
-        // change does NOT move them: raising the configured limits requires
-        // shipping this wallet code through ProposeWalletCode/AcceptWalletCode.
+        // These ceilings are the single compiled policy used by the master
+        // configuration. A contract cannot read another contract's state, so
+        // changing them requires ProposeWalletCode/Apply Wallet Code.
         if (msg.from != self.master) {
-            require(self.balance + msg.amount <= 30_000_000_000_000_000, "Max wallet exceeded");
+            require(self.balance + msg.amount <= QUASAR_MAX_WALLET_AMOUNT, "Max wallet exceeded");
         }
         self.balance = self.balance + msg.amount;
 
@@ -224,17 +233,17 @@ contract QuasarWallet {
         require(sender() == self.owner, "Not owner");
         require(msg.destination != newAddress(0, 0), "Invalid destination");
         require(self.balance >= msg.amount, "Insufficient");
-        require(now() - self.lastTxTime >= 5, "Cooldown");
+        require(now() - self.lastTxTime >= QUASAR_TRANSFER_COOLDOWN, "Cooldown");
         // User transfers are capped at 1% of the 1B QSR hard cap. The
         // master-owned wallet is exempt because reserve payouts and DeFi
         // settlement are not ordinary user transfers.
         if (self.owner != self.master) {
-            require(msg.amount <= 10_000_000_000_000_000, "Max tx exceeded");
+            require(msg.amount <= QUASAR_MAX_TX_AMOUNT, "Max tx exceeded");
         }
         self.lastTxTime = now();
         require(self.pendingResponseFees.get(msg.queryId) == null, "Query ID already used");
         
-        let fee: Int = msg.amount * 30 / 10000;
+        let fee: Int = msg.amount * QUASAR_WALLET_FEE_BPS / 10000;
         if (fee < 1) { fee = 1 }
         let sendAmount: Int = msg.amount - fee;
         require(sendAmount > 0, "Amount too small");
