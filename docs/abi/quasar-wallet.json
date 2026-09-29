@@ -1,0 +1,292 @@
+{
+  "schemaVersion": 1,
+  "contract": "QuasarWallet",
+  "artifact": "quasar_QuasarWallet.abi",
+  "messages": [
+    {
+      "name": "BurnConfirmed",
+      "opcode": "0x934f3602",
+      "fields": [
+        {
+          "name": "queryId",
+          "type": {
+            "kind": "simple",
+            "type": "uint",
+            "optional": false,
+            "format": 64
+          }
+        }
+      ]
+    },
+    {
+      "name": "InternalTransfer",
+      "opcode": "0x178d4519",
+      "fields": [
+        {
+          "name": "queryId",
+          "type": {
+            "kind": "simple",
+            "type": "uint",
+            "optional": false,
+            "format": 64
+          }
+        },
+        {
+          "name": "amount",
+          "type": {
+            "kind": "simple",
+            "type": "uint",
+            "optional": false,
+            "format": "coins"
+          }
+        },
+        {
+          "name": "from",
+          "type": {
+            "kind": "simple",
+            "type": "address",
+            "optional": false
+          }
+        },
+        {
+          "name": "responseDestination",
+          "type": {
+            "kind": "simple",
+            "type": "address",
+            "optional": false
+          }
+        },
+        {
+          "name": "forwardTonAmount",
+          "type": {
+            "kind": "simple",
+            "type": "uint",
+            "optional": false,
+            "format": "coins"
+          }
+        },
+        {
+          "name": "forwardPayload",
+          "type": {
+            "kind": "simple",
+            "type": "slice",
+            "optional": false,
+            "format": "remainder"
+          }
+        }
+      ]
+    },
+    {
+      "name": "PoolPayout",
+      "opcode": "0x51a5c3d1",
+      "fields": [
+        {
+          "name": "queryId",
+          "type": {
+            "kind": "simple",
+            "type": "uint",
+            "optional": false,
+            "format": 64
+          }
+        },
+        {
+          "name": "amount",
+          "type": {
+            "kind": "simple",
+            "type": "uint",
+            "optional": false,
+            "format": "coins"
+          }
+        },
+        {
+          "name": "destination",
+          "type": {
+            "kind": "simple",
+            "type": "address",
+            "optional": false
+          }
+        }
+      ]
+    },
+    {
+      "name": "ProvideWalletAddress",
+      "opcode": "0x2c76b973",
+      "fields": [
+        {
+          "name": "queryId",
+          "type": {
+            "kind": "simple",
+            "type": "uint",
+            "optional": false,
+            "format": 64
+          }
+        },
+        {
+          "name": "ownerAddress",
+          "type": {
+            "kind": "simple",
+            "type": "address",
+            "optional": false
+          }
+        },
+        {
+          "name": "includeAddress",
+          "type": {
+            "kind": "simple",
+            "type": "bool",
+            "optional": false
+          }
+        }
+      ]
+    },
+    {
+      "name": "TokenBurn",
+      "opcode": "0x595f07bc",
+      "fields": [
+        {
+          "name": "queryId",
+          "type": {
+            "kind": "simple",
+            "type": "uint",
+            "optional": false,
+            "format": 64
+          }
+        },
+        {
+          "name": "amount",
+          "type": {
+            "kind": "simple",
+            "type": "uint",
+            "optional": false,
+            "format": "coins"
+          }
+        },
+        {
+          "name": "responseDestination",
+          "type": {
+            "kind": "simple",
+            "type": "address",
+            "optional": false
+          }
+        },
+        {
+          "name": "customPayload",
+          "type": {
+            "kind": "simple",
+            "type": "cell",
+            "optional": true
+          }
+        }
+      ]
+    },
+    {
+      "name": "TokenExcesses",
+      "opcode": "0xd53276db",
+      "fields": [
+        {
+          "name": "queryId",
+          "type": {
+            "kind": "simple",
+            "type": "uint",
+            "optional": false,
+            "format": 64
+          }
+        }
+      ]
+    },
+    {
+      "name": "TokenTransfer",
+      "opcode": "0x0f8a7ea5",
+      "fields": [
+        {
+          "name": "queryId",
+          "type": {
+            "kind": "simple",
+            "type": "uint",
+            "optional": false,
+            "format": 64
+          }
+        },
+        {
+          "name": "amount",
+          "type": {
+            "kind": "simple",
+            "type": "uint",
+            "optional": false,
+            "format": "coins"
+          }
+        },
+        {
+          "name": "destination",
+          "type": {
+            "kind": "simple",
+            "type": "address",
+            "optional": false
+          }
+        },
+        {
+          "name": "responseDestination",
+          "type": {
+            "kind": "simple",
+            "type": "address",
+            "optional": false
+          }
+        },
+        {
+          "name": "customPayload",
+          "type": {
+            "kind": "simple",
+            "type": "cell",
+            "optional": true
+          }
+        },
+        {
+          "name": "forwardTonAmount",
+          "type": {
+            "kind": "simple",
+            "type": "uint",
+            "optional": false,
+            "format": "coins"
+          }
+        },
+        {
+          "name": "forwardPayload",
+          "type": {
+            "kind": "simple",
+            "type": "slice",
+            "optional": false,
+            "format": "remainder"
+          }
+        }
+      ]
+    },
+    {
+      "name": "TransferConfirmed",
+      "opcode": "0x0b1cc4aa",
+      "fields": [
+        {
+          "name": "queryId",
+          "type": {
+            "kind": "simple",
+            "type": "uint",
+            "optional": false,
+            "format": 64
+          }
+        }
+      ]
+    }
+  ],
+  "textReceivers": [],
+  "getters": [
+    {
+      "name": "get_wallet_data",
+      "methodId": 97026,
+      "arguments": [],
+      "returns": {
+        "kind": "simple",
+        "type": "JettonWalletData",
+        "optional": false
+      }
+    }
+  ]
+}

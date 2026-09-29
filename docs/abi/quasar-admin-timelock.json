@@ -1,0 +1,212 @@
+{
+  "schemaVersion": 1,
+  "contract": "QuasarAdminTimelock",
+  "artifact": "quasar_admin_QuasarAdminTimelock.abi",
+  "messages": [
+    {
+      "name": "AcceptAdmin",
+      "opcode": "0x5fd2daef",
+      "fields": []
+    },
+    {
+      "name": "CancelAdminCall",
+      "opcode": "0x9278deba",
+      "fields": [
+        {
+          "name": "callId",
+          "type": {
+            "kind": "simple",
+            "type": "uint",
+            "optional": false,
+            "format": 64
+          }
+        }
+      ]
+    },
+    {
+      "name": "CancelAdminTransfer",
+      "opcode": "0x1e7799cf",
+      "fields": []
+    },
+    {
+      "name": "Deploy",
+      "opcode": "0x946a98b6",
+      "fields": [
+        {
+          "name": "queryId",
+          "type": {
+            "kind": "simple",
+            "type": "uint",
+            "optional": false,
+            "format": 64
+          }
+        }
+      ]
+    },
+    {
+      "name": "ExecuteAdminCall",
+      "opcode": "0x966c9266",
+      "fields": [
+        {
+          "name": "callId",
+          "type": {
+            "kind": "simple",
+            "type": "uint",
+            "optional": false,
+            "format": 64
+          }
+        }
+      ]
+    },
+    {
+      "name": "ProposeAdmin",
+      "opcode": "0x0f626919",
+      "fields": [
+        {
+          "name": "newAdmin",
+          "type": {
+            "kind": "simple",
+            "type": "address",
+            "optional": false
+          }
+        }
+      ]
+    },
+    {
+      "name": "QueueAdminCall",
+      "opcode": "0x4b204782",
+      "fields": [
+        {
+          "name": "callId",
+          "type": {
+            "kind": "simple",
+            "type": "uint",
+            "optional": false,
+            "format": 64
+          }
+        },
+        {
+          "name": "target",
+          "type": {
+            "kind": "simple",
+            "type": "address",
+            "optional": false
+          }
+        },
+        {
+          "name": "value",
+          "type": {
+            "kind": "simple",
+            "type": "uint",
+            "optional": false,
+            "format": "coins"
+          }
+        },
+        {
+          "name": "body",
+          "type": {
+            "kind": "simple",
+            "type": "cell",
+            "optional": false
+          }
+        }
+      ]
+    }
+  ],
+  "textReceivers": [],
+  "getters": [
+    {
+      "name": "get_admin",
+      "methodId": 113142,
+      "arguments": [],
+      "returns": {
+        "kind": "simple",
+        "type": "address",
+        "optional": false
+      }
+    },
+    {
+      "name": "get_admin_transfer_at",
+      "methodId": 87481,
+      "arguments": [],
+      "returns": {
+        "kind": "simple",
+        "type": "int",
+        "optional": false,
+        "format": 257
+      }
+    },
+    {
+      "name": "get_defi",
+      "methodId": 68688,
+      "arguments": [],
+      "returns": {
+        "kind": "simple",
+        "type": "address",
+        "optional": false
+      }
+    },
+    {
+      "name": "get_last_queued_call_id",
+      "methodId": 73167,
+      "arguments": [],
+      "returns": {
+        "kind": "simple",
+        "type": "int",
+        "optional": false,
+        "format": 257
+      }
+    },
+    {
+      "name": "get_master",
+      "methodId": 119462,
+      "arguments": [],
+      "returns": {
+        "kind": "simple",
+        "type": "address",
+        "optional": false
+      }
+    },
+    {
+      "name": "get_min_delay",
+      "methodId": 86105,
+      "arguments": [],
+      "returns": {
+        "kind": "simple",
+        "type": "int",
+        "optional": false,
+        "format": 257
+      }
+    },
+    {
+      "name": "get_pending_admin",
+      "methodId": 111631,
+      "arguments": [],
+      "returns": {
+        "kind": "simple",
+        "type": "address",
+        "optional": false
+      }
+    },
+    {
+      "name": "get_pending_call",
+      "methodId": 125525,
+      "arguments": [
+        {
+          "name": "callId",
+          "type": {
+            "kind": "simple",
+            "type": "int",
+            "optional": false,
+            "format": 257
+          }
+        }
+      ],
+      "returns": {
+        "kind": "simple",
+        "type": "PendingAdminCall",
+        "optional": true
+      }
+    }
+  ]
+}

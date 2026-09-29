@@ -1,0 +1,1756 @@
+{
+  "schemaVersion": 1,
+  "contract": "QuasarMaster",
+  "artifact": "quasar_QuasarMaster.abi",
+  "messages": [
+    {
+      "name": "AcceptOwner",
+      "opcode": "0xb712ccbb",
+      "fields": []
+    },
+    {
+      "name": "AddVesting",
+      "opcode": "0xea3f3bdd",
+      "fields": [
+        {
+          "name": "beneficiary",
+          "type": {
+            "kind": "simple",
+            "type": "address",
+            "optional": false
+          }
+        },
+        {
+          "name": "totalAmount",
+          "type": {
+            "kind": "simple",
+            "type": "uint",
+            "optional": false,
+            "format": "coins"
+          }
+        },
+        {
+          "name": "cliff",
+          "type": {
+            "kind": "simple",
+            "type": "uint",
+            "optional": false,
+            "format": 32
+          }
+        },
+        {
+          "name": "duration",
+          "type": {
+            "kind": "simple",
+            "type": "uint",
+            "optional": false,
+            "format": 32
+          }
+        }
+      ]
+    },
+    {
+      "name": "AIAnomalyAlert",
+      "opcode": "0xdc63850b",
+      "fields": [
+        {
+          "name": "queryId",
+          "type": {
+            "kind": "simple",
+            "type": "uint",
+            "optional": false,
+            "format": 64
+          }
+        },
+        {
+          "name": "severity",
+          "type": {
+            "kind": "simple",
+            "type": "uint",
+            "optional": false,
+            "format": 8
+          }
+        },
+        {
+          "name": "anomalyType",
+          "type": {
+            "kind": "simple",
+            "type": "uint",
+            "optional": false,
+            "format": 8
+          }
+        },
+        {
+          "name": "affectedWallets",
+          "type": {
+            "kind": "simple",
+            "type": "uint",
+            "optional": false,
+            "format": 32
+          }
+        },
+        {
+          "name": "recommendedAction",
+          "type": {
+            "kind": "simple",
+            "type": "string",
+            "optional": false
+          }
+        }
+      ]
+    },
+    {
+      "name": "AIEmergencyPause",
+      "opcode": "0xf5708ab5",
+      "fields": [
+        {
+          "name": "queryId",
+          "type": {
+            "kind": "simple",
+            "type": "uint",
+            "optional": false,
+            "format": 64
+          }
+        },
+        {
+          "name": "pause",
+          "type": {
+            "kind": "simple",
+            "type": "bool",
+            "optional": false
+          }
+        },
+        {
+          "name": "severity",
+          "type": {
+            "kind": "simple",
+            "type": "uint",
+            "optional": false,
+            "format": 8
+          }
+        },
+        {
+          "name": "reason",
+          "type": {
+            "kind": "simple",
+            "type": "string",
+            "optional": false
+          }
+        }
+      ]
+    },
+    {
+      "name": "AIGovernanceProposal",
+      "opcode": "0xd890b03f",
+      "fields": [
+        {
+          "name": "queryId",
+          "type": {
+            "kind": "simple",
+            "type": "uint",
+            "optional": false,
+            "format": 64
+          }
+        },
+        {
+          "name": "proposalType",
+          "type": {
+            "kind": "simple",
+            "type": "uint",
+            "optional": false,
+            "format": 8
+          }
+        },
+        {
+          "name": "newValue",
+          "type": {
+            "kind": "simple",
+            "type": "int",
+            "optional": false,
+            "format": 257
+          }
+        },
+        {
+          "name": "description",
+          "type": {
+            "kind": "simple",
+            "type": "string",
+            "optional": false
+          }
+        },
+        {
+          "name": "confidence",
+          "type": {
+            "kind": "simple",
+            "type": "uint",
+            "optional": false,
+            "format": 8
+          }
+        }
+      ]
+    },
+    {
+      "name": "AIGrantFullAutonomy",
+      "opcode": "0xc61e9667",
+      "fields": [
+        {
+          "name": "enabled",
+          "type": {
+            "kind": "simple",
+            "type": "bool",
+            "optional": false
+          }
+        }
+      ]
+    },
+    {
+      "name": "AIHeartbeat",
+      "opcode": "0x8f9872bd",
+      "fields": [
+        {
+          "name": "queryId",
+          "type": {
+            "kind": "simple",
+            "type": "uint",
+            "optional": false,
+            "format": 64
+          }
+        },
+        {
+          "name": "status",
+          "type": {
+            "kind": "simple",
+            "type": "string",
+            "optional": false
+          }
+        }
+      ]
+    },
+    {
+      "name": "AIPriceSignal",
+      "opcode": "0x6920939f",
+      "fields": [
+        {
+          "name": "queryId",
+          "type": {
+            "kind": "simple",
+            "type": "uint",
+            "optional": false,
+            "format": 64
+          }
+        },
+        {
+          "name": "priceTon",
+          "type": {
+            "kind": "simple",
+            "type": "uint",
+            "optional": false,
+            "format": "coins"
+          }
+        },
+        {
+          "name": "volatility",
+          "type": {
+            "kind": "simple",
+            "type": "uint",
+            "optional": false,
+            "format": 32
+          }
+        },
+        {
+          "name": "sentiment",
+          "type": {
+            "kind": "simple",
+            "type": "int",
+            "optional": false,
+            "format": 8
+          }
+        },
+        {
+          "name": "action",
+          "type": {
+            "kind": "simple",
+            "type": "uint",
+            "optional": false,
+            "format": 8
+          }
+        }
+      ]
+    },
+    {
+      "name": "AIRebalance",
+      "opcode": "0x2882f1e8",
+      "fields": [
+        {
+          "name": "queryId",
+          "type": {
+            "kind": "simple",
+            "type": "uint",
+            "optional": false,
+            "format": 64
+          }
+        },
+        {
+          "name": "targetFeeBps",
+          "type": {
+            "kind": "simple",
+            "type": "uint",
+            "optional": false,
+            "format": 16
+          }
+        },
+        {
+          "name": "targetBurnShare",
+          "type": {
+            "kind": "simple",
+            "type": "uint",
+            "optional": false,
+            "format": 8
+          }
+        },
+        {
+          "name": "recommendation",
+          "type": {
+            "kind": "simple",
+            "type": "string",
+            "optional": false
+          }
+        }
+      ]
+    },
+    {
+      "name": "AIRotateOracle",
+      "opcode": "0x2fb11c16",
+      "fields": [
+        {
+          "name": "queryId",
+          "type": {
+            "kind": "simple",
+            "type": "uint",
+            "optional": false,
+            "format": 64
+          }
+        },
+        {
+          "name": "newOracle",
+          "type": {
+            "kind": "simple",
+            "type": "address",
+            "optional": false
+          }
+        },
+        {
+          "name": "reason",
+          "type": {
+            "kind": "simple",
+            "type": "string",
+            "optional": false
+          }
+        }
+      ]
+    },
+    {
+      "name": "AISetAntiWhale",
+      "opcode": "0x10f7c0f7",
+      "fields": [
+        {
+          "name": "queryId",
+          "type": {
+            "kind": "simple",
+            "type": "uint",
+            "optional": false,
+            "format": 64
+          }
+        },
+        {
+          "name": "maxTxBps",
+          "type": {
+            "kind": "simple",
+            "type": "uint",
+            "optional": false,
+            "format": 16
+          }
+        },
+        {
+          "name": "maxWalletBps",
+          "type": {
+            "kind": "simple",
+            "type": "uint",
+            "optional": false,
+            "format": 16
+          }
+        },
+        {
+          "name": "cooldown",
+          "type": {
+            "kind": "simple",
+            "type": "uint",
+            "optional": false,
+            "format": 16
+          }
+        },
+        {
+          "name": "reason",
+          "type": {
+            "kind": "simple",
+            "type": "string",
+            "optional": false
+          }
+        }
+      ]
+    },
+    {
+      "name": "AISetBuybackDirect",
+      "opcode": "0x0952917d",
+      "fields": [
+        {
+          "name": "queryId",
+          "type": {
+            "kind": "simple",
+            "type": "uint",
+            "optional": false,
+            "format": 64
+          }
+        },
+        {
+          "name": "enabled",
+          "type": {
+            "kind": "simple",
+            "type": "bool",
+            "optional": false
+          }
+        },
+        {
+          "name": "threshold",
+          "type": {
+            "kind": "simple",
+            "type": "uint",
+            "optional": false,
+            "format": "coins"
+          }
+        },
+        {
+          "name": "cooldown",
+          "type": {
+            "kind": "simple",
+            "type": "uint",
+            "optional": false,
+            "format": 32
+          }
+        },
+        {
+          "name": "burnPercent",
+          "type": {
+            "kind": "simple",
+            "type": "uint",
+            "optional": false,
+            "format": 8
+          }
+        },
+        {
+          "name": "reason",
+          "type": {
+            "kind": "simple",
+            "type": "string",
+            "optional": false
+          }
+        }
+      ]
+    },
+    {
+      "name": "AISetFee",
+      "opcode": "0x17df7398",
+      "fields": [
+        {
+          "name": "queryId",
+          "type": {
+            "kind": "simple",
+            "type": "uint",
+            "optional": false,
+            "format": 64
+          }
+        },
+        {
+          "name": "feeBps",
+          "type": {
+            "kind": "simple",
+            "type": "uint",
+            "optional": false,
+            "format": 16
+          }
+        },
+        {
+          "name": "reason",
+          "type": {
+            "kind": "simple",
+            "type": "string",
+            "optional": false
+          }
+        }
+      ]
+    },
+    {
+      "name": "AISetOracle",
+      "opcode": "0x2a297933",
+      "fields": [
+        {
+          "name": "oracleAddress",
+          "type": {
+            "kind": "simple",
+            "type": "address",
+            "optional": false
+          }
+        }
+      ]
+    },
+    {
+      "name": "AISetTreasuryDirect",
+      "opcode": "0x79b9e4c3",
+      "fields": [
+        {
+          "name": "queryId",
+          "type": {
+            "kind": "simple",
+            "type": "uint",
+            "optional": false,
+            "format": 64
+          }
+        },
+        {
+          "name": "treasury",
+          "type": {
+            "kind": "simple",
+            "type": "address",
+            "optional": false
+          }
+        },
+        {
+          "name": "reason",
+          "type": {
+            "kind": "simple",
+            "type": "string",
+            "optional": false
+          }
+        }
+      ]
+    },
+    {
+      "name": "AIToggleTrading",
+      "opcode": "0x0490d605",
+      "fields": [
+        {
+          "name": "queryId",
+          "type": {
+            "kind": "simple",
+            "type": "uint",
+            "optional": false,
+            "format": 64
+          }
+        },
+        {
+          "name": "enabled",
+          "type": {
+            "kind": "simple",
+            "type": "bool",
+            "optional": false
+          }
+        },
+        {
+          "name": "reason",
+          "type": {
+            "kind": "simple",
+            "type": "string",
+            "optional": false
+          }
+        }
+      ]
+    },
+    {
+      "name": "BurnNotification",
+      "opcode": "0x7bdd97de",
+      "fields": [
+        {
+          "name": "queryId",
+          "type": {
+            "kind": "simple",
+            "type": "uint",
+            "optional": false,
+            "format": 64
+          }
+        },
+        {
+          "name": "amount",
+          "type": {
+            "kind": "simple",
+            "type": "uint",
+            "optional": false,
+            "format": "coins"
+          }
+        },
+        {
+          "name": "sender",
+          "type": {
+            "kind": "simple",
+            "type": "address",
+            "optional": false
+          }
+        },
+        {
+          "name": "responseDestination",
+          "type": {
+            "kind": "simple",
+            "type": "address",
+            "optional": false
+          }
+        }
+      ]
+    },
+    {
+      "name": "BuybackTon",
+      "opcode": "0x2c7e91a4",
+      "fields": [
+        {
+          "name": "queryId",
+          "type": {
+            "kind": "simple",
+            "type": "uint",
+            "optional": false,
+            "format": 64
+          }
+        },
+        {
+          "name": "tonAmount",
+          "type": {
+            "kind": "simple",
+            "type": "uint",
+            "optional": false,
+            "format": "coins"
+          }
+        },
+        {
+          "name": "qsrSwapped",
+          "type": {
+            "kind": "simple",
+            "type": "uint",
+            "optional": false,
+            "format": "coins"
+          }
+        }
+      ]
+    },
+    {
+      "name": "CancelOwnerTransfer",
+      "opcode": "0xb80506f0",
+      "fields": []
+    },
+    {
+      "name": "ClaimReferralRewards",
+      "opcode": "0xbe1052b1",
+      "fields": []
+    },
+    {
+      "name": "ClaimRewards",
+      "opcode": "0x094a1f7c",
+      "fields": []
+    },
+    {
+      "name": "ClaimVested",
+      "opcode": "0xf789340a",
+      "fields": []
+    },
+    {
+      "name": "Deploy",
+      "opcode": "0x946a98b6",
+      "fields": [
+        {
+          "name": "queryId",
+          "type": {
+            "kind": "simple",
+            "type": "uint",
+            "optional": false,
+            "format": 64
+          }
+        }
+      ]
+    },
+    {
+      "name": "FeeTransfer",
+      "opcode": "0xeb527edf",
+      "fields": [
+        {
+          "name": "queryId",
+          "type": {
+            "kind": "simple",
+            "type": "uint",
+            "optional": false,
+            "format": 64
+          }
+        },
+        {
+          "name": "amount",
+          "type": {
+            "kind": "simple",
+            "type": "uint",
+            "optional": false,
+            "format": "coins"
+          }
+        },
+        {
+          "name": "originalSender",
+          "type": {
+            "kind": "simple",
+            "type": "address",
+            "optional": false
+          }
+        },
+        {
+          "name": "originalReceiver",
+          "type": {
+            "kind": "simple",
+            "type": "address",
+            "optional": false
+          }
+        }
+      ]
+    },
+    {
+      "name": "GovernanceVote",
+      "opcode": "0x3ca953c4",
+      "fields": [
+        {
+          "name": "proposalId",
+          "type": {
+            "kind": "simple",
+            "type": "uint",
+            "optional": false,
+            "format": 64
+          }
+        },
+        {
+          "name": "kind",
+          "type": {
+            "kind": "simple",
+            "type": "uint",
+            "optional": false,
+            "format": 8
+          }
+        },
+        {
+          "name": "flag",
+          "type": {
+            "kind": "simple",
+            "type": "bool",
+            "optional": false
+          }
+        },
+        {
+          "name": "feeBps",
+          "type": {
+            "kind": "simple",
+            "type": "uint",
+            "optional": false,
+            "format": 16
+          }
+        },
+        {
+          "name": "deadline",
+          "type": {
+            "kind": "simple",
+            "type": "uint",
+            "optional": false,
+            "format": 32
+          }
+        },
+        {
+          "name": "reason",
+          "type": {
+            "kind": "simple",
+            "type": "string",
+            "optional": false
+          }
+        }
+      ]
+    },
+    {
+      "name": "GuardianPause",
+      "opcode": "0xb95497db",
+      "fields": [
+        {
+          "name": "reason",
+          "type": {
+            "kind": "simple",
+            "type": "string",
+            "optional": false
+          }
+        }
+      ]
+    },
+    {
+      "name": "Mint",
+      "opcode": "0x642b7d07",
+      "fields": [
+        {
+          "name": "amount",
+          "type": {
+            "kind": "simple",
+            "type": "uint",
+            "optional": false,
+            "format": "coins"
+          }
+        },
+        {
+          "name": "receiver",
+          "type": {
+            "kind": "simple",
+            "type": "address",
+            "optional": false
+          }
+        }
+      ]
+    },
+    {
+      "name": "OwnerOverride",
+      "opcode": "0x09d21b11",
+      "fields": [
+        {
+          "name": "actionId",
+          "type": {
+            "kind": "simple",
+            "type": "uint",
+            "optional": false,
+            "format": 64
+          }
+        },
+        {
+          "name": "reason",
+          "type": {
+            "kind": "simple",
+            "type": "string",
+            "optional": false
+          }
+        }
+      ]
+    },
+    {
+      "name": "PayoutFailed",
+      "opcode": "0x2945917f",
+      "fields": [
+        {
+          "name": "queryId",
+          "type": {
+            "kind": "simple",
+            "type": "uint",
+            "optional": false,
+            "format": 64
+          }
+        },
+        {
+          "name": "amount",
+          "type": {
+            "kind": "simple",
+            "type": "uint",
+            "optional": false,
+            "format": "coins"
+          }
+        },
+        {
+          "name": "destination",
+          "type": {
+            "kind": "simple",
+            "type": "address",
+            "optional": false
+          }
+        }
+      ]
+    },
+    {
+      "name": "ProposeOwner",
+      "opcode": "0x80bb6173",
+      "fields": [
+        {
+          "name": "newOwner",
+          "type": {
+            "kind": "simple",
+            "type": "address",
+            "optional": false
+          }
+        }
+      ]
+    },
+    {
+      "name": "ProposeWalletCode",
+      "opcode": "0xef2d3719",
+      "fields": [
+        {
+          "name": "newWalletCode",
+          "type": {
+            "kind": "simple",
+            "type": "cell",
+            "optional": false
+          }
+        }
+      ]
+    },
+    {
+      "name": "ProvideWalletAddress",
+      "opcode": "0x2c76b973",
+      "fields": [
+        {
+          "name": "queryId",
+          "type": {
+            "kind": "simple",
+            "type": "uint",
+            "optional": false,
+            "format": 64
+          }
+        },
+        {
+          "name": "ownerAddress",
+          "type": {
+            "kind": "simple",
+            "type": "address",
+            "optional": false
+          }
+        },
+        {
+          "name": "includeAddress",
+          "type": {
+            "kind": "simple",
+            "type": "bool",
+            "optional": false
+          }
+        }
+      ]
+    },
+    {
+      "name": "RegisterReferral",
+      "opcode": "0xd3b50b23",
+      "fields": [
+        {
+          "name": "referrer",
+          "type": {
+            "kind": "simple",
+            "type": "address",
+            "optional": false
+          }
+        }
+      ]
+    },
+    {
+      "name": "SetBuybackConfig",
+      "opcode": "0x83b8144a",
+      "fields": [
+        {
+          "name": "enabled",
+          "type": {
+            "kind": "simple",
+            "type": "bool",
+            "optional": false
+          }
+        },
+        {
+          "name": "threshold",
+          "type": {
+            "kind": "simple",
+            "type": "uint",
+            "optional": false,
+            "format": "coins"
+          }
+        },
+        {
+          "name": "cooldown",
+          "type": {
+            "kind": "simple",
+            "type": "uint",
+            "optional": false,
+            "format": 32
+          }
+        },
+        {
+          "name": "burnPercent",
+          "type": {
+            "kind": "simple",
+            "type": "uint",
+            "optional": false,
+            "format": 8
+          }
+        }
+      ]
+    },
+    {
+      "name": "SetDefiAddress",
+      "opcode": "0x23019716",
+      "fields": [
+        {
+          "name": "defiAddress",
+          "type": {
+            "kind": "simple",
+            "type": "address",
+            "optional": false
+          }
+        }
+      ]
+    },
+    {
+      "name": "SetEmergencyGuardian",
+      "opcode": "0xca8647d3",
+      "fields": [
+        {
+          "name": "guardian",
+          "type": {
+            "kind": "simple",
+            "type": "address",
+            "optional": false
+          }
+        }
+      ]
+    },
+    {
+      "name": "SetFeeConfig",
+      "opcode": "0x3c134728",
+      "fields": [
+        {
+          "name": "feeBps",
+          "type": {
+            "kind": "simple",
+            "type": "uint",
+            "optional": false,
+            "format": 16
+          }
+        },
+        {
+          "name": "burnShare",
+          "type": {
+            "kind": "simple",
+            "type": "uint",
+            "optional": false,
+            "format": 8
+          }
+        },
+        {
+          "name": "maxTxBps",
+          "type": {
+            "kind": "simple",
+            "type": "uint",
+            "optional": false,
+            "format": 16
+          }
+        },
+        {
+          "name": "maxWalletBps",
+          "type": {
+            "kind": "simple",
+            "type": "uint",
+            "optional": false,
+            "format": 16
+          }
+        },
+        {
+          "name": "cooldown",
+          "type": {
+            "kind": "simple",
+            "type": "uint",
+            "optional": false,
+            "format": 16
+          }
+        }
+      ]
+    },
+    {
+      "name": "SetReferralConfig",
+      "opcode": "0x1ab0a142",
+      "fields": [
+        {
+          "name": "enabled",
+          "type": {
+            "kind": "simple",
+            "type": "bool",
+            "optional": false
+          }
+        },
+        {
+          "name": "rewardBps",
+          "type": {
+            "kind": "simple",
+            "type": "uint",
+            "optional": false,
+            "format": 16
+          }
+        }
+      ]
+    },
+    {
+      "name": "SetStakingConfig",
+      "opcode": "0x13bd6b32",
+      "fields": [
+        {
+          "name": "enabled",
+          "type": {
+            "kind": "simple",
+            "type": "bool",
+            "optional": false
+          }
+        },
+        {
+          "name": "apyBps",
+          "type": {
+            "kind": "simple",
+            "type": "uint",
+            "optional": false,
+            "format": 16
+          }
+        },
+        {
+          "name": "minStake",
+          "type": {
+            "kind": "simple",
+            "type": "uint",
+            "optional": false,
+            "format": "coins"
+          }
+        },
+        {
+          "name": "lockPeriod",
+          "type": {
+            "kind": "simple",
+            "type": "uint",
+            "optional": false,
+            "format": 32
+          }
+        }
+      ]
+    },
+    {
+      "name": "SetTreasury",
+      "opcode": "0xcfc66cbd",
+      "fields": [
+        {
+          "name": "treasury",
+          "type": {
+            "kind": "simple",
+            "type": "address",
+            "optional": false
+          }
+        }
+      ]
+    },
+    {
+      "name": "Stake",
+      "opcode": "0xbef0e904",
+      "fields": [
+        {
+          "name": "amount",
+          "type": {
+            "kind": "simple",
+            "type": "uint",
+            "optional": false,
+            "format": "coins"
+          }
+        }
+      ]
+    },
+    {
+      "name": "SweepTON",
+      "opcode": "0x871208ba",
+      "fields": [
+        {
+          "name": "amount",
+          "type": {
+            "kind": "simple",
+            "type": "uint",
+            "optional": false,
+            "format": "coins"
+          }
+        }
+      ]
+    },
+    {
+      "name": "ToggleTrading",
+      "opcode": "0xf1822da1",
+      "fields": [
+        {
+          "name": "enabled",
+          "type": {
+            "kind": "simple",
+            "type": "bool",
+            "optional": false
+          }
+        }
+      ]
+    },
+    {
+      "name": "TokenExcesses",
+      "opcode": "0xd53276db",
+      "fields": [
+        {
+          "name": "queryId",
+          "type": {
+            "kind": "simple",
+            "type": "uint",
+            "optional": false,
+            "format": 64
+          }
+        }
+      ]
+    },
+    {
+      "name": "TokenNotification",
+      "opcode": "0x7362d09c",
+      "fields": [
+        {
+          "name": "queryId",
+          "type": {
+            "kind": "simple",
+            "type": "uint",
+            "optional": false,
+            "format": 64
+          }
+        },
+        {
+          "name": "amount",
+          "type": {
+            "kind": "simple",
+            "type": "uint",
+            "optional": false,
+            "format": "coins"
+          }
+        },
+        {
+          "name": "from",
+          "type": {
+            "kind": "simple",
+            "type": "address",
+            "optional": false
+          }
+        },
+        {
+          "name": "forwardPayload",
+          "type": {
+            "kind": "simple",
+            "type": "slice",
+            "optional": false,
+            "format": "remainder"
+          }
+        }
+      ]
+    },
+    {
+      "name": "TriggerBuyback",
+      "opcode": "0xcfe1fd3c",
+      "fields": [
+        {
+          "name": "queryId",
+          "type": {
+            "kind": "simple",
+            "type": "uint",
+            "optional": false,
+            "format": 64
+          }
+        }
+      ]
+    },
+    {
+      "name": "Unstake",
+      "opcode": "0xff633be1",
+      "fields": [
+        {
+          "name": "amount",
+          "type": {
+            "kind": "simple",
+            "type": "uint",
+            "optional": false,
+            "format": "coins"
+          }
+        }
+      ]
+    }
+  ],
+  "textReceivers": [
+    "Apply Wallet Code",
+    "Cancel Fee Config",
+    "Cancel Wallet Code",
+    "Claim AI Control",
+    "Confirm Fee Config",
+    "Resume",
+    "Resume Minting",
+    "Stop Minting",
+    "Toggle AI"
+  ],
+  "getters": [
+    {
+      "name": "can_owner_override",
+      "methodId": 116763,
+      "arguments": [
+        {
+          "name": "actionId",
+          "type": {
+            "kind": "simple",
+            "type": "int",
+            "optional": false,
+            "format": 257
+          }
+        }
+      ],
+      "returns": {
+        "kind": "simple",
+        "type": "bool",
+        "optional": false
+      }
+    },
+    {
+      "name": "get_ai_action",
+      "methodId": 68452,
+      "arguments": [
+        {
+          "name": "actionId",
+          "type": {
+            "kind": "simple",
+            "type": "int",
+            "optional": false,
+            "format": 257
+          }
+        }
+      ],
+      "returns": {
+        "kind": "simple",
+        "type": "AIActionLog",
+        "optional": true
+      }
+    },
+    {
+      "name": "get_ai_recommendation",
+      "methodId": 125135,
+      "arguments": [
+        {
+          "name": "index",
+          "type": {
+            "kind": "simple",
+            "type": "int",
+            "optional": false,
+            "format": 257
+          }
+        }
+      ],
+      "returns": {
+        "kind": "simple",
+        "type": "AIRecommendation",
+        "optional": true
+      }
+    },
+    {
+      "name": "get_ai_state",
+      "methodId": 127730,
+      "arguments": [],
+      "returns": {
+        "kind": "simple",
+        "type": "AIState",
+        "optional": false
+      }
+    },
+    {
+      "name": "get_autonomy_state",
+      "methodId": 83718,
+      "arguments": [],
+      "returns": {
+        "kind": "simple",
+        "type": "AutonomyState",
+        "optional": false
+      }
+    },
+    {
+      "name": "get_buyback_state",
+      "methodId": 120761,
+      "arguments": [],
+      "returns": {
+        "kind": "simple",
+        "type": "BuybackState",
+        "optional": false
+      }
+    },
+    {
+      "name": "get_custody_balance",
+      "methodId": 111065,
+      "arguments": [],
+      "returns": {
+        "kind": "simple",
+        "type": "int",
+        "optional": false,
+        "format": 257
+      }
+    },
+    {
+      "name": "get_defi_address",
+      "methodId": 124902,
+      "arguments": [],
+      "returns": {
+        "kind": "simple",
+        "type": "address",
+        "optional": false
+      }
+    },
+    {
+      "name": "get_defi_fee_share",
+      "methodId": 103107,
+      "arguments": [],
+      "returns": {
+        "kind": "simple",
+        "type": "int",
+        "optional": false,
+        "format": 257
+      }
+    },
+    {
+      "name": "get_emergency_guardian",
+      "methodId": 78466,
+      "arguments": [],
+      "returns": {
+        "kind": "simple",
+        "type": "address",
+        "optional": false
+      }
+    },
+    {
+      "name": "get_fee_config",
+      "methodId": 90859,
+      "arguments": [],
+      "returns": {
+        "kind": "simple",
+        "type": "FeeConfig",
+        "optional": false
+      }
+    },
+    {
+      "name": "get_governance_state",
+      "methodId": 116792,
+      "arguments": [],
+      "returns": {
+        "kind": "simple",
+        "type": "GovernanceState",
+        "optional": false
+      }
+    },
+    {
+      "name": "get_jetton_data",
+      "methodId": 106029,
+      "arguments": [],
+      "returns": {
+        "kind": "simple",
+        "type": "JettonData",
+        "optional": false
+      }
+    },
+    {
+      "name": "get_max_supply",
+      "methodId": 94740,
+      "arguments": [],
+      "returns": {
+        "kind": "simple",
+        "type": "int",
+        "optional": false,
+        "format": 257
+      }
+    },
+    {
+      "name": "get_owner_transfer_at",
+      "methodId": 103946,
+      "arguments": [],
+      "returns": {
+        "kind": "simple",
+        "type": "int",
+        "optional": false,
+        "format": 257
+      }
+    },
+    {
+      "name": "get_owner_transfer_delay",
+      "methodId": 86713,
+      "arguments": [],
+      "returns": {
+        "kind": "simple",
+        "type": "int",
+        "optional": false,
+        "format": 257
+      }
+    },
+    {
+      "name": "get_pending_fee_config_at",
+      "methodId": 73604,
+      "arguments": [],
+      "returns": {
+        "kind": "simple",
+        "type": "int",
+        "optional": false,
+        "format": 257
+      }
+    },
+    {
+      "name": "get_pending_owner",
+      "methodId": 78940,
+      "arguments": [],
+      "returns": {
+        "kind": "simple",
+        "type": "address",
+        "optional": false
+      }
+    },
+    {
+      "name": "get_pending_qsr_deposit",
+      "methodId": 80140,
+      "arguments": [
+        {
+          "name": "depositor",
+          "type": {
+            "kind": "simple",
+            "type": "address",
+            "optional": false
+          }
+        }
+      ],
+      "returns": {
+        "kind": "simple",
+        "type": "int",
+        "optional": false,
+        "format": 257
+      }
+    },
+    {
+      "name": "get_pending_referral_reward",
+      "methodId": 80198,
+      "arguments": [
+        {
+          "name": "user",
+          "type": {
+            "kind": "simple",
+            "type": "address",
+            "optional": false
+          }
+        }
+      ],
+      "returns": {
+        "kind": "simple",
+        "type": "int",
+        "optional": false,
+        "format": 257
+      }
+    },
+    {
+      "name": "get_pending_wallet_code",
+      "methodId": 109488,
+      "arguments": [],
+      "returns": {
+        "kind": "simple",
+        "type": "cell",
+        "optional": true
+      }
+    },
+    {
+      "name": "get_price_at",
+      "methodId": 73687,
+      "arguments": [
+        {
+          "name": "timestamp",
+          "type": {
+            "kind": "simple",
+            "type": "int",
+            "optional": false,
+            "format": 257
+          }
+        }
+      ],
+      "returns": {
+        "kind": "simple",
+        "type": "int",
+        "optional": true,
+        "format": 257
+      }
+    },
+    {
+      "name": "get_proposal_stake",
+      "methodId": 66172,
+      "arguments": [
+        {
+          "name": "proposalId",
+          "type": {
+            "kind": "simple",
+            "type": "int",
+            "optional": false,
+            "format": 257
+          }
+        }
+      ],
+      "returns": {
+        "kind": "simple",
+        "type": "int",
+        "optional": false,
+        "format": 257
+      }
+    },
+    {
+      "name": "get_referral_info",
+      "methodId": 93058,
+      "arguments": [
+        {
+          "name": "user",
+          "type": {
+            "kind": "simple",
+            "type": "address",
+            "optional": false
+          }
+        }
+      ],
+      "returns": {
+        "kind": "simple",
+        "type": "ReferralInfo",
+        "optional": true
+      }
+    },
+    {
+      "name": "get_reserve_balance",
+      "methodId": 94514,
+      "arguments": [],
+      "returns": {
+        "kind": "simple",
+        "type": "int",
+        "optional": false,
+        "format": 257
+      }
+    },
+    {
+      "name": "get_reserve_snapshot",
+      "methodId": 85880,
+      "arguments": [],
+      "returns": {
+        "kind": "simple",
+        "type": "ReserveSnapshot",
+        "optional": false
+      }
+    },
+    {
+      "name": "get_stake_info",
+      "methodId": 127811,
+      "arguments": [
+        {
+          "name": "staker",
+          "type": {
+            "kind": "simple",
+            "type": "address",
+            "optional": false
+          }
+        }
+      ],
+      "returns": {
+        "kind": "simple",
+        "type": "StakeInfo",
+        "optional": true
+      }
+    },
+    {
+      "name": "get_staking_config",
+      "methodId": 129919,
+      "arguments": [],
+      "returns": {
+        "kind": "simple",
+        "type": "StakingConfig",
+        "optional": false
+      }
+    },
+    {
+      "name": "get_user_liabilities",
+      "methodId": 105215,
+      "arguments": [
+        {
+          "name": "user",
+          "type": {
+            "kind": "simple",
+            "type": "address",
+            "optional": false
+          }
+        }
+      ],
+      "returns": {
+        "kind": "simple",
+        "type": "UserLiabilitySnapshot",
+        "optional": false
+      }
+    },
+    {
+      "name": "get_vesting_info",
+      "methodId": 79114,
+      "arguments": [
+        {
+          "name": "beneficiary",
+          "type": {
+            "kind": "simple",
+            "type": "address",
+            "optional": false
+          }
+        }
+      ],
+      "returns": {
+        "kind": "simple",
+        "type": "VestingInfo",
+        "optional": true
+      }
+    },
+    {
+      "name": "get_wallet_address",
+      "methodId": 103289,
+      "arguments": [
+        {
+          "name": "owner",
+          "type": {
+            "kind": "simple",
+            "type": "address",
+            "optional": false
+          }
+        }
+      ],
+      "returns": {
+        "kind": "simple",
+        "type": "address",
+        "optional": false
+      }
+    },
+    {
+      "name": "get_wallet_code_at",
+      "methodId": 93472,
+      "arguments": [],
+      "returns": {
+        "kind": "simple",
+        "type": "int",
+        "optional": false,
+        "format": 257
+      }
+    },
+    {
+      "name": "is_ai_alive",
+      "methodId": 112404,
+      "arguments": [],
+      "returns": {
+        "kind": "simple",
+        "type": "bool",
+        "optional": false
+      }
+    },
+    {
+      "name": "is_paused",
+      "methodId": 95098,
+      "arguments": [],
+      "returns": {
+        "kind": "simple",
+        "type": "bool",
+        "optional": false
+      }
+    },
+    {
+      "name": "is_trading_enabled",
+      "methodId": 82925,
+      "arguments": [],
+      "returns": {
+        "kind": "simple",
+        "type": "bool",
+        "optional": false
+      }
+    }
+  ]
+}
