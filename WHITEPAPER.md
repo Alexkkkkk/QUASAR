@@ -20,7 +20,7 @@ QUASAR is built around five principles:
 
 1. **On-chain accounting.** Balances, fees, reserves, staking, and governance actions should be represented in contract state.
 2. **Modularity.** Jetton logic, the DeFi pool, and the web interface are separated into distinct components.
-3. **Controlled automation.** The AI Oracle can process signals and propose actions, while its authority is constrained by operating modes, cooldowns, veto, and emergency mechanisms.
+3. **Controlled automation.** The AI Oracle can process signals and propose actions, while its authority is constrained by operating modes, cooldowns, emergency mechanisms and owner override. Legacy veto fields remain in storage for compatibility but are not an active governance path.
 4. **Protection against extreme operations.** The code includes slippage protection, a reentrancy guard, transaction limits, and wallet limits.
 5. **Public verifiability.** Before mainnet, the project needs an independent audit, testnet deployment, published contract addresses, and verification that the documentation matches the implementation.
 
@@ -188,6 +188,8 @@ QUASAR is at a pre-testnet/mainnet stage and should not be used with significant
 - confirmed supply cap and final token allocation;
 - published contract addresses and build hashes;
 - emergency response procedures and event monitoring.
+
+Repository tracking for this checklist lives in `docs/AUDIT_STATUS.md`, `docs/MAINNET_READINESS_CHECKLIST.md`, the dated audit reports under `docs/`, and the linked GitHub issues/PRs. Publishing `docs/build-hashes.json` in CI covers only build-artifact hashes; deployment addresses still need a real published release once testnet/mainnet deployments exist.
 
 Key user risks include:
 
