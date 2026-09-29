@@ -864,6 +864,20 @@
       ]
     },
     {
+      "name": "ProposeContent",
+      "opcode": "0x73cff78b",
+      "fields": [
+        {
+          "name": "newContent",
+          "type": {
+            "kind": "simple",
+            "type": "cell",
+            "optional": false
+          }
+        }
+      ]
+    },
+    {
       "name": "ProposeOwner",
       "opcode": "0x80bb6173",
       "fields": [
@@ -1266,7 +1280,9 @@
     }
   ],
   "textReceivers": [
+    "Apply Content",
     "Apply Wallet Code",
+    "Cancel Content",
     "Cancel Fee Config",
     "Cancel Wallet Code",
     "Claim AI Control",
@@ -1365,6 +1381,17 @@
         "kind": "simple",
         "type": "BuybackState",
         "optional": false
+      }
+    },
+    {
+      "name": "get_content_at",
+      "methodId": 71686,
+      "arguments": [],
+      "returns": {
+        "kind": "simple",
+        "type": "int",
+        "optional": false,
+        "format": 257
       }
     },
     {
@@ -1470,6 +1497,16 @@
         "type": "int",
         "optional": false,
         "format": 257
+      }
+    },
+    {
+      "name": "get_pending_content",
+      "methodId": 109139,
+      "arguments": [],
+      "returns": {
+        "kind": "simple",
+        "type": "cell",
+        "optional": true
       }
     },
     {
