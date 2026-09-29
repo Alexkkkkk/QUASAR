@@ -27,6 +27,8 @@ message AISetOracle { oracleAddress: Address }
 message AIGrantFullAutonomy { enabled: Bool }
 message AIHeartbeat { queryId: Int as uint64; status: String }
 message OwnerOverride { actionId: Int as uint64; reason: String }
+message VetoAIAction { actionId: Int as uint64; amount: Int as coins }
+message ReleaseVeto { actionId: Int as uint64 }
 message AIRebalance { queryId: Int as uint64; targetFeeBps: Int as uint16; targetBurnShare: Int as uint8; recommendation: String }
 message AIPriceSignal { queryId: Int as uint64; priceTon: Int as coins; volatility: Int as uint32; sentiment: Int as int8; action: Int as uint8 }
 message AIAnomalyAlert { queryId: Int as uint64; severity: Int as uint8; anomalyType: Int as uint8; affectedWallets: Int as uint32; recommendedAction: String }
@@ -199,6 +201,11 @@ contract QuasarMaster with Deployable {
     aiActionOldBuybackCooldown: map<Int, Int>;
     aiActionOldBuybackBurnPercent: map<Int, Int>;
     totalVetoStake: Int as coins;
+    // QSR deposited separately from a user's principal stake and escrowed
+    // against one reversible AI action. The action map is keyed by a composite
+    // (user, action) key so one user can protect several actions independently.
+    vetoEscrows: map<Int, Int>;
+    vetoActionStake: map<Int, Int>;
     emergencyGuardian: Address;
     
     // Staking
@@ -322,6 +329,8 @@ contract QuasarMaster with Deployable {
         self.vetoThresholdBps = 1000;
         self.aiActionIndex = 0;
         self.totalVetoStake = 0;
+        self.vetoEscrows = emptyMap();
+        self.vetoActionStake = emptyMap();
         // The deployer is the initial guardian. The owner can replace it with
         // a separate emergency key before public deployment.
         self.emergencyGuardian = owner;
@@ -426,6 +435,73 @@ contract QuasarMaster with Deployable {
     }
     
     fun _checkAiAlive(): Bool { return now() - self.lastHeartbeat <= self.heartbeatTimeout }
+
+    // Restore the complete pre-action snapshot. Community veto and the owner
+    // override intentionally share this path so a veto cannot roll back less
+    // state than the owner safety window.
+    fun _restoreAiAction(actionId: Int, act: AIActionLog) {
+        if (act.actionType == "SetFee") { self.feeBps = act.oldValue }
+        else if (act.actionType == "ToggleTrading") { self.tradingEnabled = act.oldValue != 0 }
+        else if (act.actionType == "EmergencyPause") {
+            let oldBurnShare: Int? = self.aiActionOldBurnShare.get(actionId);
+            let oldPause: Int? = self.aiActionOldEmergencyPause.get(actionId);
+            let oldTrading: Int? = self.aiActionOldTrading.get(actionId);
+            let oldFeeBps: Int? = self.aiActionOldFeeBps.get(actionId);
+            self.emergencyPause = oldPause != null && oldPause!! != 0;
+            self.tradingEnabled = oldTrading == null ? act.oldValue != 0 : oldTrading!! != 0;
+            if (oldFeeBps != null) { self.feeBps = oldFeeBps!! }
+            if (oldBurnShare != null) { self.feeBurnShare = oldBurnShare!! }
+        }
+        else if (act.actionType == "SetAntiWhale") {
+            let oldMaxTxBps: Int? = self.aiActionOldMaxTxBps.get(actionId);
+            let oldMaxWalletBps: Int? = self.aiActionOldMaxWalletBps.get(actionId);
+            let oldCooldownSeconds: Int? = self.aiActionOldCooldownSeconds.get(actionId);
+            if (oldMaxTxBps != null) { self.maxTxBps = oldMaxTxBps!! }
+            if (oldMaxWalletBps != null) { self.maxWalletBps = oldMaxWalletBps!! }
+            if (oldCooldownSeconds != null) { self.cooldownSeconds = oldCooldownSeconds!! }
+        }
+        else if (act.actionType == "SetTreasury") {
+            let prevTreasury: Address? = self.aiActionOldAddress.get(actionId);
+            if (prevTreasury != null) { self.treasury = prevTreasury!! }
+        }
+        else if (act.actionType == "RotateOracle") {
+            let prevOracle: Address? = self.aiActionOldAddress.get(actionId);
+            if (prevOracle != null) { self.aiOracle = prevOracle!! }
+        }
+        else if (act.actionType == "SetBuyback") {
+            self.buybackEnabled = act.oldValue != 0;
+            let oldThreshold: Int? = self.aiActionOldBuybackThreshold.get(actionId);
+            let oldCooldown: Int? = self.aiActionOldBuybackCooldown.get(actionId);
+            let oldBurnPercent: Int? = self.aiActionOldBuybackBurnPercent.get(actionId);
+            if (oldThreshold != null) { self.buybackThreshold = oldThreshold!! }
+            if (oldCooldown != null) { self.buybackCooldown = oldCooldown!! }
+            if (oldBurnPercent != null) { self.buybackBurnPercent = oldBurnPercent!! }
+        }
+        else if (act.actionType == "Rebalance") {
+            self.feeBurnShare = act.oldValue;
+            let oldFeeBps: Int? = self.aiActionOldFeeBps.get(actionId);
+            if (oldFeeBps != null) { self.feeBps = oldFeeBps!! }
+        }
+        else if (act.actionType == "GovernanceFee") {
+            self.feeBps = act.oldValue;
+        }
+        else if (act.actionType == "GovernanceBurn") {
+            self.feeBurnShare = act.oldValue;
+        }
+        else if (act.actionType == "GovernanceBuybackThreshold") {
+            let oldThreshold: Int? = self.aiActionOldBuybackThreshold.get(actionId);
+            if (oldThreshold != null) { self.buybackThreshold = oldThreshold!! }
+        }
+        else if (act.actionType == "PriceSignal" || act.actionType == "AnomalyAlert") {
+            self.feeBurnShare = act.oldValue;
+            let oldFeeBps: Int? = self.aiActionOldFeeBps.get(actionId);
+            let oldPause: Int? = self.aiActionOldEmergencyPause.get(actionId);
+            let oldTrading: Int? = self.aiActionOldTrading.get(actionId);
+            if (oldFeeBps != null) { self.feeBps = oldFeeBps!! }
+            if (oldPause != null) { self.emergencyPause = oldPause!! != 0 }
+            if (oldTrading != null) { self.tradingEnabled = oldTrading!! != 0 }
+        }
+    }
     
     // Send a standard TEP-74 internal transfer. Minting and reserve payouts
     // use the same wire format, while reserve accounting stays explicit.
@@ -561,6 +637,14 @@ contract QuasarMaster with Deployable {
             let r: Int? = self.pendingReferralRewards.get(op!!.beneficiary);
             self.pendingReferralRewards.set(op!!.beneficiary, (r == null ? 0 : r!!) + op!!.amount);
             self.pendingReferralTotal = self.pendingReferralTotal + op!!.amount;
+        } else if (op!!.kind == 5) {
+            // Veto escrow release: restore the user's escrow and both aggregate
+            // counters when the custodial payout bounces.
+            let escrow: Int? = self.vetoEscrows.get(op!!.d1);
+            self.vetoEscrows.set(op!!.d1, (escrow == null ? 0 : escrow!!) + op!!.amount);
+            let actionStake: Int? = self.vetoActionStake.get(op!!.d2);
+            self.vetoActionStake.set(op!!.d2, (actionStake == null ? 0 : actionStake!!) + op!!.amount);
+            self.totalVetoStake = self.totalVetoStake + op!!.amount;
         } else {
             require(false, "Unknown payout kind")
         }
@@ -1352,85 +1436,72 @@ contract QuasarMaster with Deployable {
     // VETO & OVERRIDE
     // ═══════════════════════════════════════════════════════════
     
-    // The stake-escrow veto receiver that used to sit here opened with
-    // `require(false, "Veto voting disabled...")`, so it could never succeed: it
-    // only burned gas and advertised a governance feature this contract does not
-    // implement. Vote accounting is therefore removed rather than left as dead
-    // code; `OwnerOverride` below is the single, exercised reversal path.
-
     receive(msg: OwnerOverride) {
         self._requireOwner();
         let action: AIActionLog? = self.aiActionLog.get(msg.actionId);
         require(action != null, "Not found");
         require(self._isOwnerOverrideWindow(msg.actionId), "Window closed");
         require(!(action!!.overridden), "Done");
+        require(!(action!!.vetoed), "Already vetoed");
         
         let act: AIActionLog = action!!;
         self.aiActionLog.set(msg.actionId, AIActionLog{ actionId: act.actionId, timestamp: act.timestamp, actionType: act.actionType, oldValue: act.oldValue, newValue: act.newValue, reason: act.reason, executed: act.executed, vetoed: act.vetoed, overridden: true });
-        // Every action type that _logAiAction/_logAiActionSilent can record
-        // must be reversible here, otherwise the documented 24h owner window
-        // is inert for most AI powers (F-07).
-        if (act.actionType == "SetFee") { self.feeBps = act.oldValue }
-        else if (act.actionType == "ToggleTrading") { self.tradingEnabled = act.oldValue != 0 }
-        else if (act.actionType == "EmergencyPause") {
-            let oldBurnShare: Int? = self.aiActionOldBurnShare.get(msg.actionId);
-            let oldPause: Int? = self.aiActionOldEmergencyPause.get(msg.actionId);
-            let oldTrading: Int? = self.aiActionOldTrading.get(msg.actionId);
-            let oldFeeBps: Int? = self.aiActionOldFeeBps.get(msg.actionId);
-            self.emergencyPause = oldPause != null && oldPause!! != 0;
-            self.tradingEnabled = oldTrading == null ? act.oldValue != 0 : oldTrading!! != 0;
-            if (oldFeeBps != null) { self.feeBps = oldFeeBps!! }
-            if (oldBurnShare != null) { self.feeBurnShare = oldBurnShare!! }
+        // The helper below covers every logged kind: "SetFee", "ToggleTrading",
+        // "EmergencyPause", "SetAntiWhale", "SetTreasury", "RotateOracle",
+        // "SetBuyback", act.actionType == "Rebalance", "GovernanceFee", "GovernanceBurn" and
+        // "GovernanceBuybackThreshold". Rebalance restores with
+        // `self.feeBps = oldFeeBps!!` after loading its snapshot.
+        self._restoreAiAction(msg.actionId, act);
+    }
+
+    // Community veto uses separately deposited QSR as a temporary escrow. A
+    // staker cannot count their principal twice: the veto amount must already
+    // be in pending custody, while the account must have a live stake.
+    receive(msg: VetoAIAction) {
+        let action: AIActionLog? = self.aiActionLog.get(msg.actionId);
+        require(action != null, "Not found");
+        require(!action!!.vetoed && !action!!.overridden, "Action closed");
+        require(self._isOwnerOverrideWindow(msg.actionId), "Window closed");
+        require(msg.amount > 0, "Invalid veto amount");
+        let staker: StakeInfo? = self.stakers.get(sender());
+        require(staker != null && staker!!.amount > 0, "Stake first");
+        let pending: Int? = self.pendingQsrDeposits.get(sender());
+        require(pending != null && pending!! >= msg.amount, "Deposit QSR first");
+        let key: Int = self._voteKey(sender(), msg.actionId);
+        require(self.vetoEscrows.get(key) == null, "Veto already escrowed");
+
+        self.pendingQsrDeposits.set(sender(), pending!! - msg.amount);
+        self.vetoEscrows.set(key, msg.amount);
+        let prior: Int? = self.vetoActionStake.get(msg.actionId);
+        let actionStake: Int = prior == null ? 0 : prior!!;
+        self.vetoActionStake.set(msg.actionId, actionStake + msg.amount);
+        self.totalVetoStake = self.totalVetoStake + msg.amount;
+
+        if (self.totalStaked > 0 && (actionStake + msg.amount) * 10000 >= self.totalStaked * self.vetoThresholdBps) {
+            let act: AIActionLog = action!!;
+            self._restoreAiAction(msg.actionId, act);
+            self.aiActionLog.set(msg.actionId, AIActionLog{ actionId: act.actionId, timestamp: act.timestamp, actionType: act.actionType, oldValue: act.oldValue, newValue: act.newValue, reason: act.reason, executed: act.executed, vetoed: true, overridden: act.overridden });
+            self.pendingAiActions.set(msg.actionId, null);
         }
-        else if (act.actionType == "SetAntiWhale") {
-            let oldMaxTxBps: Int? = self.aiActionOldMaxTxBps.get(msg.actionId);
-            let oldMaxWalletBps: Int? = self.aiActionOldMaxWalletBps.get(msg.actionId);
-            let oldCooldownSeconds: Int? = self.aiActionOldCooldownSeconds.get(msg.actionId);
-            if (oldMaxTxBps != null) { self.maxTxBps = oldMaxTxBps!! }
-            if (oldMaxWalletBps != null) { self.maxWalletBps = oldMaxWalletBps!! }
-            if (oldCooldownSeconds != null) { self.cooldownSeconds = oldCooldownSeconds!! }
-        }
-        else if (act.actionType == "SetTreasury") {
-            let prevTreasury: Address? = self.aiActionOldAddress.get(msg.actionId);
-            if (prevTreasury != null) { self.treasury = prevTreasury!! }
-        }
-        else if (act.actionType == "RotateOracle") {
-            let prevOracle: Address? = self.aiActionOldAddress.get(msg.actionId);
-            if (prevOracle != null) { self.aiOracle = prevOracle!! }
-        }
-        else if (act.actionType == "SetBuyback") {
-            self.buybackEnabled = act.oldValue != 0;
-            let oldThreshold: Int? = self.aiActionOldBuybackThreshold.get(msg.actionId);
-            let oldCooldown: Int? = self.aiActionOldBuybackCooldown.get(msg.actionId);
-            let oldBurnPercent: Int? = self.aiActionOldBuybackBurnPercent.get(msg.actionId);
-            if (oldThreshold != null) { self.buybackThreshold = oldThreshold!! }
-            if (oldCooldown != null) { self.buybackCooldown = oldCooldown!! }
-            if (oldBurnPercent != null) { self.buybackBurnPercent = oldBurnPercent!! }
-        }
-        else if (act.actionType == "Rebalance") {
-            self.feeBurnShare = act.oldValue;
-            let oldFeeBps: Int? = self.aiActionOldFeeBps.get(msg.actionId);
-            if (oldFeeBps != null) { self.feeBps = oldFeeBps!! }
-        }
-        else if (act.actionType == "GovernanceFee") {
-            self.feeBps = act.oldValue;
-        }
-        else if (act.actionType == "GovernanceBurn") {
-            self.feeBurnShare = act.oldValue;
-        }
-        else if (act.actionType == "GovernanceBuybackThreshold") {
-            let oldThreshold: Int? = self.aiActionOldBuybackThreshold.get(msg.actionId);
-            if (oldThreshold != null) { self.buybackThreshold = oldThreshold!! }
-        }
-        else if (act.actionType == "PriceSignal" || act.actionType == "AnomalyAlert") {
-            self.feeBurnShare = act.oldValue;
-            let oldFeeBps: Int? = self.aiActionOldFeeBps.get(msg.actionId);
-            let oldPause: Int? = self.aiActionOldEmergencyPause.get(msg.actionId);
-            let oldTrading: Int? = self.aiActionOldTrading.get(msg.actionId);
-            if (oldFeeBps != null) { self.feeBps = oldFeeBps!! }
-            if (oldPause != null) { self.emergencyPause = oldPause!! != 0 }
-            if (oldTrading != null) { self.tradingEnabled = oldTrading!! != 0 }
-        }
+        emit(EventAiVeto{ actionId: msg.actionId, voter: sender(), amount: msg.amount, actionStake: actionStake + msg.amount, vetoed: (self.aiActionLog.get(msg.actionId)!!).vetoed }.toCell());
+    }
+
+    // Once the action was vetoed or its safety window expired, return the
+    // escrowed QSR through the same custody/bounce ledger as other user funds.
+    receive(msg: ReleaseVeto) {
+        let action: AIActionLog? = self.aiActionLog.get(msg.actionId);
+        require(action != null, "Not found");
+        require(action!!.vetoed || !self._isOwnerOverrideWindow(msg.actionId), "Veto still active");
+        let key: Int = self._voteKey(sender(), msg.actionId);
+        let amount: Int? = self.vetoEscrows.get(key);
+        require(amount != null && amount!! > 0, "No veto escrow");
+        self.vetoEscrows.set(key, null);
+        let actionStake: Int? = self.vetoActionStake.get(msg.actionId);
+        require(actionStake != null && actionStake!! >= amount!!, "Escrow accounting");
+        self.vetoActionStake.set(msg.actionId, actionStake!! - amount!!);
+        self.totalVetoStake = self.totalVetoStake - amount!!;
+        self._sendCustodiedTokens(sender(), amount!!, 5, key, msg.actionId, 0);
+        emit(EventAiVetoReleased{ actionId: msg.actionId, voter: sender(), amount: amount!! }.toCell());
     }
     
     receive("Claim AI Control") {
@@ -1899,6 +1970,14 @@ contract QuasarMaster with Deployable {
     get fun get_vesting_info(beneficiary: Address): VestingInfo? { return self.vestingSchedules.get(beneficiary) }
     
     get fun get_ai_action(actionId: Int): AIActionLog? { return self.aiActionLog.get(actionId) }
+    get fun get_veto_escrow(user: Address, actionId: Int): Int {
+        let value: Int? = self.vetoEscrows.get(self._voteKey(user, actionId));
+        return value == null ? 0 : value!!;
+    }
+    get fun get_veto_action_stake(actionId: Int): Int {
+        let value: Int? = self.vetoActionStake.get(actionId);
+        return value == null ? 0 : value!!;
+    }
     get fun get_ai_recommendation(index: Int): AIRecommendation? { return self.anomalyLog.get(index) }
     get fun get_price_at(timestamp: Int): Int? { return self.priceHistory.get(timestamp) }
     get fun is_paused(): Bool { return self.emergencyPause }
@@ -1934,6 +2013,10 @@ message GovernanceVote { proposalId: Int as uint64; kind: Int as uint8; flag: Bo
 message EventGovernanceVote { voter: Address; proposalId: Int; weight: Int }
 message EventGovernanceExecuted { proposalId: Int; actionId: Int }
 struct GovernanceState { quorumBps: Int; totalStaked: Int; proposals: Int }
+
+// ─── Community veto escrow ───
+message EventAiVeto { actionId: Int; voter: Address; amount: Int; actionStake: Int; vetoed: Bool }
+message EventAiVetoReleased { actionId: Int; voter: Address; amount: Int }
 
 // ─── Wallet-code migration (v5): two-step + timelock ───
 message ProposeWalletCode { newWalletCode: Cell }
