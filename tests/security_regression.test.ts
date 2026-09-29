@@ -160,9 +160,18 @@ test('F-03/F-16 source: the web UI deposits QSR first and reads live getters', (
     assert.ok(!html.includes('~150%'), 'the hardcoded farm APY placeholder must be gone');
 });
 
-test('F3 source: wallet fee math is pinned to 30 bps and README documents it', () => {
+test('F3/T-06 source: wallet policy is shared, compiled and documented', () => {
     const wallet = section(commonSrc, 'receive(msg: TokenTransfer)'); // wallet lives in the shared source of truth
-    assert.ok(wallet.includes('msg.amount * 30 / 10000'), 'wallet fee must stay 0.30% while unenforceable config exists');
+    assert.ok(commonSrc.includes('const QUASAR_MAX_TX_BPS: Int = 100;'), 'transfer policy must be explicit');
+    assert.ok(commonSrc.includes('const QUASAR_MAX_WALLET_BPS: Int = 300;'), 'wallet policy must be explicit');
+    assert.ok(commonSrc.includes('const QUASAR_MAX_TX_AMOUNT: Int = QUASAR_MAX_SUPPLY * QUASAR_MAX_TX_BPS / 10000;'), 'transfer cap must derive from the shared policy');
+    assert.ok(commonSrc.includes('const QUASAR_MAX_WALLET_AMOUNT: Int = QUASAR_MAX_SUPPLY * QUASAR_MAX_WALLET_BPS / 10000;'), 'wallet cap must derive from the shared policy');
+    assert.ok(wallet.includes('msg.amount * QUASAR_WALLET_FEE_BPS / 10000'), 'wallet fee must use the shared fixed fee policy');
+    assert.ok(wallet.includes('now() - self.lastTxTime >= QUASAR_TRANSFER_COOLDOWN'), 'wallet cooldown must use the shared policy');
+    assert.ok(commonSrc.includes('self.balance + msg.amount <= QUASAR_MAX_WALLET_AMOUNT'), 'receiving wallets must enforce the shared cap');
+    assert.ok(wallet.includes('msg.amount <= QUASAR_MAX_TX_AMOUNT'), 'sending wallets must enforce the shared cap');
+    assert.ok(masterSrc.includes('ProposeWalletCode'), 'policy changes must use the timelocked wallet-code migration');
+    assert.ok(masterSrc.includes('msg.maxTxBps == QUASAR_MAX_TX_BPS && msg.maxWalletBps == QUASAR_MAX_WALLET_BPS'), 'master must reject unsupported policy values');
     const readme = readFileSync(join(__dirname, '..', 'README.md'), 'utf8');
     // The audited wording mirrors the contract: the 3% wallet ceiling IS enforced
     // in QuasarWallet (InternalTransfer), so the README must claim exactly that.
