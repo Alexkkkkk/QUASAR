@@ -17,37 +17,14 @@
 Фактически проверено на момент коммита: `npm run build` OK, `npm run security:check`
 OK (14 инвариантов), `npx tsc --noEmit` exit 0, `node --test tests/*.ts` **37/37 pass**.
 
-## Где остановился: fee-путь, exit code 5
+## Закрыто: fee-путь и старое наблюдение `exit code 5`
 
-**Симптом.** `FeeTransfer`, отправленный мастеру от Jetton-кошелька, падает в
-compute phase с `exitCode = 5` (integer out of expected range) **до** распределения
-комиссий; `reserveBalance` остаётся `0`, состояние не меняется. При этом первый
-вызов `mint` от того же кошелька-отправителя проходит (exit 0), т.е. дело не в
-исходящем `InternalTransfer`.
+Старое наблюдение больше не воспроизводится на текущем `main`. Текущий
+регрессионный сценарий F-22 отправляет `FeeTransfer`, который запускает buyback,
+и подтверждает commit accounting без отката fee state.
 
-**Что уже исключено / проверено:**
-- Диагностика в `@ton/sandbox`: `Mint` = exit 0, `FeeTransfer` = exit 5 всегда,
-  независимо от суммы и от владельца кошелька (и user-wallet, и master-wallet).
-- Debug-сборка (`"debug": true` в `tact.config.json`) не дала `vmLogs`/`debugLogs`
-  для транзакции мастера — трассировку получить не удалось, нужен другой подход
-  (например, `@ton/tasm` эмуляция или пошаговый разбор `actionPhase`).
-- Бисекция обработчика `receive(msg: FeeTransfer)` (тело ~строки 494–583
-  `contracts/quasar.tact`) запускалась, но **была прервана пользователем** и
-  результат не зафиксирован. Файл восстановлен из `/tmp/orig.tact`; рабочее
-  дерево чистое относительно коммита, бисекция не оставила следов.
-
-**Рабочая гипотеза (не подтверждена).** `exit=5` до распределения указывает на
-одну из числовых операций над `msg.amount` / `reserveBalance` / `totalFeesCollected`.
-Кандидаты-строки в теле обработчика: деление `msg.amount * self.feeBurnShare / 100`
-и цепочка сплита `remaining * 15 / 100`; запись `self.totalFeesCollected + msg.amount`
-и `self.reserveBalance + msg.amount`; затем `self.reserveBalance - burnAmount`.
-Ни одну из них бисекция ещё не подтвердила.
-
-**Следующий шаг (для возобновления).** Разрезать тело `FeeTransfer` по якорям и
-для каждого варианта собирать контракт и запускать единственный негативный кейс
-(`FeeTransfer` от кошелька мастера), фиксируя `exitCode` транзакции мастера.
-Полный список якорей — в истории задачи; стартовая точка — отсечение тела после
-первой строки `self.totalFeesCollected = ...`.
+**Evidence:** `tests/hardening_2026_09_25.test.ts` (`F-22`), full suite
+`109/109 pass`, `npm run security:check`.
 
 ## Осознанно НЕ трогали (требует решения владельца проекта)
 

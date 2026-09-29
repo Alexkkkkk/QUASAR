@@ -102,12 +102,13 @@
     находит → источник TVM-случайности удалён, риск закрыт на уровне кода.
   - План: если лотерея вернётся — только схема commit-reveal.
 
-- [ ] **T-10 Fee-путь `exitCode = 5`, зафиксированный в NOTES-WIP.md.**
+- [x] **T-10 Fee-путь `exitCode = 5`, зафиксированный в NOTES-WIP.md.**
   - Файл: `docs/NOTES-WIP.md` (наблюдение от 2026-09-20).
   - Проблема: симптом не воспроизводится на текущем `main`; инвариант
     «DeFi fee reserve reconciliation» в `scripts/security_check.ts` проходит,
-    suite — 89/89 pass.
-  - План: перепроверить на текущем HEAD и закрыть либо воспроизвести заново.
+    suite — 109/109 pass.
+  - Проверка: `tests/hardening_2026_09_25.test.ts` (`F-22`) воспроизводит fee
+    с buyback и подтверждает, что accounting commit не откатывается.
 
 ---
 
@@ -131,6 +132,18 @@
   - Зафиксированы opcode, сериализация, sender check, bounce/excess behaviour, getter ABI и тест для TEP-74, TEP-64 и TEP-89.
   - TON Connect, API/indexer, Pages, Tolk migration, multisig и независимый аудит остаются отдельными задачами; исходники контрактов не делают неподтверждённых claims о mainnet.
   - Проверка: существующие conformance/security/property tests и CI.
+
+- [x] **T-14 Read-only TON API v3 adapter.**
+  - Файл: `scripts/lib/ton_api.ts`.
+  - Реализованы ограниченная пагинация, чтение транзакций и проверка Jetton
+    wallet только против allowlisted master. Подпись и отправка транзакций
+    намеренно не входят в adapter.
+  - Документация: `docs/TON_API_ADAPTER.md`.
+
+- [x] **T-15 Tact → Tolk migration/no-go decision.**
+  - Файл: `docs/TOLK_MIGRATION_DECISION.md`.
+  - Tact остаётся pinned compiler path до доказательства ABI/TL-B/storage/code
+    hash/gas/bounce эквивалентности; адреса и mainnet claims не меняются.
 
 ---
 
