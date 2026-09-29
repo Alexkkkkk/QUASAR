@@ -11,6 +11,9 @@
     "deploy:defi": "tsx scripts/deploy_defi.ts",
     "test": "npm run build && npm run security:check && node --import tsx --test tests/*.test.ts",
     "lint": "tact --config tact.config.json --check",
+    "abi:check": "npm run build && npm run abi:verify",
+    "abi:verify": "tsx scripts/check_abi.ts",
+    "abi:update": "npm run build && tsx scripts/check_abi.ts --update",
     "website": "npx serve website",
     "security:check": "tsx scripts/security_check.ts",
     "testnet:smoke": "tsx scripts/testnet_smoke.ts"
