@@ -38,7 +38,7 @@
 
 ## P2 — Устойчивость контрактов (по документации TON)
 
-- [ ] **T-04 `storageReserve` не задан ни в одном контракте → риск заморозки по storage-fee.**
+- [x] **T-04 Явный `storageReserve` во всех долгоживущих контрактах.**
   - Файлы: `contracts/quasar.tact` (`QuasarMaster`), `contracts/quasar_defi.tact`
     (`QuasarDeFi`), `contracts/quasar_admin.tact` (`QuasarAdminTimelock`).
   - Проблема: `BaseTrait` объявляет `virtual const storageReserve: Int = 0`
@@ -47,17 +47,20 @@
     (RAWRESERVE, `@stdlib/.../reserve.tact`). Сейчас резерв равен нулю, поэтому
     долгоживущий мастер с большим словарём (`stakers`, `aiActionLog`, `priceHistory`)
     может быть заморожен, когда баланс уйдёт в ноль.
-  - План: добавить `override const storageReserve: Int = ton("0.05");` в три
-    контракта с передачей `ReserveExact`, и вынести порог в общую константу.
+  - Исправление: добавлен общий `QUASAR_STORAGE_RESERVE = 0.05 TON` и
+    `override const storageReserve` в `QuasarMaster`, `QuasarDeFi` и
+    `QuasarAdminTimelock`; sweep-пути используют ту же константу.
   - Риск: `override const` не меняет layout storage, но меняет код-хеш → адреса
-    контрактов сдвинутся. Допустимо только до публичного деплоя (проект pre-testnet).
-  - Проверка: сборка + инвариант в `scripts/security_check.ts`.
+    контрактов сдвинутся. Изменение допустимо только до публичного деплоя.
+  - Проверка: сборка, `scripts/security_check.ts` и security regression suite.
 
-- [ ] **T-05 Магическая константа `ton("0.05")` в `SweepTON` обоих контрактов.**
+- [x] **T-05 Магическая константа `ton("0.05")` в `SweepTON` обоих контрактов.**
   - Файлы: `contracts/quasar.tact:1702-1707`, `contracts/quasar_defi.tact:697-701`.
   - Проблема: минимальный запас газа зашит литералом в четырёх местах; при
     изменении модели газа расчёт разъедется молча.
-  - План: заменить на именованную константу (`MIN_GAS_RESERVE`) в общем файле.
+  - Исправление: sweep-проверки Master и DeFi используют общий
+    `QUASAR_STORAGE_RESERVE`; исходная газовая граница сохранена.
+  - Проверка: `security_check.ts` и `tests/security_regression.test.ts`.
 
 - [ ] **T-06 `maxWalletBps` хранится и валидируется, но не применяется.**
   - Файл: `contracts/quasar.tact` (конфиг), `contracts/quasar_common.tact:54-62`.

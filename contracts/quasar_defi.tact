@@ -56,6 +56,9 @@ struct SwapQuote { tonIn: Int; qsrIn: Int; tonOut: Int; qsrOut: Int; fee: Int; p
 // ═══════════════════════════════════════════════════════════════
 
 contract QuasarDeFi with Deployable {
+    // Keep enough TON reserved for rent and long-lived LP/farm dictionaries.
+    // This changes the code hash and must be applied before public deployment.
+    override const storageReserve: Int = QUASAR_STORAGE_RESERVE;
     
     owner: Address;
     qsrMaster: Address;
@@ -696,7 +699,7 @@ contract QuasarDeFi with Deployable {
 
     receive(msg: SweepTON) {
         require(sender() == self.owner, "Only owner");
-        require(msg.amount > 0 && myBalance() >= self.tonReserve + msg.amount + ton("0.05"), "Invalid sweep");
+        require(msg.amount > 0 && myBalance() >= self.tonReserve + msg.amount + QUASAR_STORAGE_RESERVE, "Invalid sweep");
         send(SendParameters{ to: self.owner, value: msg.amount, bounce: false, mode: SendPayGasSeparately, body: emptyCell() });
     }
     

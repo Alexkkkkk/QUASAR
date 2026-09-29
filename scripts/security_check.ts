@@ -5,10 +5,18 @@ const root = join(import.meta.dirname, '..');
 const master = readFileSync(join(root, 'contracts', 'quasar.tact'), 'utf8');
 const defi = readFileSync(join(root, 'contracts', 'quasar_defi.tact'), 'utf8');
 const common = readFileSync(join(root, 'contracts', 'quasar_common.tact'), 'utf8');
+const admin = readFileSync(join(root, 'contracts', 'quasar_admin.tact'), 'utf8');
 
 function assertContains(source: string, needle: string, label: string) {
     if (!source.includes(needle)) throw new Error('Missing security invariant: ' + label);
 }
+
+assertContains(common, 'const QUASAR_STORAGE_RESERVE: Int = ton("0.05");', 'shared storage reserve is explicit');
+assertContains(master, 'override const storageReserve: Int = QUASAR_STORAGE_RESERVE;', 'master retains storage reserve');
+assertContains(defi, 'override const storageReserve: Int = QUASAR_STORAGE_RESERVE;', 'DeFi retains storage reserve');
+assertContains(admin, 'override const storageReserve: Int = QUASAR_STORAGE_RESERVE;', 'admin timelock retains storage reserve');
+assertContains(master, 'myBalance() - QUASAR_STORAGE_RESERVE', 'master sweep preserves storage reserve');
+assertContains(defi, 'self.tonReserve + msg.amount + QUASAR_STORAGE_RESERVE', 'DeFi sweep preserves storage reserve');
 
 assertContains(master, 'require(msg.amount <= self.totalSupply, "Supply underflow");', 'burn cannot underflow totalSupply');
 assertContains(master, 'require(self.totalSupply + msg.amount <= self.maxSupply, "Max supply exceeded");', 'mint cannot exceed the hard supply cap');
@@ -27,7 +35,7 @@ assertContains(master, 'require(msg.referrer != newAddress(0, 0), "Invalid refer
 assertContains(defi, 'if (msg.from == self.qsrMaster)', 'master-funded DeFi notification is distinguished');
 assertContains(defi, 'message RefundPendingQsr', 'pending QSR deposits have a refund path');
 assertContains(defi, 'self._sendQsr(sender(), pending!!, 3, self._nextPayoutId())', 'pending QSR refunds return the deposited tokens');
-assertContains(defi, 'self.tonReserve + msg.amount + ton("0.05")', 'TON sweep preserves LP reserves');
+assertContains(defi, 'self.tonReserve + msg.amount + QUASAR_STORAGE_RESERVE', 'TON sweep preserves LP reserves');
 assertContains(master, 'require(pending == 0 || self.stakingRewardsPool >= pending, "Rewards pool empty")', 'staking cannot erase unpaid rewards');
 assertContains(defi, 'self.qsrReserve = self.qsrReserve + msg.amount;', 'master-funded DeFi fees enter qsrReserve');
 assertContains(defi, 'let farmAmount: Int = self._min(msg.lpAmount, farmStake!!.staked);', 'partial LP exit only unstakes farmed LP');

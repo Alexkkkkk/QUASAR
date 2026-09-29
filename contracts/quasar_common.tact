@@ -1,6 +1,8 @@
 /// Shared source of truth for Jetton message types and QuasarWallet.
 /// Both quasar.tact (Master) and quasar_defi.tact (DeFi pool) import this file,
 /// so the wallet code stays byte-identical across projects (issue #35, Wave 0).
+const QUASAR_STORAGE_RESERVE: Int = ton("0.05");
+
 struct JettonWalletData { balance: Int; owner: Address; master: Address; walletCode: Cell }
 
 message(0x0f8a7ea5) TokenTransfer { queryId: Int as uint64; amount: Int as coins; destination: Address; responseDestination: Address; customPayload: Cell?; forwardTonAmount: Int as coins; forwardPayload: Slice as remaining }

@@ -111,6 +111,9 @@ struct PendingMasterPayout { kind: Int; beneficiary: Address; amount: Int; d1: I
 // ═══════════════════════════════════════════════════════════════
 
 contract QuasarMaster with Deployable {
+    // Keep enough TON reserved for rent and long-lived dictionary growth.
+    // This changes the code hash and must be applied before public deployment.
+    override const storageReserve: Int = QUASAR_STORAGE_RESERVE;
     
     // Core
     totalSupply: Int as coins;
@@ -1751,7 +1754,7 @@ contract QuasarMaster with Deployable {
     // reserve/custody accounting and can never be swept.
     receive(msg: SweepTON) {
         self._requireOwner();
-        require(msg.amount > 0 && msg.amount <= myBalance() - ton("0.05"), "Invalid sweep");
+        require(msg.amount > 0 && msg.amount <= myBalance() - QUASAR_STORAGE_RESERVE, "Invalid sweep");
         send(SendParameters{ to: self.owner, value: msg.amount, bounce: false, mode: SendPayGasSeparately, body: emptyCell() });
     }
     
