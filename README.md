@@ -43,7 +43,7 @@
 | **Staking Vault** | Earn APY from transaction fees | Rare |
 | **Referral System** | 1% lifetime earnings per referral | None |
 | **Team Vesting** | Linear 2-year unlock | Rare |
-| **Community Veto** | Escrow is not enabled in the current contract | N/A |
+| **Community Veto** | Escrow is not enabled: no veto receiver exists, so the path cannot be used. The `vetoThresholdBps` / `totalVetoStake` fields remain in `AutonomyState` as inert state kept for upgrade compatibility | N/A |
 | **Owner Control** | Master and DeFi use two-step transfer with a 48h timelock; DeFi fee and trade-limit changes are also staged; no multisig yet | Rare |
 | **Anti-Whale** | User transfers are capped at 1% of hard-cap supply; receiving wallets at 3%; a 5s per-wallet cooldown applies. Master-owned settlement is exempt; the values are fixed and owner/AI override semantics are documented in the contracts | Rare |
 | **0.30% Fee** | Fixed at 0.30% in wallet code; auto-distributed to ecosystem | Manual |
@@ -218,7 +218,7 @@ The AI Oracle can apply bounded risk controls with owner-confirmed issuance:
 | Oracle rotation | 6h | Yes |
 
 ### Safeguards (as implemented)
-- **Community Veto**: removed from the deployed interface (F-25); no dead receiver or misleading governance path remains
+- **Community Veto**: removed from the deployed interface (F-25); no dead receiver or misleading governance path remains. The `vetoThresholdBps` and `totalVetoStake` fields are still present in `AutonomyState` but nothing can mutate them, so they must not be presented as a working veto
 - **Owner Override**: 24h window for every logged AI action; the current implementation restores the full pre-action snapshot for reversible AI controls
 - **Dead Man's Switch**: `Claim AI Control` lets the owner reclaim control if the AI is silent 7 days
 - **Minting authority**: AI may pause trading and adjust fees, but only the owner-authenticated `Stop Minting` path can set `mintable = false`
