@@ -15,9 +15,9 @@ security audit.
 | A-62.3 | Publish deployed testnet/mainnet addresses | release/deployment records | open — no canonical deployment published in repo | #62 |
 | A-63 | Deterministic invariant/property coverage for swaps, LP, and staking accounting | `tests/property_invariants.test.ts` | fixed | #63 |
 | A-64 | ABI snapshot verification and shared wallet-code identity gate | `scripts/check_abi.ts`, `docs/abi/*.json`, `.github/workflows/ci.yml` | fixed | #64 |
-| A-65.1 | TON Connect result handling: success vs user cancel vs error | `website/tonconnect.js` | open | #65 |
-| A-65.2 | UI must surface min output and deadline guardrails | `website/index.html`, `website/tonconnect.js` | open | #65 |
-| A-65.3 | Manifest icon / REST-vs-jsonRPC contract reads | `website/tonconnect-manifest.json`, `website/tonconnect.js` | fixed | #65 |
+| A-65.1 | TON Connect result handling: success vs user cancel vs error | `website/tonconnect.js`, `tests/tonconnect_feedback.test.ts` | fixed | #65 |
+| A-65.2 | UI must surface min output and deadline guardrails | `website/index.html`, `website/tonconnect.js`, `tests/tonconnect_feedback.test.ts` | fixed | #65 |
+| A-65.3 | Manifest icon / REST-vs-jsonRPC contract reads | `website/tonconnect-manifest.json`, `website/tonconnect.js`, `tests/tonconnect_feedback.test.ts` | fixed | #65 |
 | A-66.1 | Consolidated dated audit report | `docs/AUDIT_2026-09-29.md` | fixed | #66 |
 | A-66.2 | Change log with issue / PR references | `CHANGELOG.md` | fixed | #66 |
 | A-66.3 | README / whitepaper aligned with active code paths and open tracker | `README.md`, `WHITEPAPER.md`, `docs/AUDIT_STATUS.md` | fixed | #66 |
