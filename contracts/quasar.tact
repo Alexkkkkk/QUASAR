@@ -245,6 +245,12 @@ contract QuasarMaster with Deployable {
     // Wallet-code migration (v5): two-step + timelock, mirrors F-08 ownership.
     pendingWalletCode: Cell?;
     walletCodeAt: Int;
+    // Jetton metadata (TEP-64, issue #58): `content` is part of the init data, so
+    // without an explicit setter a typo in the metadata URI would be permanent.
+    // Updates mirror the wallet-code migration: propose, wait for
+    // `ownerTransferDelay`, then confirm.
+    pendingContent: Cell?;
+    contentAt: Int;
     // H-02: typed pending-payout ledger so a bounce restores stake, vesting
     // claim, staking reward or referral liability - not only the aggregate
     // custody/reserve counter.
@@ -350,6 +356,8 @@ contract QuasarMaster with Deployable {
         self.pendingFeeConfigAt = 0;
         self.pendingWalletCode = null;
         self.walletCodeAt = 0;
+        self.pendingContent = null;
+        self.contentAt = 0;
     }
     
     // ═══════════════════════════════════════════════════════════
@@ -1615,6 +1623,47 @@ contract QuasarMaster with Deployable {
         emit(EventAdminConfig{ action: "ApplyWalletCode", actor: sender(), valueA: 0, valueB: 0 }.toCell());
     }
 
+    // ─── JETTON METADATA (TEP-64, issue #58): two-step + timelock ───
+    // The staged cell must keep one of the TEP-64 layouts:
+    //   0x01 ++ URI           off-chain content
+    //   0x00 ++ dictionary    on-chain content (semi-chain also carries `uri`)
+    // Only the first byte is validated on-chain: an owner-supplied dictionary is
+    // intentionally opaque, and decoding it inside the receiver would put an
+    // unbounded loop in the message path. scripts/lib/tep64.ts preflights the
+    // exact attribute set before a proposal is broadcast, and
+    // tests/tep64_content.test.ts asserts the on-chain round trip.
+    // https://docs.ton.org/contracts/standard/tokens/metadata
+    receive(msg: ProposeContent) {
+        self._requireOwner();
+        require(!self.aiFullAutonomy, "AI controls");
+        let prefix: Int = msg.newContent.asSlice().preloadUint(8);
+        require(prefix == 0x00 || prefix == 0x01, "Invalid TEP-64 content prefix");
+        self.pendingContent = msg.newContent;
+        self.contentAt = now() + self.ownerTransferDelay;
+        emit(EventAdminConfig{ action: "ProposeContent", actor: sender(), valueA: self.contentAt, valueB: 0 }.toCell());
+    }
+
+    receive("Cancel Content") {
+        self._requireOwner();
+        require(self.pendingContent != null, "Nothing pending");
+        self.pendingContent = null;
+        self.contentAt = 0;
+        emit(EventAdminConfig{ action: "CancelContent", actor: sender(), valueA: 0, valueB: 0 }.toCell());
+    }
+
+    // Applies the staged metadata only after the same 48h delay as the wallet
+    // code migration, so a compromised owner key cannot rewrite the jetton
+    // metadata in a single transaction.
+    receive("Apply Content") {
+        self._requireOwner();
+        require(self.pendingContent != null, "Nothing pending");
+        require(self.contentAt > 0 && now() >= self.contentAt, "Content timelock active");
+        self.content = self.pendingContent!!;
+        self.pendingContent = null;
+        self.contentAt = 0;
+        emit(EventAdminConfig{ action: "ApplyContent", actor: sender(), valueA: 0, valueB: 0 }.toCell());
+    }
+
     receive(msg: SetTreasury) {
         self._requireOwner();
         require(!self.aiFullAutonomy, "AI controls");
@@ -1710,6 +1759,18 @@ contract QuasarMaster with Deployable {
     // TEP-89 — DISCOVERABLE JETTON WALLETS
     // ═══════════════════════════════════════════════════════════
 
+    // TEP-89 answers `wallet_address` for an owner the master can address. An
+    // `addr_std` address carries its workchain in the third byte, so the id is
+    // read from the raw slice; `null` means the address cannot be addressed that
+    // way at all (anycast, or a forwarded/none form).
+    fun _workchainOf(a: Address): Int? {
+        let s: Slice = a.asSlice();
+        s.skipBits(2);                       // addr_std$10
+        let anycast: Int = s.loadInt(1);
+        if (anycast != 0) { return null }
+        return s.loadInt(8);
+    }
+
     receive(msg: ProvideWalletAddress) {
         // TEP-89 requires the caller to attach at least 5,000 gas units plus the
         // forward lump and cell prices (0.0061 TON at the current basechain
@@ -1720,15 +1781,40 @@ contract QuasarMaster with Deployable {
         // caller can verify the pairing without a second query.
         let owner: Cell? = null;
         if (msg.includeAddress) { owner = beginCell().storeAddress(msg.ownerAddress).endCell() }
-        // Mode 64 (carry the remaining inbound value) is the mode the TEP-89
-        // reference implementation uses for this response.
-        send(SendParameters{
-            to: sender(),
-            value: 0,
-            bounce: false,
-            mode: SendRemainingValue,
-            body: TakeWalletAddress{ queryId: msg.queryId, walletAddress: contractAddress(init), ownerAddress: owner }.toCell()
-        });
+        let computed: Address = contractAddress(init);
+        // TEP-89: "if it is not possible to generate wallet address for address
+        // in question (for instance wrong workchain) `wallet_address` in
+        // `take_wallet_address` should be equal to `addr_none`". A wallet address
+        // is only derivable for an owner in the master's own workchain, so that
+        // case is branched on explicitly instead of returning a bogus address.
+        // https://github.com/ton-blockchain/TEPs/blob/master/text/0089-jetton-wallet-discovery.md
+        let ownerWc: Int? = self._workchainOf(msg.ownerAddress);
+        let walletWc: Int? = self._workchainOf(computed);
+        let sameWorkchain: Bool = false;
+        if (ownerWc != null && walletWc != null) {
+            if (ownerWc!! == walletWc!!) { sameWorkchain = true }
+        }
+        if (sameWorkchain) {
+            // Mode 64 (carry the remaining inbound value) is the mode the TEP-89
+            // reference implementation uses for this response.
+            send(SendParameters{
+                to: sender(),
+                value: 0,
+                bounce: false,
+                mode: SendRemainingValue,
+                body: TakeWalletAddress{ queryId: msg.queryId, walletAddress: computed, ownerAddress: owner }.toCell()
+            });
+        } else {
+            // `wallet_address` is `addr_none$00`; the body is built by hand
+            // because the Tact `Address` field cannot carry `addr_none`.
+            let noneBody: Cell = beginCell()
+                .storeUint(0xd1735400, 32)   // take_wallet_address
+                .storeUint(msg.queryId, 64)
+                .storeUint(0, 2)             // wallet_address: addr_none$00
+                .storeMaybeRef(owner)        // owner_address:(Maybe ^MsgAddress)
+                .endCell();
+            send(SendParameters{ to: sender(), value: 0, bounce: false, mode: SendRemainingValue, body: noneBody });
+        }
     }
 
     // ═══════════════════════════════════════════════════════════
@@ -1828,6 +1914,9 @@ contract QuasarMaster with Deployable {
     get fun get_pending_fee_config_at(): Int { return self.pendingFeeConfigAt }
     get fun get_pending_wallet_code(): Cell? { return self.pendingWalletCode }
     get fun get_wallet_code_at(): Int { return self.walletCodeAt }
+    // TEP-64 metadata proposal state (issue #58).
+    get fun get_pending_content(): Cell? { return self.pendingContent }
+    get fun get_content_at(): Int { return self.contentAt }
 }
 
 message SweepTON { amount: Int as coins }
@@ -1845,6 +1934,11 @@ struct GovernanceState { quorumBps: Int; totalStaked: Int; proposals: Int }
 
 // ─── Wallet-code migration (v5): two-step + timelock ───
 message ProposeWalletCode { newWalletCode: Cell }
+
+// ─── Jetton metadata (TEP-64, issue #58): two-step + timelock ───
+// `content` is immutable init data without this path; the opcode is assigned by
+// Tact from the message name and recorded in docs/abi/quasar-master.json.
+message ProposeContent { newContent: Cell }
 
 // ═══════════════════════════════════════════════════════════════
 // QUASAR WALLET — Optimized with fee deduction

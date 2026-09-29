@@ -33,6 +33,12 @@ jobs:
       - name: Build and run contract tests
         run: npm test
 
+      - name: Verify ABI snapshots
+        run: npm run abi:verify
+
+      - name: Verify the dApp opcode map against the compiled ABI
+        run: npm run abi:dapp
+
       - name: Type-check scripts and tests
         run: npx tsc --noEmit
 

@@ -48,6 +48,13 @@ assertContains(defi, 'fun _executeBuybackSwap', 'DeFi executes the master-initia
 assertContains(defi, 'self._executeBuybackSwap(msg.amount, msg.queryId);', 'the buyback swap runs atomically inside the credit transaction (F-09)');
 assertContains(defi, 'message(0x2c7e91a4) BuybackTon', 'buyback TON return uses a dedicated opcode (F-09)');
 assertContains(master, 'aiActionOldAddress: map<Int, Address>;', 'AI address actions are reversible (F-07)');
+assertContains(master, 'receive(msg: ProposeContent)', 'jetton metadata changes require an explicit proposal (TEP-64, #58)');
+assertContains(master, 'require(prefix == 0x00 || prefix == 0x01, "Invalid TEP-64 content prefix");', 'only documented TEP-64 layouts may be staged (#58)');
+assertContains(master, 'require(self.contentAt > 0 && now() >= self.contentAt, "Content timelock active");', 'metadata updates honor the 48h timelock (TEP-64, #58)');
+assertContains(master, 'self.content = self.pendingContent!!;', 'metadata is only written by the timelocked confirmation (TEP-64, #58)');
+assertContains(master, 'fun _workchainOf(a: Address): Int?', 'TEP-89 discovery parses the owner workchain (#60)');
+assertContains(master, 'storeUint(0, 2)             // wallet_address: addr_none$00', 'TEP-89 wrong-workchain answers carry addr_none (#60)');
+assertContains(common, 'receive(msg: ProvideWalletAddress) {', 'the jetton wallet answers TEP-89 discovery itself (#56)');
 assertContains(defi, 'require(msg.feeBps > 0 && msg.feeBps <= 30, "Fee must not exceed 0.30%");', 'DeFi fee ceiling matches the docs (F-13)');
 assertContains(defi, 'fun _requireDeadline(deadline: Int)', 'DeFi operations have an explicit expiry guard');
 assertContains(defi, 'require(deadline > now(), "Operation expired");', 'expired swaps and liquidity operations are rejected');

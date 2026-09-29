@@ -5,6 +5,14 @@ import { mnemonicToPrivateKey } from '@ton/crypto';
 import * as fs from 'fs';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
+import {
+    buildOffchainContent,
+    buildOnchainContent,
+    buildSemiChainContent,
+    parseContent,
+    assertRequiredFields,
+    assertDecimalsConsistent
+} from './lib/tep64.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -70,9 +78,19 @@ async function deploy() {
     // F-01 remediation: the metadata URL is configurable via JETTON_METADATA_URL
     // (default: raw.githubusercontent.com — anonymous access, git-versioned) and
     // is preflighted below. A dead URL must never be baked into the content cell:
-    // the content of a deployed jetton is immutable (part of the init data).
+    // the content is part of the init data, and after issue #58 it can only be
+    // replaced through the 48h ProposeContent -> "Apply Content" timelock.
+    //
+    // JETTON_CONTENT_LAYOUT selects the TEP-64 layout:
+    //   offchain  (default)  0x01 ++ URI
+    //   onchain              0x00 ++ sha256-keyed dictionary
+    //   semichain            0x00 ++ dictionary that also carries the `uri` attribute
     const metadataUrl = process.env.JETTON_METADATA_URL?.trim()
         || 'https://raw.githubusercontent.com/Alexkkkkk/QUASAR/main/website/metadata.json';
+    const contentMode = (process.env.JETTON_CONTENT_LAYOUT?.trim() || 'offchain').toLowerCase();
+    if (!['offchain', 'onchain', 'semichain'].includes(contentMode)) {
+        throw new Error(`JETTON_CONTENT_LAYOUT must be offchain, onchain or semichain (got "${contentMode}")`);
+    }
 
     console.log(`\n🔎 Preflight: validating TEP-64 metadata at ${metadataUrl}`);
     const metaRes = await fetch(metadataUrl);
@@ -80,17 +98,52 @@ async function deploy() {
         throw new Error(`Jetton metadata URL returns HTTP ${metaRes.status} — fix hosting before deploying (F-01)`);
     }
     const meta = (await metaRes.json()) as Record<string, unknown>;
+    const attributes: Record<string, string> = {};
     for (const field of ['name', 'symbol', 'decimals', 'image'] as const) {
-        if (typeof meta[field] !== 'string' || (meta[field] as string).length === 0) {
+        const rawValue = meta[field];
+        const value = typeof rawValue === 'number' ? String(rawValue) : rawValue;
+        if (typeof value !== 'string' || value.length === 0) {
             throw new Error(`Jetton metadata is missing the required TEP-64 field "${field}" (F-01)`);
         }
+        attributes[field] = value;
+    }
+    if (typeof meta.description === 'string' && meta.description.length > 0) {
+        attributes.description = meta.description;
     }
     console.log('   ✅ Metadata resolves and contains all required TEP-64 fields');
 
-    const jettonContent = beginCell()
-        .storeUint(0x01, 8)
-        .storeStringTail(metadataUrl)
-        .endCell();
+    // Validate the attribute set before it is baked into the init data, and make
+    // sure `decimals` agrees with the 10**CONFIG.decimals multiplier Mint uses.
+    assertRequiredFields(attributes);
+    assertDecimalsConsistent(attributes, CONFIG.decimals);
+
+    const jettonContent = contentMode === 'onchain'
+        ? buildOnchainContent(attributes)
+        : contentMode === 'semichain'
+            ? buildSemiChainContent(attributes, metadataUrl)
+            : buildOffchainContent(metadataUrl);
+
+    // Round-trip the exact cell that goes into the init data: a layout mistake
+    // is permanent, so the deploy must prove it can read its own content back.
+    const preflight = parseContent(jettonContent);
+    const expectedLayout = contentMode === 'offchain' ? 'offchain' : 'onchain';
+    if (preflight.layout !== expectedLayout) {
+        throw new Error(`TEP-64 round-trip failed: built "${contentMode}" but parsed "${preflight.layout}"`);
+    }
+    if (preflight.layout === 'offchain') {
+        if (preflight.uri !== metadataUrl) {
+            throw new Error(`TEP-64 off-chain round-trip mismatch: "${preflight.uri}" != "${metadataUrl}"`);
+        }
+    } else {
+        const readBack = preflight.fields ?? {};
+        assertRequiredFields(readBack);
+        assertDecimalsConsistent(readBack, CONFIG.decimals);
+        if (contentMode === 'semichain' && readBack.uri !== metadataUrl) {
+            throw new Error(`TEP-64 semi-chain content must carry the "uri" attribute (got "${readBack.uri}")`);
+        }
+    }
+    console.log(`   ✅ TEP-64 content (${contentMode}) round-trips through the exact init-data cell`);
+
     const sender = wallet.sender(client.provider(wallet.address), keyPair.secretKey);
     
     // ═══════════════════════════════════════════════════════
@@ -112,6 +165,13 @@ async function deploy() {
     );
     console.log('   ⏳ Waiting for deployment...');
     await new Promise(r => setTimeout(r, 15000));
+
+    // The deployed master must report exactly the cell we preflighted above.
+    const onchainData = await quasar.getGetJettonData();
+    if (onchainData.jettonContent.hash().toString('hex') !== jettonContent.hash().toString('hex')) {
+        throw new Error('the deployed master reported a different jetton content cell');
+    }
+    console.log(`   ✅ On-chain content hash matches the preflighted cell (${contentMode})`);
     
     // Mint initial supply
     console.log(`   🔨 Minting ${CONFIG.totalSupply} QSR...`);
