@@ -297,10 +297,6 @@ async function deploy() {
                 ownershipProposed: true
             }
         },
-        wallet: {
-            address: wallet.address.toString(),
-            publicKey: keyPair.publicKey.toString('hex')
-        },
         ai: {
             enabled: !!process.env.AI_ORACLE_ADDRESS,
             oracle: process.env.AI_ORACLE_ADDRESS || null

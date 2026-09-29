@@ -24,6 +24,17 @@
 | TEP-89 wallet discovery | provide_wallet_address#2c76b973 → take_wallet_address#d1735400 from both master and wallet | Caller must fund the response; wrong workchain returns addr_none; optional owner is a ref | conformance_2026_09_26.test.ts, tep89_wallet_discovery.test.ts |
 | TON gas / bounce guidance | Explicit storage reserve, remaining-value response only where intended, typed bounce rollback and sender checks | Reserve/custody liabilities cannot be swept as free TON/QSR; payout bounces restore user state | security_check.ts, security/property suite |
 
+## Off-chain verification implemented separately
+
+`scripts/lib/ton_api.ts` provides a read-only Toncenter v2 adapter. It derives
+Jetton wallets through the allowlisted master `get_wallet_address` getter and
+then verifies both the owner and master returned by `get_wallet_data` before a
+balance is trusted. `getTransactionsPage` and `iterateTransactions` expose
+cursor-based pagination without putting API responsibilities into the
+contract. `scripts/check_deployment.ts` validates the generated public artifact
+and rejects deployer details; `scripts/check_tonconnect.ts` is the post-Pages
+live smoke.
+
 ## Explicitly out of contract scope
 
 These are not missing Jetton features and must not be encoded into QuasarMaster or QuasarWallet:

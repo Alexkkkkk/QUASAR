@@ -114,16 +114,19 @@
 
 ## P4 — Сеть, деплой, веб
 
-- [ ] **T-11 `website/deployment.json` отсутствует → веб-UI транзакции отключены.**
-  - Файл: `website/config.js:addresses` (`master: null`, `defi: null`).
-  - План: генерировать `deployment.json` из `scripts/deploy_all.ts` и публиковать
-    вместе с сайтом (GitHub Pages), иначе dApp не находит контракты.
+- [x] **T-11 `website/deployment.json` генерируется из verified deployment artifacts.**
+  - Файлы: `scripts/deploy_all.ts`, `scripts/deploy_defi.ts`,
+    `scripts/check_deployment.ts`, `website/config.js`.
+  - Полный и DeFi-only deploy записывают один и тот же artifact в `build/` и
+    `website/`; валидатор проверяет сеть, адреса, decimals и отсутствие
+    deployer/secrets перед публикацией. Артефакт намеренно git-ignored: адреса
+    появляются на Pages только после явного deploy.
 
-- [ ] **T-12 Манифест TON Connect и `iconUrl` — только оффлайн-проверка.**
-  - Файл: `website/tonconnect-manifest.json`.
-  - Статус: поля соответствуют спецификации (`url`, `name`, `iconUrl`,
-    `termsOfUseUrl`, `privacyPolicyUrl`); требуется проверка через GET после деплоя
-    Pages (см. `docs/TESTNET_SMOKE_RUNBOOK.md`).
+- [x] **T-12 Манифест TON Connect имеет offline- и live-smoke проверки.**
+  - Файлы: `website/tonconnect-manifest.json`,
+    `scripts/check_tonconnect.ts`, `tests/tonconnect_feedback.test.ts`.
+  - Offline-проверка остаётся частью security gate; `npm run tonconnect:smoke`
+    проверяет JSON MIME, origin, icon и policy URLs после публикации Pages.
 
 ## P1 — TON Docs conformance matrix
 
@@ -153,3 +156,7 @@
 2. P2 — устойчивость (T-04…T-06), требует паузы перед публичным деплоем.
 3. P3 — продукт (решения владельца).
 4. P4 — сеть/веб (по готовности секретов и Pages).
+
+T-11/T-12 реализуют проверяемую часть P4. Реальный testnet deployment,
+публикация адресов и live smoke остаются явными внешними операциями и не
+выполняются CI без disposable wallet.

@@ -22,6 +22,18 @@ flows work end to end.
    - `totalSupply` in whole QSR, before the 9-decimal conversion.
 4. Set `TONCENTER_ENDPOINT` and, when required, `TONCENTER_API_KEY`.
 
+5. Validate the public artifact before publishing the website:
+
+   ```bash
+   DEPLOYMENT_FILE=website/deployment.json npm run deployment:check
+   ```
+
+6. After GitHub Pages finishes, verify the TON Connect origin and manifest:
+
+   ```bash
+   npm run tonconnect:smoke
+   ```
+
 ## Automated read-only check
 
 ```bash
