@@ -1,4 +1,5 @@
 import "@stdlib/deploy";
+import "./quasar_common";
 
 // QUASAR administrative timelock.
 //
@@ -26,6 +27,10 @@ struct PendingAdminCall {
 }
 
 contract QuasarAdminTimelock with Deployable {
+    // The timelock retains a rent reserve while its pending-call dictionary
+    // grows. This changes the code hash and must be applied before deployment.
+    override const storageReserve: Int = QUASAR_STORAGE_RESERVE;
+
     admin: Address;
     pendingAdmin: Address;
     adminTransferAt: Int as uint32;

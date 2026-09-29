@@ -173,7 +173,7 @@ test('F3 source: wallet fee math is pinned to 30 bps and README documents it', (
 
 test('hardening source: DeFi sweep cannot touch LP TON reserves', () => {
     const sweep = section(defiSrc, 'receive(msg: SweepTON)', 'fun _updateFarm');
-    assert.ok(sweep.includes('self.tonReserve + msg.amount + ton("0.05")'), 'sweep must preserve the LP reserve and gas floor');
+    assert.ok(sweep.includes('self.tonReserve + msg.amount + QUASAR_STORAGE_RESERVE'), 'sweep must preserve the LP reserve and gas floor');
 });
 
 test('hardening source: staking cannot erase unpaid rewards', () => {
