@@ -124,6 +124,14 @@
     `termsOfUseUrl`, `privacyPolicyUrl`); требуется проверка через GET после деплоя
     Pages (см. `docs/TESTNET_SMOKE_RUNBOOK.md`).
 
+## P1 — TON Docs conformance matrix
+
+- [x] **T-13 Матрица TEP/TL-B и границы on-chain/off-chain.**
+  - Файл: docs/TON_CONFORMANCE_MATRIX.md.
+  - Зафиксированы opcode, сериализация, sender check, bounce/excess behaviour, getter ABI и тест для TEP-74, TEP-64 и TEP-89.
+  - TON Connect, API/indexer, Pages, Tolk migration, multisig и независимый аудит остаются отдельными задачами; исходники контрактов не делают неподтверждённых claims о mainnet.
+  - Проверка: существующие conformance/security/property tests и CI.
+
 ---
 
 ## Порядок закрытия
