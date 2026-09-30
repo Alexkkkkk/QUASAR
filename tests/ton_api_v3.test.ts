@@ -95,7 +95,9 @@ test('v3 adapter bounds limit to the documented page size and never sends a nega
 
     await client.getTransactions({ limit: 5000, offset: -7 });
     assert.equal(query(calls[0]).get('limit'), '100');
-    assert.equal(query(calls[0]).get('offset'), null);
+    // A negative offset is clamped to zero: the adapter never sends a
+    // negative offset, and zero is a valid documented value.
+    assert.equal(query(calls[0]).get('offset'), '0');
 
     await client.getTransactions({ limit: 0 });
     assert.equal(query(calls[1]).get('limit'), '1');

@@ -36,8 +36,53 @@ for await (const page of ton.iterateTransactions(wallet.wallet, { maxPages: 3 })
 
 The adapter does not send transactions, hold credentials, or replace an
 independent indexer. It is deliberately suitable for pre-testnet reads and
-verification. API v3/indexer integration can be added behind the same
-interface when a provider and retention requirements are selected.
+verification.
+
+### Indexed reads — API v3
+
+`scripts/lib/ton_api_v3.ts` adds the indexed layer (`ToncenterV3Client`) beside
+the v2 JSON-RPC client, without changing any v2 behaviour:
+
+| Item | Value |
+| --- | --- |
+| Base URLs | `https://toncenter.com/api/v3` (mainnet), `https://testnet.toncenter.com/api/v3` (testnet) |
+| Auth | `X-API-Key` header |
+| Pagination | `limit` / `offset`, page size capped at 100 |
+| Jettons | `jetton/masters`, `jetton/wallets`, `jetton/transfers` |
+| Blockchain data | `masterchainInfo`, `addressInformation`, `accountStates`, `walletStates`, `transactions`, `messages`, `actions` |
+| Get-methods | `runGetMethod`, `getJettonWalletAddress` |
+
+`ToncenterV3Client.verifyJettonWallet()` derives the wallet through the
+allowlisted master and then requires the indexer to report exactly one
+`jetton/wallets` record whose `owner` and `jetton` both match the request. An
+address the indexer does not confirm is rejected instead of trusted.
+
+Paths, query parameter names and response fields come from the published TON
+Index specification (`/api/v3/doc.json`, version 1.2.6) and the
+[API v3 overview](https://docs.ton.org/api/v3/overview). The adapter only
+reads: it does not sign, send or broadcast.
+
+```ts
+import { ToncenterV3Client } from './scripts/lib/ton_api_v3.js';
+
+const indexed = new ToncenterV3Client({
+  network: 'testnet',
+  apiKey: process.env.TONCENTER_API_KEY
+});
+
+const wallet = await indexed.verifyJettonWallet(
+  process.env.QSR_MASTER!,
+  process.env.USER_ADDRESS!
+);
+console.log(wallet.balance.toString(), wallet.source);
+
+for await (const page of indexed.iterateJettonTransfers(
+  { ownerAddress: process.env.USER_ADDRESS!, limit: 50 },
+  { maxPages: 3 }
+)) {
+  console.log(page.items.length, page.nextOffset);
+}
+```
 
 ## Deployment and TON Connect
 
