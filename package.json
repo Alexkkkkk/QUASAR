@@ -38,7 +38,7 @@
   "author": "QUASAR Team",
   "license": "MIT",
   "engines": {
-    "node": "22.x"
+    "node": "^22 || ^24"
   },
   "packageManager": "npm@11.6.2",
   "dependencies": {

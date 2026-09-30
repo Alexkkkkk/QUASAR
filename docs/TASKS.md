@@ -143,12 +143,12 @@
   - TON Connect, API/indexer, Pages, Tolk migration, multisig и независимый аудит остаются отдельными задачами; исходники контрактов не делают неподтверждённых claims о mainnet.
   - Проверка: существующие conformance/security/property tests и CI.
 
-- [x] **T-14 Read-only TON API v3 adapter.**
+- [x] **T-14 Read-only TON API v2 adapter.**
   - Файл: `scripts/lib/ton_api.ts`.
   - Реализованы ограниченная пагинация, чтение транзакций и проверка Jetton
     wallet только против allowlisted master. Подпись и отправка транзакций
     намеренно не входят в adapter.
-  - Документация: `docs/TON_API_ADAPTER.md`.
+  - Документация: `docs/OFFCHAIN_INTEGRATIONS.md`.
 
 - [x] **T-15 Tact → Tolk migration/no-go decision.**
   - Файл: `docs/TOLK_MIGRATION_DECISION.md`.
