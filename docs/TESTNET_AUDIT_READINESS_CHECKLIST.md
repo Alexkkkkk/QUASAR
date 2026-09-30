@@ -51,13 +51,13 @@ Companion documents:
 - [x] `SweepTON` cannot touch LP-backed TON or any liability reserve.
 - [x] Buyback failure lifecycle: swap-leg size capped by `maxTradeBps`,
       bounced legs return the amount to the pool, replay-protected query ids.
-- [ ] Production-grade getter set for reserves and liabilities (user
+- [x] Production-grade getter set for reserves and liabilities (user
       principal, reward reserve, referral liabilities, staking reserve,
-      DeFi reserves, LP reserve, free reserve) documented as one stable
-      getter surface for indexers.
-- [ ] Legacy `DefiPayout` path: remove it, or bind it to a concrete
-      obligation with its own replay/recovery model (currently unused by any
-      sender; decision must be recorded before testnet).
+      DeFi reserves, LP reserve, free reserve) is exposed through the Master
+      `get_reserve_snapshot` / `get_user_liabilities` getters and the DeFi
+      `get_reserve_snapshot` getter.
+- [x] Legacy `DefiPayout` path removed. DeFi payouts use the typed
+      `PoolPayout` / `TonPayout` ledgers with replay and bounce recovery.
 
 ## 4. Anti-whale semantics (P0.4)
 
@@ -179,7 +179,7 @@ APY, full multisig governance, or enforced wallet limits.
 | Wave 0: PR #34/#37 reconciliation | Done | #40, #41, #42 merged, CI green |
 | P0.1 payout lifecycle | Done | #40, #41 (`PayoutFailed`, pending maps) |
 | P0.2 fee atomicity / excesses proxy | Done | fee bounce/excess paths covered; successful-transfer cleanup dispatched by the master via authenticated `TransferConfirmed` |
-| P0.3 reserves & liabilities | Partial | encumbrance done; getter set + legacy `DefiPayout` decision open |
+| P0.3 reserves & liabilities | Done | encumbrance, stable Master/DeFi snapshots, and typed payout recovery |
 | P0.4 anti-whale semantics | Mostly done | #42; boundary matrix + README spec open |
 | P1 admin/timelock/multisig | Done | #39, #42 (`QuasarAdminTimelock`) |
 | P1 granular pause / roles | Open | this checklist §5 |

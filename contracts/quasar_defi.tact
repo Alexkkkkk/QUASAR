@@ -25,7 +25,6 @@ message SetMaxTradeBps { maxTradeBps: Int as uint16 }
 message ProposePoolOwner { newOwner: Address }
 message AcceptPoolOwner { }
 message CancelPoolOwner { }
-message DefiPayout { queryId: Int as uint64; amount: Int as coins; destination: Address }
 message SweepTON { amount: Int as coins }
 message RefundPendingQsr { }
 
@@ -45,6 +44,15 @@ message EventFeeCollected { amount: Int }
 
 // ─── Data Structures ───
 struct LPInfo { totalSupply: Int; tonReserve: Int; qsrReserve: Int; }
+struct DeFiReserveSnapshot {
+    lpTotalSupply: Int;
+    tonReserve: Int;
+    qsrReserve: Int;
+    feeAccumulatedTon: Int;
+    feeAccumulatedQsr: Int;
+    farmRewardReserve: Int;
+    farmTotalStaked: Int;
+}
 struct FarmInfo { staked: Int; rewardPerSecond: Int; lastUpdate: Int; accRewardPerShare: Int; startTime: Int; endTime: Int }
 struct UserFarmInfo { staked: Int; debt: Int; pending: Int }
 struct PendingPayout { amount: Int; kind: Int; beneficiary: Address }
@@ -777,6 +785,21 @@ contract QuasarDeFi with Deployable {
             totalSupply: self.lpTotalSupply,
             tonReserve: self.tonReserve,
             qsrReserve: self.qsrReserve
+        }
+    }
+
+    // Stable read-only surface for indexers and operational monitoring. Keep
+    // all reserve-backed values in one getter so off-chain consumers do not
+    // observe a mixture of blocks while reconstructing pool solvency.
+    get fun get_reserve_snapshot(): DeFiReserveSnapshot {
+        return DeFiReserveSnapshot{
+            lpTotalSupply: self.lpTotalSupply,
+            tonReserve: self.tonReserve,
+            qsrReserve: self.qsrReserve,
+            feeAccumulatedTon: self.feeAccumulatedTon,
+            feeAccumulatedQsr: self.feeAccumulatedQsr,
+            farmRewardReserve: self.farmRewardReserve,
+            farmTotalStaked: self.farmTotalStaked
         }
     }
     
