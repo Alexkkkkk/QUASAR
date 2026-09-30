@@ -13,14 +13,14 @@ export type TransactionPage = {
     next?: { lt: string; hash: string };
 };
 
-type StackItem = [string, unknown] | { type?: string; value?: unknown };
+export type StackItem = [string, unknown] | { type?: string; value?: unknown };
 
 function stackValue(item: StackItem | undefined): unknown {
     if (!item) return undefined;
     return Array.isArray(item) ? item[1] : item.value;
 }
 
-function addressFromStack(item: StackItem | undefined): Address {
+export function addressFromStack(item: StackItem | undefined): Address {
     const value = stackValue(item);
     const bytes = typeof value === 'object' && value !== null
         ? (value as { bytes?: string }).bytes
