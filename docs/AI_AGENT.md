@@ -1,26 +1,20 @@
-# QUASAR GitHub AI agent
+# QUASAR GitHub AI agent — proposal
 
-This workflow lets a repository writer request a code proposal by applying the ai-fix label to an issue. It creates an isolated branch and a draft pull request only after the repository checks pass. It never writes to main, merges, deploys, or sends on-chain transactions.
+**Status: design only.** This draft PR does not install a runnable issue-agent workflow. The ai-fix label exists, but no workflow currently reacts to it, so applying the label will not start an agent.
 
-## Free-tier setup
+## Intended design (not active)
 
-1. Create a Gemini API key in Google AI Studio using a project that is not linked to paid billing.
-2. In the repository, open Settings > Secrets and variables > Actions and add a repository secret named GEMINI_API_KEY.
-3. Do not paste the key into an issue or commit it to Git.
+The proposed free-tier agent would read a labeled issue, prepare a focused patch in an isolated job, run the repository's CI checks, and open a draft PR only after validation. It must never write directly to main, merge, deploy, access wallet credentials, or perform on-chain actions.
 
-The workflow uses gemini-3.8-flash and the free Gemini API tier. Free-tier requests are quota-limited; if the quota is unavailable or exhausted, no PR is opened. Google currently states that free-tier prompts and outputs may be used to improve its products. Do not use this mode for confidential source or data. Free-tier quotas and model availability can change; keep the project on the free tier and do not attach billing if the requirement is zero spend.
+A future implementation should use a Gemini API free-tier model only. Free-tier requests are quota-limited, and Google may use free-tier prompts and outputs to improve its products. Do not use that service for confidential source or data. For a strict zero-spend setup, do not attach billing to the Google project; quotas and model availability may change.
 
-## Request an AI fix
+## Requirements before enabling automation
 
-1. Create an issue with a clear bug report or change request and acceptance criteria. Do not include secrets, wallet keys, seed phrases, or private deployment details.
-2. Apply the ai-fix label. Only a user with repository write/maintain/admin permission can start a run.
-3. The agent prepares a patch in an isolated job with no repository write token. A separate job rejects workflow, deployment, policy, and credential-file changes, then runs the same checks as repository CI: lint, contract build/security tests, ABI checks, build hashes, TypeScript, and npm audit.
-4. If validation passes, the workflow pushes an ai/issue-… branch and opens a draft PR. If it fails, it comments with a link to the run and does not open a PR.
-5. A human must review and merge any proposal. Contract changes are not an audit, and no mainnet deployment is authorized by this workflow.
+- Add a reviewed workflow under .github/workflows that validates trusted labelers, treats issue text as untrusted, withholds write credentials from the model job, rejects protected-file changes, and runs the same checks as repository CI before opening a draft PR.
+- Store any required API key only in the repository's Actions secrets; never put it in an issue, source file, or commit.
+- Require human review for all generated changes. Contract changes are not an audit and do not establish mainnet readiness.
+- Review or remove the repository's existing blanket auto-merge workflow before enabling any agent-generated PRs. That existing workflow has not been changed by this draft.
 
-## Safety notes
+## Scope of this draft PR
 
-- Model-generated code is untrusted until reviewed.
-- The model job cannot push or create a PR; write credentials are exposed only in the final publication step, after validation.
-- The agent cannot edit its own workflow, policy, deployment files, or credentials.
-- The repository's previous blanket auto-merge workflow is removed by the agent setup PR; keep AI-created PRs in draft until safeguards are reviewed.
+This PR adds documentation and the repository-level Gemini safety policy only. It does not add the agent workflow, remove the existing auto-merge workflow, add a secret, run an agent, or close issue #94. The issue remains open until the runnable implementation is completed and reviewed.
