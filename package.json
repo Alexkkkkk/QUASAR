@@ -45,15 +45,15 @@
     "@tact-lang/compiler": "^1.6.13",
     "@ton/core": "^0.63.1",
     "@ton/crypto": "^3.3.0",
-    "@ton/ton": "^16.3.0",
-    "dotenv": "^17.4.2"
+    "@ton/ton": "^16.3.0"
   },
   "devDependencies": {
-    "@ton/sandbox": "^0.44.0",
-    "@types/node": "^26.5.1",
+    "@ton/sandbox": "^0.45.0",
+    "@types/node": "^26.6.3",
+    "dotenv": "^18.0.4",
     "husky": "^9.1.7",
-    "tsx": "^4.23.13",
-    "typescript": "^5.9.2"
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2"
   },
   "overrides": {
     "protobufjs": "^8.8.0"
