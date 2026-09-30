@@ -72,6 +72,13 @@ async function stake(eco: Eco, user: any, amount: bigint) {
     await eco.master.send(user.getSender(), { value: toNano('0.1') }, { $$type: 'Stake', amount });
 }
 
+async function deposit(eco: Eco, user: any, amount: bigint) {
+    const masterWallet = await QuasarWallet.fromInit(eco.masterAddr, eco.masterAddr);
+    await eco.master.send(eco.bc.sender(masterWallet.address), { value: toNano('0.1') }, {
+        $$type: 'TokenNotification', queryId: 0n, amount, from: user.address, forwardPayload: beginCell().endCell().asSlice()
+    });
+}
+
 // ═══════════════ 1. Governance ═══════════════
 
 test('gov: a non-staker cannot vote and a wallet cannot vote twice', async () => {
@@ -117,6 +124,46 @@ test('gov: a vote reaching quorum executes the proposal through the AI action lo
 
     // quorum tally is consumed: the same proposal cannot re-execute
     assert.equal(await eco.master.getGetProposalStake(7n), 0n, 'the quorum tally must be zeroed after execution');
+});
+
+test('veto: a staker can escrow separate QSR, reverse an action at threshold, and release the escrow', async () => {
+    const eco = await deployEco();
+    // Seed the two Jetton wallets used by the custody payout. The custody
+    // notification below represents the already-held 20 QSR; the master wallet
+    // must also have that balance for the end-to-end release to succeed.
+    await eco.master.send(eco.owner.getSender(), { value: toNano('0.3') }, {
+        $$type: 'Mint', amount: 20n * QSR, receiver: eco.masterAddr
+    });
+    await eco.master.send(eco.owner.getSender(), { value: toNano('0.3') }, {
+        $$type: 'Mint', amount: 1n * QSR, receiver: eco.alice.address
+    });
+    await stake(eco, eco.alice, 100n * QSR);
+
+    // Create a reversible action. The single staker reaches governance quorum,
+    // which leaves action 0 inside the 24-hour community safety window.
+    await eco.master.send(eco.alice.getSender(), { value: toNano('0.1') }, {
+        $$type: 'GovernanceVote', proposalId: 11n, kind: 2, flag: false, feeBps: 30, deadline: DEADLINE, reason: 'halt trading'
+    });
+    assert.equal(await eco.master.getIsTradingEnabled(), false);
+
+    // Veto QSR is a separate deposit, not a second use of staked principal.
+    await deposit(eco, eco.alice, 20n * QSR);
+    await eco.master.send(eco.alice.getSender(), { value: toNano('0.1') }, {
+        $$type: 'VetoAIAction', actionId: 0n, amount: 20n * QSR
+    });
+
+    const action = await eco.master.getGetAiAction(0n);
+    assert.ok(action?.vetoed, 'the action must be marked vetoed after reaching the threshold');
+    assert.equal(await eco.master.getIsTradingEnabled(), true, 'veto must restore the pre-action state');
+    assert.equal(await eco.master.getGetVetoActionStake(0n), 20n * QSR);
+    assert.equal(await eco.master.getGetVetoEscrow(eco.alice.address, 0n), 20n * QSR);
+
+    await eco.master.send(eco.alice.getSender(), { value: toNano('0.1') }, {
+        $$type: 'ReleaseVeto', actionId: 0n
+    });
+    assert.equal(await eco.master.getGetVetoEscrow(eco.alice.address, 0n), 0n);
+    assert.equal(await eco.master.getGetVetoActionStake(0n), 0n);
+    assert.equal((await eco.master.getGetAutonomyState()).totalVetoStake, 0n);
 });
 
 test('gov: expired votes are rejected and unknown kinds revert', async () => {
