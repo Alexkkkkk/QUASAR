@@ -43,7 +43,7 @@
 | **Staking Vault** | Earn APY from transaction fees | Rare |
 | **Referral System** | 1% lifetime earnings per referral | None |
 | **Team Vesting** | Linear 2-year unlock | Rare |
-| **Community Veto** | Not an active feature. No veto receiver is exposed; the legacy `vetoThresholdBps` / `totalVetoStake` fields remain inert state for compatibility only and must not be presented as working governance | N/A |
+| **Community Veto** | Live QSR escrow: an existing staker deposits separate QSR against a reversible AI/governance action; 10% of total staked QSR vetoes it and escrow is released through a bounce-safe custody ledger | N/A |
 | **Owner Control** | Master and DeFi use two-step transfer with a 48h timelock; DeFi fee and trade-limit changes are also staged; no multisig yet | Rare |
 | **Anti-Whale** | User transfers are capped at 1% of hard-cap supply; receiving wallets at 3%; a 5s per-wallet cooldown applies. Master-owned settlement is exempt; the values are fixed and owner/AI override semantics are documented in the contracts | Rare |
 | **0.30% Fee** | Fixed at 0.30% in wallet code; auto-distributed to ecosystem | Manual |
@@ -218,7 +218,7 @@ The AI Oracle can apply bounded risk controls with owner-confirmed issuance:
 | Oracle rotation | 6h | Yes |
 
 ### Safeguards (as implemented)
-- **Community Veto**: not active. The deployed interface exposes no veto receiver; the legacy `vetoThresholdBps` and `totalVetoStake` fields remain inert compatibility state only and must not be treated as a live governance control
+- **Community Veto**: `VetoAIAction` accepts only separately deposited QSR from an existing staker. The default threshold is 10% of `totalStaked`; vetoing restores the complete pre-action snapshot, marks the action closed, blocks `OwnerOverride`, and `ReleaseVeto` returns each escrow once through the typed bounce-recovery ledger
 - **Owner Override**: 24h window for every logged AI action; the current implementation restores the full pre-action snapshot for reversible AI controls
 - **Dead Man's Switch**: `Claim AI Control` lets the owner reclaim control if the AI is silent 7 days
 - **Minting authority**: AI may pause trading and adjust fees, but only the owner-authenticated `Stop Minting` path can set `mintable = false`
