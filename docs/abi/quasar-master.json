@@ -951,6 +951,21 @@
       ]
     },
     {
+      "name": "ReleaseVeto",
+      "opcode": "0x7d820191",
+      "fields": [
+        {
+          "name": "actionId",
+          "type": {
+            "kind": "simple",
+            "type": "uint",
+            "optional": false,
+            "format": 64
+          }
+        }
+      ]
+    },
+    {
       "name": "SetBuybackConfig",
       "opcode": "0x83b8144a",
       "fields": [
@@ -1267,6 +1282,30 @@
       "name": "Unstake",
       "opcode": "0xff633be1",
       "fields": [
+        {
+          "name": "amount",
+          "type": {
+            "kind": "simple",
+            "type": "uint",
+            "optional": false,
+            "format": "coins"
+          }
+        }
+      ]
+    },
+    {
+      "name": "VetoAIAction",
+      "opcode": "0xd2715d2c",
+      "fields": [
+        {
+          "name": "actionId",
+          "type": {
+            "kind": "simple",
+            "type": "uint",
+            "optional": false,
+            "format": 64
+          }
+        },
         {
           "name": "amount",
           "type": {
@@ -1727,6 +1766,56 @@
         "kind": "simple",
         "type": "VestingInfo",
         "optional": true
+      }
+    },
+    {
+      "name": "get_veto_action_stake",
+      "methodId": 93322,
+      "arguments": [
+        {
+          "name": "actionId",
+          "type": {
+            "kind": "simple",
+            "type": "int",
+            "optional": false,
+            "format": 257
+          }
+        }
+      ],
+      "returns": {
+        "kind": "simple",
+        "type": "int",
+        "optional": false,
+        "format": 257
+      }
+    },
+    {
+      "name": "get_veto_escrow",
+      "methodId": 76818,
+      "arguments": [
+        {
+          "name": "user",
+          "type": {
+            "kind": "simple",
+            "type": "address",
+            "optional": false
+          }
+        },
+        {
+          "name": "actionId",
+          "type": {
+            "kind": "simple",
+            "type": "int",
+            "optional": false,
+            "format": 257
+          }
+        }
+      ],
+      "returns": {
+        "kind": "simple",
+        "type": "int",
+        "optional": false,
+        "format": 257
       }
     },
     {
