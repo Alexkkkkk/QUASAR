@@ -11,9 +11,11 @@ profile and bounce behavior.
 
 The current repository keeps the existing Tact path reproducible:
 
-- `.nvmrc` and CI use Node 22.
+- `.nvmrc` pins Node 22; CI validates Node 24, and `package.json` supports both LTS lines.
 - `package-lock.json` pins the resolved compiler/toolchain graph.
-- ABI snapshots, dApp opcode checks, security checks and 112 sandbox tests are
+- ABI snapshots, dApp opcode checks, security checks and the sandbox test
+  suite are release gates. The exact test count is reported by CI, not pinned
+  in prose, so it cannot go stale.
   release gates.
 
 No Tolk compiler is added and no contract source is rewritten here. That is
