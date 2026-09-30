@@ -7,12 +7,17 @@
  * sender wallet instead of being forwarded with mode 64 and refunded by the
  * receiver."
  *
- * Reference behaviour (TEP-74 jetton wallet): the wallet forwards the inbound
- * message value with the internal_transfer leg (mode 64 = SendRemainingValue)
- * and the RECEIVING wallet refunds whatever the transfer did not spend back
- * to response_destination as an excesses message. The Quasar fee leg
- * (FeeTransfer, 0.05 TON to the master) stays a balance-funded
- * SendPayGasSeparately send — see tests/audit_fixes.test.ts (F-19).
+ * Final design (after the WIP experiment proved TON allows only ONE
+ * remaining-value action per transaction — forwarding the whole inbound value
+ * with the internal_transfer leg while also paying the 0.05 TON FeeTransfer
+ * leg fails with action exit code 37):
+ *   - both contract legs stay balance-funded (F-19 invariant),
+ *   - the residual of the inbound message is returned to
+ *     `response_destination` by the FINAL excesses action — the explicit
+ *     explicit residual (inbound minus legs minus gas headroom), sent with
+ *     SendPayGasSeparately | SendIgnoreErrors — the refund flow of the TEP-74
+ *     reference implementation, so no residual is stranded on the sender wallet,
+ *   - the receiving wallet keeps refunding its own excess (F-21).
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -30,7 +35,7 @@ const walletCode = Cell.fromBoc(readFileSync(join(root, 'build', 'quasar_QuasarW
 const METADATA_URL = 'https://raw.githubusercontent.com/Alexkkkkk/QUASAR/main/website/metadata.json';
 const QSR = 1_000_000_000n;
 
-interface OutMsg { to: string; value: bigint }
+interface OutMsg { to: string; value: bigint; bodyOp?: bigint }
 
 function sameAddress(candidate: string, expected: Address): boolean {
     try {
@@ -56,7 +61,15 @@ function outMessagesOf(tx: any): OutMsg[] {
     for (const message of list as any[]) {
         const info: any = message?.info;
         if (info?.type !== 'internal') continue;
-        found.push({ to: String(info.dest), value: info.value?.coins ?? 0n });
+        let op: bigint | undefined;
+        try {
+            const body: any = message?.body;
+            if (body?.beginParse) {
+                const cs = body.beginParse();
+                if (cs.bits >= 32) op = cs.loadUint(32);
+            }
+        } catch { /* not decodable — ignore */ }
+        found.push({ to: String(info.dest), value: info.value?.coins ?? 0n, bodyOp: op });
     }
     return found;
 }
@@ -72,7 +85,7 @@ function describe(res: any): string {
         .map((tx, i) => {
             const compute = tx?.description?.computePhase;
             const action = tx?.description?.actionPhase;
-            const outs = outMessagesOf(tx).map((m) => `${m.to.slice(0, 14)}=${m.value}`).join(',');
+            const outs = outMessagesOf(tx).map((m) => `${m.to.slice(0, 14)}=${m.value}@0x${m.bodyOp?.toString(16) ?? '?'}`).join(',');
             return `tx${i} dest=${String(tx?.inMessage?.info?.dest ?? '').slice(0, 14)} ` +
                 `compute=${compute ? (compute.success ? 'ok' : 'FAIL/' + compute.exitCode) : '-'} ` +
                 `action=${action ? (action.success ? 'ok' : 'FAIL/' + action.resultCode) + '/sent=' + action.totalActions : '-'} out=[${outs}]`;
@@ -107,7 +120,7 @@ async function deploy() {
     return { bc, owner, alice, bob, master, masterAddr: raw.address };
 }
 
-test('F-30-04 on-chain: the internal_transfer leg forwards the inbound value (mode 64), the receiver refunds the excess', async () => {
+test('F-30-04 on-chain: the inbound residual is refunded to response_destination, not stranded on the sender wallet', async () => {
     const { bc, owner, alice, bob, master, masterAddr } = await deploy();
 
     const aliceC = bc.openContract(await QuasarWallet.fromInit(alice.address, masterAddr));
@@ -120,7 +133,8 @@ test('F-30-04 on-chain: the internal_transfer leg forwards the inbound value (mo
     );
     assert.equal((await aliceC.getGetWalletData()).balance, 1_000n * QSR, 'precondition: alice holds 1,000 QSR');
 
-    // A generous gas attachment: the sender must not be able to strand it.
+    // A generous gas attachment: before the fix the unspent residual simply
+    // stayed on the sender wallet balance.
     const attach = toNano('0.5');
     const transferRes = await aliceC.send(bc.sender(alice.address), { value: attach }, {
         $$type: 'TokenTransfer',
@@ -134,33 +148,38 @@ test('F-30-04 on-chain: the internal_transfer leg forwards the inbound value (mo
     });
     expectCommitted(transferRes, 'the transfer');
 
-    // 1. The sender wallet's internal_transfer leg must carry the forwarded
-    // inbound value (mode 64), not the fixed 0.02 TON balance-funded amount.
+    // 1. The sender wallet must return the unspent residual to
+    // response_destination as its final outgoing message (the two balance-
+    // funded legs go first; the excesses body carries op 0xd53276db). The
+    // residual is identified by destination and amount: before the fix no
+    // such message existed at all.
     const senderTx = txTo(transferRes, aliceC.address);
     assert.ok(senderTx, 'the sender wallet transaction must exist — ' + describe(transferRes));
-    const toBobWallet = outMessagesOf(senderTx!).filter((m) => sameAddress(m.to, bobWalletAddr));
-    assert.equal(toBobWallet.length, 1, 'the sender wallet must send exactly one internal_transfer to the destination wallet — ' + describe(transferRes));
+    const residual = outMessagesOf(senderTx!).filter((m) => sameAddress(m.to, alice.address) && m.value > toNano('0.3'));
+    assert.equal(residual.length, 1, 'the sender wallet must return exactly one residual refund to response_destination — ' + describe(transferRes));
     assert.ok(
-        toBobWallet[0].value > toNano('0.05'),
-        `the internal_transfer leg must forward the inbound value (mode 64), not the fixed 0.02 TON balance-funded amount — got ${toBobWallet[0].value} — ` + describe(transferRes)
+        residual[0].value > 0n && residual[0].value < toNano('0.5'),
+        `the residual refund must carry the unspent residual (attach 0.5 minus the 0.09 TON legs and gas) — got ${residual[0].value} — ` + describe(transferRes)
+    );
+    assert.ok(
+        residual[0].bodyOp === undefined || residual[0].bodyOp === 0xd53276dbn,
+        'the residual refund must be an excesses#d53276db message — ' + describe(transferRes)
     );
 
-    // 2. The receiving wallet must refund the unspent excess to
-    // response_destination (TEP-74 step 3), so nothing is stranded.
+    // 2. The receiving wallet keeps refunding its own excess (F-21).
     const receiverTx = txTo(transferRes, bobWalletAddr);
     assert.ok(receiverTx, 'the receiving wallet transaction must exist — ' + describe(transferRes));
-    const refunded = outMessagesOf(receiverTx!).filter((m) => sameAddress(m.to, alice.address));
-    assert.equal(refunded.length, 1, 'the receiving wallet must return exactly one excess message to response_destination — ' + describe(transferRes));
-    assert.ok(refunded[0].value > 0n, 'the excess refund must carry value — ' + describe(transferRes));
+    const refunded = outMessagesOf(receiverTx!).filter((m) => sameAddress(m.to, alice.address) && m.value > 0n);
+    assert.equal(refunded.length, 1, 'the receiving wallet must still return its excess to response_destination (F-21) — ' + describe(transferRes));
+    assert.ok(refunded[0].value > 0n, 'the receiver excess refund must carry value — ' + describe(transferRes));
 
-    // 3. Balances: the tokens moved minus the 0.30% fee; the sender wallet
-    // must not keep the attached TON residual.
+    // 3. Jetton accounting is unchanged.
     const fee = (100n * QSR * 30n) / 10_000n;
     assert.equal((await bobC.getGetWalletData()).balance, 100n * QSR - fee, 'the recipient is credited amount minus fee');
     assert.equal((await aliceC.getGetWalletData()).balance, 900n * QSR, 'the sender is debited the full amount');
 });
 
-test('F-30-04 source: the TokenTransfer internal_transfer leg uses SendRemainingValue and the fee leg stays balance-funded', () => {
+test('F-30-04 source: both legs stay balance-funded and the residual is refunded as the final excesses action', () => {
     const commonSrc = readFileSync(join(root, 'contracts', 'quasar_common.tact'), 'utf8');
     const start = commonSrc.indexOf('receive(msg: TokenTransfer)');
     const end = commonSrc.indexOf('receive(msg: PoolPayout)');
@@ -168,16 +187,26 @@ test('F-30-04 source: the TokenTransfer internal_transfer leg uses SendRemaining
 
     assert.match(
         transfer,
-        /mode: SendRemainingValue,/,
-        'the internal_transfer leg must forward the inbound value with mode 64 (SendRemainingValue)'
-    );
-    assert.match(
-        transfer,
         /bounce: true, mode: SendPayGasSeparately, body: FeeTransfer/,
         'the fee leg must stay bounceable and balance-funded (F-19 invariant)'
     );
+    assert.match(
+        transfer,
+        /value: ton\("0\.02"\),\s*bounce: true,\s*mode: SendPayGasSeparately,/,
+        'the internal_transfer leg must stay balance-funded at 0.02 TON'
+    );
+    assert.match(
+        transfer,
+        /let residual: Int = context\(\)\.value - ton\("0\.07"\) - ton\("0\.02"\);/,
+        'the inbound residual must be computed explicitly (legs + gas headroom), not left on the wallet'
+    );
+    assert.match(
+        transfer,
+        /send\(SendParameters\{ to: msg\.responseDestination, value: residual, bounce: false, mode: SendPayGasSeparately \| SendIgnoreErrors, body: TokenExcesses\{ queryId: msg\.queryId \}\.toCell\(\) \}\);/,
+        'the residual must be refunded to response_destination as the final excesses action'
+    );
     assert.ok(
-        transfer.indexOf('body: FeeTransfer') < transfer.indexOf('SendRemainingValue'),
-        'the balance-funded fee leg must be dispatched before the remaining-value leg'
+        transfer.indexOf('body: InternalTransfer') < transfer.indexOf('let residual: Int'),
+        'the residual refund must be the last action (F-20 invariant)'
     );
 });
