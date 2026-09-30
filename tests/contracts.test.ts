@@ -27,7 +27,7 @@ import {
     loadSetMaxTradeBps,
     loadFundFarm,
     loadSetFarmEnabled,
-    loadDefiPayout,
+    loadPoolPayout,
     loadTokenTransfer,
     storeAddLiquidity,
     storeSwapToTON,
@@ -35,7 +35,7 @@ import {
     storeSetMaxTradeBps,
     storeFundFarm,
     storeSetFarmEnabled,
-    storeDefiPayout,
+    storePoolPayout,
     storeTokenTransfer
 } from '../build/quasar_defi_QuasarDeFi.js';
 
@@ -138,8 +138,8 @@ test('QSR deposit and payout messages preserve their ownership fields', () => {
         }))
         .endCell();
     const payout = beginCell()
-        .store(storeDefiPayout({
-            $$type: 'DefiPayout',
+        .store(storePoolPayout({
+            $type: 'PoolPayout',
             queryId: 8n,
             amount: 2_000_000_000n,
             destination: owner
@@ -149,7 +149,7 @@ test('QSR deposit and payout messages preserve their ownership fields', () => {
     const parsedNotification = loadTokenNotification(notification.beginParse());
     assert.equal(parsedNotification.amount, 5_000_000_000n);
     assert.equal(parsedNotification.from.toRawString(), owner.toRawString());
-    assert.equal(loadDefiPayout(payout.beginParse()).destination.toRawString(), owner.toRawString());
+    assert.equal(loadPoolPayout(payout.beginParse()).destination.toRawString(), owner.toRawString());
 });
 
 test('Jetton messages use the TON standard opcodes', () => {
