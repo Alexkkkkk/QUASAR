@@ -113,7 +113,7 @@
   - Файл: `docs/NOTES-WIP.md` (наблюдение от 2026-09-20).
   - Проблема: симптом не воспроизводится на текущем `main`; инвариант
     «DeFi fee reserve reconciliation» в `scripts/security_check.ts` проходит,
-    suite — 109/109 pass.
+    suite — 112/112 pass.
   - Проверка: `tests/hardening_2026_09_25.test.ts` (`F-22`) воспроизводит fee
     с buyback и подтверждает, что accounting commit не откатывается.
 
@@ -154,6 +154,13 @@
   - Файл: `docs/TOLK_MIGRATION_DECISION.md`.
   - Tact остаётся pinned compiler path до доказательства ABI/TL-B/storage/code
     hash/gas/bounce эквивалентности; адреса и mainnet claims не меняются.
+- [x] **T-16 Стабильный getter для резервов DeFi и удаление legacy wire-типа.**
+  - Файл: `contracts/quasar_defi.tact`.
+  - `get_reserve_snapshot` возвращает LP supply, TON/QSR reserves, fee
+    accumulators и farm liabilities одним read-only вызовом. Неиспользуемый
+    `DefiPayout` type удалён: реальные выплаты проходят только через
+    typed `PoolPayout`/`TonPayout` ledgers с bounce recovery.
+  - Проверка: `tests/core_functions.test.ts`, `npm run abi:verify`.
 
 ---
 
