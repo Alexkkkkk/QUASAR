@@ -259,8 +259,14 @@ test('F-19 source: rejected fee messages restore the deducted fee', () => {
         transfer.includes('bounce: true, mode: SendPayGasSeparately, body: FeeTransfer'),
         'fee transfer must be bounceable and funded'
     );
+    // The no-silent-ignore rule protects the FEE leg specifically: a dropped
+    // FeeTransfer would leave the pending ledgers dirty (F-20). The residual
+    // refund introduced by F-30-04 is a different send — its failure costs
+    // nothing but the refund itself, so it may use SendIgnoreErrors (the same
+    // combination the Q-03 invariant approves for the BurnConfirmed leg).
+    const feeSend = transfer.slice(transfer.indexOf('body: FeeTransfer') - 400, transfer.indexOf('body: FeeTransfer') + 60);
     assert.ok(
-        !transfer.includes('SendPayGasSeparately | SendIgnoreErrors'),
+        !feeSend.includes('SendIgnoreErrors'),
         'fee transfer must not silently ignore delivery errors'
     );
     assert.ok(

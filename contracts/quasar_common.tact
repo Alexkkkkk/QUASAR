@@ -254,17 +254,30 @@ contract QuasarWallet {
         let sendAmount: Int = msg.amount - fee;
         require(sendAmount > 0, "Amount too small");
         // TEP-74 requires a wallet that cannot fund its outgoing legs to stop
-        // and throw in the compute phase: the receiver internal_transfer and the
-        // fee notification are both paid out of this account, so an underfunded
-        // request must be rejected here instead of failing in the action phase.
+        // and throw in the compute phase: the receiver internal_transfer and
+        // the fee notification are both paid out of this account, so an
+        // underfunded request must be rejected here instead of failing in the
+        // action phase. The caller must also attach gas that can cover the
+        // 0.07 TON the two legs spend.
         // https://github.com/ton-blockchain/TEPs/blob/master/text/0074-jettons-standard.md
         require(myBalance() >= ton("0.075"), "Insufficient TON for transfer");
+        require(context().value >= ton("0.07"), "Insufficient TON attached for transfer");
         self.balance = self.balance - msg.amount;
         self.pendingResponseFees.set(msg.queryId, fee);
         self.pendingResponseReceivers.set(msg.queryId, msg.destination);
         self.pendingResponses.set(msg.queryId, msg.responseDestination);
         
         let init: StateInit = initOf QuasarWallet(msg.destination, self.master);
+        // F-30-04: both contract legs (the 0.02 TON internal_transfer and the
+        // 0.05 TON fee notification) are balance-funded (F-19) — TON permits
+        // only ONE remaining-value action per transaction, so forwarding the
+        // inbound value with the internal_transfer leg while also paying the
+        // fee leg fails with action exit code 37. Instead, the residual of
+        // the inbound message is no longer stranded on this wallet: it is
+        // returned to `response_destination` by the final excesses action,
+        // exactly the refund flow of the TEP-74 reference implementation.
+        // The refund send must be the last action of the transaction (F-20).
+        send(SendParameters{ to: self.master, value: ton("0.05"), bounce: true, mode: SendPayGasSeparately, body: FeeTransfer{ queryId: msg.queryId, amount: fee, originalSender: self.owner, originalReceiver: msg.destination }.toCell() });
         send(SendParameters{
             to: contractAddress(init),
             value: ton("0.02"),
@@ -281,7 +294,25 @@ contract QuasarWallet {
             code: init.code,
             data: init.data
         });
-        send(SendParameters{ to: self.master, value: ton("0.05"), bounce: true, mode: SendPayGasSeparately, body: FeeTransfer{ queryId: msg.queryId, amount: fee, originalSender: self.owner, originalReceiver: msg.destination }.toCell() });
+        // F-30-04: return the unspent residual of the inbound message to
+        // `response_destination` instead of stranding it on this wallet.
+        // The refund cannot use mode 64: both legs are balance-funded
+        // (SendPayGasSeparately), so a mode-64 action still tries to spend
+        // the whole inbound value on top of them and is silently skipped by
+        // the action phase as unaffordable. The residual is therefore
+        // computed explicitly: inbound value minus the 0.07 TON the two legs
+        // spend, minus a 0.02 TON headroom that covers this transaction's
+        // gas and the legs' forward fees. `SendPayGasSeparately |
+        // SendIgnoreErrors` pays the refund's own fee from the balance and
+        // keeps a failed refund from rolling back a settled transfer (the
+        // receiving wallet refunds its own excess the same way, see F-21);
+        // per the Q-03 invariant the bare mode-2 form is never used, and the
+        // `context().value >= 0.07` guard above guarantees the amount is
+        // never negative.
+        let residual: Int = context().value - ton("0.07") - ton("0.02");
+        if (residual > 0) {
+            send(SendParameters{ to: msg.responseDestination, value: residual, bounce: false, mode: SendPayGasSeparately | SendIgnoreErrors, body: TokenExcesses{ queryId: msg.queryId }.toCell() });
+        }
     }
 
     // Pool payouts are initiated by a contract that owns this wallet. They
