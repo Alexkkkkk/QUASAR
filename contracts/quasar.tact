@@ -714,11 +714,18 @@ contract QuasarMaster with Deployable {
         // The event must not consume the remaining inbound value before the
         // excess refund; the refund is the final action in this receiver.
         emit(EventBurn{ amount: msg.amount, burner: msg.sender }.toCell());
+        // SEND MODE FIX: with base mode 0 and no `SendPayGasSeparately` flag the
+        // forward fee is deducted from the message value, so a zero-value action
+        // has a negative final value and fails with exit code 37 — which mode +2
+        // (`SendIgnoreErrors`) then swallows, silently dropping the confirmation
+        // and leaving the wallet's pendingBurnResponses ledger uncleaned.
+        // Paying the fee separately from the contract balance delivers it.
+        // https://docs.ton.org/v3/documentation/smart-contracts/message-management/message-modes-cookbook
         send(SendParameters{
             to: contractAddress(wInit),
             value: 0,
             bounce: false,
-            mode: SendIgnoreErrors,
+            mode: SendPayGasSeparately | SendIgnoreErrors,
             body: BurnConfirmed{ queryId: msg.queryId }.toCell()
         });
         if (msg.responseDestination != newAddress(0, 0)) {
@@ -1710,8 +1717,17 @@ contract QuasarMaster with Deployable {
     receive(msg: ProposeContent) {
         self._requireOwner();
         require(!self.aiFullAutonomy, "AI controls");
-        let prefix: Int = msg.newContent.asSlice().preloadUint(8);
+        let contentSlice: Slice = msg.newContent.asSlice();
+        require(contentSlice.bits() >= 8, "TEP-64 content too short");
+        let prefix: Int = contentSlice.loadUint(8);
         require(prefix == 0x00 || prefix == 0x01, "Invalid TEP-64 content prefix");
+        // TEP-64 layout check. Off-chain content is `0x01 ++ ASCII URI`, so a
+        // staged 0x01 cell with no payload at all is unusable by every wallet
+        // and explorer; reject it here instead of after the 48h timelock.
+        // The on-chain dictionary (0x00) stays opaque on purpose: decoding it in
+        // the message path would put an unbounded loop in the receiver.
+        // https://github.com/ton-blockchain/TEPs/blob/master/text/0064-token-data-standard.md
+        if (prefix == 0x01) { require(contentSlice.bits() > 0, "TEP-64 off-chain content needs a URI") }
         self.pendingContent = msg.newContent;
         self.contentAt = now() + self.ownerTransferDelay;
         emit(EventAdminConfig{ action: "ProposeContent", actor: sender(), valueA: self.contentAt, valueB: 0 }.toCell());
@@ -1839,9 +1855,19 @@ contract QuasarMaster with Deployable {
     // way at all (anycast, or a forwarded/none form).
     fun _workchainOf(a: Address): Int? {
         let s: Slice = a.asSlice();
-        s.skipBits(2);                       // addr_std$10
-        let anycast: Int = s.loadInt(1);
-        if (anycast != 0) { return null }
+        // TL-B of MsgAddressInt:
+        //   addr_std$10 anycast:(Maybe Anycast) workchain:int8  address:bits256
+        //   addr_var$11 anycast:(Maybe Anycast) workchain_id:int32 address:(bits 32..1023)
+        // Only `addr_std` carries a single signed 8-bit workchain. Any other tag
+        // (addr_none$00, addr_extern$01) and any anycast prefix mean that no
+        // wallet address can be derived for this owner, which TEP-89 requires to
+        // be answered with `wallet_address = addr_none` in `take_wallet_address`
+        // instead of a bogus address built from misread bits.
+        // https://github.com/ton-blockchain/TEPs/blob/master/text/0089-jetton-wallet-discovery.md
+        if (s.bits() < 3) { return null }
+        let tag: Int = s.loadUint(2);
+        if (tag != 2) { return null }        // must be addr_std$10
+        if (s.loadUint(1) != 0) { return null }  // anycast must be absent
         return s.loadInt(8);
     }
 
