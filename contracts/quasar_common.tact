@@ -226,6 +226,12 @@ contract QuasarWallet {
     bounced(msg: bounced<FeeTransfer>) {
         require(msg.amount > 0, "Invalid amount");
         self.balance = self.balance + msg.amount;
+        // The fee leg failed, so the query id must not stay burned in the
+        // pending-response ledgers: a later excess/burn message for the same id
+        // must not be matched against a settlement that never happened (F-20).
+        self.pendingResponseFees.set(msg.queryId, null);
+        self.pendingResponseReceivers.set(msg.queryId, null);
+        self.pendingResponses.set(msg.queryId, null);
     }
     
     receive(msg: TokenTransfer) {
@@ -247,6 +253,12 @@ contract QuasarWallet {
         if (fee < 1) { fee = 1 }
         let sendAmount: Int = msg.amount - fee;
         require(sendAmount > 0, "Amount too small");
+        // TEP-74 requires a wallet that cannot fund its outgoing legs to stop
+        // and throw in the compute phase: the receiver internal_transfer and the
+        // fee notification are both paid out of this account, so an underfunded
+        // request must be rejected here instead of failing in the action phase.
+        // https://github.com/ton-blockchain/TEPs/blob/master/text/0074-jettons-standard.md
+        require(myBalance() >= ton("0.075"), "Insufficient TON for transfer");
         self.balance = self.balance - msg.amount;
         self.pendingResponseFees.set(msg.queryId, fee);
         self.pendingResponseReceivers.set(msg.queryId, msg.destination);
