@@ -254,22 +254,32 @@ contract QuasarWallet {
         let sendAmount: Int = msg.amount - fee;
         require(sendAmount > 0, "Amount too small");
         // TEP-74 requires a wallet that cannot fund its outgoing legs to stop
-        // and throw in the compute phase: the receiver internal_transfer and the
-        // fee notification are both paid out of this account, so an underfunded
+        // and throw in the compute phase: the fee notification is paid out of
+        // this account balance, and the internal_transfer leg must carry a
+        // meaningful share of the inbound message value, so an underfunded
         // request must be rejected here instead of failing in the action phase.
         // https://github.com/ton-blockchain/TEPs/blob/master/text/0074-jettons-standard.md
         require(myBalance() >= ton("0.075"), "Insufficient TON for transfer");
+        require(context().value >= ton("0.07"), "Insufficient TON attached for transfer");
         self.balance = self.balance - msg.amount;
         self.pendingResponseFees.set(msg.queryId, fee);
         self.pendingResponseReceivers.set(msg.queryId, msg.destination);
         self.pendingResponses.set(msg.queryId, msg.responseDestination);
         
         let init: StateInit = initOf QuasarWallet(msg.destination, self.master);
+        // F-30-04: the fee leg stays balance-funded (F-19), while the
+        // internal_transfer leg forwards the inbound message value (mode 64,
+        // SendRemainingValue) and the receiving wallet refunds whatever the
+        // transfer did not spend back to `response_destination` — the funding
+        // flow of the TEP-74 reference implementation, so no residual is
+        // stranded on the sender wallet. The remaining-value send must be the
+        // last action of the transaction (F-20).
+        send(SendParameters{ to: self.master, value: ton("0.05"), bounce: true, mode: SendPayGasSeparately, body: FeeTransfer{ queryId: msg.queryId, amount: fee, originalSender: self.owner, originalReceiver: msg.destination }.toCell() });
         send(SendParameters{
             to: contractAddress(init),
-            value: ton("0.02"),
+            value: 0,
             bounce: true,
-            mode: SendPayGasSeparately,
+            mode: SendRemainingValue,
             body: InternalTransfer{
                 queryId: msg.queryId,
                 amount: sendAmount,
@@ -281,7 +291,6 @@ contract QuasarWallet {
             code: init.code,
             data: init.data
         });
-        send(SendParameters{ to: self.master, value: ton("0.05"), bounce: true, mode: SendPayGasSeparately, body: FeeTransfer{ queryId: msg.queryId, amount: fee, originalSender: self.owner, originalReceiver: msg.destination }.toCell() });
     }
 
     // Pool payouts are initiated by a contract that owns this wallet. They
