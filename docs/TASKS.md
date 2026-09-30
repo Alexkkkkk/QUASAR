@@ -86,11 +86,18 @@
 
 ## P3 — Функционал и токеномика
 
-- [ ] **T-07 Community Veto / escrow не включён.**
-  - Файл: `README.md` (Feature Matrix), `contracts/quasar.tact` (`vetoThresholdBps`,
-    `totalVetoStake` присутствуют).
-  - План: включить escrow-путь на основе уже хранимых полей либо убрать поля из
-    матрицы фич.
+- [x] **T-07 Community Veto / escrow.**
+  - Файлы: `contracts/quasar.tact`, `tests/v5_governance.test.ts`, `README.md`.
+  - `VetoAIAction` принимает QSR только от существующего стейкера и только из
+    отдельного custody-депозита: principal stake нельзя посчитать повторно.
+    Escrow агрегируется по action, порог берётся из `vetoThresholdBps` от
+    `totalStaked` (по умолчанию 10%), а достижение порога восстанавливает полный
+    snapshot действия и помечает его `vetoed`.
+  - `OwnerOverride` не может обходить уже наложенное veto. `ReleaseVeto` доступен
+    после veto/закрытия окна и использует typed `PendingMasterPayout`; bounce
+    восстанавливает escrow, action tally и `totalVetoStake`, поэтому повторный
+    release не может удвоить возврат.
+  - Проверка: build, security-check и on-chain regression test veto/release.
 
 - [ ] **T-08 Нет мультисига владельца (только таймлок 48 ч).**
   - Файл: `contracts/quasar.tact:1563-1588` (`ProposeOwner`/`AcceptOwner`).
