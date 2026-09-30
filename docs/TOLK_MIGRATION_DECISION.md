@@ -11,7 +11,7 @@ profile and bounce behavior.
 
 The current repository keeps the existing Tact path reproducible:
 
-- `.nvmrc`, `package.json`, and CI use Node 24.
+- `.nvmrc` pins Node 22; CI validates Node 24, and `package.json` supports both LTS lines.
 - `package-lock.json` pins the resolved compiler/toolchain graph.
 - ABI snapshots, dApp opcode checks, security checks and the sandbox test suite are
   release gates.
