@@ -567,6 +567,16 @@
       }
     },
     {
+      "name": "get_reserve_snapshot",
+      "methodId": 85880,
+      "arguments": [],
+      "returns": {
+        "kind": "simple",
+        "type": "DeFiReserveSnapshot",
+        "optional": false
+      }
+    },
+    {
       "name": "lastPriceObservation",
       "methodId": 81909,
       "arguments": [],
