@@ -1,14 +1,13 @@
 name: Autopilot auto-merge
 
-# Auto-merges a PR (squash) once all checks are green, but ONLY when:
-#   - the PR author is the repository owner, OR
-#   - the PR carries the `automerge` label.
-# Arbitrary third-party PRs are never self-merged.
+# Turns on GitHub native auto-merge (squash) for EVERY pull request in the
+# repository, regardless of base or head branch. The PR then merges itself
+# as soon as all required checks / reviews pass. Draft PRs are skipped
+# until they are marked ready for review.
 
 on:
   pull_request:
-    types: [opened, reopened, labeled, synchronize, ready_for_review]
-    branches: [main]
+    types: [opened, reopened, synchronize, ready_for_review]
 
 permissions:
   contents: write
@@ -16,49 +15,19 @@ permissions:
   checks: read
   statuses: read
 
-concurrency:
-  group: autopilot-${{ github.event.pull_request.number }}
-  cancel-in-progress: false
-
 jobs:
-  automerge:
+  enable-automerge:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
-    if: >-
-      !github.event.pull_request.draft &&
-      github.event.pull_request.user.login == 'Alexkkkkk'
+    timeout-minutes: 10
+    if: github.event.pull_request.draft == false
     steps:
-      - name: Gate (owner or `automerge` label)
-        id: gate
-        run: |
-          if [[ "${{ github.event.pull_request.user.login }}" == "Alexkkkkk" ]] \
-             || [[ "${{ join(github.event.pull_request.labels.*.name, ' ') }}" == *"automerge"* ]]; then
-            echo "eligible=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "eligible=false" >> "$GITHUB_OUTPUT"
-            echo "PR not eligible for auto-merge: skipping"
-          fi
-
-      - name: Wait for checks, then merge
-        if: steps.gate.outputs.eligible == 'true'
+      - name: Enable auto-merge (squash, delete branch after merge)
         env:
           GH_TOKEN: ${{ github.token }}
-          PR_URL: ${{ github.event.pull_request.html_url }}
+          PR: ${{ github.event.pull_request.number }}
         run: |
-          set -euo pipefail
-          # Wait for every check on the PR; this step fails if any check fails.
-          gh pr checks "$PR_URL" --watch --interval 15 || WATCH_FAILED=$?
-
-          if [[ "${WATCH_FAILED:-0}" -ne 0 ]]; then
-            echo "::warning::Some checks failed — leaving the PR open."
-            gh pr comment "$PR_URL" --body "🤖 Autopilot: проверки не прошли — авто-мерж отменён, PR остаётся открытым."
-            exit 1
+          if gh pr merge "$PR" --auto --squash --delete-branch; then
+            echo "✅ auto-merge enabled for PR #$PR"
+          else
+            echo "::notice::Auto-merge not enabled for PR #$PR (possibly already set or PR not mergeable yet)."
           fi
-
-          # Prefer native auto-merge (respects branch protection), fall back
-          # to a direct squash merge once checks are confirmed green.
-          if ! gh pr merge "$PR_URL" --auto --squash --delete-branch 2>/dev/null; then
-            echo "Native auto-merge unavailable — performing a direct squash merge."
-            gh pr merge "$PR_URL" --squash --delete-branch
-          fi
-          echo "✅ PR auto-merged"
