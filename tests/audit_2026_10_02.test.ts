@@ -5,7 +5,7 @@
 // workflow, and the multisig handoff runbook.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync, existsSync } from 'node:fs';
+import { readFileSync, existsSync, readdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -42,6 +42,12 @@ test('deploy preflight rejects non-JSON metadata hosting (issue #77)', () => {
         !/JETTON_METADATA_URL=.*raw\.githubusercontent\.com/.test(env),
         '.env.example must default JETTON_METADATA_URL to a JSON-capable origin'
     );
+    assert.ok(deploy.includes('JETTON_METADATA_URL'), 'the metadata URL must remain configurable');
+    assert.ok(deploy.includes('JETTON_CONTENT_LAYOUT'), 'the TEP-64 content layout must remain configurable');
+
+    const matrix = read('docs/TON_CONFORMANCE_MATRIX.md');
+    assert.ok(matrix.includes('application/json'), 'the conformance matrix must record the JSON-capable origin');
+    assert.ok(matrix.includes('raw.githubusercontent.com'), 'the conformance matrix must identify the text/plain origin');
 });
 
 test('CI Node version matches .nvmrc (toolchain sync)', () => {
@@ -51,6 +57,41 @@ test('CI Node version matches .nvmrc (toolchain sync)', () => {
     const match = ci.match(/node-version:\s*([0-9]+)/);
     assert.ok(match, 'ci.yml must pin a node-version or node-version-file');
     assert.equal(match![1], nvmrc, `ci.yml node-version (${match![1]}) must equal .nvmrc (${nvmrc})`);
+
+    const pkg = JSON.parse(read('package.json')) as { engines?: { node?: string } };
+    const engineMajors = [...(pkg.engines?.node ?? '').matchAll(/(\d+)/g)].map((m) => m[1]);
+    assert.ok(
+        engineMajors.includes(nvmrc),
+        `package.json engines.node "${pkg.engines?.node}" must include .nvmrc major ${nvmrc}`
+    );
+});
+
+test('every environment variable read by scripts is documented in .env.example', () => {
+    const scriptsDir = join(root, 'scripts');
+
+    function scriptFiles(dir: string): string[] {
+        const out: string[] = [];
+        for (const entry of readdirSync(dir, { withFileTypes: true })) {
+            const full = join(dir, entry.name);
+            if (entry.isDirectory()) out.push(...scriptFiles(full));
+            else if (entry.name.endsWith('.ts')) out.push(full);
+        }
+        return out;
+    }
+
+    const envExample = read('.env.example');
+    const names = new Set<string>();
+    for (const file of scriptFiles(scriptsDir)) {
+        const source = readFileSync(file, 'utf8');
+        for (const [, name] of source.matchAll(/process\.env\.([A-Z][A-Z0-9_]*)/g)) names.add(name);
+    }
+
+    const undocumented = [...names].filter((name) => !envExample.includes(name));
+    assert.deepEqual(
+        undocumented,
+        [],
+        'every process.env variable read by scripts/** must appear in .env.example'
+    );
 });
 
 test('AI agent is manual-label-only, branch-scoped and cannot merge or deploy (issue #94)', () => {
