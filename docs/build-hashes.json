@@ -1,18 +1,18 @@
 {
-  "generatedAt": "2026-09-30T15:13:05.508Z",
+  "generatedAt": "2026-10-01T14:10:00.960Z",
   "note": "Build-artifact hashes only. Mainnet/testnet addresses must be published separately once deployments exist.",
   "artifacts": [
     {
       "file": "build/quasar_QuasarMaster.abi",
-      "sha256": "8b372d1364f20705c72545da14387ad7c058999e1a5f8fc1e3efcc63ab8c1455"
+      "sha256": "845721b07994fadeb6731c5eeadc7caeb2392cbbbd4fe701dd7daafcd0eb7807"
     },
     {
       "file": "build/quasar_QuasarMaster.code.boc",
-      "sha256": "1eb320bf8d04d6cc29d39e71c1af8b6f83db41e4ae1f41f1f1242dbff92fe9e0"
+      "sha256": "c2a0e192b660be7644f0ae8813932b34806c7e51334ca6189963cb86bb59abdb"
     },
     {
       "file": "build/quasar_QuasarWallet.abi",
-      "sha256": "c4dff69f151f72665a1e6ddcf8fd504c93c8a1b2d2d35595b24bf786acd1fc1d"
+      "sha256": "8f7a9b5ec525251e4dc8edd1fb2565d9f94f49d1e01141dcc69d8d36dd0dfcc9"
     },
     {
       "file": "build/quasar_QuasarWallet.code.boc",
@@ -24,7 +24,7 @@
     },
     {
       "file": "build/quasar_admin_QuasarAdminTimelock.code.boc",
-      "sha256": "638aebeded2657cb0547867e545f5dcf6522fd5f9b2430c53a7e203e930e1755"
+      "sha256": "d98f69c70299acfa92020a2d6745514c6b7cd410fdc8d715dba2202674f6b208"
     },
     {
       "file": "build/quasar_admin_QuasarWallet.abi",
@@ -36,15 +36,15 @@
     },
     {
       "file": "build/quasar_defi_QuasarDeFi.abi",
-      "sha256": "79c816156c85547a917adada8e6a26d3552dd9271ec1757efcac477d75782070"
+      "sha256": "821b7c1cdc0424a4889c1ab6726161cf8863347c64912dc59fd876932c8f16d2"
     },
     {
       "file": "build/quasar_defi_QuasarDeFi.code.boc",
-      "sha256": "1fee6975fe2942201b03fb835fae4c61470ac3589ec5eafd73423c71a4e1a94f"
+      "sha256": "4deb6fb3cfa37ad62d1b97c8890241f8fcff22c331041145290e14913d015ae9"
     },
     {
       "file": "build/quasar_defi_QuasarWallet.abi",
-      "sha256": "391d8cb2ec4e90d2a399919026ded4c8d8a96032b55afdc20fd46b8dee021cdd"
+      "sha256": "1246418382937c3ddedbe7c4aafa7e9cd46abfe32886cfc8d7daf85115dd3f2b"
     },
     {
       "file": "build/quasar_defi_QuasarWallet.code.boc",

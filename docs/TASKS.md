@@ -36,6 +36,37 @@
 
 ---
 
+## P0 — Авторизация AI-оракула
+
+- [x] **A-67 Экономика управлялась по адресу отправителя, без криптографического подтверждения.**
+  - Файлы: `contracts/quasar.tact` (`QuasarMaster`), `scripts/ai_oracle.ts`,
+    `tests/ai_oracle_signed.test.ts`.
+  - Проблема: `_requireAiAccess()` проверял только `sender() == self.aiOracle`, а
+    `AISetTreasuryDirect`, `AISetBuybackDirect`, `AIToggleTrading`,
+    `AIEmergencyPause`, `AISetFee`, `AISetAntiWhale` меняли казну, buyback,
+    торговлю и комиссии. Компрометация одного адреса = полный контроль над
+    экономикой; подпись решения нигде не проверялась.
+  - Исправление: в контракт добавлены `aiOraclePubKey: Int as uint256`,
+    `aiNonce: Int as uint64`, `aiSignedDecisionCount` и receive
+    `AISignedDecision` (opcode `0x7a1e5c01`). Проверяется Ed25519-подпись
+    (`checkSignature(signed.hash(), msg.signature, self.aiOraclePubKey)`) над
+    ячейкой `domain(32) | queryId(64) | nonce(64) | validUntil(32) | action(8) |
+    value(16) | payloadHash(256)`. Домен `0x51a5c3d2` отделяет подпись от любого
+    другого layout-а. Replay закрыт дважды: строго возрастающий `nonce` **и**
+    expiry `validUntil`. `sender()` намеренно не проверяется — авторитет даёт
+    подпись, поэтому релеем может быть любой горячий кошелёк. Ключ ставит и
+    снимает только владелец (`SetAiOracleKey` / `ClearAiOracleKey`); без ключа
+    подписанные решения инертны (`No oracle key`). Приостановка
+    (`action = 2`) не снимается без `aiFullAutonomy`, а сами подписанные
+    действия пишутся в тот же обратимый лог, поэтому `OwnerOverride` их
+    откатывает.
+  - Проверка: `tests/ai_oracle_signed.test.ts` (14 тестов на `@ton/sandbox`:
+    приём от недоверенного релеера, отказ при чужой подписи, подмена значения,
+    replay, меньший nonce, истёкший срок, отсутствие ключа, откат через
+    `OwnerOverride`).
+
+---
+
 ## P2 — Устойчивость контрактов (по документации TON)
 
 - [x] **T-04 Явный `storageReserve` во всех долгоживущих контрактах.**

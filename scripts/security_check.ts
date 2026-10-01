@@ -151,3 +151,17 @@ console.log('Security invariants passed: ' + [
     'dApp deposit gas covers the wallet fee legs',
     'TON Connect manifest and pinned SDK bundle'
 ].join(', '));
+
+// ─── A-67: signed AI oracle decisions ───
+assertContains(master, 'aiOraclePubKey: Int as uint256;', 'the oracle authority is an Ed25519 public key');
+assertContains(master, 'aiNonce: Int as uint64;', 'signed decisions carry a nonce counter');
+assertContains(master, 'const AI_DECISION_DOMAIN: Int = 0x51a5c3d2;', 'the signed payload is domain-separated');
+assertContains(master, 'message(0x7a1e5c01) AISignedDecision', 'the signed-decision opcode is pinned for the off-chain signer');
+assertContains(master, '.storeUint(AI_DECISION_DOMAIN, 32)', 'the signed cell starts with the domain tag');
+assertContains(master, 'require(checkSignature(signed.hash(), msg.signature, self.aiOraclePubKey), "Bad oracle signature");', 'the oracle is authenticated by signature, not by sender');
+assertContains(master, 'require(msg.nonce > self.aiNonce, "Stale oracle nonce");', 'a signed decision cannot be replayed');
+assertContains(master, 'require(msg.validUntil >= now(), "Signed decision expired");', 'a signed decision expires');
+assertContains(master, 'require(self.aiOraclePubKey != 0, "No oracle key");', 'signed decisions are inert until a key is installed');
+assertContains(master, 'require(self.aiFullAutonomy, "No autonomy");', 'a signed pause cannot resume the economy without full autonomy');
+assertContains(master, 'receive(msg: ClearAiOracleKey)', 'the owner can revoke the oracle key');
+assertContains(master, 'self._restoreAiAction(msg.actionId, act);', 'signed actions stay reversible through the shared override path');

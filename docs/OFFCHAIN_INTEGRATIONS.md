@@ -131,3 +131,28 @@ The tests never touch the network because `fetch` is injectable:
 ```bash
 npm run oracle:test
 ```
+
+### Signed on-chain decisions (A-67)
+
+The contract does not trust the address that relays an AI decision. It stores an
+Ed25519 public key and verifies a signature over the exact decision payload, so
+the relaying wallet can be a hot address with no privileges.
+
+| Item | Value |
+| --- | --- |
+| Message | `AISignedDecision`, explicit opcode `0x7a1e5c01` |
+| Signed cell | `domain(32) ‖ queryId(64) ‖ nonce(64) ‖ validUntil(32) ‖ action(8) ‖ value(16) ‖ payloadHash(256)` |
+| Domain tag | `0x51a5c3d2` (`AI_DECISION_DOMAIN`) |
+| Actions | `0` heartbeat, `1` setBurnShare (0..100), `2` pause (unpause needs `aiFullAutonomy`) |
+| Replay guard | strictly increasing `nonce` **and** `validUntil` expiry |
+| Key management | `SetAiOracleKey` / `ClearAiOracleKey`, owner-only; no key ⇒ `No oracle key` |
+
+```bash
+npm run oracle:keygen                                  # seed + public key
+npm run oracle:sign -- setBurnShare 70 1 600           # nonce 1, 10 min TTL
+```
+
+The signing side lives in `scripts/ai_oracle.ts`
+(`buildSignedDecisionCell` / `signOracleDecision`), and both halves of the wire
+format are pinned by `tests/ai_oracle_signed.test.ts` — a field reordering on
+either side fails the suite instead of failing in production.

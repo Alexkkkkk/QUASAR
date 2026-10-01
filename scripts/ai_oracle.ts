@@ -27,6 +27,8 @@
  * the test suite can run with no network access.
  */
 
+import { beginCell, Cell } from '@ton/core';
+import { getSecureRandomBytes, keyPairFromSeed, keyPairFromSecretKey, sign, type KeyPair } from '@ton/crypto';
 import { pathToFileURL } from 'node:url';
 
 /* -------------------------------------------------------------------------- */
@@ -445,6 +447,155 @@ export async function requestOracleDecision(
 }
 
 /* -------------------------------------------------------------------------- */
+/* Signed on-chain decisions (A-67)                                            */
+/* -------------------------------------------------------------------------- */
+// The contract authenticates an AI decision by an Ed25519 signature, not by the
+// relaying address, so the operator can submit it from any hot wallet. The
+// signed cell must be built byte-exactly the same way on both sides, therefore
+// the domain tag and the message opcode are pinned constants in both files.
+// https://docs.tact-lang.org/ref/core-crypto#checksignature
+
+/** Domain tag; must equal `AI_DECISION_DOMAIN` in contracts/quasar.tact. */
+export const AI_DECISION_DOMAIN = 0x51a5c3d2;
+
+/** Explicit message opcode of `AISignedDecision` in contracts/quasar.tact. */
+export const SIGNED_DECISION_OPCODE = 0x7a1e5c01;
+
+export const SIGNED_ORACLE_ACTIONS = {
+    heartbeat: 0,
+    setBurnShare: 1,
+    pause: 2
+} as const;
+export type SignedOracleAction = keyof typeof SIGNED_ORACLE_ACTIONS;
+
+export type SignedDecisionArgs = {
+    queryId: bigint;
+    nonce: bigint;
+    /** Unix seconds; the contract rejects an expired decision. */
+    validUntil: number;
+    action: SignedOracleAction | number;
+    /** 0..100 for `setBurnShare`; 0/1 for `pause`; ignored for `heartbeat`. */
+    value: number;
+    /** Optional binding to an off-chain payload (e.g. a hash of the model reply). */
+    payloadHash?: bigint;
+};
+
+const U64_MAX = (1n << 64n) - 1n;
+const U256_MAX = (1n << 256n) - 1n;
+
+function requireUint(value: bigint, max: bigint, label: string): bigint {
+    if (value < 0n || value > max) {
+        throw new OracleConfigError(`${label} must be an unsigned integer in range (received ${value})`);
+    }
+    return value;
+}
+
+/** Resolve an action name or number to the on-chain numeric action id. */
+export function resolveSignedAction(action: SignedOracleAction | number): number {
+    if (typeof action === 'number') {
+        if (!Number.isInteger(action) || action < 0 || action > 2) {
+            throw new OracleConfigError(`signed action must be 0..2 (received ${action})`);
+        }
+        return action;
+    }
+    const mapped: number | undefined = SIGNED_ORACLE_ACTIONS[action];
+    if (mapped === undefined) {
+        throw new OracleConfigError(
+            `unknown signed action ${JSON.stringify(action)} — expected one of ${Object.keys(SIGNED_ORACLE_ACTIONS).join(', ')}`
+        );
+    }
+    return mapped;
+}
+
+/**
+ * The exact cell whose hash is signed:
+ *   domain(32) queryId(64) nonce(64) validUntil(32) action(8) value(16) payloadHash(256)
+ * Reordering or adding a field here breaks signature verification on-chain —
+ * tests/ai_oracle_signed.test.ts round-trips both sides.
+ */
+export function buildSignedDecisionCell(args: SignedDecisionArgs): Cell {
+    const action = resolveSignedAction(args.action);
+    const value = args.value;
+    if (!Number.isInteger(value) || value < 0 || value > 0xffff) {
+        throw new OracleConfigError(`signed value must be an integer 0..65535 (received ${value})`);
+    }
+    if (!Number.isInteger(args.validUntil) || args.validUntil < 0 || args.validUntil > 0xffffffff) {
+        throw new OracleConfigError(`validUntil must be a uint32 unix timestamp (received ${args.validUntil})`);
+    }
+    const payloadHash = requireUint(args.payloadHash ?? 0n, U256_MAX, 'payloadHash');
+    return beginCell()
+        .storeUint(AI_DECISION_DOMAIN, 32)
+        .storeUint(requireUint(args.queryId, U64_MAX, 'queryId'), 64)
+        .storeUint(requireUint(args.nonce, U64_MAX, 'nonce'), 64)
+        .storeUint(args.validUntil, 32)
+        .storeUint(action, 8)
+        .storeUint(value, 16)
+        .storeUint(payloadHash, 256)
+        .endCell();
+}
+
+export type SignedDecision = {
+    /** The payload that was hashed and signed. */
+    payload: Cell;
+    payloadHashHex: string;
+    signatureHex: string;
+    /** Ready-to-send `AISignedDecision` body (opcode + fields + signature). */
+    body: Cell;
+};
+
+/** Build and sign one decision with the oracle's Ed25519 key. */
+export function signOracleDecision(args: SignedDecisionArgs, keyPair: KeyPair): SignedDecision {
+    if (!keyPair?.secretKey) {
+        throw new OracleConfigError('signing requires an Ed25519 key pair (seed or secret key)');
+    }
+    const payload = buildSignedDecisionCell(args);
+    const hash = payload.hash();
+    // TON verifies an Ed25519 signature over the 256-bit cell hash (CHKSIGNU),
+    // which is exactly `sign(cell.hash(), secretKey)`.
+    const signature = sign(hash, keyPair.secretKey);
+    if (signature.length !== 64) {
+        throw new OracleError(`unexpected signature length ${signature.length}, expected 64 bytes`);
+    }
+    const body = beginCell()
+        .storeUint(SIGNED_DECISION_OPCODE, 32)
+        .storeUint(requireUint(args.queryId, U64_MAX, 'queryId'), 64)
+        .storeUint(requireUint(args.nonce, U64_MAX, 'nonce'), 64)
+        .storeUint(args.validUntil, 32)
+        .storeUint(resolveSignedAction(args.action), 8)
+        .storeUint(args.value, 16)
+        .storeUint(requireUint(args.payloadHash ?? 0n, U256_MAX, 'payloadHash'), 256)
+        .storeSlice(beginCell().storeBuffer(signature).endCell().asSlice())
+        .endCell();
+    return {
+        payload,
+        payloadHashHex: hash.toString('hex'),
+        signatureHex: signature.toString('hex'),
+        body
+    };
+}
+
+/**
+ * Load the oracle key from a hex string. `seed` is a 32-byte Ed25519 seed,
+ * `secret` a 64-byte expanded secret key — the same pair `@ton/crypto` exports.
+ */
+export function keyPairFromHex(hex: string, kind: 'seed' | 'secret' = 'seed'): KeyPair {
+    const clean = hex.trim().replace(/^0x/i, '');
+    if (!/^[0-9a-fA-F]+$/.test(clean)) throw new OracleConfigError('oracle key must be hex');
+    const bytes = Buffer.from(clean, 'hex');
+    if (kind === 'seed') {
+        if (bytes.length !== 32) throw new OracleConfigError(`oracle seed must be 32 bytes (received ${bytes.length})`);
+        return keyPairFromSeed(bytes);
+    }
+    if (bytes.length !== 64) throw new OracleConfigError(`oracle secret key must be 64 bytes (received ${bytes.length})`);
+    return keyPairFromSecretKey(bytes);
+}
+
+/** Public key as the `uint256` the contract stores, as a decimal string. */
+export function publicKeyToUint256(keyPair: KeyPair): bigint {
+    return BigInt(`0x${keyPair.publicKey.toString('hex')}`);
+}
+
+/* -------------------------------------------------------------------------- */
 /* CLI                                                                         */
 /* -------------------------------------------------------------------------- */
 
@@ -473,6 +624,17 @@ export async function main(argv: string[] = process.argv.slice(2), deps: OracleC
         // dotenv is a dev dependency; a real environment still works without it.
     }
 
+    if (argv[0] === 'keygen') {
+        return runKeygenCommand({ stdout });
+    }
+
+    // `npm run oracle:sign -- <action> <value> [nonce] [ttlSeconds]` keeps the
+    // signing path out of the model call so an operator can relay a decision
+    // without an API key and without a network call to xAI.
+    if (argv[0] === 'sign') {
+        return runSignCommand(argv.slice(1), { env, stdout, stderr });
+    }
+
     const prompt = argv.join(' ').trim();
     if (prompt === '') {
         stderr('usage: npm run oracle:smoke -- "<prompt>"');
@@ -483,6 +645,106 @@ export async function main(argv: string[] = process.argv.slice(2), deps: OracleC
         const provider = deps.provider ?? createGrokProvider({ env: deps.env ?? process.env });
         const decision = await requestOracleDecision(provider, prompt);
         stdout(JSON.stringify({ provider: provider.name, model: provider.model, decision }, null, 2));
+        return 0;
+    } catch (error) {
+        stderr(error instanceof OracleError ? `${error.name}: ${error.message}` : describeError(error));
+        return 1;
+    }
+}
+
+export const ORACLE_SIGNING_KEY_ENV = 'ORACLE_SIGNING_KEY';
+
+/**
+ * Map a CLI token to a signed action. A bare number is accepted so the operator
+ * can drive an action added on-chain without waiting for this script to know a
+ * friendly name; an unknown *name* is always an error, never a silent default.
+ */
+export function parseSignedActionArg(raw: string): SignedOracleAction | number {
+    const token = raw.trim();
+    if (/^\d+$/.test(token)) {
+        return resolveSignedAction(Number(token));
+    }
+    if (Object.prototype.hasOwnProperty.call(SIGNED_ORACLE_ACTIONS, token)) {
+        return token as SignedOracleAction;
+    }
+    throw new OracleConfigError(
+        `unknown signed action ${JSON.stringify(raw)} — expected one of ${Object.keys(SIGNED_ORACLE_ACTIONS).join(', ')} or 0..2`
+    );
+}
+
+/**
+ * `npm run oracle:keygen` — create the Ed25519 key pair. Only the public key
+ * goes on-chain; the seed stays in the operator's secret manager.
+ */
+export async function runKeygenCommand(deps: {
+    stdout?: (line: string) => void;
+} = {}): Promise<number> {
+    const stdout = deps.stdout ?? ((line: string) => console.log(line));
+    const seed = await getSecureRandomBytes(32);
+    const keyPair = keyPairFromSeed(seed);
+    stdout(JSON.stringify({
+        publicKeyHex: keyPair.publicKey.toString('hex'),
+        publicKeyUint256: publicKeyToUint256(keyPair).toString(),
+        seedHex: seed.toString('hex'),
+        secretKeyHex: keyPair.secretKey.toString('hex'),
+        env: {
+            [ORACLE_SIGNING_KEY_ENV]: seed.toString('hex'),
+            ORACLE_SIGNING_KEY_KIND: 'seed'
+        },
+        next: 'set the on-chain key with SetAiOracleKey(publicKey = publicKeyUint256)'
+    }, null, 2));
+    return 0;
+}
+
+/**
+ * `npm run oracle:sign -- <action> <value> [nonce] [ttlSeconds]`
+ *
+ * Prints a ready-to-send `AISignedDecision` body. The operator relays it from
+ * any wallet: authority comes from the signature, so the sender is untrusted.
+ */
+export async function runSignCommand(
+    argv: string[],
+    deps: { env?: NodeJS.ProcessEnv; stdout?: (line: string) => void; stderr?: (line: string) => void } = {}
+): Promise<number> {
+    const env = deps.env ?? process.env;
+    const stdout = deps.stdout ?? ((line: string) => console.log(line));
+    const stderr = deps.stderr ?? ((line: string) => console.error(line));
+
+    const actionToken = argv[0];
+    if (!actionToken) {
+        stderr('usage: npm run oracle:sign -- <heartbeat|setBurnShare|pause> <value> [nonce] [ttlSeconds]');
+        return 2;
+    }
+    const keyHex = env[ORACLE_SIGNING_KEY_ENV];
+    if (!keyHex || keyHex.trim() === '') {
+        stderr(`missing ${ORACLE_SIGNING_KEY_ENV} — generate one with \`npm run oracle:keygen\``);
+        return 1;
+    }
+
+    try {
+        const kind = env.ORACLE_SIGNING_KEY_KIND === 'secret' ? 'secret' : 'seed';
+        const keyPair = keyPairFromHex(keyHex, kind);
+        const action = parseSignedActionArg(actionToken);
+        const value = Number(argv[1] ?? '0');
+        const nonce = BigInt(argv[2] ?? env.ORACLE_NONCE ?? '1');
+        const ttl = Number(argv[3] ?? '600');
+        const queryId = BigInt(env.ORACLE_QUERY_ID ?? String(Date.now()));
+        const validUntil = Math.floor(Date.now() / 1000) + ttl;
+
+        const signed = signOracleDecision({ queryId, nonce, validUntil, action, value }, keyPair);
+        stdout(JSON.stringify({
+            action: String(action),
+            value,
+            nonce: nonce.toString(),
+            queryId: queryId.toString(),
+            validUntil,
+            domain: `0x${AI_DECISION_DOMAIN.toString(16)}`,
+            opcode: `0x${SIGNED_DECISION_OPCODE.toString(16)}`,
+            signerPublicKey: publicKeyToUint256(keyPair).toString(),
+            payloadHash: signed.payloadHashHex,
+            signature: signed.signatureHex,
+            bodyBase64: signed.body.toBoc().toString('base64')
+        }, null, 2));
         return 0;
     } catch (error) {
         stderr(error instanceof OracleError ? `${error.name}: ${error.message}` : describeError(error));

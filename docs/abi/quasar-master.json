@@ -535,6 +535,75 @@
       ]
     },
     {
+      "name": "AISignedDecision",
+      "opcode": "0x7a1e5c01",
+      "fields": [
+        {
+          "name": "queryId",
+          "type": {
+            "kind": "simple",
+            "type": "uint",
+            "optional": false,
+            "format": 64
+          }
+        },
+        {
+          "name": "nonce",
+          "type": {
+            "kind": "simple",
+            "type": "uint",
+            "optional": false,
+            "format": 64
+          }
+        },
+        {
+          "name": "validUntil",
+          "type": {
+            "kind": "simple",
+            "type": "uint",
+            "optional": false,
+            "format": 32
+          }
+        },
+        {
+          "name": "action",
+          "type": {
+            "kind": "simple",
+            "type": "uint",
+            "optional": false,
+            "format": 8
+          }
+        },
+        {
+          "name": "value",
+          "type": {
+            "kind": "simple",
+            "type": "uint",
+            "optional": false,
+            "format": 16
+          }
+        },
+        {
+          "name": "payloadHash",
+          "type": {
+            "kind": "simple",
+            "type": "uint",
+            "optional": false,
+            "format": 256
+          }
+        },
+        {
+          "name": "signature",
+          "type": {
+            "kind": "simple",
+            "type": "fixed-bytes",
+            "optional": false,
+            "format": 64
+          }
+        }
+      ]
+    },
+    {
       "name": "AIToggleTrading",
       "opcode": "0x0490d605",
       "fields": [
@@ -656,6 +725,11 @@
     {
       "name": "ClaimVested",
       "opcode": "0xf789340a",
+      "fields": []
+    },
+    {
+      "name": "ClearAiOracleKey",
+      "opcode": "0x7a1e5c03",
       "fields": []
     },
     {
@@ -961,6 +1035,21 @@
             "type": "uint",
             "optional": false,
             "format": 64
+          }
+        }
+      ]
+    },
+    {
+      "name": "SetAiOracleKey",
+      "opcode": "0x7a1e5c02",
+      "fields": [
+        {
+          "name": "publicKey",
+          "type": {
+            "kind": "simple",
+            "type": "uint",
+            "optional": false,
+            "format": 256
           }
         }
       ]
@@ -1373,6 +1462,28 @@
       }
     },
     {
+      "name": "get_ai_nonce",
+      "methodId": 91327,
+      "arguments": [],
+      "returns": {
+        "kind": "simple",
+        "type": "int",
+        "optional": false,
+        "format": 257
+      }
+    },
+    {
+      "name": "get_ai_oracle_key",
+      "methodId": 110056,
+      "arguments": [],
+      "returns": {
+        "kind": "simple",
+        "type": "int",
+        "optional": false,
+        "format": 257
+      }
+    },
+    {
       "name": "get_ai_recommendation",
       "methodId": 125135,
       "arguments": [
@@ -1390,6 +1501,28 @@
         "kind": "simple",
         "type": "AIRecommendation",
         "optional": true
+      }
+    },
+    {
+      "name": "get_ai_signed_decision_count",
+      "methodId": 75531,
+      "arguments": [],
+      "returns": {
+        "kind": "simple",
+        "type": "int",
+        "optional": false,
+        "format": 257
+      }
+    },
+    {
+      "name": "get_ai_signed_domain",
+      "methodId": 92488,
+      "arguments": [],
+      "returns": {
+        "kind": "simple",
+        "type": "int",
+        "optional": false,
+        "format": 257
       }
     },
     {
