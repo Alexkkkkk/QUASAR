@@ -1,0 +1,43 @@
+name: Post prepared AI answer
+
+on:
+  issues:
+    types: [labeled]
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: ai-answer-${{ github.event.issue.number }}
+  cancel-in-progress: true
+
+jobs:
+  post-answer:
+    if: github.event.label.name == 'ai-answer'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Post answer from .github/ai-answers
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const issueNumber = context.payload.issue.number;
+            const answerPath = `.github/ai-answers/${issueNumber}.md`;
+
+            let body;
+            if (fs.existsSync(answerPath)) {
+              body = fs.readFileSync(answerPath, 'utf8');
+            } else {
+              body = `Подготовленный ответ не найден. Добавьте файл \`${answerPath}\` и снова примените label \`ai-answer\`.`;
+            }
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber,
+              body
+            });
