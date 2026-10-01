@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 
 const root = join(import.meta.dirname, '..');
@@ -123,6 +123,44 @@ if (!manifest.iconUrl.endsWith('.png')) throw new Error('manifest iconUrl must b
 if (manifest.url.endsWith('/')) throw new Error('manifest url should not end with a slash');
 if (websiteHtml.includes('@tonconnect/ui@latest')) throw new Error('TON Connect UI must be pinned');
 
+// ─── Toolchain / release-surface invariants ───
+// A green local run only proves something about CI when both use the same Node
+// major. `.nvmrc` is the single source of truth and CI reads it directly.
+const nvmrc = readFileSync(join(root, '.nvmrc'), 'utf8').trim();
+if (!/^\d+$/.test(nvmrc)) throw new Error('.nvmrc must contain a single Node major version');
+const ciWorkflow = readFileSync(join(root, '.github', 'workflows', 'ci.yml'), 'utf8');
+if (!ciWorkflow.includes('node-version-file: .nvmrc')) {
+    throw new Error('CI must derive the Node version from .nvmrc');
+}
+if (/node-version:\s*\d+/.test(ciWorkflow)) {
+    throw new Error('CI must not pin a literal node-version beside node-version-file');
+}
+const pkg = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')) as { engines?: { node?: string } };
+const engineMajors = [...(pkg.engines?.node ?? '').matchAll(/(\d+)/g)].map((m) => m[1]);
+if (!engineMajors.includes(nvmrc)) {
+    throw new Error(`engines.node "${pkg.engines?.node}" does not include the .nvmrc major ${nvmrc}`);
+}
+
+// Every environment switch the deployment scripts read must be discoverable
+// from the repository, otherwise an operator cannot know it exists.
+const envExample = readFileSync(join(root, '.env.example'), 'utf8');
+const scriptEnvVars = new Set<string>();
+function collectScripts(dir: string) {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+        const full = join(dir, entry.name);
+        if (entry.isDirectory()) collectScripts(full);
+        else if (entry.name.endsWith('.ts')) {
+            const source = readFileSync(full, 'utf8');
+            for (const [, name] of source.matchAll(/process\.env\.([A-Z][A-Z0-9_]*)/g)) scriptEnvVars.add(name);
+        }
+    }
+}
+collectScripts(join(root, 'scripts'));
+const undocumented = [...scriptEnvVars].filter((name) => !envExample.includes(name));
+if (undocumented.length > 0) {
+    throw new Error('undocumented environment variables in scripts/**: ' + undocumented.join(', '));
+}
+
 console.log('Security invariants passed: ' + [
     'burn supply guard',
     'hard supply cap',
@@ -149,5 +187,7 @@ console.log('Security invariants passed: ' + [
     'buyback swap overlap guard',
     'authenticated transfer confirmations',
     'dApp deposit gas covers the wallet fee legs',
-    'TON Connect manifest and pinned SDK bundle'
+    'TON Connect manifest and pinned SDK bundle',
+    'node toolchain is pinned by .nvmrc',
+    'every script environment variable is documented'
 ].join(', '));

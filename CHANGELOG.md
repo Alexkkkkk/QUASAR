@@ -12,6 +12,22 @@ verification status.
 
 ### Added
 
+- `tests/toolchain_and_docs.test.ts`: regression guards for the toolchain and documentation surface — `.nvmrc` must match the CI Node version and the `engines` range, every `process.env` variable read by `scripts/**` must be documented in `.env.example`, and the TEP-64 metadata URL must be listed together with the MIME type its origin actually serves.
+- `docs/AUDIT_2026-10-01.md`: consolidated audit pass over `main` @ `4848141` — verified state, findings, documentation citations and the residual owner decisions.
+
+### Fixed
+
+- `.nvmrc` and `.github/workflows/ci.yml`: CI pinned Node 24 while `.nvmrc` said 22, so a locally green run did not prove a green CI run. `.nvmrc` is now the single source of truth (24, matching the upper bound of `engines`) and `actions/setup-node` reads it via `node-version-file`. `scripts/security_check.ts` fails if the two ever drift apart again.
+- `.github/workflows/ci.yml`: `npm run deployment:check` was never executed by CI, so a malformed `website/deployment.json` (wrong network, invalid address, leaked deployer field) could have been published unnoticed. The validator now runs on every push and pull request.
+- `.env.example`: documented the environment variables the scripts actually read (`JETTON_CONTENT_LAYOUT`, `AI_ORACLE_ADDRESS`, `TON_CONNECT_ORIGIN`, `TON_CONNECT_MANIFEST_URL`, `DEPLOYMENT_FILE`), which were previously undiscoverable from the repository.
+- `docs/TASKS.md`: corrected the stale `112/112` test count to the verified `131/131`, and closed T-08 (timelock/multisig ownership hand-off) and T-09 (no on-chain randomness remains) with the evidence that actually supports each status.
+
+### Changed
+
+- `docs/TON_CONFORMANCE_MATRIX.md`: recorded the verified MIME-type difference between the GitHub Pages origin (`application/json`) and `raw.githubusercontent.com` (`text/plain`) for the TEP-64 metadata document, which is the reason the Pages origin is the correct default for the content cell.
+
+### Added
+
 - `tests/ton_doc_conformance_fix_2026_09_30.test.ts`: regression coverage for the 2026-09-30 documentation pass — TEP-64 off-chain content without a URI is rejected on-chain, TEP-89 answers `addr_none` for an unaddressable owner, and no zero-value send relies on base mode 0.
 
 ### Fixed

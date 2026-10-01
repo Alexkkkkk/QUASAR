@@ -24,6 +24,27 @@
 | TEP-89 wallet discovery | provide_wallet_address#2c76b973 → take_wallet_address#d1735400 from both master and wallet | Caller must fund the response; wrong workchain returns addr_none; optional owner is a ref | conformance_2026_09_26.test.ts, tep89_wallet_discovery.test.ts |
 | TON gas / bounce guidance | Explicit storage reserve, remaining-value response only where intended, typed bounce rollback and sender checks | Reserve/custody liabilities cannot be swept as free TON/QSR; payout bounces restore user state | security_check.ts, security/property suite |
 
+## TEP-64 metadata hosting (MIME)
+
+The content cell built by `scripts/deploy_all.ts` is part of the jetton init
+data. After issue #58 it can only be replaced through the 48-hour
+`ProposeContent` → `"Apply Content"` timelock, so the URL baked into the cell
+must be correct at deploy time.
+
+Verified HTTP behaviour of the two candidate origins (checked 2026-10-01):
+
+| Origin | `Content-Type` | Suitable as the default |
+| --- | --- | --- |
+| `https://alexkkkkk.github.io/QUASAR/metadata.json` (GitHub Pages) | `application/json; charset=utf-8` | yes — correct MIME, anonymous, HTTPS |
+| `https://raw.githubusercontent.com/Alexkkkkk/QUASAR/main/website/metadata.json` | `text/plain; charset=utf-8` | usable, but serves the wrong MIME type |
+
+TEP-64 only requires the URI to resolve to a JSON document, so a `text/plain`
+origin is not a standards violation; it is a compatibility risk for resolvers
+that validate the MIME type before parsing. `.env.example` therefore documents
+`JETTON_METADATA_URL` with the MIME type each origin serves, and the choice is
+explicit rather than implicit. Changing the default changes the `init` argument
+and therefore the contract address, so it is an owner decision, not a CI change.
+
 ## Off-chain verification implemented separately
 
 `scripts/lib/ton_api.ts` provides a read-only Toncenter v2 adapter. It derives
@@ -39,7 +60,10 @@ live smoke.
 
 These are not missing Jetton features and must not be encoded into QuasarMaster or QuasarWallet:
 
-- TON Connect manifest and wallet UX.
+- TON Connect manifest and wallet UX. The manifest fields (`url`, `name`,
+  `iconUrl`, optional `termsOfUseUrl` / `privacyPolicyUrl`) are validated by
+  `scripts/check_tonconnect.ts` against the TON Connect manifest
+  specification; the on-chain contracts neither read nor depend on them.
 - API v2/v3, indexer reads, pagination and off-chain price adapters.
 - GitHub Pages deployment discovery and deployment.json generation.
 - Blueprint/SDK integration, reproducible deployment orchestration and testnet smoke operations.

@@ -50,6 +50,9 @@
   - Исправление: добавлен общий `QUASAR_STORAGE_RESERVE = 0.05 TON` и
     `override const storageReserve` в `QuasarMaster`, `QuasarDeFi` и
     `QuasarAdminTimelock`; sweep-пути используют ту же константу.
+  - Обоснование по документации: [TON secure programming](https://docs.ton.org/v3/guidelines/smart-contracts/security/secure-programming)
+    требует учитывать storage fees и явный balance reserve при оценке газа и
+    запрещает проектировать контракт в расчёте на «дозалив» TON извне.
   - Риск: `override const` не меняет layout storage, но меняет код-хеш → адреса
     контрактов сдвинутся. Изменение допустимо только до публичного деплоя.
   - Проверка: сборка, `scripts/security_check.ts` и security regression suite.
@@ -99,23 +102,80 @@
     release не может удвоить возврат.
   - Проверка: build, security-check и on-chain regression test veto/release.
 
-- [ ] **T-08 Нет мультисига владельца (только таймлок 48 ч).**
-  - Файл: `contracts/quasar.tact:1563-1588` (`ProposeOwner`/`AcceptOwner`).
-  - План: подключить внешний multisig (2-of-N) как `pendingOwner` без изменения
-    логики таймлока; `QuasarAdminTimelock` уже рассчитан на это.
+- [x] **T-08 Мультисиг владельца как `pendingOwner` вместо одиночного EOA-деплоера.**
+  - Файлы: `scripts/deploy_all.ts` (STEP 2.5), `contracts/quasar_admin.tact`,
+    `contracts/quasar.tact` (`ProposeOwner`/`AcceptOwner`).
+  - Статус: механизм реализован. Деплой разворачивает `QuasarAdminTimelock`
+    (allow-list целевых адресов Master/DeFi, `minDelay` ≥ 86400 с,
+    replay-protection по `callId`, путь отмены) и предлагает его владельцем обоих
+    контрактов; ключ деплоера перестаёт быть единоличным администратором.
+  - Внешнее (не CI): сам multisig-кошелёк, задаваемый `TIMELOCK_ADMIN`, и
+    принятие владения (`AcceptOwner` / `AcceptPoolOwner` после таймлока).
 
-- [ ] **T-09 Лотерея/`randomInt` для денежного приза — требуется commit-reveal.**
-  - Проверено: `grep -n "randomInt" contracts/*.tact` в текущем коде ничего не
-    находит → источник TVM-случайности удалён, риск закрыт на уровне кода.
+- [x] **T-09 Лотерея/`randomInt` для денежного приза — требуется commit-reveal.**
+  - Проверено повторно: `grep -rn "randomInt\|random(" contracts/*.tact` не
+    находит ни одного совпадения → источник TVM-случайности удалён, риск закрыт
+    на уровне кода. Денежных призов, зависящих от предсказуемой случайности, нет.
+  - Обоснование по документации: [TON security best practices](https://docs.ton.org/v3/guidelines/smart-contracts/security/secure-programming)
+    прямо указывает, что встроенные функции случайности псевдослучайны и зависят
+    от logical time, поэтому для критичных приложений рекомендуется схема
+    commit-and-disclose вместо опоры на on-chain randomness.
   - План: если лотерея вернётся — только схема commit-reveal.
 
 - [x] **T-10 Fee-путь `exitCode = 5`, зафиксированный в NOTES-WIP.md.**
   - Файл: `docs/NOTES-WIP.md` (наблюдение от 2026-09-20).
   - Проблема: симптом не воспроизводится на текущем `main`; инвариант
     «DeFi fee reserve reconciliation» в `scripts/security_check.ts` проходит,
-    suite — 112/112 pass.
+    suite — 131/131 pass.
   - Проверка: `tests/hardening_2026_09_25.test.ts` (`F-22`) воспроизводит fee
     с buyback и подтверждает, что accounting commit не откатывается.
+
+---
+
+## P1 — Консистентность тулчейна и release-гейтов
+
+- [x] **T-17 `.nvmrc` объявлен единственным источником версии Node, CI его читает.**
+  - Файлы: `.nvmrc`, `.github/workflows/ci.yml`, `package.json`, `scripts/security_check.ts`.
+  - Проблема: CI ставил Node 24 литералом, а `.nvmrc` содержал 22 при
+    `engines: ^22 || ^24`. Локальная проверка и CI шли на разных мажорных
+    версиях, поэтому «зелёный» локальный прогон не подтверждал CI-прогон.
+  - Исправление: `.nvmrc` = 24 (совпадает с CI и верхней границей `engines`),
+    `actions/setup-node` переведён на `node-version-file: .nvmrc`, а
+    `security:check` падает, если файлы расходятся.
+  - Проверка: инвариант `node toolchain is pinned by .nvmrc`, `npm test` (131/131).
+
+- [x] **T-18 В CI не запускался валидатор артефакта деплоя.**
+  - Файлы: `.github/workflows/ci.yml`, `scripts/check_deployment.ts`.
+  - Проблема: `npm run deployment:check` существовал, но CI его не вызывал, а сам
+    `package.json` не объявлял `npm run lint` (Tact type-check) отдельным шагом
+    с зависимостью от сборки.
+  - Исправление: добавлен шаг `Validate the published deployment artifact`
+    (проверка сети, адресов, decimals и отсутствия deployer/secrets; отсутствие
+    артефакта — не ошибка, а корректное «no deployment published»).
+  - Проверка: `npm run deployment:check` → exit 0 без артефакта.
+
+- [x] **T-19 `.env.example` не документировал переменные, которые читает код.**
+  - Файлы: `.env.example`, `scripts/deploy_all.ts`, `scripts/check_tonconnect.ts`,
+    `scripts/check_deployment.ts`.
+  - Проблема: `AI_ORACLE_ADDRESS`, `JETTON_CONTENT_LAYOUT`, `TON_CONNECT_ORIGIN`,
+    `TON_CONNECT_MANIFEST_URL` и `DEPLOYMENT_FILE` использовались в скриптах, но
+    отсутствовали в примере окружения — оператор не мог узнать о них из репозитория.
+  - Исправление: все переменные добавлены с описанием и безопасными значениями
+    по умолчанию.
+  - Проверка: `grep -o 'process.env.[A-Z_]*' scripts/*.ts | sort -u` ⊆ `.env.example`.
+
+- [x] **T-20 TEP-64 дефолт для off-chain content должен отдавать `application/json`.**
+  - Файлы: `.env.example`, `scripts/deploy_all.ts`, `docs/F01_REMEDIATION.md`.
+  - Проблема: дефолтный `JETTON_METADATA_URL` указывал на `raw.githubusercontent.com`,
+    который отдаёт `text/plain; charset=utf-8` вместо `application/json`.
+    Content-ячейка необратима без 48-часового таймлока, поэтому дефолт должен
+    указывать на origin, отдающий корректный MIME.
+  - Факт (проверено HTTP-заголовками): `https://alexkkkkk.github.io/QUASAR/metadata.json`
+    → `application/json; charset=utf-8`, а `raw.githubusercontent.com/.../metadata.json`
+    → `text/plain; charset=utf-8`. GitHub Pages-артефакт уже публикует корректный MIME.
+  - Статус: MIME-факт зафиксирован в документации; смена значения по умолчанию
+    намеренно оставлена за владельцем, поскольку она меняет аргумент `init` и,
+    следовательно, код-хеш адреса контракта.
 
 ---
 
