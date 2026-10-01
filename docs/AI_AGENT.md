@@ -1,20 +1,27 @@
-# QUASAR GitHub AI agent — proposal
+# QUASAR GitHub AI issue agent
 
-**Status: design only.** This draft PR does not install a runnable issue-agent workflow. The ai-fix label exists, but no workflow currently reacts to it, so applying the label will not start an agent.
+**Status:** The runnable workflow is included in this draft PR at .github/workflows/ai-fix-agent.yml. It becomes active only after the PR is merged, the Gemini API secret is configured, and a repository owner applies the existing ai-fix label to an issue.
 
-## Intended design (not active)
+## What it does
 
-The proposed free-tier agent would read a labeled issue, prepare a focused patch in an isolated job, run the repository's CI checks, and open a draft PR only after validation. It must never write directly to main, merge, deploy, access wallet credentials, or perform on-chain actions.
+- Runs only for an issue labeled ai-fix by the repository owner; it does not run for every issue or pull request.
+- Uses the Gemini API free-tier model gemini-3.8-flash. Gemini CLI and the GitHub Action are pinned to reviewed versions.
+- Gives the model read-only GitHub permissions and file tools only. It cannot run shell commands, access web or MCP tools, merge, deploy, or perform wallet/on-chain actions.
+- Exports a patch to a short-lived artifact. A separate job applies it and runs the repository CI checks without the Gemini API key or write permissions.
+- Rejects changes to workflows, agent policy/configuration, package manifests, deployment/security scripts, build/deployment artifacts, environment files, and wallet credentials.
+- Creates or updates a draft PR on ai/<issue-number>-agent only after all checks pass. The PR links to the successful validation run and remains a draft.
 
-A future implementation should use a Gemini API free-tier model only. Free-tier requests are quota-limited, and Google may use free-tier prompts and outputs to improve its products. Do not use that service for confidential source or data. For a strict zero-spend setup, do not attach billing to the Google project; quotas and model availability may change.
+The model job never receives the token used to create the PR. The write-capable token exists only in the final job, after validation. The existing blanket auto-merge workflow is removed in this PR; generated changes still require human review and an explicit merge decision.
 
-## Requirements before enabling automation
+## Setup after merging
 
-- Add a reviewed workflow under .github/workflows that validates trusted labelers, treats issue text as untrusted, withholds write credentials from the model job, rejects protected-file changes, and runs the same checks as repository CI before opening a draft PR.
-- Store any required API key only in the repository's Actions secrets; never put it in an issue, source file, or commit.
-- Require human review for all generated changes. Contract changes are not an audit and do not establish mainnet readiness.
-- Review or remove the repository's existing blanket auto-merge workflow before enabling any agent-generated PRs. That existing workflow has not been changed by this draft.
+1. Add GEMINI_API_KEY under Settings > Secrets and variables > Actions. Never put it in an issue, source file, commit, or chat.
+2. Use a Gemini API project with billing disabled to keep requests on the free tier. Free quota is limited and can change; missing credentials or quota exhaustion stops the run before a PR is created.
+3. Keep GitHub Actions token defaults read-only. If repository policy blocks PR creation, allow GitHub Actions to create pull requests; the workflow requests contents: write and pull-requests: write only in its final PR-creation job.
+4. Manually add ai-fix to an issue as the repository owner to start an agent run.
 
-## Scope of this draft PR
+## Data and safety limits
 
-This PR adds documentation and the repository-level Gemini safety policy only. It does not add the agent workflow, remove the existing auto-merge workflow, add a secret, run an agent, or close issue #94. The issue remains open until the runnable implementation is completed and reviewed.
+Gemini free-tier prompts and outputs may be used by Google to improve its products. Do not label issues containing confidential information for AI processing. See Google's current pricing and data-use terms: https://ai.google.dev/gemini-api/docs/pricing.
+
+The workflow validates a generated patch but does not audit smart contracts or establish testnet/mainnet readiness. A human must inspect all changes, especially TON/DeFi contract changes, before merging.
