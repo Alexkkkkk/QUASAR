@@ -105,6 +105,14 @@
             "type": "address",
             "optional": false
           }
+        },
+        {
+          "name": "responseDestination",
+          "type": {
+            "kind": "simple",
+            "type": "address",
+            "optional": false
+          }
         }
       ]
     },
