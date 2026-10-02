@@ -694,7 +694,7 @@ contract QuasarMaster with Deployable {
             value: ton("0.02"),
             bounce: true,
             mode: SendPayGasSeparately,
-            body: PoolPayout{ queryId: payoutId, amount: amount, destination: to }.toCell(),
+            body: PoolPayout{ queryId: payoutId, amount: amount, destination: to, responseDestination: myAddress() }.toCell(),
             code: init.code,
             data: init.data
         });
