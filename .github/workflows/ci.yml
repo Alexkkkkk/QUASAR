@@ -21,7 +21,10 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 24
+          # Single source of truth for the toolchain: the CI Node version is read
+          # from .nvmrc so a local green run reproduces CI exactly and the
+          # compiled code hash stays deterministic (audit 2026-10-02).
+          node-version-file: .nvmrc
           cache: npm
 
       - name: Install dependencies
@@ -38,6 +41,9 @@ jobs:
 
       - name: Verify the dApp opcode map against the compiled ABI
         run: npm run abi:dapp
+
+      - name: Validate the deployment artifact (skipped when none is published)
+        run: npm run deployment:check
 
       - name: Publish build hashes
         run: npm run hashes:build

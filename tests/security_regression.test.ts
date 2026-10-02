@@ -92,8 +92,12 @@ test('F-01 source: jetton metadata URL is not the dead hardcoded default and is 
     // rejects deployment when metadata does not resolve or misses TEP-64 fields
     const deploySrc = readFileSync(join(__dirname, '..', 'scripts', 'deploy_all.ts'), 'utf8');
     assert.ok(deploySrc.includes("process.env.JETTON_METADATA_URL"), 'metadata URL must be configurable via JETTON_METADATA_URL');
-    assert.ok(deploySrc.includes('raw.githubusercontent.com/Alexkkkkk/QUASAR/main/website/metadata.json'), 'default must point at git-hosted metadata');
+    // TEP-64 off-chain content must be served as application/json; the raw
+    // GitHub host serves text/plain, so the default now points at Pages (#77).
+    assert.ok(deploySrc.includes('alexkkkkk.github.io/QUASAR/metadata.json'), 'default must point at a JSON-capable origin');
+    assert.ok(!deploySrc.includes("'https://raw.githubusercontent.com/Alexkkkkk/QUASAR/main/website/metadata.json'"), 'default must not point at the text/plain raw host');
     assert.ok(deploySrc.includes('Jetton metadata URL returns HTTP'), 'preflight must fail the deploy on a non-OK metadata response');
+    assert.ok(deploySrc.includes('application/json'), 'preflight must reject a non-JSON metadata content type');
     assert.ok(deploySrc.includes('missing the required TEP-64 field'), 'preflight must validate TEP-64 fields');
     // the published metadata itself must not reference the dead domain for its image
     const meta = JSON.parse(readFileSync(join(__dirname, '..', 'website', 'metadata.json'), 'utf8'));
@@ -101,6 +105,9 @@ test('F-01 source: jetton metadata URL is not the dead hardcoded default and is 
         assert.ok(typeof meta[field] === 'string' && meta[field].length > 0, `metadata.json must define "${field}"`);
     }
     assert.ok(!meta.image.includes('quasar-ton.netlify.app'), 'metadata image must not point at the dead domain');
+    // The image must come from an origin that serves it as image/png, not the
+    // text/plain raw host (audit 2026-10-02, #77).
+    assert.ok(!meta.image.includes('raw.githubusercontent.com'), 'metadata image must not use the text/plain raw host');
 });
 
 test('F-02 source: tonconnect manifest is repo-hosted and no config points at the dead domain', () => {

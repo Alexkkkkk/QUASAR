@@ -130,15 +130,19 @@
     release не может удвоить возврат.
   - Проверка: build, security-check и on-chain regression test veto/release.
 
-- [ ] **T-08 Нет мультисига владельца (только таймлок 48 ч).**
+- [~] **T-08 Нет мультисига владельца (только таймлок 48 ч).**
   - Файл: `contracts/quasar.tact:1563-1588` (`ProposeOwner`/`AcceptOwner`).
   - План: подключить внешний multisig (2-of-N) как `pendingOwner` без изменения
     логики таймлока; `QuasarAdminTimelock` уже рассчитан на это.
+  - Runbook готов: `docs/MULTISIG_HANDOFF_RUNBOOK.md` (issue #86). Кодовых
+    изменений не требует; остаётся внешняя testnet-операция с evidence.
 
-- [ ] **T-09 Лотерея/`randomInt` для денежного приза — требуется commit-reveal.**
+- [x] **T-09 Лотерея/`randomInt` для денежного приза — требуется commit-reveal.**
   - Проверено: `grep -n "randomInt" contracts/*.tact` в текущем коде ничего не
     находит → источник TVM-случайности удалён, риск закрыт на уровне кода.
   - План: если лотерея вернётся — только схема commit-reveal.
+  - Проверка (2026-10-02): `grep -rn "randomInt" contracts/` — совпадений нет;
+    пункт закрыт на уровне кода.
 
 - [x] **T-10 Fee-путь `exitCode = 5`, зафиксированный в NOTES-WIP.md.**
   - Файл: `docs/NOTES-WIP.md` (наблюдение от 2026-09-20).
@@ -192,6 +196,35 @@
     `DefiPayout` type удалён: реальные выплаты проходят только через
     typed `PoolPayout`/`TonPayout` ledgers с bounce recovery.
   - Проверка: `tests/core_functions.test.ts`, `npm run abi:verify`.
+
+## P4 — Аудит 2026-10-02
+
+- [x] **T-17 TEP-64 off-chain хостинг метаданных (issue #77).**
+  - Файлы: `website/metadata.json`, `scripts/deploy_all.ts`, `.env.example`.
+  - Проблема: `raw.githubusercontent.com` отдаёт `metadata.json` как
+    `text/plain`; TEP-64 off-chain URI должен указывать на JSON-документ, иначе
+    кошельки/индексеры отклоняют метаданные. `metadata.json.image` также вёл на
+    raw-хост.
+  - Исправление: `JETTON_METADATA_URL` по умолчанию указывает на GitHub Pages
+    (`application/json`), `image` — на Pages-asset (`image/png`), а deploy
+    preflight теперь отвергает не-JSON content type.
+  - Проверка: `tests/audit_2026_10_02.test.ts`.
+
+- [x] **T-18 Единый источник версии Node для CI.**
+  - Файлы: `.github/workflows/ci.yml`, `.nvmrc`.
+  - Проблема: CI собирал на Node 24 при `.nvmrc`=22 — локальный зелёный прогон
+    не подтверждал CI, а code hash мог разъехаться.
+  - Исправление: CI читает версию из `.nvmrc` (`node-version-file`).
+  - Проверка: `tests/audit_2026_10_02.test.ts`.
+
+- [x] **T-19 Защищённый ИИ-агент и удаление auto-merge (issue #94).**
+  - Файлы: `.github/workflows/ai-fix.yml`, `GEMINI.md`,
+    `docs/ai/AI_ISSUE_AGENT.md`; удалён `autopilot-automerge.yml`.
+  - Проблема: прежний autopilot включал auto-merge для любого PR без review.
+  - Исправление: агент запускается только по метке `ai-fix` от доверенного
+    участника, работает в ветке `ai/<issue>-*`, открывает draft PR и не имеет
+    доступа к deploy-секретам; авто-merge workflow удалён.
+  - Проверка: `tests/audit_2026_10_02.test.ts`.
 
 ---
 
