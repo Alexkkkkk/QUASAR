@@ -142,14 +142,17 @@ test('QSR deposit and payout messages preserve their ownership fields', () => {
             $$type: 'PoolPayout',
             queryId: 8n,
             amount: 2_000_000_000n,
-            destination: owner
+            destination: owner,
+            responseDestination: owner
         }))
         .endCell();
 
     const parsedNotification = loadTokenNotification(notification.beginParse());
     assert.equal(parsedNotification.amount, 5_000_000_000n);
     assert.equal(parsedNotification.from.toRawString(), owner.toRawString());
-    assert.equal(loadPoolPayout(payout.beginParse()).destination.toRawString(), owner.toRawString());
+    const parsedPayout = loadPoolPayout(payout.beginParse());
+    assert.equal(parsedPayout.destination.toRawString(), owner.toRawString());
+    assert.equal(parsedPayout.responseDestination.toRawString(), owner.toRawString());
 });
 
 test('Jetton messages use the TON standard opcodes', () => {
