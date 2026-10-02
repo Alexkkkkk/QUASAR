@@ -9,6 +9,7 @@
     "build": "tact --config tact.config.json",
     "deploy": "tsx scripts/deploy_all.ts",
     "deploy:defi": "tsx scripts/deploy_defi.ts",
+    "ai:oracle": "tsx scripts/ai_oracle.ts",
     "test": "npm run build && npm run security:check && node --import tsx --test tests/*.test.ts",
     "lint": "tact --config tact.config.json --check",
     "abi:check": "npm run build && npm run abi:verify",

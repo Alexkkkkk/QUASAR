@@ -100,3 +100,25 @@ npm run tonconnect:smoke
 The live smoke checks the manifest's JSON MIME type, exact dApp origin, icon,
 terms and privacy URLs. It does not claim that a wallet is connected or that a
 contract has been deployed.
+
+## Grok text-analysis adapter
+
+`scripts/ai_oracle.ts` is an optional off-chain text client for xAI's
+`POST /v1/chat/completions` endpoint. It sends one user prompt with a bounded
+completion size and timeout, and returns plain assistant text. It does not
+connect to TON, sign or broadcast messages, call tools, or update the
+`QuasarMaster` AI oracle state. Treat its output as untrusted analysis that
+requires validation and human review; it is not a price feed or an on-chain
+oracle attestation.
+
+Set `XAI_API_KEY` in a local ignored `.env` file or a secrets manager. The
+optional `XAI_MODEL` defaults to `grok-4.6`. Run:
+
+```bash
+npm run ai:oracle -- "Summarize this input for human review"
+```
+
+Automated tests inject a mock `fetch`; they never contact xAI or need an API
+key. The request endpoint is fixed to `https://api.x.ai/v1/chat/completions`,
+and errors intentionally do not include provider response bodies or the API
+key.
