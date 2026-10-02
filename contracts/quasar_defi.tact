@@ -362,14 +362,16 @@ contract QuasarDeFi with Deployable {
         let payout: PendingPayout? = self.pendingPayouts.get(msg.queryId);
         require(payout != null && payout!!.amount == msg.amount, "Unknown payout");
         self.pendingPayouts.set(msg.queryId, null);
-        if (payout!!.kind == 1) {
+        if (payout!!.kind == 1 || payout!!.kind == 4) {
             self.qsrReserve = self.qsrReserve + msg.amount;
-            // The TON leg is intentionally not sent until the QSR wallet
-            // confirms delivery. If QSR fails, restore both reserves and LP.
-            let tp: PendingTonPayout? = self.pendingTonPayouts.get(msg.queryId);
-            if (tp != null && tp!!.kind == 1) {
-                require(!tp!!.qsrSettled, "QSR payout already settled");
-                self._restoreRemovedLiquidity(msg.queryId, tp!!);
+            if (payout!!.kind == 1) {
+                // The TON leg is intentionally not sent until the QSR wallet
+                // confirms delivery. If QSR fails, restore both reserves and LP.
+                let tp: PendingTonPayout? = self.pendingTonPayouts.get(msg.queryId);
+                if (tp != null && tp!!.kind == 1) {
+                    require(!tp!!.qsrSettled, "QSR payout already settled");
+                    self._restoreRemovedLiquidity(msg.queryId, tp!!);
+                }
             }
         } else if (payout!!.kind == 2) {
             self.farmRewardReserve = self.farmRewardReserve + msg.amount;
@@ -592,7 +594,9 @@ contract QuasarDeFi with Deployable {
             send(SendParameters{ to: sender(), value: excess, bounce: false, mode: SendPayGasSeparately, body: emptyCell() });
         }
         
-        self._sendQsr(sender(), qsrOut, 1, self._nextPayoutId());
+        // A swap payout has no paired TON withdrawal record; keep it distinct
+        // from kind 1, which is reserved for the QSR leg of RemoveLiquidity.
+        self._sendQsr(sender(), qsrOut, 4, self._nextPayoutId());
         
         // Emit event
         emit(EventSwap{ trader: sender(), tonIn: msg.tonAmount, qsrIn: 0, tonOut: 0, qsrOut: qsrOut, fee: fee }.toCell());

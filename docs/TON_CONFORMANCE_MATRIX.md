@@ -40,6 +40,14 @@ TON reserve is restored because the QSR and LP burn are already final. No normal
 TON success callback exists, so the pending record remains as a bounce
 tombstone; no trailing bounce-body fields are read.
 
+This release deliberately retains successful `pendingTonPayouts` tombstones
+indefinitely: there is no safe recipient confirmation or expiry signal that
+proves a late bounce is impossible. There is no per-payout storage charge or
+compensation path; the contract owner must keep the contract funded for storage.
+The storage reserve enforced by `SweepTON` is a minimum balance floor, not a
+replenishment mechanism. Do not prune tombstones by age alone; any future
+compaction must preserve replay protection and account for late bounces.
+
 The same change restores the consumed QSR deposit when SwapToTON bounces,
 corrects the initial LP estimate to exclude permanently locked liquidity, and
 keeps emergency-pause governance votes' trading flag and fee snapshot

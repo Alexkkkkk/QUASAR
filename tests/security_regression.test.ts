@@ -144,7 +144,8 @@ test('F-09 source: buyback executes a real AMM swap leg with atomic credit', () 
     assert.ok(defiSrc.includes('body: BuybackTon{ queryId: queryId, tonAmount: tonOut, qsrSwapped: qsrIn }.toCell()'), 'the AMM must return the TON proceeds to the master');
     // the master accounts the proceeds and forwards them to the treasury
     const tonLeg = section(masterSrc, 'receive(msg: BuybackTon)', 'bounced(msg: bounced<PoolPayout>)');
-    assert.ok(tonLeg.includes('require(sender() == self.defiAddress, "Only DeFi")'), 'only the configured DeFi may deliver buyback proceeds');
+    assert.ok(tonLeg.includes('sender() == self.buybackSwapDefiAddress'), 'only the DeFi that received this pending swap may deliver proceeds');
+    assert.ok(swapLeg.includes('self.buybackSwapDefiAddress = self.defiAddress;'), 'the pending swap must bind its original DeFi sender');
     assert.ok(tonLeg.includes('msg.tonAmount - ton("0.02")'), 'the callback value check must allow inbound fee tolerance');
     assert.ok(tonLeg.includes('self.totalTonSpentOnBuyback = self.totalTonSpentOnBuyback + msg.tonAmount;'), 'proceeds must be counted in the buyback TON counter');
     assert.ok(tonLeg.includes('to: self.treasury'), 'proceeds must be forwarded to the treasury');
@@ -152,6 +153,11 @@ test('F-09 source: buyback executes a real AMM swap leg with atomic credit', () 
         defiSrc.includes('to: self.qsrMaster,') && defiSrc.includes('bounce: true,'), 'the DeFi callback must bounce on master refusal');
     assert.ok(defiSrc.includes('bounced(msg: bounced<BuybackTon>)') &&
         defiSrc.includes('self.tonReserve += msg.tonAmount;'), 'the buyback bounce must restore TON reserve');
+    const cancel = section(masterSrc, 'receive(msg: CancelBuybackSwap)', 'fun _executeBuyback');
+    assert.ok(cancel.includes('self._requireOwner();') &&
+        cancel.includes('msg.queryId == self.buybackSwapQueryId') &&
+        cancel.includes('BUYBACK_CALLBACK_TIMEOUT'),
+        'only the owner may reconcile the matching pending buyback after its callback window');
 });
 
 test('audit v3.0 source: initial LP estimate excludes locked liquidity and governance pause disables trading', () => {
@@ -701,4 +707,51 @@ test('audit v3.0 on-chain: fee-funded buyback returns TON through the master cal
     assert.equal((await eco.master.getGetBuybackState()).buybackSwapPending, 0n, 'the accepted callback must clear pending buyback state');
     assert.ok((await eco.master.getGetBuybackState()).totalTonSpent > 0n, 'the master must account received TON proceeds');
     assert.ok((await eco.defi.getPoolInfo()).tonReserve < 10n * toNano('10'), 'the successful buyback must debit AMM TON reserves');
+});
+
+test('audit v3.0 on-chain: owner can clear an abandoned buyback callback after timeout', async () => {
+    const eco = await deployEco(true);
+    eco.bc.now = 100_000;
+
+    await eco.master.send(eco.owner.getSender(), { value: toNano('0.1') }, {
+        $$type: 'SetBuybackConfig', enabled: true, threshold: 10n * QSR, cooldown: 3600, burnPercent: 50
+    });
+    await eco.master.send(eco.owner.getSender(), { value: toNano('0.1') }, {
+        $$type: 'SetDefiAddress', defiAddress: eco.masterAddr
+    });
+    await eco.master.send(eco.owner.getSender(), { value: toNano('0.3') }, {
+        $$type: 'Mint', amount: 100n * QSR, receiver: eco.masterAddr
+    });
+
+    const alice = await eco.bc.treasury('stale-buyback-alice');
+    const bob = await eco.bc.treasury('stale-buyback-bob');
+    const aliceWallet = await QuasarWallet.fromInit(alice.address, eco.masterAddr);
+    const triggered = await eco.master.send(eco.bc.sender(aliceWallet.address), { value: toNano('0.5') }, {
+        $$type: 'FeeTransfer', queryId: 77n, amount: 200n * QSR,
+        originalSender: alice.address, originalReceiver: bob.address
+    });
+    assert.ok(!anyComputeFailed(triggered), 'the trigger transaction must commit');
+
+    const pending = await eco.master.getGetBuybackState();
+    assert.ok(pending.buybackSwapPending > 0n, 'the unhandled callback must leave an observable pending swap');
+    assert.equal(pending.buybackSwapQueryId, 77n, 'the pending query ID must be available for reconciliation');
+
+    const early = await eco.master.send(eco.owner.getSender(), { value: toNano('0.1') }, {
+        $$type: 'CancelBuybackSwap', queryId: 77n
+    });
+    assert.ok(anyComputeFailed(early), 'the owner must not cancel during the callback window');
+
+    eco.bc.now += 3600;
+    const unauthorized = await eco.master.send(alice.getSender(), { value: toNano('0.1') }, {
+        $$type: 'CancelBuybackSwap', queryId: 77n
+    });
+    assert.ok(anyComputeFailed(unauthorized), 'a non-owner must not clear a pending buyback');
+
+    const cancelled = await eco.master.send(eco.owner.getSender(), { value: toNano('0.1') }, {
+        $$type: 'CancelBuybackSwap', queryId: 77n
+    });
+    assert.ok(!anyComputeFailed(cancelled), 'the owner must be able to clear a stale pending swap after timeout');
+    const after = await eco.master.getGetBuybackState();
+    assert.equal(after.buybackSwapPending, 0n);
+    assert.equal(after.buybackSwapQueryId, 0n);
 });
