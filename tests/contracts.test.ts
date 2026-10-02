@@ -142,7 +142,8 @@ test('QSR deposit and payout messages preserve their ownership fields', () => {
             $$type: 'PoolPayout',
             queryId: 8n,
             amount: 2_000_000_000n,
-            destination: owner
+            destination: owner,
+            responseDestination: owner
         }))
         .endCell();
 

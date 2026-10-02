@@ -226,6 +226,32 @@
     доступа к deploy-секретам; авто-merge workflow удалён.
   - Проверка: `tests/audit_2026_10_02.test.ts`.
 
+- [x] **T-20 Исправления TON/Tact из спецификации аудита v3.0.**
+  - Файлы: `contracts/quasar.tact`, `contracts/quasar_defi.tact`,
+    `tests/audit_h02_m01_l01.test.ts`, `tests/core_functions.test.ts`,
+    `tests/security_regression.test.ts`, `tests/v5_governance.test.ts`.
+  - Buyback: master принимает callback с запасом на inbound fee (`0.02 TON`);
+    DeFi делает его bounceable и при отказе возвращает TON-резерв и fee
+    accumulator. Bounce handler читает только query ID и TON amount — поле
+    `qsrSwapped` не помещается в 224-битный bounced prefix.
+  - RemoveLiquidity: оба leg используют один payout ID; QSR отправляется
+    первым, а подтверждённый `TokenExcesses` от вычисленного Jetton wallet
+    запускает TON leg. При отказе QSR позиция полностью откатывается; при
+    bounce TON после подтверждённого QSR откатывается только TON, а LP burn и
+    QSR settlement остаются финальными. Bounce `SwapToTON` возвращает TON и
+    право на QSR-депозит.
+  - `PoolPayout.responseDestination` задаётся явно: master wallet для master
+    payout и DeFi-контракт для settlement-подтверждений. Initial LP quote
+    вычитает заблокированную minimum liquidity (или возвращает 0), а
+    governance kind 3 синхронно выставляет `tradingEnabled = !flag` и сохраняет
+    snapshot fee.
+  - Проверки: `npm ci`, `npm run build`, `npm run lint`,
+    `npm run security:check`, `npm test` (182 passed), `npx tsc --noEmit`,
+    `npm run abi:verify`, `npm run abi:dapp`, `npm run abi:update`,
+    `npm run hashes:build`.
+  - Изменение storage/layout контрактов меняет code hashes и адреса; только до
+    публичного деплоя и с обязательным человеческим review.
+
 ---
 
 ## Порядок закрытия

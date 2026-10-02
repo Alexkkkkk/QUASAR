@@ -32,10 +32,12 @@ import {
     storeTokenNotification
 } from '../build/quasar_QuasarMaster.js';
 import { QuasarDeFi } from '../build/quasar_defi_QuasarDeFi.js';
+import { QuasarWallet } from '../build/quasar_QuasarWallet.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const walletCode = Cell.fromBoc(readFileSync(join(__dirname, '..', 'build', 'quasar_QuasarWallet.code.boc')))[0];
 const ZERO = Address.parseRaw('0:' + '0'.repeat(64));
+const QSR = 1_000_000_000n;
 const DEADLINE = 2_000_000_000n;
 const emptySlice = beginCell().endCell().asSlice();
 
@@ -143,8 +145,23 @@ test('F-09 source: buyback executes a real AMM swap leg with atomic credit', () 
     // the master accounts the proceeds and forwards them to the treasury
     const tonLeg = section(masterSrc, 'receive(msg: BuybackTon)', 'bounced(msg: bounced<PoolPayout>)');
     assert.ok(tonLeg.includes('require(sender() == self.defiAddress, "Only DeFi")'), 'only the configured DeFi may deliver buyback proceeds');
+    assert.ok(tonLeg.includes('msg.tonAmount - ton("0.02")'), 'the callback value check must allow inbound fee tolerance');
     assert.ok(tonLeg.includes('self.totalTonSpentOnBuyback = self.totalTonSpentOnBuyback + msg.tonAmount;'), 'proceeds must be counted in the buyback TON counter');
     assert.ok(tonLeg.includes('to: self.treasury'), 'proceeds must be forwarded to the treasury');
+    assert.ok(defiSrc.includes('body: BuybackTon{ queryId: queryId, tonAmount: tonOut, qsrSwapped: qsrIn }.toCell()') &&
+        defiSrc.includes('to: self.qsrMaster,') && defiSrc.includes('bounce: true,'), 'the DeFi callback must bounce on master refusal');
+    assert.ok(defiSrc.includes('bounced(msg: bounced<BuybackTon>)') &&
+        defiSrc.includes('self.tonReserve += msg.tonAmount;'), 'the buyback bounce must restore TON reserve');
+});
+
+test('audit v3.0 source: initial LP estimate excludes locked liquidity and governance pause disables trading', () => {
+    const estimate = section(defiSrc, 'get fun estimateLpOut', 'get fun estimateRemoveLiquidity');
+    assert.ok(estimate.includes('initialLiquidity <= self.minimumLiquidity'), 'sub-minimum initial LP must quote zero');
+    assert.ok(estimate.includes('return initialLiquidity - self.minimumLiquidity'), 'initial quote must exclude locked LP');
+
+    const governance = section(masterSrc, 'receive(msg: GovernanceVote)', '// DeFi SYNC');
+    assert.ok(governance.includes('self.tradingEnabled = !msg.flag;'), 'emergency pause votes must synchronously set trading to the inverse flag');
+    assert.ok(governance.includes('self.aiActionOldFeeBps.set(id, oldFee);'), 'governance must preserve the prior fee snapshot');
 });
 
 test('hardening source: pending QSR deposits can always be refunded', () => {
@@ -252,11 +269,11 @@ async function creditMasterDeposit(eco: Eco, user: Address, amount: bigint) {
 }
 
 /** Credit a QSR deposit inside DeFi (verified primitive: bc.sender). */
-async function creditDefiDeposit(eco: Eco, user: Address, amount: bigint) {
+async function creditDefiDeposit(eco: Eco, user: Address, amount: bigint, forwardPayload = emptySlice, queryId = 0n) {
     const wAddr = (await (import('../build/quasar_QuasarWallet.js') as any)).QuasarWallet;
     const wallet = await wAddr.fromInit(eco.defiAddr, eco.masterAddr);
-    await eco.defi.send(eco.bc.sender(wallet.address), { value: toNano('0.1') }, {
-        $$type: 'TokenNotification', queryId: 0n, amount, from: user, forwardPayload: emptySlice
+    return eco.defi.send(eco.bc.sender(wallet.address), { value: toNano('0.1') }, {
+        $$type: 'TokenNotification', queryId, amount, from: user, forwardPayload
     });
 }
 
@@ -534,6 +551,10 @@ test('F13 on-chain: the DeFi swap fee cannot be raised above the documented 0.30
 
 // ═══════════════ Ownership transfer (F-08) ═══════════════
 
+function anyComputeFailed(res: any): boolean {
+    return res.transactions.some((tx: any) => tx.description?.computePhase?.success === false);
+}
+
 function ownerOpSucceeded(res: any): boolean {
     return res.transactions.some((t: any) => t.description?.computePhase?.success === true);
 }
@@ -600,14 +621,6 @@ test('F8 on-chain: the owner key cannot be rotated without the 48h timelock', as
 });
 
 test('F-09 on-chain: buyback swap leg access control and empty-pool guard', async () => {
-    // Negative on-chain coverage. The positive swap flow is covered by the
-    // F-09 source invariant + security_check invariants: an on-chain positive
-    // run is blocked by a PRE-EXISTING defect of the fee path — on stock
-    // main (bisected, commit d03e788) a FeeTransfer from the master's own
-    // jetton wallet reverts with exit code 5 (integer out of expected range)
-    // before any fee distribution happens. No pre-existing test exercised
-    // this path. The buyback pool can only be funded via FeeTransfer, so a
-    // positive on-chain buyback run is impossible until that defect is fixed.
     const eco = await deployEco(true);
 
     // negative: with no fee transfers ever processed, the pool is empty and
@@ -638,4 +651,54 @@ test('F-09 on-chain: buyback swap leg access control and empty-pool guard', asyn
     assert.equal(after.pool, 0n);
     assert.equal(after.totalBuybacks, 0n);
     assert.equal(after.totalTonSpent, 0n);
+});
+
+test('audit v3.0 on-chain: refused buyback callback restores DeFi TON reserves', async () => {
+    const eco = await deployEco(true);
+    const lp = await eco.bc.treasury('lp');
+    await creditDefiDeposit(eco, lp.address, 1_000n * QSR);
+    const add = await eco.defi.send(lp.getSender(), { value: toNano('10') }, {
+        $$type: 'AddLiquidity', tonAmount: toNano('10'), qsrAmount: 1_000n * QSR, minLpOut: 1n, deadline: DEADLINE
+    });
+    assert.ok(!anyComputeFailed(add), 'the AMM must have liquidity before the callback test');
+
+    const before = await eco.defi.getGetReserveSnapshot();
+    const marker = beginCell().storeUint(0x5f4a3b21, 32).endCell().asSlice();
+    const rejected = await creditDefiDeposit(eco, eco.masterAddr, 10n * QSR, marker, 54n);
+    assert.ok(rejected.transactions.some((tx: any) => tx.description?.computePhase?.success === false), 'the master must refuse proceeds without a pending buyback');
+
+    const after = await eco.defi.getGetReserveSnapshot();
+    assert.equal(after.tonReserve, before.tonReserve, 'the bounced buyback TON must be restored to LP reserves');
+    assert.equal(after.feeAccumulatedTon, before.feeAccumulatedTon, 'the failed swap fee must also be rolled back');
+});
+
+test('audit v3.0 on-chain: fee-funded buyback returns TON through the master callback', async () => {
+    const eco = await deployEco(true);
+    eco.bc.now = 100_000;
+    const lp = await eco.bc.treasury('lp');
+    const alice = await eco.bc.treasury('alice');
+    const bob = await eco.bc.treasury('bob');
+
+    await creditDefiDeposit(eco, lp.address, 1_000n * QSR);
+    const add = await eco.defi.send(lp.getSender(), { value: toNano('10') }, {
+        $$type: 'AddLiquidity', tonAmount: toNano('10'), qsrAmount: 1_000n * QSR, minLpOut: 1n, deadline: DEADLINE
+    });
+    assert.ok(!anyComputeFailed(add), 'the AMM must have liquidity before the buyback');
+
+    await eco.master.send(eco.owner.getSender(), { value: toNano('0.1') }, {
+        $$type: 'SetBuybackConfig', enabled: true, threshold: 10n * QSR, cooldown: 3600, burnPercent: 50
+    });
+    await eco.master.send(eco.owner.getSender(), { value: toNano('0.3') }, {
+        $$type: 'Mint', amount: 100n * QSR, receiver: eco.masterAddr
+    });
+
+    const aliceWallet = await QuasarWallet.fromInit(alice.address, eco.masterAddr);
+    const feeResult = await eco.master.send(eco.bc.sender(aliceWallet.address), { value: toNano('0.5') }, {
+        $$type: 'FeeTransfer', queryId: 77n, amount: 200n * QSR,
+        originalSender: alice.address, originalReceiver: bob.address
+    });
+    assert.ok(!anyComputeFailed(feeResult), 'fee distribution and the automatic buyback must complete');
+    assert.equal((await eco.master.getGetBuybackState()).buybackSwapPending, 0n, 'the accepted callback must clear pending buyback state');
+    assert.ok((await eco.master.getGetBuybackState()).totalTonSpent > 0n, 'the master must account received TON proceeds');
+    assert.ok((await eco.defi.getPoolInfo()).tonReserve < 10n * toNano('10'), 'the successful buyback must debit AMM TON reserves');
 });

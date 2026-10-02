@@ -694,7 +694,12 @@ contract QuasarMaster with Deployable {
             value: ton("0.02"),
             bounce: true,
             mode: SendPayGasSeparately,
-            body: PoolPayout{ queryId: payoutId, amount: amount, destination: to }.toCell(),
+            body: PoolPayout{
+                queryId: payoutId,
+                amount: amount,
+                destination: to,
+                responseDestination: contractAddress(init)
+            }.toCell(),
             code: init.code,
             data: init.data
         });
@@ -1608,6 +1613,7 @@ contract QuasarMaster with Deployable {
                 let oldTrading: Int = self.tradingEnabled == true ? 1 : 0;
                 let oldFee: Int = self.feeBps;
                 self.emergencyPause = msg.flag;
+                self.tradingEnabled = !msg.flag;
                 id = self._logAiActionSilent("EmergencyPause", oldPause, msg.flag == true ? 1 : 0, msg.reason);
                 // EmergencyPause overrides read the full snapshot maps (F-07).
                 self.aiActionOldEmergencyPause.set(id, oldPause);
@@ -1658,7 +1664,7 @@ contract QuasarMaster with Deployable {
     receive(msg: BuybackTon) {
         require(sender() == self.defiAddress, "Only DeFi");
         require(msg.tonAmount > 0, "Invalid amount");
-        require(context().value >= msg.tonAmount, "TON not attached");
+        require(context().value >= msg.tonAmount - ton("0.02"), "TON not attached");
         require(self.buybackSwapPending > 0, "No buyback pending");
         require(msg.queryId == self.buybackSwapQueryId, "Unexpected buyback");
         require(msg.qsrSwapped == self.buybackSwapPending, "Buyback amount mismatch");

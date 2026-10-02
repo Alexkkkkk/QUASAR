@@ -1,54 +1,54 @@
 {
-  "generatedAt": "2026-10-01T14:10:00.960Z",
+  "generatedAt": "2026-10-02T16:18:19.408Z",
   "note": "Build-artifact hashes only. Mainnet/testnet addresses must be published separately once deployments exist.",
   "artifacts": [
     {
       "file": "build/quasar_QuasarMaster.abi",
-      "sha256": "845721b07994fadeb6731c5eeadc7caeb2392cbbbd4fe701dd7daafcd0eb7807"
+      "sha256": "4ef61cce89ec179556ab5f79ed608a5b06c091844d87aba5680c8d7dc9bf4e04"
     },
     {
       "file": "build/quasar_QuasarMaster.code.boc",
-      "sha256": "c2a0e192b660be7644f0ae8813932b34806c7e51334ca6189963cb86bb59abdb"
+      "sha256": "3807692e3102ff7f94a91650f0fb93d7802eb1c7ed6752fc2541af71a0b86631"
     },
     {
       "file": "build/quasar_QuasarWallet.abi",
-      "sha256": "8f7a9b5ec525251e4dc8edd1fb2565d9f94f49d1e01141dcc69d8d36dd0dfcc9"
+      "sha256": "263e882a4bef528092d9574f92593083ee2cfc90aa8bdd181c6755fdc5c3e4e2"
     },
     {
       "file": "build/quasar_QuasarWallet.code.boc",
-      "sha256": "bc4b19009ab9f1f08e6fb1c10054bee85e6c35add54433fdca68ca522ab10178"
+      "sha256": "b01e3a42b024616e856fc6c39b56be5dd9c47819b0303f3160b29e53adb2ff64"
     },
     {
       "file": "build/quasar_admin_QuasarAdminTimelock.abi",
-      "sha256": "ab5802f8c08f915fa5858a1d74f1f39149682557cf6f3deb53415ca1e326c011"
+      "sha256": "63643d58276cbf35d0a12d79089dbdaa0468b217d6538e78b99ba577ccc7fac3"
     },
     {
       "file": "build/quasar_admin_QuasarAdminTimelock.code.boc",
-      "sha256": "d98f69c70299acfa92020a2d6745514c6b7cd410fdc8d715dba2202674f6b208"
+      "sha256": "638aebeded2657cb0547867e545f5dcf6522fd5f9b2430c53a7e203e930e1755"
     },
     {
       "file": "build/quasar_admin_QuasarWallet.abi",
-      "sha256": "ee051652168a8a1267812f857d90ae984eee7fbd0aca564c90ec6060756314c5"
+      "sha256": "089ebecdd4da74e0e42d3434b755f8563eccacd04ea3538ea6688033922ec4ec"
     },
     {
       "file": "build/quasar_admin_QuasarWallet.code.boc",
-      "sha256": "bc4b19009ab9f1f08e6fb1c10054bee85e6c35add54433fdca68ca522ab10178"
+      "sha256": "b01e3a42b024616e856fc6c39b56be5dd9c47819b0303f3160b29e53adb2ff64"
     },
     {
       "file": "build/quasar_defi_QuasarDeFi.abi",
-      "sha256": "821b7c1cdc0424a4889c1ab6726161cf8863347c64912dc59fd876932c8f16d2"
+      "sha256": "7e42d600cf524548a84ba14e7134c81cfeebb029a60243b53ddd464c43893623"
     },
     {
       "file": "build/quasar_defi_QuasarDeFi.code.boc",
-      "sha256": "4deb6fb3cfa37ad62d1b97c8890241f8fcff22c331041145290e14913d015ae9"
+      "sha256": "961b987f5a4282a4681ac48b93774c35038eb0510926befbd685f400a37067ec"
     },
     {
       "file": "build/quasar_defi_QuasarWallet.abi",
-      "sha256": "1246418382937c3ddedbe7c4aafa7e9cd46abfe32886cfc8d7daf85115dd3f2b"
+      "sha256": "5a5f7d297748e87b50ff4c8dde63a752bdd7e6de8870654e837b777cd7fdadad"
     },
     {
       "file": "build/quasar_defi_QuasarWallet.code.boc",
-      "sha256": "bc4b19009ab9f1f08e6fb1c10054bee85e6c35add54433fdca68ca522ab10178"
+      "sha256": "b01e3a42b024616e856fc6c39b56be5dd9c47819b0303f3160b29e53adb2ff64"
     }
   ]
 }
