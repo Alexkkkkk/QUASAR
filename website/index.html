@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="QUASAR — The brightest Jetton in the TON universe with DeFi, AI Sovereignty, and Web3 integration">
+    <meta name="description" content="QUASAR is a pre-launch TON Jetton and DeFi prototype. Not independently audited; no yield or production-readiness claims.">
     <meta name="theme-color" content="#0a0a0f">
-    <title>QUASAR — DeFi Jetton on TON</title>
+    <title>QUASAR — Pre-launch TON DeFi prototype</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
@@ -18,40 +18,50 @@
         <header>
             <div class="logo">QUASAR</div>
             <nav>
-                <a href="#about">About</a>
-                <a href="#features">Features</a>
-                <a href="#defi">DeFi</a>
-                <a href="https://github.com/Alexkkkkk/QUASAR" target="_blank">GitHub</a>
+                <a href="#about">Overview</a>
+                <a href="#features">Design</a>
+                <a href="#status">Status</a>
+                <a href="https://github.com/Alexkkkkk/QUASAR" target="_blank" rel="noopener noreferrer">Source</a>
             </nav>
         </header>
         
         <!-- Hero -->
         <section class="hero" id="about">
+            <div class="eyebrow">TON JETTON &amp; DEFI · PRE-LAUNCH</div>
             <h1>QUASAR</h1>
-            <p>The brightest Jetton in the TON universe. AI-powered tokenomics, DeFi DEX, yield farming — all synchronized in one cosmic ecosystem.</p>
-            <div>
-                <a href="#defi" class="btn btn-primary">Launch DeFi</a>
-                <a href="https://github.com/Alexkkkkk/QUASAR" class="btn btn-secondary" target="_blank">View Code</a>
+            <p>A TON Jetton and DeFi engineering prototype with a built-in CPMM, staking, vesting, and owner-governed risk controls.</p>
+            <div class="hero-actions">
+                <a href="#status" class="btn btn-primary">Check launch status</a>
+                <a href="https://github.com/Alexkkkkk/QUASAR" class="btn btn-secondary" target="_blank" rel="noopener noreferrer">Inspect source</a>
+            </div>
+            <div class="launch-status" id="status" role="status" aria-live="polite">
+                <span class="status-kicker">Release status</span>
+                <h2>Prototype only — not audited</h2>
+                <p id="launch-status-message">No testnet contract addresses are published. Wallet connection and contract actions are disabled. A testnet smoke run and independent audit remain open release gates.</p>
+                <div class="launch-links">
+                    <a href="https://github.com/Alexkkkkk/QUASAR/blob/main/docs/TESTNET_DEPLOY_CHECKLIST.md" target="_blank" rel="noopener noreferrer">Testnet checklist</a>
+                    <a href="https://github.com/Alexkkkkk/QUASAR/blob/main/docs/AUDIT_STATUS.md" target="_blank" rel="noopener noreferrer">Audit status</a>
+                </div>
             </div>
         </section>
         
         <!-- Stats -->
         <section class="stats">
             <div class="stat-card">
-                <div class="stat-value">1B</div>
-                <div class="stat-label">Total Supply</div>
+                <div class="stat-value">1B QSR</div>
+                <div class="stat-label">Maximum supply in source</div>
             </div>
             <div class="stat-card">
-                <div class="stat-value">0.3%</div>
-                <div class="stat-label">Trade Fee</div>
+                <div class="stat-value">0.30%</div>
+                <div class="stat-label">Configured transfer fee</div>
             </div>
             <div class="stat-card">
-                <div class="stat-value">&lt;1s</div>
-                <div class="stat-label">Finality</div>
+                <div class="stat-value">Pending</div>
+                <div class="stat-label">Testnet smoke run</div>
             </div>
             <div class="stat-card">
-                <div class="stat-value">20%</div>
-                <div class="stat-label">Staking APY</div>
+                <div class="stat-value">No promise</div>
+                <div class="stat-label">Yield is not guaranteed</div>
             </div>
         </section>
         
@@ -61,28 +71,28 @@
             <div class="feature-grid">
                 <div class="feature">
                     <div class="feature-icon">🤖</div>
-                    <h3>AI Sovereignty</h3>
-                    <p>Self-governing AI oracle adjusts fees, triggers buybacks, and protects the ecosystem 24/7.</p>
+                    <h3>Owner-governed AI controls</h3>
+                    <p>Optional risk controls are bounded and owner-governed. Market signals cannot move reserve funds or trigger buybacks.</p>
                 </div>
                 <div class="feature">
                     <div class="feature-icon">🔥</div>
                     <h3>Auto Burn & Buyback</h3>
-                    <p>50% of every fee is burned forever. Auto-buyback makes QSR scarcer with every transaction.</p>
+                    <p>The source splits transfer fees across burn and ecosystem buckets. Buybacks require an owner-authenticated trigger; they are not automatic.</p>
                 </div>
                 <div class="feature">
                     <div class="feature-icon">💰</div>
-                    <h3>Yield Farming</h3>
-                    <p>Stake LP tokens in the farm and earn QSR rewards. Auto-compound for maximum returns.</p>
+                    <h3>LP farming prototype</h3>
+                    <p>LP tokens can be auto-staked in the source; rewards are claimed explicitly. There is no auto-compounding or guaranteed return.</p>
                 </div>
                 <div class="feature">
                     <div class="feature-icon">🌾</div>
-                    <h3>Staking Vault</h3>
-                    <p>Lock QSR for 30 days and earn 20% APY paid directly from transaction fees.</p>
+                    <h3>Staking prototype</h3>
+                    <p>The source includes a 30-day lock. Any rewards depend on fee inflows; no APY is promised.</p>
                 </div>
                 <div class="feature">
                     <div class="feature-icon">🔄</div>
-                    <h3>DEX Integration</h3>
-                    <p>Built-in AMM DEX with 0.3% fee. Swap QSR ↔ TON instantly with slippage protection.</p>
+                    <h3>Built-in CPMM</h3>
+                    <p>The source includes minimum-output and deadline guards. No live pool is published; this is not a production market.</p>
                 </div>
             </div>
         </section>
@@ -90,8 +100,8 @@
         <!-- DeFi Command Center -->
         <section class="defi-section" id="defi">
             <div class="container">
-                <h2>DeFi Command Center</h2>
-                <p>Connect your TON wallet to trade, stake, and farm</p>
+                <h2>Testnet workspace</h2>
+                <p>Wallet controls appear only after an explicit testnet deployment is configured. Never use real funds with this prototype.</p>
                 
                 <div class="defi-grid">
                     <!-- Wallet Card -->
@@ -106,38 +116,38 @@
                     <!-- Swap Card -->
                     <div class="defi-card">
                         <h3 class="pink">Swap QSR ↔ TON</h3>
-                        <input type="number" class="defi-input" id="swap-amount" placeholder="Amount" step="0.000000001">
-                        <select class="defi-input" id="swap-direction" style="margin-bottom: 10px;">
+                        <input type="number" class="defi-input" id="swap-amount" aria-label="Amount to swap" placeholder="Amount" step="0.000000001" disabled>
+                        <select class="defi-input" id="swap-direction" aria-label="Swap direction" style="margin-bottom: 10px;" disabled>
                             <option value="to-ton">QSR → TON</option>
                             <option value="to-qsr">TON → QSR</option>
                         </select>
-                        <input type="number" class="defi-input" id="swap-slippage" placeholder="Max slippage %" value="1" step="0.1">
-                        <button class="defi-btn defi-btn-swap" id="btn-swap" onclick="executeSwap()">Swap</button>
+                        <input type="number" class="defi-input" id="swap-slippage" aria-label="Maximum slippage percentage" placeholder="Max slippage %" value="1" step="0.1" disabled>
+                        <button class="defi-btn defi-btn-swap" id="btn-swap" onclick="executeSwap()" disabled>Swap</button>
                         <p style="color: var(--text-muted); font-size: 12px; margin-top: 10px;" id="swap-estimate">Enter amount to see estimate</p>
                     </div>
                     
                     <!-- Liquidity Card -->
                     <div class="defi-card">
                         <h3 class="purple">Liquidity Pool</h3>
-                        <input type="number" class="defi-input" id="lp-ton" placeholder="TON Amount" step="0.000000001">
-                        <input type="number" class="defi-input" id="lp-qsr" placeholder="QSR Amount" step="0.000000001">
-                        <button class="defi-btn defi-btn-lp" id="btn-add-lp" onclick="addLiquidityFromUI()">Add Liquidity</button>
+                        <input type="number" class="defi-input" id="lp-ton" aria-label="TON amount to add" placeholder="TON Amount" step="0.000000001" disabled>
+                        <input type="number" class="defi-input" id="lp-qsr" aria-label="QSR amount to add" placeholder="QSR Amount" step="0.000000001" disabled>
+                        <button class="defi-btn defi-btn-lp" id="btn-add-lp" onclick="addLiquidityFromUI()" disabled>Add Liquidity</button>
                         <hr style="border: none; border-top: 1px solid var(--border); margin: 15px 0;">
-                        <input type="number" class="defi-input" id="lp-remove" placeholder="LP Amount to Remove" step="0.000000001">
-                        <button class="defi-btn defi-btn-claim" id="btn-remove-lp" onclick="removeLiquidityFromUI()">Remove Liquidity</button>
-                        <button class="defi-btn defi-btn-claim" id="btn-refund-qsr" onclick="refundPendingQsrFromUI()" style="margin-top: 8px;">Refund Pending QSR</button>
+                        <input type="number" class="defi-input" id="lp-remove" aria-label="LP amount to remove" placeholder="LP Amount to Remove" step="0.000000001" disabled>
+                        <button class="defi-btn defi-btn-claim" id="btn-remove-lp" onclick="removeLiquidityFromUI()" disabled>Remove Liquidity</button>
+                        <button class="defi-btn defi-btn-claim" id="btn-refund-qsr" onclick="refundPendingQsrFromUI()" style="margin-top: 8px;" disabled>Refund Pending QSR</button>
                     </div>
                     
                     <!-- Staking Card -->
                     <div class="defi-card">
                         <h3 class="green">Staking Vault</h3>
-                        <input type="number" class="defi-input" id="stake-amount" placeholder="QSR to Stake" step="0.000000001">
+                        <input type="number" class="defi-input" id="stake-amount" aria-label="QSR amount to stake or unstake" placeholder="QSR to Stake" step="0.000000001" disabled>
                         <div style="display: flex; gap: 8px;">
-                            <button class="defi-btn defi-btn-stake" id="btn-stake" onclick="stakeFromUI()" style="flex:1;">Stake</button>
-                            <button class="defi-btn defi-btn-claim" id="btn-unstake" onclick="unstakeFromUI()" style="flex:1;">Unstake</button>
+                            <button class="defi-btn defi-btn-stake" id="btn-stake" onclick="stakeFromUI()" style="flex:1;" disabled>Stake</button>
+                            <button class="defi-btn defi-btn-claim" id="btn-unstake" onclick="unstakeFromUI()" style="flex:1;" disabled>Unstake</button>
                         </div>
-                        <button class="defi-btn defi-btn-claim" id="btn-claim-stake" onclick="claimStakingRewards()" style="margin-top: 8px;">Claim Rewards</button>
-                        <p style="color: var(--text-muted); font-size: 12px; margin-top: 10px;">20% APY | 30-day lock | Min 100 QSR</p>
+                        <button class="defi-btn defi-btn-claim" id="btn-claim-stake" onclick="claimStakingRewards()" style="margin-top: 8px;" disabled>Claim Rewards</button>
+                        <p style="color: var(--text-muted); font-size: 12px; margin-top: 10px;">30-day lock | Min 100 QSR | Rewards are not guaranteed</p>
                     </div>
                     
                     <!-- Farm Card -->
@@ -145,8 +155,8 @@
                         <h3 class="orange">Yield Farm</h3>
                         <p style="color: var(--text-secondary); font-size: 14px; margin-bottom: 15px;">Your LP tokens are auto-staked here</p>
                         <div class="balance-display" style="font-size: 18px;">~0.1 QSR/sec</div>
-                        <button class="defi-btn defi-btn-claim" id="btn-claim-farm" onclick="claimFarmRewardsFromUI()" style="margin-top: 15px;">Claim Farm Rewards</button>
-                        <p style="color: var(--text-muted); font-size: 12px; margin-top: 10px;">Auto-compound enabled</p>
+                        <button class="defi-btn defi-btn-claim" id="btn-claim-farm" onclick="claimFarmRewardsFromUI()" style="margin-top: 15px;" disabled>Claim Farm Rewards</button>
+                        <p style="color: var(--text-muted); font-size: 12px; margin-top: 10px;">Rewards must be claimed explicitly; no auto-compound.</p>
                     </div>
                     
                     <!-- Pool Stats Card -->
@@ -169,7 +179,7 @@
                             <span class="pool-stat-value">0.3%</span>
                         </div>
                         <div class="pool-stat-row">
-                            <span class="pool-stat-label">Farm APY</span>
+                            <span class="pool-stat-label">Indicative farm rate</span>
                             <span class="pool-stat-value green" id="pool-farm-apy">--</span>
                         </div>
                         <div class="pool-stat-row">
@@ -184,9 +194,9 @@
         <!-- Footer -->
         <footer>
             <div class="social-links">
-                <a href="https://github.com/Alexkkkkk/QUASAR" target="_blank">GitHub</a>
-                <a href="https://t.me/quasar_ton" target="_blank">Telegram</a>
-                <a href="https://twitter.com/quasar_ton" target="_blank">Twitter</a>
+                <a href="https://github.com/Alexkkkkk/QUASAR" target="_blank" rel="noopener noreferrer">GitHub</a>
+                <a href="https://t.me/quasar_ton" target="_blank" rel="noopener noreferrer">Telegram</a>
+                <a href="https://twitter.com/quasar_ton" target="_blank" rel="noopener noreferrer">Twitter</a>
             </div>
             <p style="margin-top: 20px; color: var(--text-muted);">© 2026 QUASAR. Powered by TON Blockchain.</p>
         </footer>
@@ -218,19 +228,44 @@
         }
         
         // Initialize TON Connect when DOM ready
+        function configureLaunchState() {
+            const config = window.QUASAR_CONFIG || {};
+            const hasAddresses = Boolean(config.addresses?.master && config.addresses?.defi);
+            const isTestnet = config.network === 'testnet';
+            const ready = hasAddresses && isTestnet;
+            const message = document.getElementById('launch-status-message');
+            const controls = document.querySelectorAll('.defi-section input, .defi-section select, .defi-section button');
+            controls.forEach(control => { control.disabled = !ready; });
+            const connectRoot = document.getElementById('ton-connect');
+            if (connectRoot) connectRoot.hidden = !ready;
+            if (message) {
+                if (ready) {
+                    message.textContent = 'Testnet deployment configuration detected. This prototype is unaudited; verify the addresses and use a disposable testnet wallet only. Never use real funds.';
+                } else if (hasAddresses) {
+                    message.textContent = 'Contract actions are disabled: this preview enables wallet controls only for an explicit TON testnet deployment. Mainnet is not enabled.';
+                } else {
+                    message.textContent = 'No testnet contract addresses are published. Wallet connection and contract actions are disabled. A testnet smoke run and independent audit remain open release gates.';
+                }
+            }
+            return ready;
+        }
+
         document.addEventListener('DOMContentLoaded', async () => {
             if (typeof window.loadDeploymentConfig === 'function') {
                 await window.loadDeploymentConfig();
             }
-            if (typeof window.initTonConnect === 'function') {
+            const ready = configureLaunchState();
+            if (ready && typeof window.initTonConnect === 'function') {
                 window.initTonConnect();
             }
             // F-16: refresh pool stats from the live getters while connected.
-            setInterval(() => {
-                if (window.__qsrOwner && typeof window.loadPoolStats === 'function') {
-                    window.loadPoolStats();
-                }
-            }, 20000);
+            if (ready) {
+                setInterval(() => {
+                    if (window.__qsrOwner && typeof window.loadPoolStats === 'function') {
+                        window.loadPoolStats();
+                    }
+                }, 20000);
+            }
         });
         
         // UI Helper functions
