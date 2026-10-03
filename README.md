@@ -60,8 +60,8 @@
 | **Team vesting** | Linear two-year unlock with a cliff. |
 | **Community veto** | Separately deposited QSR escrow for reversible AI/governance actions. |
 | **Owner controls** | Two-step transfer with a 48-hour timelock; no multisig yet. |
-| **Anti-whale limits** | Transfer caps and cooldown are enforced in the source. |
-| **Transfer fee** | 0.30% configured in wallet code. |
+| **Wallet policy** | Outgoing transfers are capped at 1% of max supply; receiving wallets at 3% of max supply; cooldown enforced. |
+| **Transfer fee** | Fixed at 0.30% in wallet code. |
 
 ---
 
