@@ -1,5 +1,20 @@
 # Changelog
 
+## 2026-10-03 — синхронизация гейтов ИИ-агента с CI (PR #103)
+
+- Job проверки ИИ-агента запускает тот же набор гейтов, что и QUASAR CI: добавлен `npm run deployment:check`.
+- Версия Node в job-е проверки читается из `.nvmrc` (единый источник истины тулчейна) вместо жёстко заданной `24`.
+- Регрессионный тест `tests/audit_2026_10_02.test.ts` проверяет синхронность гейтов и версии Node между `ci.yml` и `ai-fix-agent.yml`.
+- Уточнён guard «workflow не должен деплоить»: отрицательный lookahead не даёт ему ложно срабатывать на read-only гейт `npm run deployment:check`.
+
+## 2026-10-03 — ci: изолированный ИИ-агент для issue (#103)
+
+- ci: удалён устаревший shell-capable `.github/workflows/ai-fix.yml`;
+  единственный агент по метке `ai-fix` — изолированный
+  `.github/workflows/ai-fix-agent.yml` (read-only генерация,
+  отдельная валидация на чистом checkout, draft PR без write-доступа).
+- ci: `docs/ai/AI_ISSUE_AGENT.md` добавлен в protected-path pattern,
+  чтобы сгенерированный патч не мог изменить инструкцию агента.
 ## 2026-10-02 — audit: off-chain hosting, toolchain, AI agent, multisig runbook
 
 - fix(tep64): host off-chain jetton metadata on a JSON-capable origin
