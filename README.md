@@ -1,17 +1,32 @@
-# QUASAR v3.0
+# QUASAR
 
-> A pre-launch TON Jetton and DeFi engineering project with explicit on-chain risk boundaries.
+> A pre-launch TON Jetton and DeFi engineering prototype with explicit on-chain risk boundaries.
 
+[![QUASAR CI](https://github.com/Alexkkkkk/QUASAR/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Alexkkkkk/QUASAR/actions/workflows/ci.yml)
+[![GitHub Pages](https://github.com/Alexkkkkk/QUASAR/actions/workflows/pages.yml/badge.svg?branch=main)](https://github.com/Alexkkkkk/QUASAR/actions/workflows/pages.yml)
 [![TON](https://img.shields.io/badge/Blockchain-TON-blue)](https://ton.org)
 [![Tact](https://img.shields.io/badge/Language-Tact-purple)](https://tact-lang.org)
-[![AI](https://img.shields.io/badge/AI-Sovereign-red)](https://github.com/Alexkkkkk/QUASAR)
-[![Fee](https://img.shields.io/badge/Fee-0.30%25-green)](https://github.com/Alexkkkkk/QUASAR)
-[![DeFi](https://img.shields.io/badge/DeFi-DEX%20%7C%20Farm-orange)](https://github.com/Alexkkkkk/QUASAR)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
+> [!WARNING]
+> **Pre-launch and not independently audited.** A testnet smoke run and independent security audit remain open release gates. Do not use real funds or treat any yield figure as a promise.
+
+> [!NOTE]
+> The website's wallet and contract controls remain disabled until both contract addresses are configured for an explicit TON testnet deployment.
+
+**[Live preview](https://alexkkkkk.github.io/QUASAR) · [Testnet deployment checklist](docs/TESTNET_DEPLOY_CHECKLIST.md) · [Security status](docs/AUDIT_STATUS.md) · [Contributing](docs/CONTRIBUTING.md)**
 
 ## Overview
 
 **QUASAR** is a TON Jetton and DeFi prototype. It includes a CPMM pool, LP farming, staking, vesting, referrals, and an optional AI oracle. The contracts are pre-testnet and must not be treated as audited, production-ready, or a promise of yield.
+
+## Automation
+
+- **CI** runs contract checks, tests, ABI and dApp validation, deployment checks, TypeScript checks, build hashes, and dependency audit on pushes and pull requests to main.
+- **GitHub Pages** publishes the website when website files change on main.
+- **AI issue agent** runs only when the repository owner adds the ai-fix label. It validates its patch and opens a draft PR; it cannot merge, deploy, or perform on-chain actions. It requires the GEMINI_API_KEY Actions secret.
+- **Issue linking** closes issues only when an explicit closing keyword appears in the title, body, or commit messages of a merged PR.
+
 
 ## Architecture
 
@@ -34,19 +49,19 @@
 
 ## Feature Matrix
 
-| Feature | QUASAR | Others |
-|---------|--------|--------|
-| **AI Oracle** | Optional, bounded controls; disabled by default | N/A |
-| **Built-in DEX** | CPMM AMM with 0.3% fee, deadline/min-output guards, locked minimum liquidity and price observations | External only |
-| **Yield Farming** | LP auto-stake; rewards claimed explicitly | N/A |
-| **Buyback accounting** | Fee bucket (QSR-denominated): a share is burned, the rest is swapped for TON through the DeFi AMM and the proceeds go to the treasury | N/A |
-| **Staking Vault** | Earn APY from transaction fees | Rare |
-| **Referral System** | 1% lifetime earnings per referral | None |
-| **Team Vesting** | Linear 2-year unlock | Rare |
-| **Community Veto** | Live QSR escrow: an existing staker deposits separate QSR against a reversible AI/governance action; 10% of total staked QSR vetoes it and escrow is released through a bounce-safe custody ledger | N/A |
-| **Owner Control** | Master and DeFi use two-step transfer with a 48h timelock; DeFi fee and trade-limit changes are also staged; no multisig yet | Rare |
-| **Anti-Whale** | User transfers are capped at 1% of hard-cap supply; receiving wallets at 3%; a 5s per-wallet cooldown applies. Master-owned settlement is exempt; the values are fixed and owner/AI override semantics are documented in the contracts | Rare |
-| **0.30% Fee** | Fixed at 0.30% in wallet code; auto-distributed to ecosystem | Manual |
+| Area | What the source implements |
+|------|----------------------------|
+| **AI controls** | Optional, owner-governed risk controls; disabled by default. |
+| **Built-in DEX** | CPMM AMM with minimum-output and deadline checks; prototype, not a live market. |
+| **Yield farming** | LP auto-stake; rewards are claimed explicitly, with no auto-compounding. |
+| **Buyback accounting** | Fee distribution is tracked; buybacks require an owner-authenticated trigger. |
+| **Staking** | Rewards depend on fee inflows; no APY is guaranteed. |
+| **Referrals** | Escrowed rewards with explicit claims. |
+| **Team vesting** | Linear two-year unlock with a cliff. |
+| **Community veto** | Separately deposited QSR escrow for reversible AI/governance actions. |
+| **Owner controls** | Two-step transfer with a 48-hour timelock; no multisig yet. |
+| **Anti-whale limits** | Transfer caps and cooldown are enforced in the source. |
+| **Transfer fee** | 0.30% configured in wallet code. |
 
 ---
 
@@ -111,14 +126,14 @@ RemoveLiquidity {
 
 ### Yield Farming
 
-Stake LP tokens and earn **~0.1 QSR/sec** rewards.
+The documented farm reward rate is ~0.1 QSR/sec by default; rewards are configurable and do not imply a guaranteed return.
 
 | Parameter | Value |
 |-----------|-------|
 | Reward rate | 0.1 QSR/sec (configurable) |
 | Reward handling | Claim explicitly; no auto-compound |
 | Lock | None for farm |
-| APY | ~150% (dynamic) |
+| APY | Not guaranteed; depends on the configured reward rate and on-chain liquidity |
 
 ```bash
 # Claim farm rewards (LP auto-staked on add liquidity)
@@ -146,7 +161,7 @@ Every Transfer: 0.30% fee (30 bps, enforced in QuasarWallet)
 
 ## Staking Vault
 
-Stake QSR and earn **20% APY** paid from transaction fees.
+The source supports staking rewards from transaction fees; a configured APY target is not a promise of actual yield.
 
 ```bash
 # 1. Deposit QSR to QuasarMaster from the user's Jetton wallet.
@@ -162,7 +177,7 @@ Unstake { amount: 50000000000 }
 
 - **Min Stake**: 100 QSR
 - **Lock Period**: 30 days; a top-up restarts the lock, it never shortens it
-- **APY**: 20% (adjustable by AI)
+- **Configured APY target**: 20% (adjustable by AI); not a guaranteed return
 - **Rewards**: Paid instantly from fee pool
 
 The master does not accept a bare `Stake` message as a deposit. QSR must be
@@ -180,9 +195,9 @@ RegisterReferral { referrer: EQ... }
 
 # Claim accumulated rewards
 ClaimReferralRewards {}
+```
 
 Rewards are escrowed in the master contract and must be claimed explicitly.
-```
 
 ---
 
@@ -269,7 +284,7 @@ Create `.env` and choose the network explicitly:
 
 ```bash
 WALLET_MNEMONIC=word1 word2 ... word24
-TON_NETWORK=mainnet          # or testnet
+TON_NETWORK=testnet          # use a disposable testnet wallet; mainnet is not release-ready
 TONCENTER_API_KEY=your_key   # optional
 AI_ORACLE_ADDRESS=EQ...      # optional
 ```
@@ -322,8 +337,8 @@ npm run website      # Serves website/ on localhost
 | Fee | 0.30% |
 | Burn | 50% of fees |
 | DeFi Pool | 5% of fees |
-| Staking APY | 20% |
-| Farm APY | ~150% |
+| Staking APY | Configured target; not guaranteed |
+| Farm APY | Dynamic estimate; not guaranteed |
 | Referral | 1% lifetime |
 | Buyback Threshold | 10 QSR (QSR-denominated pool) |
 
@@ -371,9 +386,9 @@ npm run website      # Serves website/ on localhost
 
 ---
 
-*The future of tokens is autonomous. The future of DeFi is built-in.*
+*QUASAR is a pre-launch engineering prototype. Use only a disposable testnet wallet after deployment checks; no production-readiness or yield claim is made.*
 
-## Security status (independent audit — issue #44)
+## Security status (independent audit)
 
 An independent engineering audit of commit `af83516` returned **NO-GO** for
 real-funds testnet and mainnet. Remediation in `main`:
