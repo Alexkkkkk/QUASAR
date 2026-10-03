@@ -72,22 +72,27 @@ test('H-02 source: unstake/vesting/reward/referral dispatch through the ledger',
 
 // ═══════════════ M-01 ═══════════════
 
-test('M-01 source: DeFi tracks TON payouts and rolls them back on bounce', () => {
+test('M-01 source: DeFi settles the QSR leg before dispatching TON', () => {
     assert.ok(defiSrc.includes('message(0x746f6e70) TonPayout'), 'a typed TonPayout message must exist');
     assert.ok(defiSrc.includes('struct PendingTonPayout'), 'a pending TON payout record must exist');
     assert.ok(defiSrc.includes('pendingTonPayouts: map<Int, PendingTonPayout>;'), 'DeFi must keep a pending TON payout ledger');
 
     const b = section(defiSrc, 'bounced(msg: bounced<TonPayout>)', 'receive(msg: SweepTON)');
     assert.ok(b.includes('self.tonReserve += p!!.tonOut;'), 'a bounced TON payout must restore tonReserve');
-    assert.ok(b.includes('self.qsrReserve += qsrLeg!!.amount;'), 'the remove-liquidity bounce must restore qsrReserve');
-    assert.ok(b.includes('self.lpTotalSupply += p!!.lpAmount;'), 'the remove-liquidity bounce must restore LP entitlement');
+    assert.ok(b.includes('p!!.qsrAmount == 0'), 'a TON-only failure must restore the burned LP position');
+    assert.ok(b.includes('require(p!!.qsrSettled'), 'a mixed payout may bounce only after QSR delivery is confirmed');
+    assert.ok(!b.includes('self.qsrReserve +='), 'a TON bounce must not roll back an already-delivered QSR leg');
     assert.ok(b.includes('pendingQsrDeposits.set'), 'the swap bounce must restore the consumed QSR deposit');
 
     const rl = section(defiSrc, 'receive(msg: RemoveLiquidity)', 'receive(msg: SwapToTON)');
-    assert.ok(rl.includes('PendingTonPayout{ kind: 1'), 'remove-liquidity must track its TON leg');
+    assert.ok(rl.includes('kind: 1,'), 'remove-liquidity must track its TON leg');
     assert.ok(rl.includes('self._sendQsr(sender(), qsrOut, 1, payoutId);'), 'the QSR leg must share the payout id');
+    assert.ok(rl.indexOf('self._sendQsr(sender(), qsrOut, 1, payoutId);') < rl.indexOf('self._dispatchTon(sender(), tonOut, payoutId);'), 'TON must not be sent before QSR settles');
+    assert.ok(defiSrc.includes('self._dispatchTon(removal!!.beneficiary, removal!!.tonOut, msg.queryId);'), 'TEP-74 excesses must release the matching TON leg');
     const st = section(defiSrc, 'receive(msg: SwapToTON)', 'receive(msg: SwapToQSR)');
     assert.ok(st.includes('PendingTonPayout{ kind: 2'), 'swap-to-TON must track its TON leg');
+    const sq = section(defiSrc, 'receive(msg: SwapToQSR)', 'receive(msg: ClaimFarmRewards)');
+    assert.ok(sq.includes('self._sendQsr(sender(), qsrOut, 4,'), 'swap-to-QSR must use a payout kind without a paired TON record');
 });
 
 // ═══════════════ L-01 ═══════════════

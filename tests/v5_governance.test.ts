@@ -126,6 +126,21 @@ test('gov: a vote reaching quorum executes the proposal through the AI action lo
     assert.equal(await eco.master.getGetProposalStake(7n), 0n, 'the quorum tally must be zeroed after execution');
 });
 
+test('gov: emergency-pause proposal also disables trading without changing fee settings', async () => {
+    const eco = await deployEco();
+    await stake(eco, eco.alice, 100n * QSR);
+    const feeBefore = await eco.master.getGetFeeConfig();
+
+    await eco.master.send(eco.alice.getSender(), { value: toNano('0.1') }, {
+        $$type: 'GovernanceVote', proposalId: 8n, kind: 3, flag: true, feeBps: 30, deadline: DEADLINE, reason: 'pause trading'
+    });
+
+    assert.equal(await eco.master.getIsPaused(), true, 'the proposal must set emergency pause');
+    assert.equal(await eco.master.getIsTradingEnabled(), false, 'emergency pause must also disable trading');
+    const feeAfter = await eco.master.getGetFeeConfig();
+    assert.equal(feeAfter.feeBps, feeBefore.feeBps, 'the pause must preserve the current fee');
+});
+
 test('veto: a staker can escrow separate QSR, reverse an action at threshold, and release the escrow', async () => {
     const eco = await deployEco();
     // Seed the two Jetton wallets used by the custody payout. The custody

@@ -299,6 +299,8 @@ test('ownership: non-owner cannot propose; acceptance waits out the 48h timelock
 test('defi: first liquidity provision mints LP proportional to the deposit', async () => {
     const eco = await deployEco(true);
     const lp = await eco.bc.treasury('lp');
+    const estimate = await eco.defi.getEstimateLpOut(10n * toNano('1'), QSR);
+    assert.equal(estimate, 3_162_276_660n, 'the quote must exclude permanently locked minimum liquidity');
 
     await creditDefiDeposit(eco, lp.address, 1n * QSR);
     const addRes = await eco.defi.send(lp.getSender(), { value: 10n * toNano('1') }, {
@@ -311,6 +313,111 @@ test('defi: first liquidity provision mints LP proportional to the deposit', asy
     assert.equal(pool.qsrReserve, QSR);
     assert.equal(pool.totalSupply, 3_162_277_660n, 'total LP supply includes permanently locked minimum liquidity');
     assert.equal(await eco.defi.getLpBalance(lp.address), 3_162_276_660n);
+});
+
+test('defi: initial LP quotes at or below minimum liquidity return zero', async () => {
+    const eco = await deployEco(true);
+    assert.equal(await eco.defi.getEstimateLpOut(1_000n, 1_000n), 0n, 'a quote below the lock threshold must not promise mintable LP');
+});
+
+test('defi: QSR success followed by TON bounce partially closes a liquidity removal', async () => {
+    const eco = await deployEco(true);
+    const defiAddress = eco.defiAddr;
+
+    // Give the DeFi-owned wallet enough real QSR for PoolPayout. The contract
+    // itself is the synthetic LP owner and also rejects TonPayout messages.
+    await eco.master.send(eco.owner.getSender(), { value: toNano('0.3') }, {
+        $$type: 'Mint', amount: QSR, receiver: defiAddress
+    });
+    await creditDefiDeposit(eco, defiAddress, QSR);
+    const add = await eco.defi.send(eco.bc.sender(defiAddress), { value: 10n * toNano('1') }, {
+        $$type: 'AddLiquidity', tonAmount: 10n * toNano('1'), qsrAmount: QSR, minLpOut: 1n, deadline: DEADLINE
+    });
+    assert.ok(!anyComputeFailed(add), 'the initial liquidity provision must commit');
+
+    const before = await eco.defi.getPoolInfo();
+    const lpBefore = await eco.defi.getLpBalance(defiAddress);
+    const burn = lpBefore / 2n;
+    const expectedTonOut = burn * before.tonReserve / before.totalSupply;
+    const expectedQsrOut = burn * before.qsrReserve / before.totalSupply;
+    const removal = await eco.defi.send(eco.bc.sender(defiAddress), { value: toNano('0.2') }, {
+        $$type: 'RemoveLiquidity', lpAmount: burn, minTonOut: expectedTonOut, minQsrOut: expectedQsrOut, deadline: DEADLINE
+    });
+    assert.ok(removal.transactions.some((tx: any) => tx.description?.computePhase?.success === false), 'the recipient must reject TonPayout to exercise the bounce handler');
+
+    const after = await eco.defi.getPoolInfo();
+    assert.equal(after.tonReserve, before.tonReserve, 'the bounced TON amount must return to the LP reserve');
+    assert.equal(after.qsrReserve, before.qsrReserve - expectedQsrOut, 'the delivered QSR leg must remain settled');
+    assert.equal(after.totalSupply, before.totalSupply - burn, 'the burned LP amount must not be restored after QSR delivery');
+    assert.equal(await eco.defi.getLpBalance(defiAddress), lpBefore - burn, 'the provider position must remain partially closed');
+});
+
+test('defi: SwapToQSR delivers QSR and consumes its payout record', async () => {
+    const eco = await deployEco(true);
+    const buyer = await eco.bc.treasury('qsr-buyer');
+    const lp = await eco.bc.treasury('qsr-lp');
+
+    await eco.master.send(eco.owner.getSender(), { value: toNano('0.3') }, {
+        $$type: 'Mint', amount: 200n * QSR, receiver: lp.address
+    });
+    const lpWallet = eco.bc.openContract(await QuasarWallet.fromInit(lp.address, eco.masterAddr));
+    const deposit = await lpWallet.send(lp.getSender(), { value: toNano('0.5') }, {
+        $$type: 'TokenTransfer',
+        queryId: 1n,
+        amount: 2n * QSR,
+        destination: eco.defiAddr,
+        responseDestination: lp.address,
+        customPayload: null,
+        forwardTonAmount: toNano('0.01'),
+        forwardPayload: beginCell().endCell().asSlice()
+    });
+    assert.ok(!anyComputeFailed(deposit), 'the LP QSR deposit must reach the pool');
+
+    const qsrDeposit = await eco.defi.getPendingQsrDeposit(lp.address);
+    const add = await eco.defi.send(lp.getSender(), { value: toNano('10.1') }, {
+        $$type: 'AddLiquidity', tonAmount: toNano('10'), qsrAmount: qsrDeposit, minLpOut: 1n, deadline: DEADLINE
+    });
+    assert.ok(!anyComputeFailed(add), 'the pool must be seeded before the swap');
+
+    const tonIn = toNano('1');
+    const quote = await eco.defi.getEstimateSwapToQsr(tonIn);
+    const swap = await eco.defi.send(buyer.getSender(), { value: toNano('1.1') }, {
+        $$type: 'SwapToQSR', tonAmount: tonIn, minQsrOut: quote.qsrOut, deadline: DEADLINE
+    });
+    assert.ok(!anyComputeFailed(swap), 'a successful QSR delivery and its excesses callback must not revert');
+
+    const buyerWallet = eco.bc.openContract(await QuasarWallet.fromInit(buyer.address, eco.masterAddr));
+    assert.equal((await buyerWallet.getGetWalletData()).balance, quote.qsrOut, 'the buyer wallet must receive the quoted QSR');
+
+    const afterSwap = await eco.defi.getPoolInfo();
+    const defiWallet = await QuasarWallet.fromInit(eco.defiAddr, eco.masterAddr);
+    const replayedFailure = await eco.defi.send(eco.bc.sender(defiWallet.address), { value: toNano('0.1') }, {
+        $$type: 'PayoutFailed', queryId: 1n, amount: quote.qsrOut, destination: buyer.address
+    });
+    assert.ok(anyComputeFailed(replayedFailure), 'a failure notice for the already-delivered payout must be rejected');
+    assert.equal((await eco.defi.getPoolInfo()).qsrReserve, afterSwap.qsrReserve, 'a stale failure notice must not restore spent QSR');
+});
+
+test('defi: bounced SwapToTON restores TON reserve and the consumed QSR deposit', async () => {
+    const eco = await deployEco(true);
+    const lp = await eco.bc.treasury('lp');
+    await creditDefiDeposit(eco, lp.address, QSR);
+    await eco.defi.send(lp.getSender(), { value: 10n * toNano('1') }, {
+        $$type: 'AddLiquidity', tonAmount: 10n * toNano('1'), qsrAmount: QSR, minLpOut: 1n, deadline: DEADLINE
+    });
+
+    const qsrIn = QSR / 10n;
+    await creditDefiDeposit(eco, eco.defiAddr, qsrIn);
+    const before = await eco.defi.getPoolInfo();
+    const swap = await eco.defi.send(eco.bc.sender(eco.defiAddr), { value: toNano('0.2') }, {
+        $$type: 'SwapToTON', qsrAmount: qsrIn, minTonOut: 0n, deadline: DEADLINE
+    });
+    assert.ok(swap.transactions.some((tx: any) => tx.description?.computePhase?.success === false), 'the DeFi contract must reject its own TonPayout and bounce it');
+
+    const after = await eco.defi.getPoolInfo();
+    assert.equal(after.tonReserve, before.tonReserve, 'the failed TON leg must return to tonReserve');
+    assert.equal(after.qsrReserve, before.qsrReserve, 'the consumed QSR amount must be removed from qsrReserve again');
+    assert.equal(await eco.defi.getPendingQsrDeposit(eco.defiAddr), qsrIn, 'the user QSR deposit must be restored for retry or refund');
 });
 
 test('defi: the swap quote getter matches the CPMM formula with the 0.30% fee', async () => {
@@ -374,10 +481,10 @@ test('defi: expired operations are rejected before reserve mutation', async () =
     });
 
     const before = await eco.defi.getPoolInfo();
-    eco.bc.now = 2_000_000_001;
+    eco.bc.now = 2_000;
     await expectBlocked(
         eco.defi.send(lp.getSender(), { value: toNano('0.5') }, {
-            $$type: 'SwapToTON', qsrAmount: QSR / 10n, minTonOut: 0n, deadline: DEADLINE
+            $$type: 'SwapToTON', qsrAmount: QSR / 10n, minTonOut: 0n, deadline: 1_999n
         }),
         'an expired swap must revert'
     );

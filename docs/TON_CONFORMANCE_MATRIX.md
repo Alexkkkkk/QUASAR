@@ -1,6 +1,6 @@
 # QUASAR — TON Docs conformance matrix
 
-Проверено на ветке main после CI commit 414e15915e1a81ab7b02b6284b04f541e8e6be6c. Матрица фиксирует только обязанности, которые принадлежат on-chain контрактам. TON Docs также описывает SDK, API, TON Connect, indexers, Pages и toolchain; они намеренно вынесены в #77 и не добавляются в Jetton/DeFi-код.
+Базовая матрица зафиксирована на `main` после CI commit 414e15915e1a81ab7b02b6284b04f541e8e6be6c; исправления audit v3.0 ниже выполняются отдельно в `ai/35-ton-audit-fixes`. Матрица фиксирует только обязанности, которые принадлежат on-chain контрактам. TON Docs также описывает SDK, API, TON Connect, indexers, Pages и toolchain; они намеренно вынесены в #77 и не добавляются в Jetton/DeFi-код.
 
 ## Sources
 
@@ -20,9 +20,38 @@
 | TEP-74 burn | TokenBurn#595f07bc → BurnNotification#7bdd97de | Master accepts only the derived wallet; supply decreases only after the authenticated notification | conformance_2026_09_26.test.ts |
 | TEP-74 excesses | TokenExcesses#d53276db | Response destination and derived-wallet checks prevent arbitrary cleanup; unmatched excesses are harmless | conformance_2026_09_26.test.ts |
 | TEP-74 getters | get_jetton_data, get_wallet_data, get_wallet_address | Return order is kept explicit in the generated ABI | conformance_2026_09_26.test.ts, ABI checks |
+| TEP-74 pool payout / excesses | PoolPayout#51a5c3d1 carries an explicit response destination; DeFi sends `TokenExcesses` to itself and master payouts route to the master wallet | DeFi authenticates the beneficiary's derived wallet; RemoveLiquidity sends QSR first and dispatches TON only after the same query ID is confirmed | core_functions.test.ts, audit_h02_m01_l01.test.ts |
 | TEP-64 metadata | jetton_content accepts only 0x00 on-chain/semi-chain or 0x01 off-chain URI; updates are proposed and timelocked | Unknown prefixes are rejected; metadata changes require owner + 48h confirmation | tep64_content.test.ts, security_check.ts |
 | TEP-89 wallet discovery | provide_wallet_address#2c76b973 → take_wallet_address#d1735400 from both master and wallet | Caller must fund the response; wrong workchain returns addr_none; optional owner is a ref | conformance_2026_09_26.test.ts, tep89_wallet_discovery.test.ts |
-| TON gas / bounce guidance | Explicit storage reserve, remaining-value response only where intended, typed bounce rollback and sender checks | Reserve/custody liabilities cannot be swept as free TON/QSR; payout bounces restore user state | security_check.ts, security/property suite |
+| TON gas / bounce guidance | Explicit storage reserve, typed bounce rollback, and callback fee tolerance for the buyback TON return | SwapToTON restores its QSR entitlement on TON bounce; a failed QSR payout fully reopens LP, while a TON bounce after QSR success restores TON only; bounced body reads remain within the 224-bit prefix | core_functions.test.ts, security_regression.test.ts, audit_h02_m01_l01.test.ts |
+
+## Audit v3.0 contract fixes (2026-10-02)
+
+The buyback return accepts the documented 0.02 TON inbound-fee variance and
+uses bounce handling so a refused callback restores the DeFi TON reserve and
+fee accumulator. The positive sandbox path exercises FeeTransfer → DeFi AMM →
+master callback; a separate test exercises master refusal.
+
+RemoveLiquidity payouts share one query ID and settle sequentially: the QSR
+wallet's authenticated TEP-74 `excesses` confirms delivery before TON is sent.
+This removes the race between independent legs. If QSR fails, TON was not sent
+and the position is fully restored; if QSR succeeds but TON bounces, only the
+TON reserve is restored because the QSR and LP burn are already final. No normal
+TON success callback exists, so the pending record remains as a bounce
+tombstone; no trailing bounce-body fields are read.
+
+This release deliberately retains successful `pendingTonPayouts` tombstones
+indefinitely: there is no safe recipient confirmation or expiry signal that
+proves a late bounce is impossible. There is no per-payout storage charge or
+compensation path; the contract owner must keep the contract funded for storage.
+The storage reserve enforced by `SweepTON` is a minimum balance floor, not a
+replenishment mechanism. Do not prune tombstones by age alone; any future
+compaction must preserve replay protection and account for late bounces.
+
+The same change restores the consumed QSR deposit when SwapToTON bounces,
+corrects the initial LP estimate to exclude permanently locked liquidity, and
+keeps emergency-pause governance votes' trading flag and fee snapshot
+consistent. See `docs/TASKS.md` T-20 and the sandbox tests listed above.
 
 ## Off-chain verification implemented separately
 
