@@ -25,7 +25,7 @@
 - **CI** runs contract checks, tests, ABI and dApp validation, deployment checks, TypeScript checks, build hashes, and dependency audit on pushes and pull requests to main.
 - **GitHub Pages** publishes the website when website files change on main.
 - **AI issue agent** runs only when the repository owner adds the ai-fix label. It validates its patch and opens a draft PR; it cannot merge, deploy, or perform on-chain actions. It requires the GEMINI_API_KEY Actions secret.
-- **Issue linking** closes issues only when an explicit closing keyword appears in the title, body, or commit messages of a merged PR.
+- **Issue linking** closes issues only when an explicit closing keyword appears in the title, body, or merge-commit headline of a merged PR.
 
 
 ## Architecture
