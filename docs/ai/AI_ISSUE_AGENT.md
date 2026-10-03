@@ -7,7 +7,7 @@ Workflow: `.github/workflows/ai-fix-agent.yml`. Он заменяет прежн
 1. Запуск — только по ручной метке `ai-fix`, которую применил владелец репозитория.
 2. Job генерации получает read-only права на код и issue, checkout выполняется без сохранения GitHub credentials. Gemini получает `GEMINI_API_KEY` только как repository secret и работает с файловыми инструментами без shell.
 3. Заголовок и тело issue считаются недоверенными данными. Перед проверками workflow отклоняет патчи, затрагивающие workflows, agent policy и guide, package manifests, deployment/security скрипты, env-файлы, build/deployment артефакты и wallet credentials.
-4. Отдельный job на чистом checkout применяет патч и запускает lint, contract tests, ABI checks, TypeScript checks и dependency audit. В этом job нет Gemini API key и write-доступа.
+4. Отдельный job на чистом checkout применяет патч и запускает тот же набор гейтов, что и CI, на той же версии Node из `.nvmrc`: `npm run lint`, `npm test`, `npm run abi:verify`, `npm run abi:dapp`, `npm run deployment:check`, `npm run hashes:build`, `npx tsc --noEmit`, `npm audit --audit-level=high`. В этом job нет Gemini API key и write-доступа.
 5. Только после успешной проверки отдельный job получает write-права на contents и pull requests и создаёт или обновляет draft PR в `ai/<issue>-agent`.
 
 Workflow не делает auto-merge, deploy, wallet-операций или on-chain действий. Человек проверяет каждый diff и сам принимает решение о merge.
