@@ -1,5 +1,26 @@
 # Changelog
 
+## 2026-10-02 — audit: off-chain hosting, toolchain, AI agent, multisig runbook
+
+- fix(tep64): host off-chain jetton metadata on a JSON-capable origin
+  (`website/metadata.json` -> GitHub Pages `application/json`; image ->
+  `image/png`) and make the deploy preflight reject a non-JSON metadata
+  content type (#77).
+- ci: read the Node version from `.nvmrc` via `node-version-file` so CI and
+  local runs share one toolchain, and add the `deployment:check` gate.
+- ci: remove `.github/workflows/autopilot-automerge.yml`, which enabled
+  auto-merge for every pull request without human review (#94).
+- feat(ci): add `.github/workflows/ai-fix.yml` — a manual-`ai-fix`-label
+  Gemini CLI agent that works in an `ai/<issue>-*` branch and opens a draft PR
+  only after `lint`, `security:check`, `test` and `tsc` pass; no merge, no
+  deploy, no deploy secrets. Add `GEMINI.md` rules and
+  `docs/ai/AI_ISSUE_AGENT.md` (#94).
+- docs: add `docs/MULTISIG_HANDOFF_RUNBOOK.md` for wiring external 2-of-N
+  multisig ownership through the existing timelocked two-step (#86).
+- docs: add `docs/AUDIT_2026-10-02.md` and close T-09 in `docs/TASKS.md`.
+- test: add `tests/audit_2026_10_02.test.ts` regression guards.
+
+
 All notable changes to this repository are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 `MAJOR.MINOR.PATCH` versions from `package.json`.

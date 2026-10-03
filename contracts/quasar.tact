@@ -207,6 +207,16 @@ contract QuasarMaster with Deployable {
     vetoEscrows: map<Int, Int>;
     vetoActionStake: map<Int, Int>;
     emergencyGuardian: Address;
+    // A-67: the AI oracle used to be authenticated by sender address alone, so
+    // whoever held that one address could retune the economy (treasury, buyback,
+    // trading, pause) with no cryptographic proof. The authority is now an
+    // Ed25519 public key and every decision must carry a signature over the
+    // exact bounded payload, a strictly increasing nonce and an expiry. The
+    // relaying address is untrusted, so these receivers intentionally do NOT
+    // restrict sender().
+    aiOraclePubKey: Int as uint256;
+    aiNonce: Int as uint64;
+    aiSignedDecisionCount: Int;
     
     // Staking
     stakingEnabled: Bool;
@@ -334,6 +344,11 @@ contract QuasarMaster with Deployable {
         // The deployer is the initial guardian. The owner can replace it with
         // a separate emergency key before public deployment.
         self.emergencyGuardian = owner;
+        // A-67: no oracle key until the owner installs one; signed decisions are
+        // inert ("No oracle key") until then.
+        self.aiOraclePubKey = 0;
+        self.aiNonce = 0;
+        self.aiSignedDecisionCount = 0;
         
         self.stakingEnabled = true;
         self.stakingApyBps = 2000;
@@ -491,6 +506,21 @@ contract QuasarMaster with Deployable {
         else if (act.actionType == "GovernanceBuybackThreshold") {
             let oldThreshold: Int? = self.aiActionOldBuybackThreshold.get(actionId);
             if (oldThreshold != null) { self.buybackThreshold = oldThreshold!! }
+        }
+        // A-67: signed decisions are reversible through the same path, so the
+        // owner override covers them exactly like the address-authenticated ones.
+        else if (act.actionType == "SignedBurnShare") {
+            self.feeBurnShare = act.oldValue;
+        }
+        else if (act.actionType == "SignedPause") {
+            let oldPause: Int? = self.aiActionOldEmergencyPause.get(actionId);
+            let oldTrading: Int? = self.aiActionOldTrading.get(actionId);
+            let oldFeeBps: Int? = self.aiActionOldFeeBps.get(actionId);
+            let oldBurnShare: Int? = self.aiActionOldBurnShare.get(actionId);
+            if (oldPause != null) { self.emergencyPause = oldPause!! != 0 }
+            if (oldTrading != null) { self.tradingEnabled = oldTrading!! != 0 }
+            if (oldFeeBps != null) { self.feeBps = oldFeeBps!! }
+            if (oldBurnShare != null) { self.feeBurnShare = oldBurnShare!! }
         }
         else if (act.actionType == "PriceSignal" || act.actionType == "AnomalyAlert") {
             self.feeBurnShare = act.oldValue;
@@ -664,7 +694,7 @@ contract QuasarMaster with Deployable {
             value: ton("0.02"),
             bounce: true,
             mode: SendPayGasSeparately,
-            body: PoolPayout{ queryId: payoutId, amount: amount, destination: to }.toCell(),
+            body: PoolPayout{ queryId: payoutId, amount: amount, destination: to, responseDestination: myAddress() }.toCell(),
             code: init.code,
             data: init.data
         });
@@ -1230,13 +1260,15 @@ contract QuasarMaster with Deployable {
     
     receive(msg: AISetFee) {
         self._requireAiAccess();
-        self._requireAiCooldown();
-        self._requireFreshAiQuery(msg.queryId);
+        // F-33: the wallet fee is pinned to the compile-time constant
+        // QUASAR_WALLET_FEE_BPS, so this message can never change state.
+        // It is an honest no-op: it validates the requested value and emits a
+        // trace event, but it no longer burns the 6h administrative cooldown
+        // or an action-log slot (there is nothing to reverse), and it does
+        // not advance the replay watermark (a replayed no-op is harmless).
+        // actionId = 0 marks the event as a no-op acknowledgement.
         require(msg.feeBps == QUASAR_WALLET_FEE_BPS, "Wallet fee is fixed at 30 bps");
-        let old: Int = self.feeBps;
-        self.feeBps = msg.feeBps;
-        let id: Int = self._logAiAction("SetFee", old, msg.feeBps, msg.reason);
-        send(SendParameters{ to: sender(), value: 0, mode: SendRemainingValue | SendIgnoreErrors, body: EventAiAction{ actionId: id, actionType: "SetFee", oldValue: old, newValue: msg.feeBps }.toCell() });
+        emit(EventAiAction{ actionId: 0, actionType: "SetFee", oldValue: self.feeBps, newValue: msg.feeBps }.toCell());
     }
     
     receive(msg: AISetTreasuryDirect) {
@@ -1254,20 +1286,14 @@ contract QuasarMaster with Deployable {
     
     receive(msg: AISetAntiWhale) {
         self._requireAiAccess();
-        self._requireAiCooldown();
-        self._requireFreshAiQuery(msg.queryId);
+        // F-33: transfer limits are pinned to the compile-time constants
+        // QUASAR_MAX_TX_BPS / QUASAR_MAX_WALLET_BPS /
+        // QUASAR_TRANSFER_COOLDOWN, so this message can never change state.
+        // Same honest no-op treatment as AISetFee above: validate, emit a
+        // trace event, and consume neither the cooldown, the action log, nor
+        // the replay watermark.
         require(msg.maxTxBps == QUASAR_MAX_TX_BPS && msg.maxWalletBps == QUASAR_MAX_WALLET_BPS && msg.cooldown == QUASAR_TRANSFER_COOLDOWN, "Transfer limits are fixed");
-        let oldMaxTxBps: Int = self.maxTxBps;
-        let oldMaxWalletBps: Int = self.maxWalletBps;
-        let oldCooldownSeconds: Int = self.cooldownSeconds;
-        self.maxTxBps = msg.maxTxBps;
-        self.maxWalletBps = msg.maxWalletBps;
-        self.cooldownSeconds = msg.cooldown;
-        let id: Int = self._logAiAction("SetAntiWhale", oldMaxTxBps, msg.maxTxBps, msg.reason);
-        self.aiActionOldMaxTxBps.set(id, oldMaxTxBps);
-        self.aiActionOldMaxWalletBps.set(id, oldMaxWalletBps);
-        self.aiActionOldCooldownSeconds.set(id, oldCooldownSeconds);
-        send(SendParameters{ to: sender(), value: 0, mode: SendRemainingValue | SendIgnoreErrors, body: EventAiAction{ actionId: id, actionType: "SetAntiWhale", oldValue: oldMaxTxBps, newValue: msg.maxTxBps }.toCell() });
+        emit(EventAiAction{ actionId: 0, actionType: "SetAntiWhale", oldValue: self.maxTxBps, newValue: msg.maxTxBps }.toCell());
     }
     
     receive(msg: AISetBuybackDirect) {
@@ -1307,6 +1333,13 @@ contract QuasarMaster with Deployable {
         require(self.aiFullAutonomy, "No autonomy");
         require(msg.newOracle != newAddress(0, 0), "Invalid oracle");
         let oldOracle: Address = self.aiOracle;
+        // F-32: a different oracle owns a fresh query-id sequence. The
+        // watermark was only ever raised, so a rotated oracle had to guess a
+        // query id above the previous oracle's last one or every message was
+        // rejected as "Stale AI query". The reset is skipped when the address
+        // does not actually change, so an already-relayed message cannot
+        // become replayable.
+        if (msg.newOracle != oldOracle) { self.lastAiQueryId = 0 }
         self.aiOracle = msg.newOracle;
         let id: Int = self._logAiAction("RotateOracle", 0, 1, msg.reason);
         self.aiActionOldAddress.set(id, oldOracle);
@@ -1316,6 +1349,10 @@ contract QuasarMaster with Deployable {
     receive(msg: AISetOracle) {
         self._requireOwner();
         require(msg.oracleAddress != newAddress(0, 0), "Invalid oracle");
+        // F-32: same rule as AIRotateOracle. Only a real address change clears
+        // the watermark; re-assigning the current oracle keeps it, so a
+        // captured message still cannot be replayed.
+        if (msg.oracleAddress != self.aiOracle) { self.lastAiQueryId = 0 }
         self.aiOracle = msg.oracleAddress;
         self.aiEnabled = true;
     }
@@ -1516,6 +1553,9 @@ contract QuasarMaster with Deployable {
         require(!self._checkAiAlive(), "AI alive");
         self.aiEnabled = false;
         self.aiFullAutonomy = false;
+        // F-32: this path moves the oracle too, so the owner inherits the same
+        // fresh-sequence requirement as AISetOracle / AIRotateOracle.
+        if (self.aiOracle != self.owner) { self.lastAiQueryId = 0 }
         self.aiOracle = self.owner;
         self.emergencyPause = false;
     }
@@ -1918,6 +1958,101 @@ contract QuasarMaster with Deployable {
     }
 
     // ═══════════════════════════════════════════════════════════
+    // SIGNED AI ORACLE DECISIONS (A-67) — Ed25519 + nonce + expiry
+    // ═══════════════════════════════════════════════════════════
+    // Authenticity comes from the signature, not from sender(), so any relayer
+    // may submit a decision. Replay is prevented twice over: the nonce must
+    // strictly increase, and the signed cell binds queryId/nonce/validUntil/
+    // action/value/hash, so a captured body cannot be re-pointed at new values.
+    // https://docs.tact-lang.org/ref/core-crypto#checksignature
+
+    receive(msg: SetAiOracleKey) {
+        self._requireOwner();
+        require(!self.aiFullAutonomy, "AI controls");
+        require(msg.publicKey != 0, "Invalid oracle key");
+        self.aiOraclePubKey = msg.publicKey;
+        // Installing a key must not silently switch AI on; the owner keeps that
+        // decision separate (see AISetOracle/AIToggle AI).
+        emit(EventAdminConfig{ action: "SetAiOracleKey", actor: sender(), valueA: 0, valueB: 0 }.toCell());
+    }
+
+    receive(msg: ClearAiOracleKey) {
+        self._requireOwner();
+        self.aiOraclePubKey = 0;
+        emit(EventAdminConfig{ action: "ClearAiOracleKey", actor: sender(), valueA: 0, valueB: 0 }.toCell());
+    }
+
+    // Bounded action vocabulary. `value` is meaningless for the heartbeat action
+    // and range-checked for every state-changing one.
+    //   0 = heartbeat       (refreshes AI liveness only)
+    //   1 = setFeeBurnShare (value 0..100)
+    //   2 = emergencyPause  (value != 0 pauses; unpausing needs full autonomy)
+    receive(msg: AISignedDecision) {
+        require(self.aiOraclePubKey != 0, "No oracle key");
+        require(msg.validUntil >= now(), "Signed decision expired");
+        require(msg.nonce > self.aiNonce, "Stale oracle nonce");
+        let signed: Cell = beginCell()
+            .storeUint(AI_DECISION_DOMAIN, 32)
+            .storeUint(msg.queryId, 64)
+            .storeUint(msg.nonce, 64)
+            .storeUint(msg.validUntil, 32)
+            .storeUint(msg.action, 8)
+            .storeUint(msg.value, 16)
+            .storeUint(msg.payloadHash, 256)
+            .endCell();
+        require(checkSignature(signed.hash(), msg.signature, self.aiOraclePubKey), "Bad oracle signature");
+        // Consume the nonce only after the signature verified.
+        self.aiNonce = msg.nonce;
+        self.aiSignedDecisionCount = self.aiSignedDecisionCount + 1;
+
+        if (msg.action == 0) {
+            self.lastHeartbeat = now();
+        } else if (msg.action == 1) {
+            self._requireAiCooldown();
+            require(msg.value <= 100, "Invalid burn share");
+            let oldBurnShare: Int = self.feeBurnShare;
+            self.feeBurnShare = msg.value;
+            let id: Int = self._logAiAction("SignedBurnShare", oldBurnShare, msg.value, "signed-decision");
+            self.aiActionOldBurnShare.set(id, oldBurnShare);
+        } else if (msg.action == 2) {
+            let oldPause: Bool = self.emergencyPause;
+            let oldTrading: Bool = self.tradingEnabled;
+            let oldFeeBps: Int = self.feeBps;
+            let oldBurnShare: Int = self.feeBurnShare;
+            if (msg.value != 0) {
+                self.emergencyPause = true;
+                self.tradingEnabled = false;
+            } else {
+                // Recovery stays gated: a signed pause cannot undo itself into a
+                // resumed economy unless the owner already granted full autonomy.
+                require(self.aiFullAutonomy, "No autonomy");
+                self.emergencyPause = false;
+                self.tradingEnabled = true;
+            }
+            let id: Int = self._logAiAction("SignedPause", oldPause ? 1 : 0, msg.value != 0 ? 1 : 0, "signed-decision");
+            self.aiActionOldEmergencyPause.set(id, oldPause ? 1 : 0);
+            self.aiActionOldTrading.set(id, oldTrading ? 1 : 0);
+            self.aiActionOldFeeBps.set(id, oldFeeBps);
+            self.aiActionOldBurnShare.set(id, oldBurnShare);
+        } else {
+            require(false, "Unsupported signed action");
+        }
+
+        // Single remaining-value action, last in the transaction.
+        send(SendParameters{
+            to: sender(),
+            value: 0,
+            mode: SendRemainingValue | SendIgnoreErrors,
+            body: EventAiSignedDecision{
+                queryId: msg.queryId,
+                nonce: msg.nonce,
+                action: msg.action,
+                value: msg.value
+            }.toCell()
+        });
+    }
+
+    // ═══════════════════════════════════════════════════════════
     // GETTERS
     // ═══════════════════════════════════════════════════════════
     
@@ -1957,6 +2092,11 @@ contract QuasarMaster with Deployable {
         }
     }
     get fun get_emergency_guardian(): Address { return self.emergencyGuardian }
+    // A-67 signed-oracle surface for operators and monitoring.
+    get fun get_ai_oracle_key(): Int { return self.aiOraclePubKey }
+    get fun get_ai_nonce(): Int { return self.aiNonce }
+    get fun get_ai_signed_decision_count(): Int { return self.aiSignedDecisionCount }
+    get fun get_ai_signed_domain(): Int { return AI_DECISION_DOMAIN }
     
     get fun get_wallet_address(owner: Address): Address {
         let init: StateInit = initOf QuasarWallet(owner, myAddress());
@@ -2051,6 +2191,27 @@ message ProposeWalletCode { newWalletCode: Cell }
 // `content` is immutable init data without this path; the opcode is assigned by
 // Tact from the message name and recorded in docs/abi/quasar-master.json.
 message ProposeContent { newContent: Cell }
+
+// ─── Signed AI oracle decisions (A-67) ───
+// The domain tag is the first field of the signed cell, so a signature can
+// never be replayed against another QUASAR message layout.
+const AI_DECISION_DOMAIN: Int = 0x51a5c3d2;
+
+message(0x7a1e5c02) SetAiOracleKey { publicKey: Int as uint256 }
+// Opcode 0x7a1e5c03: owner-only revocation of the signature authority.
+message(0x7a1e5c03) ClearAiOracleKey { }
+// Explicit opcode: the off-chain signer must build this body byte-exactly, so
+// the header is pinned here instead of being derived from the message name.
+message(0x7a1e5c01) AISignedDecision {
+    queryId: Int as uint64;
+    nonce: Int as uint64;
+    validUntil: Int as uint32;
+    action: Int as uint8;
+    value: Int as uint16;
+    payloadHash: Int as uint256;
+    signature: Slice as bytes64;
+}
+message EventAiSignedDecision { queryId: Int; nonce: Int; action: Int; value: Int }
 
 // ═══════════════════════════════════════════════════════════════
 // QUASAR WALLET — Optimized with fee deduction

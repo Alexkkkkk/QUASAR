@@ -36,6 +36,37 @@
 
 ---
 
+## P0 — Авторизация AI-оракула
+
+- [x] **A-67 Экономика управлялась по адресу отправителя, без криптографического подтверждения.**
+  - Файлы: `contracts/quasar.tact` (`QuasarMaster`), `scripts/ai_oracle.ts`,
+    `tests/ai_oracle_signed.test.ts`.
+  - Проблема: `_requireAiAccess()` проверял только `sender() == self.aiOracle`, а
+    `AISetTreasuryDirect`, `AISetBuybackDirect`, `AIToggleTrading`,
+    `AIEmergencyPause`, `AISetFee`, `AISetAntiWhale` меняли казну, buyback,
+    торговлю и комиссии. Компрометация одного адреса = полный контроль над
+    экономикой; подпись решения нигде не проверялась.
+  - Исправление: в контракт добавлены `aiOraclePubKey: Int as uint256`,
+    `aiNonce: Int as uint64`, `aiSignedDecisionCount` и receive
+    `AISignedDecision` (opcode `0x7a1e5c01`). Проверяется Ed25519-подпись
+    (`checkSignature(signed.hash(), msg.signature, self.aiOraclePubKey)`) над
+    ячейкой `domain(32) | queryId(64) | nonce(64) | validUntil(32) | action(8) |
+    value(16) | payloadHash(256)`. Домен `0x51a5c3d2` отделяет подпись от любого
+    другого layout-а. Replay закрыт дважды: строго возрастающий `nonce` **и**
+    expiry `validUntil`. `sender()` намеренно не проверяется — авторитет даёт
+    подпись, поэтому релеем может быть любой горячий кошелёк. Ключ ставит и
+    снимает только владелец (`SetAiOracleKey` / `ClearAiOracleKey`); без ключа
+    подписанные решения инертны (`No oracle key`). Приостановка
+    (`action = 2`) не снимается без `aiFullAutonomy`, а сами подписанные
+    действия пишутся в тот же обратимый лог, поэтому `OwnerOverride` их
+    откатывает.
+  - Проверка: `tests/ai_oracle_signed.test.ts` (14 тестов на `@ton/sandbox`:
+    приём от недоверенного релеера, отказ при чужой подписи, подмена значения,
+    replay, меньший nonce, истёкший срок, отсутствие ключа, откат через
+    `OwnerOverride`).
+
+---
+
 ## P2 — Устойчивость контрактов (по документации TON)
 
 - [x] **T-04 Явный `storageReserve` во всех долгоживущих контрактах.**
@@ -99,15 +130,19 @@
     release не может удвоить возврат.
   - Проверка: build, security-check и on-chain regression test veto/release.
 
-- [ ] **T-08 Нет мультисига владельца (только таймлок 48 ч).**
+- [~] **T-08 Нет мультисига владельца (только таймлок 48 ч).**
   - Файл: `contracts/quasar.tact:1563-1588` (`ProposeOwner`/`AcceptOwner`).
   - План: подключить внешний multisig (2-of-N) как `pendingOwner` без изменения
     логики таймлока; `QuasarAdminTimelock` уже рассчитан на это.
+  - Runbook готов: `docs/MULTISIG_HANDOFF_RUNBOOK.md` (issue #86). Кодовых
+    изменений не требует; остаётся внешняя testnet-операция с evidence.
 
-- [ ] **T-09 Лотерея/`randomInt` для денежного приза — требуется commit-reveal.**
+- [x] **T-09 Лотерея/`randomInt` для денежного приза — требуется commit-reveal.**
   - Проверено: `grep -n "randomInt" contracts/*.tact` в текущем коде ничего не
     находит → источник TVM-случайности удалён, риск закрыт на уровне кода.
   - План: если лотерея вернётся — только схема commit-reveal.
+  - Проверка (2026-10-02): `grep -rn "randomInt" contracts/` — совпадений нет;
+    пункт закрыт на уровне кода.
 
 - [x] **T-10 Fee-путь `exitCode = 5`, зафиксированный в NOTES-WIP.md.**
   - Файл: `docs/NOTES-WIP.md` (наблюдение от 2026-09-20).
@@ -161,6 +196,35 @@
     `DefiPayout` type удалён: реальные выплаты проходят только через
     typed `PoolPayout`/`TonPayout` ledgers с bounce recovery.
   - Проверка: `tests/core_functions.test.ts`, `npm run abi:verify`.
+
+## P4 — Аудит 2026-10-02
+
+- [x] **T-17 TEP-64 off-chain хостинг метаданных (issue #77).**
+  - Файлы: `website/metadata.json`, `scripts/deploy_all.ts`, `.env.example`.
+  - Проблема: `raw.githubusercontent.com` отдаёт `metadata.json` как
+    `text/plain`; TEP-64 off-chain URI должен указывать на JSON-документ, иначе
+    кошельки/индексеры отклоняют метаданные. `metadata.json.image` также вёл на
+    raw-хост.
+  - Исправление: `JETTON_METADATA_URL` по умолчанию указывает на GitHub Pages
+    (`application/json`), `image` — на Pages-asset (`image/png`), а deploy
+    preflight теперь отвергает не-JSON content type.
+  - Проверка: `tests/audit_2026_10_02.test.ts`.
+
+- [x] **T-18 Единый источник версии Node для CI.**
+  - Файлы: `.github/workflows/ci.yml`, `.nvmrc`.
+  - Проблема: CI собирал на Node 24 при `.nvmrc`=22 — локальный зелёный прогон
+    не подтверждал CI, а code hash мог разъехаться.
+  - Исправление: CI читает версию из `.nvmrc` (`node-version-file`).
+  - Проверка: `tests/audit_2026_10_02.test.ts`.
+
+- [x] **T-19 Защищённый ИИ-агент и удаление auto-merge (issue #94).**
+  - Файлы: `.github/workflows/ai-fix.yml`, `GEMINI.md`,
+    `docs/ai/AI_ISSUE_AGENT.md`; удалён `autopilot-automerge.yml`.
+  - Проблема: прежний autopilot включал auto-merge для любого PR без review.
+  - Исправление: агент запускается только по метке `ai-fix` от доверенного
+    участника, работает в ветке `ai/<issue>-*`, открывает draft PR и не имеет
+    доступа к deploy-секретам; авто-merge workflow удалён.
+  - Проверка: `tests/audit_2026_10_02.test.ts`.
 
 ---
 

@@ -100,3 +100,59 @@ npm run tonconnect:smoke
 The live smoke checks the manifest's JSON MIME type, exact dApp origin, icon,
 terms and privacy URLs. It does not claim that a wallet is connected or that a
 contract has been deployed.
+## Off-chain AI oracle (xAI / Grok)
+
+`scripts/ai_oracle.ts` is the only module that talks to an external language
+model. It is read-only with respect to the chain: it never signs, sends or
+broadcasts. The contracts keep an oracle address and consume a decision an
+operator relays as an ordinary message.
+
+| Item | Value |
+| --- | --- |
+| Endpoint | `https://api.x.ai/v1/chat/completions` |
+| Auth | `Authorization: Bearer <XAI_API_KEY>` |
+| Default model | `grok-4.7` |
+| Key env vars | `XAI_API_KEY`, then `GROK_API_KEY` |
+| Timeout | 30s default, overridable per call |
+| Retries | 2 extra attempts on 408 / 429 / 5xx / network faults; never on 401 / 403 or timeout |
+
+The decision contract is bounded: `action` must be one of `hold`, `buyback`,
+`distribute`, `pause`; `riskScore` an integer 0..100; `confidence` a number
+0..1; `rationale` a non-empty string of at most 500 characters. The reply is
+validated in `parseOracleDecision()` before it reaches any operator script, so
+an out-of-range model answer is rejected instead of relayed.
+
+```bash
+npm run oracle:smoke -- "reserve ratio is 4%, 24h outflow 12%"
+```
+
+The tests never touch the network because `fetch` is injectable:
+
+```bash
+npm run oracle:test
+```
+
+### Signed on-chain decisions (A-67)
+
+The contract does not trust the address that relays an AI decision. It stores an
+Ed25519 public key and verifies a signature over the exact decision payload, so
+the relaying wallet can be a hot address with no privileges.
+
+| Item | Value |
+| --- | --- |
+| Message | `AISignedDecision`, explicit opcode `0x7a1e5c01` |
+| Signed cell | `domain(32) ‖ queryId(64) ‖ nonce(64) ‖ validUntil(32) ‖ action(8) ‖ value(16) ‖ payloadHash(256)` |
+| Domain tag | `0x51a5c3d2` (`AI_DECISION_DOMAIN`) |
+| Actions | `0` heartbeat, `1` setBurnShare (0..100), `2` pause (unpause needs `aiFullAutonomy`) |
+| Replay guard | strictly increasing `nonce` **and** `validUntil` expiry |
+| Key management | `SetAiOracleKey` / `ClearAiOracleKey`, owner-only; no key ⇒ `No oracle key` |
+
+```bash
+npm run oracle:keygen                                  # seed + public key
+npm run oracle:sign -- setBurnShare 70 1 600           # nonce 1, 10 min TTL
+```
+
+The signing side lives in `scripts/ai_oracle.ts`
+(`buildSignedDecisionCell` / `signOracleDecision`), and both halves of the wire
+format are pinned by `tests/ai_oracle_signed.test.ts` — a field reordering on
+either side fails the suite instead of failing in production.

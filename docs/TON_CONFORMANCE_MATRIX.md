@@ -35,6 +35,15 @@ contract. `scripts/check_deployment.ts` validates the generated public artifact
 and rejects deployer details; `scripts/check_tonconnect.ts` is the post-Pages
 live smoke.
 
+## Off-chain conformance fix (2026-10-02, #77)
+
+TEP-64 off-chain content is a URI to a JSON document, so the hosting origin must
+serve it as `application/json`. GitHub's `raw.githubusercontent.com` serves every
+file as `text/plain`; the metadata URL and the `image` attribute therefore now
+point at the GitHub Pages origin (`application/json` and `image/png`), and the
+deploy preflight rejects a metadata URL whose content type is not JSON. This is
+an off-chain hosting fix and does not change any contract or code hash.
+
 ## Explicitly out of contract scope
 
 These are not missing Jetton features and must not be encoded into QuasarMaster or QuasarWallet:

@@ -20,7 +20,11 @@
     "deployment:check": "tsx scripts/check_deployment.ts",
     "tonconnect:smoke": "tsx scripts/check_tonconnect.ts",
     "testnet:smoke": "tsx scripts/testnet_smoke.ts",
-    "hashes:build": "npm run build && tsx scripts/build_hashes.ts --write"
+    "hashes:build": "npm run build && tsx scripts/build_hashes.ts --write",
+    "oracle:smoke": "tsx scripts/ai_oracle.ts",
+    "oracle:test": "node --import tsx --test tests/ai_oracle.test.ts",
+    "oracle:sign": "tsx scripts/ai_oracle.ts sign",
+    "oracle:signed:test": "node --import tsx --test tests/ai_oracle_signed.test.ts"
   },
   "keywords": [
     "ton",

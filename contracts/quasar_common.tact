@@ -34,16 +34,20 @@ message FeeTransfer { queryId: Int as uint64; amount: Int as coins; originalSend
 
 message(0x178d4519) InternalTransfer { queryId: Int as uint64; amount: Int as coins; from: Address; responseDestination: Address; forwardTonAmount: Int as coins; forwardPayload: Slice as remaining }
 
-message(0x51a5c3d1) PoolPayout { queryId: Int as uint64; amount: Int as coins; destination: Address }
+// Pool payout dispatched by an owner contract of this wallet. The explicit
+// `responseDestination` replaces the previous hardcoded `myAddress()` so the
+// dispatcher (QuasarMaster / QuasarDeFi) can decide where TEP-74 `excesses`
+// go: the master keeps routing them to its own wallet, while QuasarDeFi
+// routes them to the DeFi contract to track per-leg payout settlement.
+// Layout note: opcode(32) + queryId(64) + amount(coins, <=124) fit into the
+// 224-bit bounced-body prefix, so bounced<PoolPayout> handlers can still read
+// queryId and amount; the two trailing addresses are beyond the bounce cut
+// and must not be accessed in a bounce handler.
+message(0x51a5c3d1) PoolPayout { queryId: Int as uint64; amount: Int as coins; destination: Address; responseDestination: Address }
 
 message PayoutFailed { queryId: Int as uint64; amount: Int as coins; destination: Address }
 
 // ─── TEP-89 discoverable Jetton wallets ───
-// `provide_wallet_address` / `take_wallet_address` are defined here, in the
-// shared source of truth, because BOTH the master and every wallet must answer
-// them. The response keeps the owner address in a ref
-// (`owner_address:(Maybe ^MsgAddress)`) exactly as the TEP-89 TL-B schema
-// requires, which is why the field is a `Cell?` rather than an `Address?`.
 message(0x2c76b973) ProvideWalletAddress { queryId: Int as uint64; ownerAddress: Address; includeAddress: Bool }
 message(0xd1735400) TakeWalletAddress { queryId: Int as uint64; walletAddress: Address; ownerAddress: Cell? }
 
@@ -52,43 +56,29 @@ contract QuasarWallet {
     owner: Address;
     master: Address;
     lastTxTime: Int;
-    // Bounced message bodies are limited to 224 bits, so the original
-    // response destination cannot always be read from bounced<T>. Retain it
-    // while an outbound operation is in flight to complete TEP-74 refunds.
     pendingResponses: map<Int, Address>;
     pendingResponseFees: map<Int, Int>;
     pendingResponseReceivers: map<Int, Address>;
     pendingBurnResponses: map<Int, Address>;
     pendingPoolPayouts: map<Int, Int>;
     pendingPoolPayoutReceivers: map<Int, Address>;
-    
+
     init(owner: Address, master: Address) {
         self.balance = 0;
         self.owner = owner;
         self.master = master;
         self.lastTxTime = 0;
     }
-    
+
     receive(msg: InternalTransfer) {
         let sourceInit: StateInit = initOf QuasarWallet(msg.from, self.master);
         require(sender() == self.master || sender() == contractAddress(sourceInit), "Unauthorized");
         require(msg.amount > 0, "Invalid amount");
-        // The hard cap is 1B QSR with 9 decimals. Master-owned distributions
-        // (mint, treasury, custody, and DeFi accounting) are exempt because
-        // those paths already enforce their own reserve/supply rules. User
-        // wallet-to-wallet transfers must respect the documented 3% wallet
-        // ceiling at the receiving wallet.
-        // These ceilings are the single compiled policy used by the master
-        // configuration. A contract cannot read another contract's state, so
-        // changing them requires ProposeWalletCode/Apply Wallet Code.
         if (msg.from != self.master) {
             require(self.balance + msg.amount <= QUASAR_MAX_WALLET_AMOUNT, "Max wallet exceeded");
         }
         self.balance = self.balance + msg.amount;
 
-        // A Jetton wallet notifies the owner contract only when the sender
-        // supplied forward TON. This is the standard deposit hook used by
-        // QuasarMaster and QuasarDeFi.
         if (msg.forwardTonAmount > 0) {
             send(SendParameters{
                 to: self.owner,
@@ -104,10 +94,6 @@ contract QuasarWallet {
             });
         }
 
-        // TEP-74: whatever is left of the incoming message value after the
-        // notification must go back to `response_destination` as an `excesses`
-        // message. Ignoring errors and disabling bounce keeps a failed refund
-        // from reverting the balance credit accounted above.
         if (msg.responseDestination != newAddress(0, 0)) {
             send(SendParameters{
                 to: msg.responseDestination,
@@ -117,23 +103,11 @@ contract QuasarWallet {
                 body: TokenExcesses{ queryId: msg.queryId }.toCell()
             });
         }
-
-        // NOTE (P0.2): this receiver must not send anything else. A freshly
-        // derived wallet has no spare balance, so a balance-funded cleanup
-        // message would be skipped for lack of funds, and a second
-        // value-carrying action would break the TEP-74 refund. Source-wallet
-        // pending cleanup is dispatched by the master when the FeeTransfer
-        // arrives (see quasar.tact).
     }
 
     receive(msg: TransferConfirmed) {
         let receiver: Address? = self.pendingResponseReceivers.get(msg.queryId);
-        // A confirmation for an unknown or already-cleaned query id is a no-op:
-        // duplicates and late messages must not fail or double-clean.
         if (receiver == null) { return }
-        // The cleanup is dispatched by the master, which authenticates the fee
-        // source wallet before forwarding the confirmation; anything else must
-        // not be able to erase pending refund state (F-20).
         require(sender() == self.master, "Unauthorized confirmation");
         self.pendingResponseFees.set(msg.queryId, null);
         self.pendingResponseReceivers.set(msg.queryId, null);
@@ -186,9 +160,6 @@ contract QuasarWallet {
         }
     }
 
-    // Restore tokens when a bounce rejects an outgoing transfer. This is
-    // required by the TON Jetton wallet standard; without it, a failed
-    // recipient transaction permanently burns the sender's wallet balance.
     bounced(msg: bounced<InternalTransfer>) {
         require(msg.amount > 0, "Invalid amount");
         let poolAmount: Int? = self.pendingPoolPayouts.get(msg.queryId);
@@ -226,57 +197,35 @@ contract QuasarWallet {
     bounced(msg: bounced<FeeTransfer>) {
         require(msg.amount > 0, "Invalid amount");
         self.balance = self.balance + msg.amount;
-        // The fee leg failed, so the query id must not stay burned in the
-        // pending-response ledgers: a later excess/burn message for the same id
-        // must not be matched against a settlement that never happened (F-20).
         self.pendingResponseFees.set(msg.queryId, null);
         self.pendingResponseReceivers.set(msg.queryId, null);
         self.pendingResponses.set(msg.queryId, null);
     }
-    
+
     receive(msg: TokenTransfer) {
         require(msg.amount > 0, "Invalid amount");
         require(sender() == self.owner, "Not owner");
         require(msg.destination != newAddress(0, 0), "Invalid destination");
         require(self.balance >= msg.amount, "Insufficient");
         require(now() - self.lastTxTime >= QUASAR_TRANSFER_COOLDOWN, "Cooldown");
-        // User transfers are capped at 1% of the 1B QSR hard cap. The
-        // master-owned wallet is exempt because reserve payouts and DeFi
-        // settlement are not ordinary user transfers.
         if (self.owner != self.master) {
             require(msg.amount <= QUASAR_MAX_TX_AMOUNT, "Max tx exceeded");
         }
         self.lastTxTime = now();
         require(self.pendingResponseFees.get(msg.queryId) == null, "Query ID already used");
-        
+
         let fee: Int = msg.amount * QUASAR_WALLET_FEE_BPS / 10000;
         if (fee < 1) { fee = 1 }
         let sendAmount: Int = msg.amount - fee;
         require(sendAmount > 0, "Amount too small");
-        // TEP-74 requires a wallet that cannot fund its outgoing legs to stop
-        // and throw in the compute phase: the receiver internal_transfer and
-        // the fee notification are both paid out of this account, so an
-        // underfunded request must be rejected here instead of failing in the
-        // action phase. The caller must also attach gas that can cover the
-        // 0.07 TON the two legs spend.
-        // https://github.com/ton-blockchain/TEPs/blob/master/text/0074-jettons-standard.md
         require(myBalance() >= ton("0.075"), "Insufficient TON for transfer");
         require(context().value >= ton("0.07"), "Insufficient TON attached for transfer");
         self.balance = self.balance - msg.amount;
         self.pendingResponseFees.set(msg.queryId, fee);
         self.pendingResponseReceivers.set(msg.queryId, msg.destination);
         self.pendingResponses.set(msg.queryId, msg.responseDestination);
-        
+
         let init: StateInit = initOf QuasarWallet(msg.destination, self.master);
-        // F-30-04: both contract legs (the 0.02 TON internal_transfer and the
-        // 0.05 TON fee notification) are balance-funded (F-19) — TON permits
-        // only ONE remaining-value action per transaction, so forwarding the
-        // inbound value with the internal_transfer leg while also paying the
-        // fee leg fails with action exit code 37. Instead, the residual of
-        // the inbound message is no longer stranded on this wallet: it is
-        // returned to `response_destination` by the final excesses action,
-        // exactly the refund flow of the TEP-74 reference implementation.
-        // The refund send must be the last action of the transaction (F-20).
         send(SendParameters{ to: self.master, value: ton("0.05"), bounce: true, mode: SendPayGasSeparately, body: FeeTransfer{ queryId: msg.queryId, amount: fee, originalSender: self.owner, originalReceiver: msg.destination }.toCell() });
         send(SendParameters{
             to: contractAddress(init),
@@ -294,30 +243,12 @@ contract QuasarWallet {
             code: init.code,
             data: init.data
         });
-        // F-30-04: return the unspent residual of the inbound message to
-        // `response_destination` instead of stranding it on this wallet.
-        // The refund cannot use mode 64: both legs are balance-funded
-        // (SendPayGasSeparately), so a mode-64 action still tries to spend
-        // the whole inbound value on top of them and is silently skipped by
-        // the action phase as unaffordable. The residual is therefore
-        // computed explicitly: inbound value minus the 0.07 TON the two legs
-        // spend, minus a 0.02 TON headroom that covers this transaction's
-        // gas and the legs' forward fees. `SendPayGasSeparately |
-        // SendIgnoreErrors` pays the refund's own fee from the balance and
-        // keeps a failed refund from rolling back a settled transfer (the
-        // receiving wallet refunds its own excess the same way, see F-21);
-        // per the Q-03 invariant the bare mode-2 form is never used, and the
-        // `context().value >= 0.07` guard above guarantees the amount is
-        // never negative.
         let residual: Int = context().value - ton("0.07") - ton("0.02");
         if (residual > 0) {
             send(SendParameters{ to: msg.responseDestination, value: residual, bounce: false, mode: SendPayGasSeparately | SendIgnoreErrors, body: TokenExcesses{ queryId: msg.queryId }.toCell() });
         }
     }
 
-    // Pool payouts are initiated by a contract that owns this wallet. They
-    // bypass the user transfer fee because the pool already applies its AMM
-    // fee and must deliver the quoted amount exactly.
     receive(msg: PoolPayout) {
         require(msg.amount > 0, "Invalid amount");
         require(sender() == self.owner, "Not owner");
@@ -336,7 +267,7 @@ contract QuasarWallet {
                 queryId: msg.queryId,
                 amount: msg.amount,
                 from: self.owner,
-                responseDestination: myAddress(),
+                responseDestination: msg.responseDestination,
                 forwardTonAmount: 0,
                 forwardPayload: emptySlice()
             }.toCell(),
@@ -344,7 +275,7 @@ contract QuasarWallet {
             data: init.data
         });
     }
-    
+
     receive(msg: TokenBurn) {
         require(msg.amount > 0, "Invalid amount");
         require(sender() == self.owner, "Not owner");
@@ -370,19 +301,8 @@ contract QuasarWallet {
             });
         }
     }
-    
-    // ═══════════════════════════════════════════════════════════
-    // TEP-89 — wallet-side discovery
-    // ═══════════════════════════════════════════════════════════
-    // The master already answers discovery queries; a wallet must do the same so
-    // any contract can learn the jetton wallet it owns for this master. The
-    // answer is this wallet's own address, echoed in a `take_wallet_address`
-    // message sent with mode 64 (carry the remaining inbound value), which is
-    // the mode the TEP-89 reference implementation uses.
+
     receive(msg: ProvideWalletAddress) {
-        // TEP-89 requires at least 5000 gas units plus the forward lump and cell
-        // prices (0.0061 TON at the current basechain settings); below that the
-        // response cannot be funded at all.
         require(context().value >= ton("0.0061"), "Not enough TON for discovery");
         let owner: Cell? = null;
         if (msg.includeAddress) { owner = beginCell().storeAddress(self.owner).endCell() }

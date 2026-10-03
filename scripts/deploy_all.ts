@@ -85,8 +85,13 @@ async function deploy() {
     //   offchain  (default)  0x01 ++ URI
     //   onchain              0x00 ++ sha256-keyed dictionary
     //   semichain            0x00 ++ dictionary that also carries the `uri` attribute
+    // The metadata URL must be served with a JSON content type. GitHub's
+    // raw.githubusercontent.com serves every file as `text/plain`, so a TEP-64
+    // off-chain URI pointing there is rejected by wallets/indexers that check
+    // the MIME type (audit 2026-10-02, issue #77). GitHub Pages serves
+    // website/metadata.json as application/json.
     const metadataUrl = process.env.JETTON_METADATA_URL?.trim()
-        || 'https://raw.githubusercontent.com/Alexkkkkk/QUASAR/main/website/metadata.json';
+        || 'https://alexkkkkk.github.io/QUASAR/metadata.json';
     const contentMode = (process.env.JETTON_CONTENT_LAYOUT?.trim() || 'offchain').toLowerCase();
     if (!['offchain', 'onchain', 'semichain'].includes(contentMode)) {
         throw new Error(`JETTON_CONTENT_LAYOUT must be offchain, onchain or semichain (got "${contentMode}")`);
@@ -96,6 +101,15 @@ async function deploy() {
     const metaRes = await fetch(metadataUrl);
     if (!metaRes.ok) {
         throw new Error(`Jetton metadata URL returns HTTP ${metaRes.status} — fix hosting before deploying (F-01)`);
+    }
+    // TEP-64 off-chain content points at a JSON document; a host that serves it
+    // as text/plain (raw.githubusercontent.com) breaks wallets and indexers.
+    const metaType = (metaRes.headers.get('content-type') || '').toLowerCase();
+    if (!metaType.includes('application/json')) {
+        throw new Error(
+            `Jetton metadata must be served as application/json, got "${metaType}" — `
+            + 'host it on GitHub Pages or another JSON-capable origin (issue #77)'
+        );
     }
     const meta = (await metaRes.json()) as Record<string, unknown>;
     const attributes: Record<string, string> = {};
