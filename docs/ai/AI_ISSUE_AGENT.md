@@ -1,42 +1,24 @@
-# QUASAR — предложение: ИИ-агент для разбора issue (draft)
+# QUASAR — изолированный ИИ-агент для issue (draft)
 
-Документ фиксирует модель, реализованную в `.github/workflows/ai-fix.yml`
-(issue #94). Это **предложение и описание ограничений**, а не заявление о
-готовности к продакшену.
-
-## Цель
-
-Дать поддерживающему разработчику возможность поставить метку `ai-fix` на
-issue и получить **draft PR** с исправлением, которое уже прошло проверки
-репозитория. Финальное решение всегда за человеком.
+Workflow: `.github/workflows/ai-fix-agent.yml`. Он заменяет прежний `.github/workflows/ai-fix.yml`, чтобы на метку `ai-fix` запускался только изолированный вариант. Это draft-механизм для подготовки изменений к человеческому review, не production-сервис.
 
 ## Модель работы
 
-1. Метка `ai-fix` ставится **вручную** доверенным участником (issue #94).
-2. Workflow проверяет, что инициатор имеет `admin`/`write`/`maintain` в
-   репозитории; иначе job завершается с ошибкой.
-3. Агент работает в ветке `ai/<issue>-<timestamp>` и **никогда** не коммитит в
-   `main`.
-4. После правок запускаются `npm run lint`, `npm run security:check`,
-   `npm test`, `npx tsc --noEmit`. PR не создаётся, если что-то упало.
-5. Открывается **draft PR** с описанием изменений и результатами проверок.
+1. Запуск — только по ручной метке `ai-fix`, которую применил владелец репозитория.
+2. Job генерации получает read-only права на код и issue, checkout выполняется без сохранения GitHub credentials. Gemini получает `GEMINI_API_KEY` только как repository secret и работает с файловыми инструментами без shell.
+3. Заголовок и тело issue считаются недоверенными данными. Перед проверками workflow отклоняет патчи, затрагивающие workflows, agent policy и guide, package manifests, deployment/security скрипты, env-файлы, build/deployment артефакты и wallet credentials.
+4. Отдельный job на чистом checkout применяет патч и запускает тот же набор гейтов, что и CI, на той же версии Node из `.nvmrc`: `npm run lint`, `npm test`, `npm run abi:verify`, `npm run abi:dapp`, `npm run deployment:check`, `npm run hashes:build`, `npx tsc --noEmit`, `npm audit --audit-level=high`. В этом job нет Gemini API key и write-доступа.
+5. Только после успешной проверки отдельный job получает write-права на contents и pull requests и создаёт или обновляет draft PR в `ai/<issue>-agent`.
 
-## Ограничения (жёсткие)
+Workflow не делает auto-merge, deploy, wallet-операций или on-chain действий. Человек проверяет каждый diff и сам принимает решение о merge.
 
-- Нет auto-merge, нет deploy, нет on-chain действий.
-- Нет доступа к `WALLET_MNEMONIC`, `ORACLE_SIGNING_KEY`, `TONCENTER_API_KEY`.
-- Ключ `GEMINI_API_KEY` — только repository secret; никогда в коде/логах.
-- Контрактные изменения требуют человеческого review (см. `GEMINI.md`).
-- Агент не заявляет, что проект прошёл аудит или готов к mainnet.
+## Настройка
 
-## Free tier
+- Добавьте `GEMINI_API_KEY` в Settings → Secrets and variables → Actions. Не публикуйте ключ в issue, коде, логах или чате.
+- Убедитесь, что настройки Actions позволяют workflow создавать pull requests.
+- Для запуска владелец репозитория вручную добавляет `ai-fix` к issue.
 
-Используется официальный `google-github-actions/run-gemini-cli` и бесплатная
-квота Gemini API (без billing). При исчерпании квоты или отсутствии
-`GEMINI_API_KEY` workflow завершается понятной ошибкой и **не** открывает PR.
+## Данные и ограничения
 
-## Почему удалён `autopilot-automerge.yml`
-
-Прежний workflow включал auto-merge для **любого** готового PR. Это
-противоречит требованию человеческого review и модели угроз QUASAR, поэтому
-он удалён в рамках #94.
+Содержимое помеченных issue отправляется в Gemini API. Учитывайте действующие условия хранения и использования данных Gemini; не помечайте конфиденциальные issue.
+Автоматические проверки не являются независимым аудитом и не подтверждают готовность контрактов к testnet/mainnet. Контрактные изменения требуют отдельного человеческого review по правилам из `GEMINI.md`.

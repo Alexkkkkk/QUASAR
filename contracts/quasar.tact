@@ -699,12 +699,7 @@ contract QuasarMaster with Deployable {
             value: ton("0.02"),
             bounce: true,
             mode: SendPayGasSeparately,
-            body: PoolPayout{
-                queryId: payoutId,
-                amount: amount,
-                destination: to,
-                responseDestination: contractAddress(init)
-            }.toCell(),
+            body: PoolPayout{ queryId: payoutId, amount: amount, destination: to, responseDestination: myAddress() }.toCell(),
             code: init.code,
             data: init.data
         });
@@ -1288,13 +1283,15 @@ contract QuasarMaster with Deployable {
     
     receive(msg: AISetFee) {
         self._requireAiAccess();
-        self._requireAiCooldown();
-        self._requireFreshAiQuery(msg.queryId);
+        // F-33: the wallet fee is pinned to the compile-time constant
+        // QUASAR_WALLET_FEE_BPS, so this message can never change state.
+        // It is an honest no-op: it validates the requested value and emits a
+        // trace event, but it no longer burns the 6h administrative cooldown
+        // or an action-log slot (there is nothing to reverse), and it does
+        // not advance the replay watermark (a replayed no-op is harmless).
+        // actionId = 0 marks the event as a no-op acknowledgement.
         require(msg.feeBps == QUASAR_WALLET_FEE_BPS, "Wallet fee is fixed at 30 bps");
-        let old: Int = self.feeBps;
-        self.feeBps = msg.feeBps;
-        let id: Int = self._logAiAction("SetFee", old, msg.feeBps, msg.reason);
-        send(SendParameters{ to: sender(), value: 0, mode: SendRemainingValue | SendIgnoreErrors, body: EventAiAction{ actionId: id, actionType: "SetFee", oldValue: old, newValue: msg.feeBps }.toCell() });
+        emit(EventAiAction{ actionId: 0, actionType: "SetFee", oldValue: self.feeBps, newValue: msg.feeBps }.toCell());
     }
     
     receive(msg: AISetTreasuryDirect) {
@@ -1312,20 +1309,14 @@ contract QuasarMaster with Deployable {
     
     receive(msg: AISetAntiWhale) {
         self._requireAiAccess();
-        self._requireAiCooldown();
-        self._requireFreshAiQuery(msg.queryId);
+        // F-33: transfer limits are pinned to the compile-time constants
+        // QUASAR_MAX_TX_BPS / QUASAR_MAX_WALLET_BPS /
+        // QUASAR_TRANSFER_COOLDOWN, so this message can never change state.
+        // Same honest no-op treatment as AISetFee above: validate, emit a
+        // trace event, and consume neither the cooldown, the action log, nor
+        // the replay watermark.
         require(msg.maxTxBps == QUASAR_MAX_TX_BPS && msg.maxWalletBps == QUASAR_MAX_WALLET_BPS && msg.cooldown == QUASAR_TRANSFER_COOLDOWN, "Transfer limits are fixed");
-        let oldMaxTxBps: Int = self.maxTxBps;
-        let oldMaxWalletBps: Int = self.maxWalletBps;
-        let oldCooldownSeconds: Int = self.cooldownSeconds;
-        self.maxTxBps = msg.maxTxBps;
-        self.maxWalletBps = msg.maxWalletBps;
-        self.cooldownSeconds = msg.cooldown;
-        let id: Int = self._logAiAction("SetAntiWhale", oldMaxTxBps, msg.maxTxBps, msg.reason);
-        self.aiActionOldMaxTxBps.set(id, oldMaxTxBps);
-        self.aiActionOldMaxWalletBps.set(id, oldMaxWalletBps);
-        self.aiActionOldCooldownSeconds.set(id, oldCooldownSeconds);
-        send(SendParameters{ to: sender(), value: 0, mode: SendRemainingValue | SendIgnoreErrors, body: EventAiAction{ actionId: id, actionType: "SetAntiWhale", oldValue: oldMaxTxBps, newValue: msg.maxTxBps }.toCell() });
+        emit(EventAiAction{ actionId: 0, actionType: "SetAntiWhale", oldValue: self.maxTxBps, newValue: msg.maxTxBps }.toCell());
     }
     
     receive(msg: AISetBuybackDirect) {

@@ -216,7 +216,7 @@ contract QuasarDeFi with Deployable {
                 queryId: payoutId,
                 amount: amount,
                 destination: to,
-                responseDestination: myAddress()
+                responseDestination: myAddress(),
             }.toCell(),
             code: init.code,
             data: init.data
