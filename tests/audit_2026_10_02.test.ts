@@ -117,7 +117,9 @@ test('AI issue agent is label-gated, least-privilege and draft-only (issue #94)'
     assert.match(writeJob, /contents:\s*write/);
     assert.match(writeJob, /pull-requests:\s*write/);
     assert.match(writeJob, /draft:\s*always-true/, 'the agent must create draft PRs');
-    assert.doesNotMatch(wf, /gh pr merge|npm run deploy/, 'the workflow must never merge or deploy');
+    // Negative lookahead keeps the deploy guard from also matching the read-only
+    // 'npm run deployment:check' validation gate that CI runs.
+    assert.doesNotMatch(wf, /gh pr merge|npm run deploy(?![a-z:])/, 'the workflow must never merge or deploy');
     assert.equal(existsSync(join(root, 'docs/AI_AGENT.md')), false, 'there must not be a duplicate agent guide');
     assert.ok(wf.includes('GEMINI_API_KEY'), 'Gemini authentication must use the repository secret');
     const gemini = read('GEMINI.md');
@@ -146,4 +148,28 @@ test('multisig handoff runbook documents the timelocked two-step (issue #86)', (
         assert.ok(runbook.includes(needle), `runbook must mention ${needle}`);
     }
     assert.ok(/2-of-N/.test(runbook), 'runbook must fix the 2-of-N threshold model');
+});
+
+test('the AI issue agent validation job mirrors the CI gate set and toolchain', () => {
+    const ci = read('.github/workflows/ci.yml');
+    const agent = read('.github/workflows/ai-fix-agent.yml');
+    const gates = (text: string) => Array.from(text.matchAll(/run: npm run ([a-z0-9:_-]+)/g)).map((m) => m[1]);
+    const ciGates = [...new Set(gates(ci))].sort();
+    const agentGates = new Set(gates(agent));
+    assert.ok(ciGates.length >= 5, 'the CI workflow must expose the canonical gate list');
+    for (const gate of ciGates) {
+        assert.ok(agentGates.has(gate), `the agent validation job must mirror the CI gate "npm run ${gate}"`);
+    }
+    assert.ok(
+        agent.includes('node-version-file: .nvmrc'),
+        'the agent workflow must read the Node version from .nvmrc like CI'
+    );
+    assert.ok(
+        !/node-version:\s*\d/.test(agent),
+        'the agent workflow must not hardcode a Node version'
+    );
+    for (const command of ['npm audit --audit-level=high', 'npx tsc --noEmit']) {
+        assert.ok(ci.includes(command), `QUASAR CI must run ${command}`);
+        assert.ok(agent.includes(command), `the agent validation job must run ${command}`);
+    }
 });
