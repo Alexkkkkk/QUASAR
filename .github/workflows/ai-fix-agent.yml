@@ -86,7 +86,7 @@ jobs:
             echo "::error::Gemini produced no file changes. No pull request was created."
             exit 1
           fi
-          protected_pattern='(^\.github/workflows/|^\.gemini/|^GEMINI\.md$|^docs/AI_AGENT\.md$|^package(-lock)?\.json$|^scripts/(deploy[^/]*|security_check\.ts|check_deployment\.ts)$|(^|/)(deployment\.json|build-hashes\.json)$|(^|/)\.env($|\.)|(^|/)(seed([_-]?phrase)?|mnemonic|private[-_]?key|wallet[-_]?credentials?)(/|\.|$)'
+          protected_pattern='(^\.github/workflows/|^\.gemini/|^GEMINI\.md$|^docs/AI_AGENT\.md$|^docs/ai/AI_ISSUE_AGENT\.md$|^package(-lock)?\.json$|^scripts/(deploy[^/]*|security_check\.ts|check_deployment\.ts)$|(^|/)(deployment\.json|build-hashes\.json)$|(^|/)\.env($|\.)|(^|/)(seed([_-]?phrase)?|mnemonic|private[-_]?key|wallet[-_]?credentials?)(/|\.|$)'
           blocked=$(printf '%s\n' "$changed" | grep -E "$protected_pattern" || true)
           if [[ -n "$blocked" ]]; then
             echo "::error::The patch touches protected files. No artifact or pull request was created."
