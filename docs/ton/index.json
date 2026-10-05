@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "sources": [
+    {
+      "id": "jetton-overview",
+      "path": "jetton-overview.md",
+      "url": "https://docs.ton.org/llms/contracts/standard/tokens/jettons/overview/content.md",
+      "sha256": "41f4e5f032492c6f9ec190202d25a9eb5da83d749649dc1c4aa40fe0e4e4771c"
+    },
+    {
+      "id": "jetton-transfer",
+      "path": "jetton-transfer.md",
+      "url": "https://docs.ton.org/llms/contracts/standard/tokens/jettons/transfer/content.md",
+      "sha256": "e6fdd068f0f16297fa428fa39f3cc6ce860a53747216581bd77eb3ddadbd8166"
+    },
+    {
+      "id": "jetton-api",
+      "path": "jetton-api.md",
+      "url": "https://docs.ton.org/llms/contracts/standard/tokens/jettons/api/content.md",
+      "sha256": "1e20d44d063a8d664cd66d19cc102330497bd012436656cbe71d2a1d4b3f904d"
+    },
+    {
+      "id": "jetton-find-wallet",
+      "path": "jetton-find-wallet.md",
+      "url": "https://docs.ton.org/llms/contracts/standard/tokens/jettons/find/content.md",
+      "sha256": "a8664e9dd596172cce228ba2bc19733e744d93925c6953fdfe8e180971b1442b"
+    },
+    {
+      "id": "token-metadata",
+      "path": "token-metadata.md",
+      "url": "https://docs.ton.org/llms/contracts/standard/tokens/metadata/content.md",
+      "sha256": "1185ed8b58726be76ed30e6f1527e3ae6d9a69811a5bf196aa68153d71659235"
+    },
+    {
+      "id": "security-best-practices",
+      "path": "security-best-practices.md",
+      "url": "https://docs.ton.org/llms/contracts/techniques/security/content.md",
+      "sha256": "eeb367acb5d57248f07ee49a47e809d0c6b177f86b3525a4158823dba3941dab"
+    },
+    {
+      "id": "tolk-language",
+      "path": "tolk-language.md",
+      "url": "https://docs.ton.org/llms/tolk/overview/content.md",
+      "sha256": "7316e7b1838477af795adf983acb33388202429c5d4862de93a389694997704d"
+    }
+  ]
+}

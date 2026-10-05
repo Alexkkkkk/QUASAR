@@ -1,0 +1,190 @@
+name: QUASAR Ollama issue agent
+
+on:
+  issues:
+    types: [labeled]
+
+permissions:
+  contents: read
+  issues: read
+
+concurrency:
+  group: ai-fix-${{ github.event.issue.number }}
+  cancel-in-progress: false
+
+jobs:
+  generate:
+    if: >-
+      github.event.label.name == 'ai-fix' &&
+      github.actor == github.repository_owner
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      issues: read
+    steps:
+      - name: Check out the default branch without persisted credentials
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+
+      - name: Install Ollama and load the code model
+        shell: bash
+        env:
+          OLLAMA_MODEL: qwen2.5-coder:3b
+          OLLAMA_HOST: http://127.0.0.1:11434
+        run: |
+          set -euo pipefail
+          curl -fsSL https://ollama.com/install.sh | sh
+          if ! curl --silent --fail "$OLLAMA_HOST/api/tags" >/dev/null; then
+            nohup ollama serve >"$RUNNER_TEMP/ollama.log" 2>&1 &
+          fi
+          ready=false
+          for attempt in $(seq 1 60); do
+            if curl --silent --fail "$OLLAMA_HOST/api/tags" >/dev/null; then
+              ready=true
+              break
+            fi
+            sleep 2
+          done
+          if [[ "$ready" != true ]]; then
+            echo "::error::Ollama did not start within 120 seconds."
+            if [[ -f "$RUNNER_TEMP/ollama.log" ]]; then
+              tail -n 80 "$RUNNER_TEMP/ollama.log"
+            fi
+            exit 1
+          fi
+          ollama pull "$OLLAMA_MODEL"
+
+      - name: Generate and preflight a scoped patch with Ollama
+        shell: bash
+        env:
+          OLLAMA_HOST: http://127.0.0.1:11434
+          OLLAMA_MODEL: qwen2.5-coder:3b
+        run: |
+          set -euo pipefail
+          python3 scripts/ollama_issue_agent.py \
+            --event "$GITHUB_EVENT_PATH" \
+            --output "$RUNNER_TEMP/ai-fix.patch" \
+            --repo-root "$GITHUB_WORKSPACE" \
+            --docs-dir docs/ton
+          test -s "$RUNNER_TEMP/ai-fix.patch"
+          git apply --check "$RUNNER_TEMP/ai-fix.patch"
+
+      - name: Upload patch for isolated validation
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: ai-fix-patch
+          path: ${{ runner.temp }}/ai-fix.patch
+          if-no-files-found: error
+          retention-days: 1
+
+  validate:
+    needs: generate
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      actions: read
+      contents: read
+    steps:
+      - name: Check out the default branch without persisted credentials
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+
+      - name: Download generated patch
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: ai-fix-patch
+          path: ${{ runner.temp }}/ai-fix
+
+      - name: Apply patch in isolated checkout
+        shell: bash
+        run: |
+          set -euo pipefail
+          patch_file="$RUNNER_TEMP/ai-fix/ai-fix.patch"
+          test -s "$patch_file"
+          git apply --check "$patch_file"
+          git apply "$patch_file"
+          git diff --check
+
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type-check Tact contracts
+        run: npm run lint
+
+      - name: Build and run contract and tooling tests
+        run: npm test
+
+      - name: Verify ABI snapshots
+        run: npm run abi:verify
+
+      - name: Verify the dApp opcode map against the compiled ABI
+        run: npm run abi:dapp
+
+      - name: Validate the deployment artifact (skipped when none is published)
+        run: npm run deployment:check
+
+      - name: Publish build hashes
+        run: npm run hashes:build
+
+      - name: Type-check scripts and tests
+        run: npx tsc --noEmit
+
+      - name: Audit dependencies
+        run: npm audit --audit-level=high
+
+  open-draft-pr:
+    needs: [generate, validate]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      actions: read
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Check out the default branch without persisted credentials
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+
+      - name: Download validated patch
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: ai-fix-patch
+          path: ${{ runner.temp }}/ai-fix
+
+      - name: Apply validated patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          patch_file="$RUNNER_TEMP/ai-fix/ai-fix.patch"
+          git apply --check "$patch_file"
+          git apply "$patch_file"
+
+      - name: Create or update a draft pull request
+        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          branch: ai/${{ github.event.issue.number }}-agent
+          base: ${{ github.event.repository.default_branch }}
+          commit-message: "feat(ai-agent): address issue #${{ github.event.issue.number }}"
+          title: "AI draft for issue #${{ github.event.issue.number }}"
+          body: |
+            Изменения Ollama для #${{ github.event.issue.number }}. Проверьте каждую строку diff и соответствие официальной документации TON перед переводом PR в ready.
+            Патч прошёл проверки в [workflow run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}).
+            Источники TON Docs и синхронизация: [docs/TON_DOCS_SYNC.md](https://github.com/${{ github.repository }}/blob/${{ github.event.repository.default_branch }}/docs/TON_DOCS_SYNC.md).
+            Этот workflow создаёт только отдельную ветку и draft PR. Он не сливает изменения, не деплоит и не выполняет wallet/on-chain действия.
+            Fixes #${{ github.event.issue.number }}
+          draft: always-true
+          delete-branch: true
