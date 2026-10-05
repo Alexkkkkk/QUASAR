@@ -708,6 +708,21 @@
       ]
     },
     {
+      "name": "CancelBuybackSwap",
+      "opcode": "0x2bbbd37d",
+      "fields": [
+        {
+          "name": "queryId",
+          "type": {
+            "kind": "simple",
+            "type": "uint",
+            "optional": false,
+            "format": 64
+          }
+        }
+      ]
+    },
+    {
       "name": "CancelOwnerTransfer",
       "opcode": "0xb80506f0",
       "fields": []

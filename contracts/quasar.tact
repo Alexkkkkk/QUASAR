@@ -2,6 +2,8 @@ import "@stdlib/deploy";
 import "@stdlib/content";
 import "./quasar_common";
 
+const BUYBACK_CALLBACK_TIMEOUT: Int = 3600;
+
 // ═══════════════════════════════════════════════════════════════
 // QUASAR — The Ultimate Jetton v3.0
 // AI Sovereignty | DeFi Sync | 0.30% Fee | Auto-Buyback | Staking | Referral | Vesting
@@ -61,6 +63,7 @@ message SetTreasury { treasury: Address }
 message SetFeeConfig { feeBps: Int as uint16; burnShare: Int as uint8; maxTxBps: Int as uint16; maxWalletBps: Int as uint16; cooldown: Int as uint16 }
 message ToggleTrading { enabled: Bool }
 message TriggerBuyback { queryId: Int as uint64 }
+message CancelBuybackSwap { queryId: Int as uint64 }
 message SetBuybackConfig { enabled: Bool; threshold: Int as coins; cooldown: Int as uint32; burnPercent: Int as uint8 }
 
 // ─── DeFi Sync Messages ───
@@ -155,6 +158,7 @@ contract QuasarMaster with Deployable {
     buybackBurnPercent: Int as uint8;
     buybackSwapPending: Int as coins;
     buybackSwapQueryId: Int as uint64;
+    buybackSwapDefiAddress: Address;
     buybackQueries: map<Int, Bool>;
     lastBuybackTime: Int;
     totalBuybacks: Int;
@@ -313,6 +317,7 @@ contract QuasarMaster with Deployable {
         self.buybackBurnPercent = 100;
         self.buybackSwapPending = 0;
         self.buybackSwapQueryId = 0;
+        self.buybackSwapDefiAddress = newAddress(0, 0);
         self.buybackQueries = emptyMap();
         self.lastBuybackTime = 0;
         self.totalBuybacks = 0;
@@ -785,6 +790,8 @@ contract QuasarMaster with Deployable {
             if (self.buybackSwapPending > 0 && msg.queryId == self.buybackSwapQueryId) {
                 self.buybackPool = self.buybackPool + self.buybackSwapPending;
                 self.buybackSwapPending = 0;
+                self.buybackSwapQueryId = 0;
+                self.buybackSwapDefiAddress = newAddress(0, 0);
             }
         }
     }
@@ -951,6 +958,21 @@ contract QuasarMaster with Deployable {
         self.buybackQueries.set(msg.queryId, true);
         self._executeBuyback(msg.queryId);
     }
+
+    // An owner may clear an abandoned callback after the request window has
+    // elapsed. The QSR has already left master custody for the AMM, so this
+    // only releases the pending lock and never credits the reserve twice.
+    receive(msg: CancelBuybackSwap) {
+        self._requireOwner();
+        require(self.buybackSwapPending > 0, "No buyback pending");
+        require(msg.queryId == self.buybackSwapQueryId, "Unexpected buyback");
+        require(now() - self.lastBuybackTime >= BUYBACK_CALLBACK_TIMEOUT, "Buyback callback window active");
+        let amount: Int = self.buybackSwapPending;
+        self.buybackSwapPending = 0;
+        self.buybackSwapQueryId = 0;
+        self.buybackSwapDefiAddress = newAddress(0, 0);
+        emit(EventAdminConfig{ action: "CancelBuybackSwap", actor: sender(), valueA: msg.queryId, valueB: amount }.toCell());
+    }
     
     fun _executeBuyback(queryId: Int) {
         let pool: Int = self.buybackPool;
@@ -1000,6 +1022,7 @@ contract QuasarMaster with Deployable {
         self.reserveBalance = self.reserveBalance - amount;
         self.buybackSwapPending = amount;
         self.buybackSwapQueryId = queryId;
+        self.buybackSwapDefiAddress = self.defiAddress;
         let markerPayload: Slice = beginCell().storeUint(0x5f4a3b21, 32).endCell().asSlice();
         let init: StateInit = initOf QuasarWallet(self.defiAddress, myAddress());
         send(SendParameters{
@@ -1604,6 +1627,7 @@ contract QuasarMaster with Deployable {
                 let oldTrading: Int = self.tradingEnabled == true ? 1 : 0;
                 let oldFee: Int = self.feeBps;
                 self.emergencyPause = msg.flag;
+                self.tradingEnabled = !msg.flag;
                 id = self._logAiActionSilent("EmergencyPause", oldPause, msg.flag == true ? 1 : 0, msg.reason);
                 // EmergencyPause overrides read the full snapshot maps (F-07).
                 self.aiActionOldEmergencyPause.set(id, oldPause);
@@ -1652,13 +1676,15 @@ contract QuasarMaster with Deployable {
     // totalTonSpentOnBuyback counter accumulates the TON moved through the
     // buyback swap legs.
     receive(msg: BuybackTon) {
-        require(sender() == self.defiAddress, "Only DeFi");
+        require(self.buybackSwapDefiAddress != newAddress(0, 0) && sender() == self.buybackSwapDefiAddress, "Only pending DeFi");
         require(msg.tonAmount > 0, "Invalid amount");
-        require(context().value >= msg.tonAmount, "TON not attached");
+        require(context().value >= msg.tonAmount - ton("0.02"), "TON not attached");
         require(self.buybackSwapPending > 0, "No buyback pending");
         require(msg.queryId == self.buybackSwapQueryId, "Unexpected buyback");
         require(msg.qsrSwapped == self.buybackSwapPending, "Buyback amount mismatch");
         self.buybackSwapPending = 0;
+        self.buybackSwapQueryId = 0;
+        self.buybackSwapDefiAddress = newAddress(0, 0);
         self.totalTonSpentOnBuyback = self.totalTonSpentOnBuyback + msg.tonAmount;
         if (self.treasury != newAddress(0, 0)) {
             send(SendParameters{ to: self.treasury, value: msg.tonAmount, bounce: false, mode: SendPayGasSeparately, body: emptyCell() });
