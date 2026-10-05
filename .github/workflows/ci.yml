@@ -16,10 +16,10 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           # Single source of truth for the toolchain: the CI Node version is read
           # from .nvmrc so a local green run reproduces CI exactly and the
@@ -49,7 +49,7 @@ jobs:
         run: npm run hashes:build
 
       - name: Upload build-hash artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: quasar-build-hashes
           path: docs/build-hashes.json
