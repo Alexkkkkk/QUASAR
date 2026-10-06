@@ -20,12 +20,13 @@ jobs:
     timeout-minutes: 20
     steps:
       - name: Check out the tagged revision
-        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref }}
+          persist-credentials: false
 
       - name: Set up Node.js
-        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version-file: .nvmrc
           cache: npm
@@ -44,6 +45,9 @@ jobs:
       - name: Publish build hashes
         run: npm run hashes:build
 
+      - name: Verify action pins match the declared tags
+        run: npm run pins:check
+
       - name: Package release artifacts
         run: |
           set -euo pipefail
@@ -54,7 +58,7 @@ jobs:
           cd dist-release && zip -qr ../quasar-release.zip .
 
       - name: Upload the release bundle
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: quasar-release
           path: quasar-release.zip
@@ -66,25 +70,38 @@ jobs:
     timeout-minutes: 10
     permissions:
       contents: write
+      id-token: write
+      attestations: write
     steps:
       - name: Check out the tagged revision
-        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref }}
+          persist-credentials: false
 
       - name: Download the verified bundle
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           name: quasar-release
+
+      - name: Attest the release bundle provenance
+        uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2.4.0
+        with:
+          subject-path: quasar-release.zip
 
       - name: Create the GitHub release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
         run: |
           set -euo pipefail
-          tag="${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}"
+          tag="$RELEASE_TAG"
+          if [[ ! "$tag" =~ ^v[0-9A-Za-z][0-9A-Za-z._+-]*$ ]]; then
+            echo "::error::Release tag must start with v and contain only safe version-tag characters."
+            exit 1
+          fi
           if gh release view "$tag" >/dev/null 2>&1; then
-            echo "Release $tag already exists — uploading the verified bundle."
+            echo "Release $tag already exists - uploading the verified bundle."
             gh release upload "$tag" quasar-release.zip --clobber
           else
             gh release create "$tag" quasar-release.zip \

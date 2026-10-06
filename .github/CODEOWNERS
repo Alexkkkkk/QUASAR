@@ -1,22 +1,18 @@
 # QUASAR ownership map.
 # The branch ruleset does not require code-owner review, so this file is
-# documentation and auto-assignment only — it never blocks a merge.
+# documentation and auto-assignment only - it never blocks a merge.
 
-# Default owner for everything.
 *                                   @Alexkkkkk
 
-# On-chain code and its conformance evidence.
 /contracts/                         @Alexkkkkk
 /docs/TON_CONFORMANCE_MATRIX.md     @Alexkkkkk
 /docs/ton/                          @Alexkkkkk
 
-# Automation, security and release plumbing.
 /.github/                           @Alexkkkkk
 /scripts/security_check.ts          @Alexkkkkk
 /scripts/deploy_all.ts              @Alexkkkkk
 /scripts/deploy_defi.ts             @Alexkkkkk
 
-# Public surface.
 /website/                           @Alexkkkkk
 /README.md                          @Alexkkkkk
 /WHITEPAPER.md                      @Alexkkkkk

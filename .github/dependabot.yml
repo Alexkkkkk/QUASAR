@@ -46,3 +46,15 @@ updates:
     labels: [dependencies, ci]
     commit-message:
       prefix: "chore(ci-deps)"
+
+  - package-ecosystem: pip
+    directory: "/"
+    schedule:
+      interval: monthly
+      day: monday
+      time: "05:30"
+      timezone: Etc/UTC
+    open-pull-requests-limit: 3
+    labels: [dependencies, ci]
+    commit-message:
+      prefix: "chore(deps-pip)"

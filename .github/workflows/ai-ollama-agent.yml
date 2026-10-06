@@ -1,12 +1,5 @@
 name: QUASAR Ollama issue agent
 
-# Local-model variant of the AI issue agent: it runs Ollama on the runner,
-# so no third-party model API key is needed. The model has no tools — it
-# receives bounded repository excerpts plus the TON Docs RAG snapshot and
-# returns a unified diff. The patch is validated in an isolated checkout
-# before a draft pull request is opened. Nothing here merges, deploys or
-# touches wallet credentials.
-
 on:
   issues:
     types: [labeled]
@@ -45,7 +38,7 @@ jobs:
       issue: ${{ steps.target.outputs.issue }}
     steps:
       - name: Check out the default branch without persisted credentials
-        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           ref: ${{ github.event.repository.default_branch }}
           persist-credentials: false
@@ -130,7 +123,7 @@ jobs:
           git apply --check "$RUNNER_TEMP/ai-fix.patch"
 
       - name: Upload patch for isolated validation
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: ai-fix-patch
           path: ${{ runner.temp }}/ai-fix.patch
@@ -146,13 +139,13 @@ jobs:
       contents: read
     steps:
       - name: Check out the default branch without persisted credentials
-        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           ref: ${{ github.event.repository.default_branch }}
           persist-credentials: false
 
       - name: Download generated patch
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           name: ai-fix-patch
           path: ${{ runner.temp }}/ai-fix
@@ -168,7 +161,7 @@ jobs:
           git diff --check
 
       - name: Set up Node.js
-        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version-file: .nvmrc
           cache: npm
@@ -197,6 +190,9 @@ jobs:
       - name: Type-check scripts and tests
         run: npx tsc --noEmit
 
+      - name: Verify action pins match the declared tags
+        run: npm run pins:check
+
       - name: Audit dependencies
         run: npm audit --audit-level=high
 
@@ -210,13 +206,13 @@ jobs:
       pull-requests: write
     steps:
       - name: Check out the default branch without persisted credentials
-        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           ref: ${{ github.event.repository.default_branch }}
           persist-credentials: false
 
       - name: Download validated patch
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           name: ai-fix-patch
           path: ${{ runner.temp }}/ai-fix
@@ -230,7 +226,7 @@ jobs:
           git apply "$patch_file"
 
       - name: Create or update a draft pull request
-        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v7
+        uses: peter-evans/create-pull-request@22a9089034f40e5a961c8808d113e2c98fb63676 # v7.0.11
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           branch: ai/${{ needs.generate.outputs.issue }}-ollama

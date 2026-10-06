@@ -17,7 +17,7 @@ jobs:
       pull-requests: write
     steps:
       - name: Mark and close stale issues and pull requests
-        uses: actions/stale@5bef64f19d7facfb25b37b414482c7164d639639 # v9
+        uses: actions/stale@5bef64f19d7facfb25b37b414482c7164d639639 # v9.1.0
         with:
           days-before-stale: 45
           days-before-close: 14
@@ -25,9 +25,10 @@ jobs:
           days-before-pr-close: 14
           stale-issue-label: stale
           stale-pr-label: stale
-          exempt-issue-labels: security,pinned,ai-fix,audit,spec,contracts
-          exempt-pr-labels: security,pinned,ai-fix,release
+          exempt-issue-labels: security,pinned,ai-fix,ai-fix-ollama,audit,spec,contracts
+          exempt-pr-labels: security,pinned,ai-fix,ai-fix-ollama,release
           exempt-all-milestones: true
+          exempt-draft-pr: true
           remove-stale-when-updated: true
           operations-per-run: 100
           stale-issue-message: >-

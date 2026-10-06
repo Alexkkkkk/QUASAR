@@ -1,33 +1,33 @@
 ---
 name: Bug report
-about: Report a reproducible problem in the contracts, UI, or tooling
-title: "[Bug] "
-labels: bug
+about: Report a defect in contracts, tooling or the dApp
+title: "[bug] "
+labels: ["bug", "triaged"]
 ---
 
-## Summary
+<!-- WARNING: never paste a mnemonic, private key, API key or .env content here. -->
 
-Describe the problem in one or two sentences.
+## What happened
+
+## Expected behavior
 
 ## Reproduction
 
 1.
 2.
-3.
 
-## Expected behavior
+## Scope
 
-## Actual behavior
+- Component: contracts / scripts / dApp / docs
+- Network: testnet / mainnet / sandbox
+- Contract address (if deployed):
+
+## TON reference
+
+<!-- Link the relevant docs.ton.org page or TEP (74 / 64 / 89) when the bug is a standard violation. -->
 
 ## Environment
 
-- Network: testnet / mainnet / local
-- Commit or tag:
-- Node.js:
-- Tact:
-
-## Security impact
-
-Could this cause loss of funds, unauthorized control, or incorrect accounting?
-If yes, do not include exploit details in a public issue; follow the security
-reporting instructions instead.
+- Node (`node -v`):
+- OS:
+- Commit:

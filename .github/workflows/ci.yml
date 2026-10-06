@@ -5,35 +5,51 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: read
 
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   validate:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
 
       - name: Set up Node.js
-        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
-          # Single source of truth for the toolchain: the CI Node version is read
-          # from .nvmrc so a local green run reproduces CI exactly and the
-          # compiled code hash stays deterministic (audit 2026-10-02).
           node-version-file: .nvmrc
           cache: npm
 
       - name: Install dependencies
         run: npm ci
 
+      - name: Lint workflow YAML
+        run: |
+          set -euo pipefail
+          python3 -m pip install --quiet yamllint
+          yamllint -c .yamllint.yml .github
+
+      - name: Lint workflows with actionlint
+        run: |
+          set -euo pipefail
+          bash <(curl -fsSL https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash) 1.7.12
+          ./actionlint -color .github/workflows/*.yml
+
       - name: Type-check Tact contracts
         run: npm run lint
 
-      - name: Build and run contract tests
+      - name: Build and run contract and tooling tests
         run: npm test
 
       - name: Verify ABI snapshots
@@ -48,14 +64,21 @@ jobs:
       - name: Publish build hashes
         run: npm run hashes:build
 
+      - name: Type-check scripts and tests
+        run: npx tsc --noEmit
+
+      - name: Verify action pins match the declared tags
+        run: npm run pins:check
+
+      - name: Audit the automation hub
+        run: npm run hub:audit
+
       - name: Upload build-hash artifact
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: quasar-build-hashes
           path: docs/build-hashes.json
-
-      - name: Type-check scripts and tests
-        run: npx tsc --noEmit
+          if-no-files-found: error
 
       - name: Audit dependencies
         run: npm audit --audit-level=high
