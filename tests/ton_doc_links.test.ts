@@ -19,6 +19,7 @@ const RETIRED = [
     'https://docs.ton.org/contracts/standard/tokens/jettons/' + 'get-jetton-wallet',
     'https://docs.ton.org/blockchain-basics/' + 'languages/tact',
     'https://docs.ton.org/v3/documentation/smart-contracts/contracts-specs/' + 'jetton-standard',
+    'https://docs.ton.org/v3/guidelines/ton-connect/guidelines/' + 'creating-manifest',
 ];
 
 function collectFiles(dir: string, out: string[] = []): string[] {
@@ -46,4 +47,13 @@ test('the conformance matrix cites the reachable replacement sources', () => {
     const matrix = readFileSync(join(root, 'docs', 'TON_CONFORMANCE_MATRIX.md'), 'utf8');
     assert.match(matrix, /https:\/\/docs\.ton\.org\/contracts\/standard\/tokens\/jettons\/find/);
     assert.match(matrix, /https:\/\/docs\.ton\.org\/tolk\/overview/);
+});
+
+test('the TON Connect audit notes cite the reachable replacement page', () => {
+    const docs = ['docs/AUDIT_2026-10-02.md', 'docs/AUDIT_2026-10-06.md', 'docs/CONFORMANCE_FIX_2026-09-28.md'];
+    for (const doc of docs) {
+        const text = readFileSync(join(root, doc), 'utf8');
+        assert.match(text, /docs\.ton\.org\/applications\/ton-connect\/core-concepts/,
+            `${doc} must cite the live TON Connect core-concepts page`);
+    }
 });
