@@ -26,7 +26,27 @@
 - **GitHub Pages** publishes the website when website files change on main.
 - **AI issue agent** currently remains on the existing Gemini workflow. An Ollama (`qwen2.5-coder:3b`) implementation and TON Docs RAG workflow templates are in [`docs/ai/`](docs/ai/AI_ISSUE_AGENT.md); they become active only after a repository owner installs them under `.github/workflows/`. The intended flow is opt-in, isolated validation, and draft PR only—never automatic merge, deployment, or on-chain actions.
 - **TON Docs context** is a seven-page, allowlisted Markdown snapshot. Sync scripts and review steps are documented in [TON Docs sync](docs/TON_DOCS_SYNC.md); refreshing it does not train model weights.
-- **Issue linking** closes issues only when an explicit closing keyword appears in the title, body, or merge-commit headline of a merged PR.
+- **Issue linking** closes issues only when an explicit closing keyword appears in the title, body, or commit messages of a merged PR (REST API with pagination; see `scripts/issue_closer.py`).
+- **AI PR review** publishes a read-only review comment on every open/updated PR via GitHub Models (`.github/workflows/ai-review.yml`); it cannot approve, merge, deploy or push code.
+- **AI issue discussion** is opt-in: the owner adds the `ai-discuss` label, and the workflow publishes one analysis comment (`.github/workflows/ai-issue-discuss.yml`). The coding agent runs only on the explicit `ai-fix` label.
+- **Dependabot** opens version-update PRs for npm and GitHub Actions weekly (`.github/dependabot.yml`); updates are never merged automatically.
+- **Agent instructions** for AI contributors live in [`.github/copilot-instructions.md`](.github/copilot-instructions.md): architecture, mandatory pre-PR checks, security rules and repository style.
+
+## Процесс разработки
+
+```
+issue → выбор агента (метка ai-fix / ai-discuss) → отдельная ветка → draft PR
+      → CI (validate) → AI-review (read-only) → ручной merge владельцем
+      → GitHub Pages deploy
+```
+
+- Агент работает только по явной метке, создаёт отдельную ветку и draft PR, не сливает изменения.
+- AI-review оставляет проверяемый комментарий, но не имеет прав на merge/deploy.
+- CI остаётся обязательным: неуспех любого теста делает required check `validate` красным.
+- Dependabot открывает PR с обновлениями npm и GitHub Actions; автоматического merge нет.
+- Issue-closer закрывает задачи только по явным closing-keyword референсам после merge.
+- Решение о merge, публикации релиза и любых on-chain действиях остаётся за человеком.
+- Стоимость/квоты: issue-agent использует Gemini API (ключ — в Actions secrets, никогда не в логах), AI-review — GitHub Models в рамках тарифных квот репозитория.
 
 
 ## Architecture

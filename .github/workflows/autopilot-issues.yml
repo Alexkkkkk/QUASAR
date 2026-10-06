@@ -2,10 +2,10 @@ name: Autopilot issue closer
 
 # Fallback issue closing: when a PR merges, close every issue referenced
 # with the standard keywords ("Closes #N", "Fixes #N", "Resolves #N")
-# found in the PR body, title or commit messages. GitHub closes linked
-# issues natively when the PR targets the default branch — this workflow
-# covers the remaining cases (keyword in a commit message only, PR merged
-# by a bot, etc.).
+# found in the PR body, title or ALL commit messages (REST API with
+# pagination). GitHub closes linked issues natively when the PR targets
+# the default branch — this workflow covers the remaining cases (keyword
+# in a commit message only, PR merged by a bot, etc.).
 
 on:
   pull_request:
@@ -21,37 +21,21 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event.pull_request.merged == true
     steps:
-      - name: Check out merged head for commit messages
+      - name: Check out merged head
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
-        with:
-          fetch-depth: 50
 
-      - name: Close referenced issues
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Close referenced issues (explicit closing keywords only)
         env:
           GH_TOKEN: ${{ github.token }}
           PR: ${{ github.event.pull_request.number }}
         run: |
           set -euo pipefail
-
-          text=$(gh pr view "$PR" --json title,body,mergeCommit \
-            --jq '.title + "\n" + (.body // "") + "\n" + (.mergeCommit.messageHeadline // "")')
-          # Deduplicate issue numbers and only act on explicit closing keywords.
-          numbers=$(printf '%s\n' "$text" \
-            | grep -oiE '(closes?|closed|fix|fixes|fixed|resolves?|resolved) #[0-9]+' \
-            | grep -oE '[0-9]+' | sort -un || true)
-
-          if [[ -z "$numbers" ]]; then
-            echo "No closing-keyword issue references found in PR #$PR."
-            exit 0
-          fi
-
-          for n in $numbers; do
-            state=$(gh issue view "$n" --json state --jq .state 2>/dev/null || echo "missing")
-            if [[ "$state" == "OPEN" ]]; then
-              gh issue close "$n" --reason completed \
-                --comment "🤖 Задача закрыта автоматически: референс найден в смёрженном PR #$PR."
-              echo "Closed #$n"
-            else
-              echo "#$n state=$state — skipped"
-            fi
-          done
+          python3 tests/../scripts/issue_closer.py \
+            --repo "${{ github.repository }}" \
+            --pr "$PR" \
+            --token "$GH_TOKEN"
