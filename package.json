@@ -23,6 +23,7 @@
     "hashes:build": "npm run build && tsx scripts/build_hashes.ts --write",
     "oracle:smoke": "tsx scripts/ai_oracle.ts",
     "oracle:test": "node --import tsx --test tests/ai_oracle.test.ts",
+    "oracle:keygen": "tsx scripts/ai_oracle.ts keygen",
     "oracle:sign": "tsx scripts/ai_oracle.ts sign",
     "oracle:signed:test": "node --import tsx --test tests/ai_oracle_signed.test.ts",
     "ton:docs:sync": "python3 scripts/sync_ton_docs.py",

@@ -7,7 +7,7 @@ TON, с исправлениями и тестами на каждый пунк�
 Источники, по которым проводилась проверка:
 
 - TEP-74, Jetton standard — https://github.com/ton-blockchain/TEPs/blob/master/text/0074-jettons-standard.md
-  (обзор: https://docs.ton.org/v3/documentation/smart-contracts/contracts-specs/jetton-standard)
+  (обзор: https://docs.ton.org/contracts/standard/tokens/jettons/overview)
 - Message modes cookbook — https://docs.ton.org/v3/documentation/smart-contracts/message-management/message-modes-cookbook
 - Secure programming — https://docs.ton.org/v3/guidelines/smart-contracts/security/secure-programming
 - Jetton processing — https://docs.ton.org/v3/guidelines/dapps/asset-processing/jettons

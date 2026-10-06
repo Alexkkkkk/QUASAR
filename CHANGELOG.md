@@ -1,5 +1,19 @@
 # Changelog
 
+## 2026-10-06 — audit: TON Docs link conformance and the missing oracle keygen command
+
+- docs(ton): три цитируемые ссылки на TON Docs отдавали HTTP 404
+  (`.../jettons/get-jetton-wallet`, `.../blockchain-basics/languages/tact`,
+  `.../contracts-specs/jetton-standard`); заменены на достижимые первоисточники
+  (`.../jettons/find`, `/tolk/overview`, `.../jettons/overview`) — F-39, F-40, F-41.
+- fix(scripts): документация и `.env.example` требовали `npm run oracle:keygen`,
+  но скрипт не был определён в `package.json`; добавлен
+  `"oracle:keygen": "tsx scripts/ai_oracle.ts keygen"` — F-42.
+- test: добавлены `tests/docs_command_conformance.test.ts` (каждая команда из
+  документации существует) и `tests/ton_doc_links.test.ts` (отозванные пути
+  TON Docs не возвращаются) — F-43, F-44.
+- docs: отчёт `docs/AUDIT_2026-10-06.md` с полным списком проверок и открытых пунктов.
+
 ## 2026-10-03 — синхронизация гейтов ИИ-агента с CI (PR #103)
 
 - Job проверки ИИ-агента запускает тот же набор гейтов, что и QUASAR CI: добавлен `npm run deployment:check`.
