@@ -56,7 +56,7 @@ test('merged-PR issue closer only acts on explicit references', () => {
     // Explicit closing keywords only (same keyword set as before, in regex form).
     assert.match(script, /close\[sd\]\?|fix\(?:e\[sd\]\)\?|resolve\[sd\]\?/);
     // All commit messages across pages (pagination).
-    assert.ok(script.includes('per_page=100&page={page}'.replace('{page}', '{page}')));
+    assert.ok(script.includes('per_page=100&page={page}'));
     assert.ok(script.includes("'rel=\"next\"'"));
     // Only open issues are acted on; missing/closed ones are skipped.
     assert.match(script, /state == "open"/);
