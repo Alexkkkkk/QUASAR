@@ -69,7 +69,7 @@ function listWorkflows(base: string, globs: string[]): string[] {
             if (isLast ? entry.isFile() : entry.isDirectory()) next.push(join(dir, entry.name));
           }
         } else if (segment.includes("*")) {
-          const re = new RegExp("^" + segment.replace(/\./g, "\.").replace(/\*/g, ".*") + "$");
+          const re = new RegExp("^" + segment.replace(/\./g, "\\.").replace(/\*/g, ".*") + "$");
           for (const entry of readdirSync(dir, { withFileTypes: true })) {
             if (!re.test(entry.name)) continue;
             if (isLast ? entry.isFile() : entry.isDirectory()) next.push(join(dir, entry.name));
