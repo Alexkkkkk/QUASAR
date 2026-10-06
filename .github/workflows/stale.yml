@@ -1,0 +1,45 @@
+name: Stale
+
+on:
+  schedule:
+    - cron: "0 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  stale:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      issues: write
+      pull-requests: write
+    steps:
+      - name: Mark and close stale issues and pull requests
+        uses: actions/stale@5bef64f19d7facfb25b37b414482c7164d639639 # v9
+        with:
+          days-before-stale: 45
+          days-before-close: 14
+          days-before-pr-stale: 30
+          days-before-pr-close: 14
+          stale-issue-label: stale
+          stale-pr-label: stale
+          exempt-issue-labels: security,pinned,ai-fix,audit,spec,contracts
+          exempt-pr-labels: security,pinned,ai-fix,release
+          exempt-all-milestones: true
+          remove-stale-when-updated: true
+          operations-per-run: 100
+          stale-issue-message: >-
+            Автоматическая пометка: в этой задаче нет активности 45 дней.
+            Она будет закрыта через 14 дней, если не появится новых данных.
+            Снимите метку `stale` или оставьте комментарий, чтобы сохранить её.
+          close-issue-message: >-
+            Закрыто автоматически после 14 дней без активности.
+            Задача остаётся в истории: переоткройте её, если проблема вернулась.
+          stale-pr-message: >-
+            Автоматическая пометка: в этом PR нет активности 30 дней.
+            Он будет закрыт через 14 дней без новых изменений.
+          close-pr-message: >-
+            PR закрыт автоматически после 14 дней без активности.
+            Ветку можно переоткрыть новым PR.

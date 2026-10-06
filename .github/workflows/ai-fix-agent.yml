@@ -219,4 +219,3 @@ jobs:
             Fixes #${{ github.event.issue.number }}
           draft: always-true
           delete-branch: true
-

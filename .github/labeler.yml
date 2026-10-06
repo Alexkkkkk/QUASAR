@@ -1,0 +1,35 @@
+contracts:
+  - changed-files:
+      - any-glob-to-any-file: ['contracts/**']
+
+tests:
+  - changed-files:
+      - any-glob-to-any-file: ['tests/**']
+
+ci:
+  - changed-files:
+      - any-glob-to-any-file: ['.github/**']
+
+docs:
+  - changed-files:
+      - any-glob-to-any-file: ['docs/**', '*.md']
+
+dapp:
+  - changed-files:
+      - any-glob-to-any-file: ['website/**', 'integrations/**']
+
+defi:
+  - changed-files:
+      - any-glob-to-any-file: ['contracts/quasar_defi.tact', 'scripts/deploy_defi.ts']
+
+ton-docs:
+  - changed-files:
+      - any-glob-to-any-file: ['docs/ton/**', 'scripts/sync_ton_docs.py']
+
+security:
+  - changed-files:
+      - any-glob-to-any-file: ['SECURITY.md', 'docs/SECURITY_AUDIT.md', 'scripts/security_check.ts']
+
+dependencies:
+  - changed-files:
+      - any-glob-to-any-file: ['package.json', 'package-lock.json', '**/package.json', '**/package-lock.json']
