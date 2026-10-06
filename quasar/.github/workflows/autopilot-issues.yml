@@ -1,0 +1,40 @@
+name: Autopilot issue closer
+
+# Fallback issue closing: when a PR merges, close every issue referenced
+# with the standard keywords ("Closes #N", "Fixes #N", "Resolves #N")
+# found in the PR body, title or ALL commit messages (REST API with
+# pagination). GitHub closes linked issues natively when the PR targets
+# the default branch — this workflow covers the remaining cases (keyword
+# in a commit message only, PR merged by a bot, etc.).
+
+on:
+  pull_request:
+    types: [closed]
+
+permissions:
+  issues: write
+  pull-requests: read
+  contents: read
+
+jobs:
+  close-issues:
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.merged == true
+    steps:
+      - name: Check out merged head
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Close referenced issues (explicit closing keywords only)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          python3 tests/../scripts/issue_closer.py \
+            --repo "${{ github.repository }}" \
+            --pr "$PR"
