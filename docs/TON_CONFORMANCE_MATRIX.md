@@ -7,9 +7,9 @@
 - [Jetton standard / TEP-74](https://docs.ton.org/contracts/standard/tokens/jettons/overview)
 - [Jetton transfers](https://docs.ton.org/contracts/standard/tokens/jettons/transfer)
 - [Token metadata / TEP-64](https://docs.ton.org/contracts/standard/tokens/metadata)
-- [Jetton wallet discovery / TEP-89](https://docs.ton.org/contracts/standard/tokens/jettons/get-jetton-wallet)
+- [Jetton wallet discovery / TEP-89](https://docs.ton.org/contracts/standard/tokens/jettons/find)
 - [TON security best practices](https://docs.ton.org/contract-dev/techniques/security)
-- [Tact](https://docs.ton.org/blockchain-basics/languages/tact) — currently marked deprecated by TON Docs; Tolk migration is tracked separately.
+- [Tolk](https://docs.ton.org/tolk/overview) — TON Docs now recommends Tolk; QUASAR still ships Tact contracts and the migration stays tracked separately (#62/#74).
 
 ## On-chain conformance
 
