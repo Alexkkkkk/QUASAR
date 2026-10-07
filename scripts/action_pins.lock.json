@@ -11,8 +11,8 @@
       "sha": "820762786026740c76f36085b0efc47a31fe5020"
     },
     "actions/upload-artifact": {
-      "tag": "v4.6.2",
-      "sha": "ea165f8d65b6e75b540449e92b4886f43607fa02"
+      "tag": "v7.0.1",
+      "sha": "043fb46d1a93c77aae656e7c1c64a875d1fc6a0a"
     },
     "actions/download-artifact": {
       "tag": "v8.0.1",
