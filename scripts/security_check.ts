@@ -123,6 +123,11 @@ if (!manifest.iconUrl.endsWith('.png')) throw new Error('manifest iconUrl must b
 if (manifest.url.endsWith('/')) throw new Error('manifest url should not end with a slash');
 if (websiteHtml.includes('@tonconnect/ui@latest')) throw new Error('TON Connect UI must be pinned');
 
+assertContains(master, 'require(burnAmount <= self.totalSupply, "Burn exceeds supply");', 'the fee burn is explicitly capped by the circulating supply (F-36)');
+assertContains(master, 'require(self.govProposalExecuted.get(msg.proposalId) == null, "Proposal already executed");', 'a governance proposal id is single-use (F-35)');
+assertContains(master, 'fun _logAnomaly(', 'AI market-data writes share one bounded writer (F-34)');
+assertContains(master, 'QUASAR_AI_PRICE_HISTORY_CAP', 'AI price history retention is capped (F-34)');
+
 console.log('Security invariants passed: ' + [
     'burn supply guard',
     'hard supply cap',

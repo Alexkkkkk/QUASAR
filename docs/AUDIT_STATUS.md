@@ -35,11 +35,11 @@ suite. Findings are listed with the file/line range that carries them.
 | F-31 | `ExecuteAdminCall` had no sender check, so anyone could fire a queued call once the delay expired while `CancelAdminCall` stayed admin-only | `contracts/quasar_admin.tact:83-98`, `tests/audit_f31_f32.test.ts` | fixed | this pass |
 | F-32 | `AISetOracle`, `AIRotateOracle` and "Claim AI Control" moved the oracle without clearing `lastAiQueryId`, so a new oracle was rejected as "Stale AI query" | `contracts/quasar.tact:1303-1321`, `contracts/quasar.tact:1514-1521`, `tests/audit_f31_f32.test.ts` | fixed | this pass |
 | F-33 | `AISetFee` and `AISetAntiWhale` cannot change any state (their fields are pinned to compile-time constants) yet each logs two dictionary entries, consumes the 6h cooldown and burns a query id | `contracts/quasar.tact:1231-1240`, `contracts/quasar.tact:1255-1271` | open — #102 did not change either handler; design decision required, see `docs/NOTES-WIP.md` | this pass |
-| F-34 | `priceHistory` and `anomalyLog` grow without bound while the contract reserves only 0.05 TON, so rent can exceed the reserve | `contracts/quasar.tact:1352-1353`, `contracts/quasar.tact:1384-1385`, `contracts/quasar.tact:1437-1438` | open — bounded retention / rent handling not addressed by #102 | this pass |
-| F-35 | A governance `proposalId` is not single-use: the tally resets to 0 after quorum, so the same id can be executed again with a different `kind` from a later voter's message | `contracts/quasar.tact:1532-1580` | open — #102 synchronizes pause/trading only; proposal-id replay remains | this pass |
-| F-36 | `FeeTransfer` divides the fee split without an explicit `burnAmount <= totalSupply` guard; the varint range check catches it, but the abort is implicit | `contracts/quasar.tact:833-836` | open (low) — #102 did not add the explicit supply guard | this pass |
+| F-34 | `priceHistory` and `anomalyLog` grow without bound while the contract reserves only 0.05 TON, so rent can exceed the reserve | `contracts/quasar.tact:1352-1353`, `contracts/quasar.tact:1384-1385`, `contracts/quasar.tact:1437-1438` | fixed in review — bounded retention caps plus observable dropped counters (issue #139) | #139 |
+| F-35 | A governance `proposalId` is not single-use: the tally resets to 0 after quorum, so the same id can be executed again with a different `kind` from a later voter's message | `contracts/quasar.tact:1532-1580` | fixed in review — `govProposalExecuted` makes a proposalId single-use (issue #139) | #139 |
+| F-36 | `FeeTransfer` divides the fee split without an explicit `burnAmount <= totalSupply` guard; the varint range check catches it, but the abort is implicit | `contracts/quasar.tact:833-836` | fixed in review — explicit `burnAmount <= totalSupply` guard in `FeeTransfer` (issue #139) | #139 |
 | F-37 | AI authorisation is a single external address; `checkSignature` / `checkDataSignature` are unused, so the whole AI surface trusts one relayer key | `contracts/quasar.tact:387` | documented trust boundary — #102 did not change AI authorization | this pass |
-| F-38 | Comment in `_executeBuyback` claims the pool is "always fully consumed", but the `reserveBalance` cap can leave a remainder | `contracts/quasar.tact:930-936` | open (comment only) — #102 changed callback accounting, not this cap/comment mismatch | this pass |
+| F-38 | Comment in `_executeBuyback` claims the pool is "always fully consumed", but the `reserveBalance` cap can leave a remainder | `contracts/quasar.tact:930-936` | fixed in review — comment now states the reserve-cap remainder kept in `buybackPool` (issue #139) | #139 |
 
 
 ### Manual cross-check: PR #102 (merged 2026-10-05)
@@ -48,8 +48,12 @@ The merged diff and regression tests were checked against F-33–F-38. **None of
 
 ## Still intentionally open
 
-- **Issue #62** remains open until an external audit report exists and real
-  deployment addresses are published. PR #102 changes contract storage/layout, so
+- **Issue #62** is open again (reopened 2026-10-07) until an external audit report
+  exists and real deployment addresses are published. It had been closed as
+  `completed`, which contradicted this document and the issue's own conditions;
+  the tracker and this file are now aligned.
+- **Issue #139** tracks the contract hardening of F-34/F-35/F-36/F-38; when that
+  PR merges, the four rows above move from `fixed in review` to `fixed`. PR #102 changes contract storage/layout, so
   all pre-#102 addresses are invalid; A-62.3 must use addresses from a deployment
   of the post-#102 build. No canonical deployment addresses are published yet.
 - **Issue #107** remains open for the AI development cycle; it is a separate
