@@ -39,7 +39,7 @@ getter-вызовы (`runGetMethod`) продолжают использоват
 репозиторию. `iconUrl` должен указывать на PNG (SVG не поддерживается),
 рекомендуется 180×180.
 
-Источник: <https://docs.ton.org/v3/guidelines/ton-connect/guidelines/creating-manifest>
+Источник: <https://docs.ton.org/applications/ton-connect/core-concepts>
 
 ## Проверка
 

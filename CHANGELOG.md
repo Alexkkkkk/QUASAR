@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-10-06 — audit: TON Connect manifest source link and guard coverage
+
+- docs(ton): три отчёта (`AUDIT_2026-10-02`, `AUDIT_2026-10-06`,
+  `CONFORMANCE_FIX_2026-09-28`) ссылались на руководство по манифесту TON Connect
+  по пути `.../ton-connect/guidelines/creating-manifest`, который отдаёт HTTP 404;
+  заменено на действующую страницу `applications/ton-connect/core-concepts`
+  (таблица обязательных/опциональных полей манифеста и требования к хостингу) — F-45.
+- test: `tests/ton_doc_links.test.ts` дополнен отозванным путём манифеста и
+  положительной проверкой, что отчёты цитируют достижимую страницу.
+
 ## 2026-10-06 — audit: TON Docs link conformance and the missing oracle keygen command
 
 - docs(ton): три цитируемые ссылки на TON Docs отдавали HTTP 404
