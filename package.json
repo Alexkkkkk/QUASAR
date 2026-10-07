@@ -61,8 +61,8 @@
   },
   "devDependencies": {
     "@ton/sandbox": "^0.45.0",
-    "@types/node": "^26.6.3",
-    "dotenv": "^18.0.4",
+    "@types/node": "^26.6.4",
+    "dotenv": "^18.0.5",
     "husky": "^9.1.7",
     "tsx": "^4.23.15",
     "typescript": "^7.0.2"

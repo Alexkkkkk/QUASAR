@@ -7,32 +7,32 @@
       "sha": "11d5960a326750d5838078e36cf38b85af677262"
     },
     "actions/setup-node": {
-      "tag": "v4.4.0",
-      "sha": "49933ea5288caeca8642d1e84afbd3f7d6820020"
+      "tag": "v7.0.0",
+      "sha": "820762786026740c76f36085b0efc47a31fe5020"
     },
     "actions/upload-artifact": {
       "tag": "v4.6.2",
       "sha": "ea165f8d65b6e75b540449e92b4886f43607fa02"
     },
     "actions/download-artifact": {
-      "tag": "v4.3.0",
-      "sha": "d3f86a106a0bac45b974a628896c90dbdf5c8093"
+      "tag": "v8.0.1",
+      "sha": "3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c"
     },
     "actions/labeler": {
       "tag": "v7.0.0",
       "sha": "bf12e9b00b37c5c0ca2b87b79b2daf7891dbda13"
     },
     "actions/stale": {
-      "tag": "v9.1.0",
-      "sha": "5bef64f19d7facfb25b37b414482c7164d639639"
+      "tag": "v11.0.0",
+      "sha": "4391f3da665fdf50b6810c1a66712fb9ba21aa93"
     },
     "actions/configure-pages": {
       "tag": "v5.0.0",
       "sha": "983d7736d9b0ae728b81ab479565c72886d7745b"
     },
     "actions/upload-pages-artifact": {
-      "tag": "v3.0.1",
-      "sha": "56afc609e74202658d3ffba0e8f6dda462b719fa"
+      "tag": "v5.0.0",
+      "sha": "fc324d3547104276b827a68afc52ff2a11cc49c9"
     },
     "actions/deploy-pages": {
       "tag": "v4.0.5",
@@ -43,16 +43,16 @@
       "sha": "e8998f949152b193b063cb0ec769d69d929409be"
     },
     "actions/dependency-review-action": {
-      "tag": "v4.9.0",
-      "sha": "2031cfc080254a8a887f58cffee85186f0e49e48"
+      "tag": "v5.0.0",
+      "sha": "a1d282b36b6f3519aa1f3fc636f609c47dddb294"
     },
     "dependabot/fetch-metadata": {
       "tag": "v2.5.0",
       "sha": "21025c705c08248db411dc16f3619e6b5f9ea21a"
     },
     "peter-evans/create-pull-request": {
-      "tag": "v7.0.11",
-      "sha": "22a9089034f40e5a961c8808d113e2c98fb63676"
+      "tag": "v8.1.1",
+      "sha": "5f6978faf089d4d20b00c7766989d076bb2fc7f1"
     },
     "google-github-actions/run-gemini-cli": {
       "tag": "v0.1.22",
