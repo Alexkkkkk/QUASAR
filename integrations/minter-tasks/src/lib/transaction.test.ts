@@ -9,7 +9,6 @@ import {
   validateCompletedTrace,
   waitForTransactionTrace,
 } from "./transaction";
-import { TONCENTER_API_KEY } from "./network";
 
 const OWNER = Address.parseRaw(`0:${"11".repeat(32)}`);
 const TARGET = Address.parseRaw(`0:${"22".repeat(32)}`);
@@ -377,9 +376,11 @@ test("reports confirmed only after the concrete Toncenter trace succeeds", async
     externalMessageHash: normalized.hash().toString("base64"),
   });
   expect(sendTransaction).toHaveBeenCalledWith(request);
+  // Keyless by default: no credential is sent unless the host injects one at
+  // runtime, so a leaked bundle key can no longer reach Toncenter (#141).
   expect(fetchSpy).toHaveBeenCalledWith(
     expect.stringContaining("https://testnet.toncenter.com/api/v3/traces"),
-    expect.objectContaining({ headers: { "X-API-Key": TONCENTER_API_KEY } }),
+    expect.objectContaining({ headers: {} }),
   );
   fetchSpy.mockRestore();
 });

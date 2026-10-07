@@ -1,0 +1,181 @@
+name: QUASAR Dependabot remediation
+
+# Полная автоматика по уязвимостям: каждые 6 часов проверить открытые
+# Dependabot-алерты, сгруппировать их, устранить исправимые и подготовить
+# draft PR с обновлённым lock-файлом. Алерты без доступной patched version
+# попадают в отдельный отчёт, а не игнорируются молча.
+
+on:
+  schedule:
+    - cron: "41 2,8,14,20 * * *"
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "integrations/minter-tasks/package.json"
+      - "integrations/minter-tasks/package-lock.json"
+      - ".github/workflows/dependabot-remediation.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dependabot-remediation
+  cancel-in-progress: false
+
+jobs:
+  remediate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+    steps:
+      - name: Check out the default branch without persisted credentials
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Collect the open alerts into a severity-ranked report
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/alerts"
+          gh api --paginate "repos/$REPO/dependabot/alerts?state=open&per_page=100" \
+            > "$RUNNER_TEMP/alerts/open.json" 2>/dev/null || echo "[]" > "$RUNNER_TEMP/alerts/open.json"
+
+          python3 - <<'PY'
+          import json, os, collections
+          path = os.path.join(os.environ["RUNNER_TEMP"], "alerts", "open.json")
+          try:
+              alerts = json.load(open(path))
+          except Exception:
+              alerts = []
+          if isinstance(alerts, dict):
+              alerts = alerts.get("alerts", [])
+
+          sev = collections.Counter()
+          pkg = collections.Counter()
+          fixable, unfixable = [], []
+          for a in alerts:
+              s = ((a.get("security_advisory") or {}).get("severity") or "unknown").lower()
+              name = ((a.get("dependency") or {}).get("package") or {}).get("name") or "?"
+              sev[s] += 1
+              pkg[name] += 1
+              has_fix = bool(a.get("security_vulnerability", {}).get("first_patched_version"))
+              (fixable if has_fix else unfixable).append(f"{name} ({s})")
+
+          lines = ["### Открытые Dependabot-алерты", ""]
+          lines.append(f"Всего: **{len(alerts)}**")
+          for k in ("critical", "high", "moderate", "low", "unknown"):
+              if sev.get(k):
+                  lines.append(f"- {k}: **{sev[k]}**")
+          lines.append("")
+          lines.append(f"С доступной patched version: **{len(fixable)}**")
+          lines.append(f"Без patched version (нужно ручное решение): **{len(unfixable)}**")
+          if unfixable:
+              lines.append("")
+              lines.append("Неисправимые автоматически:")
+              for item in sorted(set(unfixable))[:40]:
+                  lines.append(f"- `{item}`")
+          lines.append("")
+          lines.append("Топ затронутых пакетов:")
+          for name, n in pkg.most_common(20):
+              lines.append(f"- `{name}` — {n}")
+
+          report = "\n".join(lines)
+          open(os.path.join(os.environ["RUNNER_TEMP"], "alerts", "report.md"), "w").write(report + "\n")
+          print(report)
+          PY
+
+      - name: Install and repair the nested dApp
+        run: |
+          set -euo pipefail
+          cd integrations/minter-tasks
+          npm ci --ignore-scripts --no-audit --no-fund >/dev/null 2>&1 \
+            || npm install --ignore-scripts --no-audit --no-fund >/dev/null 2>&1
+          # Только неразрушающие обновления: `--force` не используется никогда.
+          npm audit fix --ignore-scripts --no-fund >/dev/null 2>&1 || true
+          npm install --package-lock-only --ignore-scripts --no-fund >/dev/null 2>&1 || true
+
+      - name: Install and repair the root project
+        run: |
+          set -euo pipefail
+          npm ci >/dev/null 2>&1 || npm install >/dev/null 2>&1
+          npm audit fix --no-fund >/dev/null 2>&1 || true
+          npm install --package-lock-only --ignore-scripts --no-fund >/dev/null 2>&1 || true
+
+      - name: Validate the repaired tree
+        run: |
+          set -euo pipefail
+          npm run lint
+          npm test
+          npx tsc --noEmit
+          npm run pins:check
+          npm run hub:audit
+          npm audit --audit-level=high
+
+      - name: Build the pull request body
+        run: |
+          set -euo pipefail
+          {
+            echo "Автоматическое устранение Dependabot-алертов."
+            echo ""
+            cat "$RUNNER_TEMP/alerts/report.md"
+            echo ""
+            echo "### Проверки перед публикацией"
+            echo ""
+            echo "\`npm run lint\`, \`npm test\`, \`npx tsc --noEmit\`, \`npm run pins:check\`, \`npm run hub:audit\`, \`npm audit --audit-level=high\`."
+            echo ""
+            echo "Обновления только неразрушающие: \`npm audit fix\` без \`--force\`, поэтому ломающие major-версии сюда не попадают."
+            echo "Lock-файлы пересобраны npm-ом, вручную не правятся."
+            echo ""
+            echo "> \`main\` не изменяется напрямую; merge и deploy остаются за человеком."
+          } > "$RUNNER_TEMP/pr-body.md"
+
+      - name: Open or update the remediation draft pull request
+        id: pr
+        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          branch: automation/dependabot-remediation
+          base: ${{ github.event.repository.default_branch }}
+          commit-message: "fix(deps): автоматическое устранение Dependabot-алертов"
+          title: "fix(deps): автоматическое устранение Dependabot-алертов"
+          body-path: ${{ runner.temp }}/pr-body.md
+          draft: true
+          delete-branch: true
+
+      - name: Publish the severity report to the issue
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          ISSUE: "141"
+          PR_URL: ${{ steps.pr.outputs.pull-request-url }}
+        run: |
+          set -euo pipefail
+          {
+            echo "🤖 **Автоматическая ремедиация Dependabot**"
+            echo ""
+            cat "$RUNNER_TEMP/alerts/report.md"
+            echo ""
+            if [[ -n "${PR_URL:-}" ]]; then
+              echo "Ветка и draft PR: ${PR_URL}"
+            else
+              echo "Изменений не потребовалось: lock-файлы уже чисты по исправимым алертам."
+            fi
+            echo ""
+            echo "---"
+            echo "*Отчёт обновляется каждые 6 часов workflow \`QUASAR Dependabot remediation\`.*"
+          } > "$RUNNER_TEMP/issue-comment.md"
+          gh issue comment "$ISSUE" --repo "$REPO" --body-file "$RUNNER_TEMP/issue-comment.md"

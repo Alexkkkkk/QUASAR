@@ -7,11 +7,12 @@ import { Address, beginCell, Cell, parseMessage } from "ton";
 import {
   Network,
   NETWORK_CONFIG,
-  TONCENTER_API_KEY,
+  getToncenterBaseUrl,
   formatAddress,
   formatRawAddress,
   getCurrentNetwork,
 } from "./network";
+import { getToncenterHeaders } from "./toncenter-credentials";
 
 export const TRANSACTION_TTL_SECONDS = 5 * 60;
 export const TRANSACTION_TRACKING_TIMEOUT_MS = 90_000;
@@ -162,11 +163,11 @@ async function fetchTrace(
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    const url = new URL(`${NETWORK_CONFIG[network].toncenterV3}/traces`);
+    const url = new URL(`${getToncenterBaseUrl(network, "v3")}/traces`);
     url.searchParams.set("msg_hash", hash);
     url.searchParams.set("limit", "1");
     const response = await fetchImpl(url.toString(), {
-      headers: { "X-API-Key": TONCENTER_API_KEY },
+      headers: getToncenterHeaders(),
       signal: controller.signal,
     });
     if (!response.ok) {

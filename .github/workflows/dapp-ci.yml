@@ -1,0 +1,89 @@
+name: QUASAR dApp CI
+
+# Отдельная проверка вложенного приложения TON Minter
+# (`integrations/minter-tasks`). Корневой `QUASAR CI` её не покрывает:
+# у dApp свой package.json, свой lock-файл и свой тулчейн (CRA 5).
+#
+# Контракт job'а `validate`: чистый `npm ci`, типы, тесты, production build и
+# полный `npm audit`. Именно этот job обязан краснеть, если Dependabot PR
+# приносит уязвимость или ломает сборку, — тогда auto-merge не срабатывает.
+#
+# Контракт job'а `secret-scan`: ключ Toncenter в клиентском bundle — уязвимость
+# (issue #141), поэтому ключ в исходниках dApp блокирует сборку.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "integrations/minter-tasks/**"
+      - ".github/workflows/dapp-ci.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "integrations/minter-tasks/**"
+      - ".github/workflows/dapp-ci.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dapp-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: integrations/minter-tasks
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: integrations/minter-tasks/package-lock.json
+
+      - name: Install dependencies from the lock file
+        run: npm ci --ignore-scripts
+
+      - name: Type-check the dApp
+        run: npx tsc --noEmit
+
+      - name: Run the dApp test suite
+        run: CI=true npm test -- --watchAll=false --passWithNoTests
+
+      - name: Production build
+        run: CI=true npm run build
+
+      - name: Audit the dApp dependencies
+        run: npm audit --audit-level=low
+
+  secret-scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Reject a bundled Toncenter key in the dApp
+        run: |
+          set -euo pipefail
+          # Ключ в браузерной сборке публичен: он попадает в bundle целиком.
+          # Разрешён только runtime-инъекция (window.__TONCENTER_RUNTIME_CONFIG__).
+          pattern='(TONCENTER_API_KEY[[:space:]]*=[[:space:]]*["'\''][0-9a-fA-F]{32,}|X-API-Key["'\'']?[[:space:]]*:[[:space:]]*["'\''][0-9a-fA-F]{32,})'
+          if hits=$(grep -rInE "$pattern" integrations/minter-tasks/src integrations/minter-tasks/config-overrides.js 2>/dev/null); then
+            echo "::error title=Секрет в клиентском bundle::Найден захардкоженный ключ Toncenter. Используйте window.__TONCENTER_RUNTIME_CONFIG__ или серверный proxy."
+            printf '%s\n' "$hits"
+            exit 1
+          fi
+          echo "Ключ Toncenter в исходниках dApp не найден."

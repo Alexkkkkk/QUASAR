@@ -24,6 +24,10 @@ const REQUIRED = [
   ".github/workflows/dependabot-auto-merge.yml",
   ".github/workflows/auto-update-prs.yml",
   ".github/workflows/pin-refresh.yml",
+  ".github/workflows/dapp-ci.yml",
+  ".github/workflows/autofix.yml",
+  ".github/workflows/dependabot-remediation.yml",
+  ".github/workflows/issue-triage.yml",
   ".github/dependabot.yml",
   ".github/CODEOWNERS",
   ".github/labeler.yml",
@@ -32,6 +36,10 @@ const REQUIRED = [
   "scripts/action_pins.json",
   "scripts/sync_action_pins.ts",
   "scripts/hub_audit.ts",
+  "scripts/autofix/classify_failure.py",
+  "scripts/autofix/apply_fixes.sh",
+  "docs/AUTOFIX.md",
+  "AGENTS.md",
 ];
 
 function stripBlockScalars(text: string): string {

@@ -1,10 +1,14 @@
 import { CHAIN } from "@tonconnect/sdk";
 import { Address } from "ton";
+import { getToncenterProxyUrl } from "./toncenter-credentials";
 
 export type Network = "mainnet" | "testnet";
 
-export const TONCENTER_API_KEY = "1a84bb7285eba5c45f7aadca816efc2771f77a48d92b9ddddba59a0dbcae3fc5";
-
+/**
+ * Toncenter credentials are not part of this module on purpose. A key in the
+ * client bundle is public (issue #141); see ./toncenter-credentials for the
+ * runtime-injection contract and the keyless fallback.
+ */
 export const NETWORK_CONFIG: Record<
   Network,
   {
@@ -27,6 +31,17 @@ export const NETWORK_CONFIG: Record<
     explorer: "https://testnet.tonscan.org",
   },
 };
+
+export type ToncenterApi = "v2" | "v3";
+
+/**
+ * Resolve a Toncenter base URL for a network. When the host injects a
+ * same-origin proxy, calls go through it so the API key stays server-side;
+ * otherwise the public Toncenter endpoint is used keyless.
+ */
+export function getToncenterBaseUrl(network: Network, api: ToncenterApi): string {
+  return getToncenterProxyUrl() ?? NETWORK_CONFIG[network][api === "v2" ? "toncenterV2" : "toncenterV3"];
+}
 
 export function getNetwork(params: URLSearchParams): Network {
   const value = params.get("testnet");
