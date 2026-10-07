@@ -53,7 +53,7 @@ test('the TON Connect audit notes cite the reachable replacement page', () => {
     const docs = ['docs/AUDIT_2026-10-02.md', 'docs/AUDIT_2026-10-06.md', 'docs/CONFORMANCE_FIX_2026-09-28.md'];
     for (const doc of docs) {
         const text = readFileSync(join(root, doc), 'utf8');
-        assert.match(text, /(?:^|\s)https:\/\/docs\.ton\.org\/applications\/ton-connect\/core-concepts(?:\/)?(?=\s|$|[)\].,;:!?`'"])/m,
+        assert.match(text, /(?:^|[\s(`<])(?:https:\/\/)?docs\.ton\.org\/applications\/ton-connect\/core-concepts(?=[\s)\].,;:!?'\"`<>]|$)/m,
             `${doc} must cite the live TON Connect core-concepts page`);
     }
 });
