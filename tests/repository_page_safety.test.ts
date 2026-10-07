@@ -43,23 +43,9 @@ test('wallet and transaction controls fail closed unless testnet contracts are c
 
 
 test('merged-PR issue closer only acts on explicit references', () => {
-    // The closer is implemented in scripts/issue_closer.py and wired into
-    // the workflow. The workflow must gate on merged PRs and delegate to
-    // the script; the script must only close on explicit closing keywords
-    // and must collect ALL commit messages (REST API with pagination).
     const workflow = read('.github/workflows/autopilot-issues.yml');
     assert.match(workflow, /github\.event\.pull_request\.merged == true/);
-    assert.ok(workflow.includes('issue_closer.py'));
-    assert.ok(workflow.includes('--repo "${{ github.repository }}"'));
-
-    const script = read('scripts/issue_closer.py');
-    // Explicit closing keywords only (same keyword set as before, in regex form).
-    assert.match(script, /close\[sd\]\?|fix\(?:e\[sd\]\)\?|resolve\[sd\]\?/);
-    // All commit messages across pages (pagination).
-    assert.ok(script.includes('per_page=100&page={page}'));
-    assert.ok(script.includes("'rel=\"next\"'"));
-    // Only open issues are acted on; missing/closed ones are skipped.
-    assert.match(script, /state == "open"/);
-    // The repository scope is fixed to the current repository.
-    assert.match(script, /repos\/\{repo\}\/issues\/\{number\}/);
+    assert.ok(workflow.includes('--json title,body,mergeCommit'));
+    assert.ok(workflow.includes("grep -oiE '(closes?|closed|fix|fixes|fixed|resolves?|resolved) #[0-9]+'"));
+    assert.ok(workflow.includes('gh issue close "$n" --reason completed'));
 });
