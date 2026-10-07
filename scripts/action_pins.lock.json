@@ -19,8 +19,8 @@
       "sha": "3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c"
     },
     "actions/labeler": {
-      "tag": "v5.0.0",
-      "sha": "8558fd74291d67161a8a78ce36a881fa63b766a9"
+      "tag": "v7.0.0",
+      "sha": "bf12e9b00b37c5c0ca2b87b79b2daf7891dbda13"
     },
     "actions/stale": {
       "tag": "v11.0.0",
