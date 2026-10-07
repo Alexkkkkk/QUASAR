@@ -28,7 +28,11 @@
     "oracle:signed:test": "node --import tsx --test tests/ai_oracle_signed.test.ts",
     "ton:docs:sync": "python3 scripts/sync_ton_docs.py",
     "ton:docs:check": "python3 scripts/sync_ton_docs.py --check",
-    "ai:agent:test": "python3 -m unittest discover -s tests -p 'test_*.py'"
+    "ai:agent:test": "python3 -m unittest discover -s tests -p 'test_*.py'",
+    "hub:audit": "tsx scripts/hub_audit.ts",
+    "hub:test": "node --import tsx --test tests/automation_hub.test.ts",
+    "pins:sync": "tsx scripts/sync_action_pins.ts",
+    "pins:check": "tsx scripts/sync_action_pins.ts --check"
   },
   "keywords": [
     "ton",

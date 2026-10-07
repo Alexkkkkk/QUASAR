@@ -1,0 +1,60 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "04:00"
+      timezone: Etc/UTC
+    open-pull-requests-limit: 10
+    versioning-strategy: increase
+    labels: [dependencies, chore]
+    commit-message:
+      prefix: "chore(deps)"
+      include: scope
+    groups:
+      ton-sdk:
+        patterns: ["@ton/*", "@tact-lang/*"]
+        update-types: [minor, patch]
+      dev-tooling:
+        patterns: ["typescript", "tsx", "dotenv", "husky", "@types/*"]
+      security-patches:
+        applies-to: security-updates
+        patterns: ["*"]
+
+  - package-ecosystem: npm
+    directory: "/integrations/minter-tasks"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "04:30"
+      timezone: Etc/UTC
+    open-pull-requests-limit: 5
+    labels: [dependencies, dapp]
+    commit-message:
+      prefix: "chore(deps-dapp)"
+
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "05:00"
+      timezone: Etc/UTC
+    open-pull-requests-limit: 10
+    labels: [dependencies, ci]
+    commit-message:
+      prefix: "chore(ci-deps)"
+
+  - package-ecosystem: pip
+    directory: "/"
+    schedule:
+      interval: monthly
+      day: monday
+      time: "05:30"
+      timezone: Etc/UTC
+    open-pull-requests-limit: 3
+    labels: [dependencies, ci]
+    commit-message:
+      prefix: "chore(deps-pip)"

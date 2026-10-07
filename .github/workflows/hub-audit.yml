@@ -1,0 +1,65 @@
+name: Automation hub audit
+
+on:
+  schedule:
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/**"
+      - "scripts/hub_audit.ts"
+      - "scripts/sync_action_pins.ts"
+      - "scripts/action_pins.json"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: hub-audit
+  cancel-in-progress: true
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint workflow YAML
+        run: |
+          set -euo pipefail
+          python3 -m pip install --quiet yamllint
+          yamllint -c .yamllint.yml .github
+
+      - name: Lint workflows with actionlint
+        run: |
+          set -euo pipefail
+          bash <(curl -fsSL https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash) 1.7.12
+          ./actionlint -color .github/workflows/*.yml
+
+      - name: Verify action pins match the declared tags
+        run: npm run pins:check
+
+      - name: Audit the automation hub (local + live settings)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npm run hub:audit -- --online
+
+      - name: Regression guard for the automation surface
+        run: npm run hub:test

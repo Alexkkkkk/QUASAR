@@ -1,0 +1,60 @@
+name: Action pin refresh
+
+on:
+  schedule:
+    - cron: "23 5 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Check out the default branch without persisted credentials
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Re-resolve every declared action tag to its commit SHA
+        run: npm run pins:sync
+
+      - name: Lint workflows with actionlint
+        run: |
+          set -euo pipefail
+          bash <(curl -fsSL https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash) 1.7.12
+          ./actionlint -color .github/workflows/*.yml
+
+      - name: Open or update the pin refresh pull request
+        uses: peter-evans/create-pull-request@22a9089034f40e5a961c8808d113e2c98fb63676 # v7.0.11
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          branch: automation/action-pin-refresh
+          base: ${{ github.event.repository.default_branch }}
+          commit-message: "chore(ci): re-resolve action pins"
+          title: "chore(ci): refresh pinned GitHub Actions"
+          body: |
+            Автоматически переразрешены SHA для тегов из `scripts/action_pins.json`.
+
+            Изменения касаются только строк `uses:` в `.github/workflows/**`
+            и файла `scripts/action_pins.lock.json`. Контракты, деплой и
+            секреты не затрагиваются.
+
+            Перед мержем: убедиться, что CI зелёный и что в diff нет смены major-версии.
+          draft: true
+          delete-branch: true
