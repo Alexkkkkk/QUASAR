@@ -15,7 +15,7 @@
  */
 
 import { execFileSync } from "node:child_process";
-import { readFileSync, writeFileSync, existsSync, readdirSync } from "node:fs";
+import { readFileSync, writeFileSync, existsSync, readdirSync, renameSync } from "node:fs";
 import { join, resolve, dirname, basename } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -161,7 +161,12 @@ function main(): void {
     return;
   }
 
-  writeFileSync(lockPath, lockBody);
+  // Write atomically via a temporary file + rename: the lock file was read
+  // earlier in this run, so writing to the same path directly would race with
+  // any concurrent modification (CodeQL js/file-system-race).
+  const lockTmp = `${lockPath}.tmp-${process.pid}`;
+  writeFileSync(lockTmp, lockBody);
+  renameSync(lockTmp, lockPath);
   console.log(`\nRewrote ${files.length} workflow file(s); wrote ${Object.keys(resolved).length} pins to scripts/action_pins.lock.json`);
   if (drift.length > 0) {
     console.log("\nPins that were corrected:");
