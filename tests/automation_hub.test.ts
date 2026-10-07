@@ -22,6 +22,7 @@ const REQUIRED = [
   ".github/workflows/hub-audit.yml",
   ".github/workflows/dependency-review.yml",
   ".github/workflows/dependabot-auto-merge.yml",
+  ".github/workflows/auto-update-prs.yml",
   ".github/workflows/pin-refresh.yml",
   ".github/dependabot.yml",
   ".github/CODEOWNERS",
@@ -148,4 +149,14 @@ test("hub: the pin lock matches the declared tag map", () => {
     assert.equal(lock.actions[repo].tag, tag, `lock tag drift for ${repo}`);
     assert.match(lock.actions[repo].sha, /^[0-9a-f]{40}$/, `lock sha for ${repo} is not a commit SHA`);
   }
+});
+
+test("hub: the pull-request updater rebases onto main and merges without approvals", () => {
+  const body = readFileSync(join(WORKFLOWS, "auto-update-prs.yml"), "utf8");
+  assert.match(body, /^permissions:/m, "the updater must declare top-level permissions");
+  assert.match(body, /gh pr update-branch/, "expected an automatic rebase onto main");
+  assert.match(body, /--rebase/, "the rebase must preserve linear history");
+  assert.match(body, /gh pr merge/, "expected an automatic merge of green pull requests");
+  assert.match(body, /do-not-merge/, "the do-not-merge label must be respected");
+  assert.ok(!/actions\/checkout@/.test(body), "the updater must not check out pull-request code");
 });

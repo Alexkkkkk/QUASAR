@@ -28,6 +28,7 @@ const REQUIRED_FILES = [
   ".github/workflows/hub-audit.yml",
   ".github/workflows/dependency-review.yml",
   ".github/workflows/dependabot-auto-merge.yml",
+  ".github/workflows/auto-update-prs.yml",
   ".github/workflows/pin-refresh.yml",
   ".github/workflows/pages.yml",
   ".github/dependabot.yml",
@@ -298,8 +299,11 @@ async function checkLiveSettings(): Promise<void> {
         if (!types.includes("required_linear_history")) warn(`ruleset "${detail.name}": linear history not required`);
         if (!types.includes("required_signatures")) warn(`ruleset "${detail.name}": commit signatures not required`);
         const pr = (detail.rules ?? []).find((rule: { type: string }) => rule.type === "pull_request");
-        if (pr?.parameters?.required_approving_review_count === 0) {
-          warn(`ruleset "${detail.name}": a pull request is required but needs 0 approvals`);
+        const approvals = pr?.parameters?.required_approving_review_count;
+        if (typeof approvals === "number" && approvals > 0) {
+          warn(`ruleset "${detail.name}": ${approvals} approving review(s) required - this repository merges on green checks alone`);
+        } else if (typeof approvals === "number") {
+          ok(`ruleset "${detail.name}": no approving review required (${approvals})`);
         }
         const checks = (detail.rules ?? []).find(
           (rule: { type: string }) => rule.type === "required_status_checks",

@@ -130,6 +130,8 @@ ensure_label "docs"          "0075ca" "Documentation"
 ensure_label "chore"         "ededed" "Housekeeping"
 ensure_label "triaged"       "ededed" "Triaged by a maintainer"
 ensure_label "stale"         "ffffff" "No activity; see the Stale workflow"
+ensure_label "automerge"     "0e8a16" "Green checks may be merged automatically"
+ensure_label "do-not-merge"  "b60205" "Never merged automatically"
 
 # ── 5. Rulesets ──────────────────────────────────────────────────────────
 echo
@@ -157,12 +159,12 @@ if kind == "branch":
             {
                 "type": "pull_request",
                 "parameters": {
-                    "required_approving_review_count": 1,
-                    "dismiss_stale_reviews_on_push": True,
+                    "required_approving_review_count": 0,
+                    "dismiss_stale_reviews_on_push": False,
                     "required_reviewers": [],
                     "require_code_owner_review": False,
                     "require_last_push_approval": False,
-                    "required_review_thread_resolution": True,
+                    "required_review_thread_resolution": False,
                     "allowed_merge_methods": ["squash", "rebase"],
                 },
             },

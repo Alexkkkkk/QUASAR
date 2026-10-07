@@ -5,8 +5,9 @@ name: Dependabot auto-merge
 # be made. GitHub's documented pattern is `pull_request_target` with an actor
 # guard. This job is safe by construction: it never checks out pull-request
 # code, never runs repository scripts and never reads a secret. It only asks
-# GitHub to merge a Dependabot pull request once the required checks and the
-# required human approval are satisfied. It cannot merge anything else.
+# GitHub to merge a Dependabot pull request once the required checks are
+# satisfied. No approving review is required anywhere in this repository, so
+# the green checks are the only gate. It cannot merge anything else.
 on:
   pull_request_target:
     types: [opened, synchronize, reopened, ready_for_review]
@@ -35,10 +36,11 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Enable auto-merge for patch and minor updates
+      - name: Enable auto-merge for every dependency update
         if: >-
           steps.metadata.outputs.update-type == 'version-update:semver-patch' ||
-          steps.metadata.outputs.update-type == 'version-update:semver-minor'
+          steps.metadata.outputs.update-type == 'version-update:semver-minor' ||
+          steps.metadata.outputs.update-type == 'version-update:semver-major'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_URL: ${{ github.event.pull_request.html_url }}
@@ -46,11 +48,11 @@ jobs:
           set -euo pipefail
           gh pr merge --auto --squash "$PR_URL"
 
-      - name: Comment on major updates
+      - name: Note major updates
         if: steps.metadata.outputs.update-type == 'version-update:semver-major'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_URL: ${{ github.event.pull_request.html_url }}
         run: |
           set -euo pipefail
-          gh pr comment "$PR_URL" --body "Major update: auto-merge is intentionally disabled. Review the changelog and merge manually."
+          gh pr comment "$PR_URL" --body "Major update: auto-merge is enabled and the required checks decide. A red build keeps this pull request open."

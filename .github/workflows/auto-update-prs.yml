@@ -1,0 +1,118 @@
+name: Auto-update pull requests
+
+# Keeps every open pull request current with `main` and merges the green ones.
+# This is the pull-request migration layer: a branch that fell behind is
+# rebased onto the latest default branch, so the ruleset policy
+# `strict_required_status_checks_policy` can never leave it permanently
+# blocked. The job never checks out and never executes pull-request code: it
+# only calls the GitHub API through `gh`.
+#
+# Token: the optional `AUTO_MERGE_TOKEN` repository secret (fine-grained PAT
+# with `contents: write` and `pull-requests: write`) is preferred. A PAT is
+# needed because a branch update performed with the ephemeral GITHUB_TOKEN
+# does not start a new workflow run, which would leave the required checks
+# stale. Without the secret the job degrades to `secrets.GITHUB_TOKEN`.
+#
+# Merge policy: no approving review is required anywhere in this repository.
+# A pull request is merged when its status checks are green and it is either
+# authored by Dependabot, authored by the repository owner, or labelled
+# `automerge`. The `do-not-merge` label is always respected.
+
+on:
+  schedule:
+    - cron: "37 4 * * *"
+  workflow_dispatch:
+    inputs:
+      merge:
+        description: Merge pull requests whose checks are green
+        type: boolean
+        default: true
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: auto-update-prs
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Rebase open pull requests onto main and merge the green ones
+        env:
+          GH_TOKEN: ${{ secrets.AUTO_MERGE_TOKEN || secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          OWNER: ${{ github.repository_owner }}
+          DO_MERGE: ${{ github.event.inputs.merge || 'true' }}
+        run: |
+          set -euo pipefail
+
+          prs=$(gh pr list --repo "$REPO" --state open --limit 100 \
+            --json number,isDraft,author,labels,mergeStateStatus,baseRefName \
+            --jq '.[] | select(.baseRefName == "main") | select(.isDraft == false) | [(.number | tostring), .author.login, .mergeStateStatus, ([.labels[].name] | join(","))] | @tsv')
+
+          if [[ -z "$prs" ]]; then
+            echo "No open pull requests against main."
+            exit 0
+          fi
+
+          while IFS=$'\t' read -r number author state labels; do
+            [[ -z "${number:-}" ]] && continue
+            echo "::group::PR #${number} author=${author} state=${state} labels=${labels}"
+
+            if [[ ",${labels}," == *",do-not-merge,"* ]]; then
+              echo "skip: labelled do-not-merge"
+              echo "::endgroup::"
+              continue
+            fi
+
+            if [[ "$state" == "BEHIND" || "$state" == "DIRTY" ]]; then
+              if gh pr update-branch "$number" --repo "$REPO" --rebase; then
+                echo "ok: rebased onto main"
+              else
+                echo "::warning title=Rebase failed::PR #${number} could not be rebased automatically; resolve the conflict by hand."
+              fi
+            else
+              echo "ok: already current with main (${state})"
+            fi
+
+            if [[ "$DO_MERGE" != "true" ]]; then
+              echo "skip: merging disabled for this run"
+              echo "::endgroup::"
+              continue
+            fi
+
+            if [[ "$author" != "dependabot[bot]" && "$author" != "$OWNER" && ",${labels}," != *",automerge,"* ]]; then
+              echo "skip: ${author} is not auto-merge eligible; add the automerge label"
+              echo "::endgroup::"
+              continue
+            fi
+
+            rollup=$(gh pr view "$number" --repo "$REPO" --json statusCheckRollup \
+              --jq '[.statusCheckRollup[] | (.conclusion // .state // "PENDING")] | if length == 0 then "none" elif all(. == "SUCCESS" or . == "NEUTRAL" or . == "SKIPPED") then "green" else "pending" end')
+
+            case "$rollup" in
+              green)
+                if gh pr merge "$number" --repo "$REPO" --squash; then
+                  echo "ok: merged with a squash commit"
+                else
+                  echo "::warning title=Merge failed::PR #${number} could not be merged automatically."
+                fi
+                ;;
+              none)
+                echo "skip: no status checks reported yet"
+                ;;
+              *)
+                echo "skip: status checks are not green yet"
+                ;;
+            esac
+
+            echo "::endgroup::"
+          done <<< "$prs"
