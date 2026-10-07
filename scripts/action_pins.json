@@ -7,7 +7,7 @@
     "actions/upload-artifact": "v4.6.2",
     "actions/download-artifact": "v4.3.0",
     "actions/labeler": "v5.0.0",
-    "actions/stale": "v9.1.0",
+    "actions/stale": "v11.0.0",
     "actions/configure-pages": "v5.0.0",
     "actions/upload-pages-artifact": "v3.0.1",
     "actions/deploy-pages": "v4.0.5",

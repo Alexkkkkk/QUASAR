@@ -23,8 +23,8 @@
       "sha": "8558fd74291d67161a8a78ce36a881fa63b766a9"
     },
     "actions/stale": {
-      "tag": "v9.1.0",
-      "sha": "5bef64f19d7facfb25b37b414482c7164d639639"
+      "tag": "v11.0.0",
+      "sha": "4391f3da665fdf50b6810c1a66712fb9ba21aa93"
     },
     "actions/configure-pages": {
       "tag": "v5.0.0",
