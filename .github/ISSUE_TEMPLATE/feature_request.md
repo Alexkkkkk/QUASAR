@@ -1,8 +1,8 @@
 ---
 name: Feature request
-about: Propose a scoped improvement to QUASAR
-title: "[Feature] "
-labels: enhancement
+about: Propose a change to contracts, tooling or the dApp
+title: "[feature] "
+labels: ["enhancement", "triaged"]
 ---
 
 ## Цель
@@ -11,11 +11,14 @@ labels: enhancement
 
 ## Problem
 
-What user or operator problem would this solve?
+## Proposed change
 
-## Proposed behavior
+## TON / TEP reference
 
-Describe the smallest useful change.
+## Does this change contract state, fees, supply or permissions?
+
+- [ ] No (off-chain only)
+- [ ] Yes - a security note and a regression test are required
 
 ## Затронутые контракты / страницы
 
@@ -31,10 +34,6 @@ Describe the smallest useful change.
 ## Тесты
 
 Какие тесты добавить/обновить:
-
-## Contract and security impact
-
-Does this change balances, permissions, supply, fees, randomness, or deployment?
 
 ## Риски
 

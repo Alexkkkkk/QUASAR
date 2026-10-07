@@ -1,17 +1,15 @@
 ---
 name: Bug report
-about: Report a reproducible problem in the contracts, UI, or tooling
-title: "[Bug] "
-labels: bug
+about: Report a defect in contracts, tooling or the dApp
+title: "[bug] "
+labels: ["bug", "triaged"]
 ---
 
-## Цель
+<!-- WARNING: never paste a mnemonic, private key, API key or .env content here. -->
 
-Одним предложением: что сломано и какой результат нужен.
+## What happened
 
-## Summary
-
-Describe the problem in one or two sentences.
+## Expected behavior
 
 ## Затронутые контракты / страницы
 
@@ -22,11 +20,16 @@ Describe the problem in one or two sentences.
 
 1.
 2.
-3.
 
-## Expected behavior
+## Scope
 
-## Actual behavior
+- Component: contracts / scripts / dApp / docs
+- Network: testnet / mainnet / sandbox
+- Contract address (if deployed):
+
+## TON reference
+
+<!-- Link the relevant docs.ton.org page or TEP (74 / 64 / 89) when the bug is a standard violation. -->
 
 ## Критерии приёмки
 
@@ -44,10 +47,9 @@ Describe the problem in one or two sentences.
 
 ## Environment
 
-- Network: testnet / mainnet / local
-- Commit or tag:
-- Node.js:
-- Tact:
+- Node (`node -v`):
+- OS:
+- Commit:
 
 ## Security impact
 

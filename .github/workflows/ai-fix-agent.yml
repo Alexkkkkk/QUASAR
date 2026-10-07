@@ -24,7 +24,7 @@ jobs:
       issues: read
     steps:
       - name: Check out the default branch without persisted credentials
-        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           ref: ${{ github.event.repository.default_branch }}
           persist-credentials: false
@@ -42,7 +42,7 @@ jobs:
 
       - name: Generate a scoped patch with Gemini
         id: gemini
-        uses: google-github-actions/run-gemini-cli@f77273f4c914e4bf38440cf36a0369cb64a37489
+        uses: google-github-actions/run-gemini-cli@f77273f4c914e4bf38440cf36a0369cb64a37489 # v0.1.22
         env:
           GEMINI_CLI_TRUST_WORKSPACE: "true"
         with:
@@ -86,7 +86,7 @@ jobs:
             echo "::error::Gemini produced no file changes. No pull request was created."
             exit 1
           fi
-          protected_pattern='(^\.github/workflows/|^\.gemini/|^GEMINI\.md$|^docs/AI_AGENT\.md$|^docs/ai/AI_ISSUE_AGENT\.md$|^package(-lock)?\.json$|^scripts/(deploy[^/]*|security_check\.ts|check_deployment\.ts)$|(^|/)(deployment\.json|build-hashes\.json)$|(^|/)\.env($|\.)|(^|/)(seed([_-]?phrase)?|mnemonic|private[-_]?key|wallet[-_]?credentials?)(/|\.|$)'
+          protected_pattern='(^\.github/workflows/|^\.gemini/|^GEMINI\.md$|^docs/AI_AGENT\.md$|^docs/ai/AI_ISSUE_AGENT\.md$|^package(-lock)?\.json$|^scripts/(deploy[^/]*|security_check\.ts|check_deployment\.ts|hub_audit\.ts|sync_action_pins\.ts)$|(^|/)(deployment\.json|build-hashes\.json|action_pins\.lock\.json)$|(^|/)\.env($|\.)|(^|/)(seed([_-]?phrase)?|mnemonic|private[-_]?key|wallet[-_]?credentials?)(/|\.|$))'
           blocked=$(printf '%s\n' "$changed" | grep -E "$protected_pattern" || true)
           if [[ -n "$blocked" ]]; then
             echo "::error::The patch touches protected files. No artifact or pull request was created."
@@ -100,7 +100,7 @@ jobs:
           fi
 
       - name: Upload patch for isolated validation
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: ai-fix-patch
           path: ${{ runner.temp }}/ai-fix.patch
@@ -116,13 +116,13 @@ jobs:
       contents: read
     steps:
       - name: Check out the default branch without persisted credentials
-        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           ref: ${{ github.event.repository.default_branch }}
           persist-credentials: false
 
       - name: Download generated patch
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           name: ai-fix-patch
           path: ${{ runner.temp }}/ai-fix
@@ -138,10 +138,8 @@ jobs:
           git diff --check
 
       - name: Set up Node.js
-        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
-          # Single source of truth for the toolchain: this job must build exactly
-          # like QUASAR CI, so the Node version is read from .nvmrc.
           node-version-file: .nvmrc
           cache: npm
 
@@ -169,6 +167,12 @@ jobs:
       - name: Type-check scripts and tests
         run: npx tsc --noEmit
 
+      - name: Verify action pins match the declared tags
+        run: npm run pins:check
+
+      - name: Audit the automation hub
+        run: npm run hub:audit
+
       - name: Audit dependencies
         run: npm audit --audit-level=high
 
@@ -182,13 +186,13 @@ jobs:
       pull-requests: write
     steps:
       - name: Check out the default branch without persisted credentials
-        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           ref: ${{ github.event.repository.default_branch }}
           persist-credentials: false
 
       - name: Download validated patch
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           name: ai-fix-patch
           path: ${{ runner.temp }}/ai-fix
@@ -202,7 +206,7 @@ jobs:
           git apply "$patch_file"
 
       - name: Create or update a draft pull request
-        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1
+        uses: peter-evans/create-pull-request@22a9089034f40e5a961c8808d113e2c98fb63676 # v7.0.11
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           branch: ai/${{ github.event.issue.number }}-agent
@@ -219,4 +223,3 @@ jobs:
             Fixes #${{ github.event.issue.number }}
           draft: always-true
           delete-branch: true
-

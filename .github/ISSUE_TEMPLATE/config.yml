@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security vulnerability (private)
+    url: https://github.com/Alexkkkkk/QUASAR/security/advisories/new
+    about: Do not open a public issue for a vulnerability. See SECURITY.md.
+  - name: TON documentation
+    url: https://docs.ton.org/
+    about: Reference for TEP-74, TEP-64, TEP-89 and message handling.
