@@ -9,7 +9,7 @@
     "actions/labeler": "v5.0.0",
     "actions/stale": "v9.1.0",
     "actions/configure-pages": "v5.0.0",
-    "actions/upload-pages-artifact": "v3.0.1",
+    "actions/upload-pages-artifact": "v5.0.0",
     "actions/deploy-pages": "v4.0.5",
     "actions/attest-build-provenance": "v2.4.0",
     "actions/dependency-review-action": "v4.9.0",
