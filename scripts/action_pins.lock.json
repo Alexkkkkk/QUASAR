@@ -43,8 +43,8 @@
       "sha": "e8998f949152b193b063cb0ec769d69d929409be"
     },
     "actions/dependency-review-action": {
-      "tag": "v4.9.0",
-      "sha": "2031cfc080254a8a887f58cffee85186f0e49e48"
+      "tag": "v5.0.0",
+      "sha": "a1d282b36b6f3519aa1f3fc636f609c47dddb294"
     },
     "dependabot/fetch-metadata": {
       "tag": "v2.5.0",
