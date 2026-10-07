@@ -31,8 +31,8 @@
       "sha": "983d7736d9b0ae728b81ab479565c72886d7745b"
     },
     "actions/upload-pages-artifact": {
-      "tag": "v3.0.1",
-      "sha": "56afc609e74202658d3ffba0e8f6dda462b719fa"
+      "tag": "v5.0.0",
+      "sha": "fc324d3547104276b827a68afc52ff2a11cc49c9"
     },
     "actions/deploy-pages": {
       "tag": "v4.0.5",
