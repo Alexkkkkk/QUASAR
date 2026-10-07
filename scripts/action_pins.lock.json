@@ -39,8 +39,8 @@
       "sha": "d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e"
     },
     "actions/attest-build-provenance": {
-      "tag": "v2.4.0",
-      "sha": "e8998f949152b193b063cb0ec769d69d929409be"
+      "tag": "v4.2.2",
+      "sha": "4d101475d8b20a2381f78447822ac1eab6504dd8"
     },
     "actions/dependency-review-action": {
       "tag": "v5.0.0",
