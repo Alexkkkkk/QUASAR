@@ -12,7 +12,7 @@
     "actions/upload-pages-artifact": "v3.0.1",
     "actions/deploy-pages": "v4.0.5",
     "actions/attest-build-provenance": "v2.4.0",
-    "actions/dependency-review-action": "v4.9.0",
+    "actions/dependency-review-action": "v5.0.0",
     "dependabot/fetch-metadata": "v2.5.0",
     "peter-evans/create-pull-request": "v7.0.11",
     "google-github-actions/run-gemini-cli": "v0.1.22"
