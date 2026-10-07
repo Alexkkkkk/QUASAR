@@ -3,8 +3,8 @@
   "generatedBy": "scripts/sync_action_pins.ts",
   "actions": {
     "actions/checkout": {
-      "tag": "v4.4.0",
-      "sha": "11d5960a326750d5838078e36cf38b85af677262"
+      "tag": "v7.0.1",
+      "sha": "3d3c42e5aac5ba805825da76410c181273ba90b1"
     },
     "actions/setup-node": {
       "tag": "v4.4.0",
