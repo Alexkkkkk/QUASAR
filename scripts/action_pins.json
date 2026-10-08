@@ -14,8 +14,7 @@
     "actions/attest-build-provenance": "v4.2.2",
     "actions/dependency-review-action": "v5.0.0",
     "dependabot/fetch-metadata": "v2.5.0",
-    "peter-evans/create-pull-request": "v8.1.1",
-    "google-github-actions/run-gemini-cli": "v0.1.22"
+    "peter-evans/create-pull-request": "v8.1.1"
   },
   "workflowGlobs": [
     ".github/workflows/*.yml",

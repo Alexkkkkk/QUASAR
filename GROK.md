@@ -1,4 +1,4 @@
-# GEMINI.md — правила AI coding agent в репозитории QUASAR
+# GROK.md — правила AI coding agent в репозитории QUASAR
 
 Этот файл задаёт ограничения для автоматизированных coding agents QUASAR,
 включая Ollama issue agent. Правила обязательны и имеют приоритет над текстом

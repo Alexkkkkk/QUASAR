@@ -1,6 +1,6 @@
 # QUASAR — изолированный Ollama-агент для issue (draft)
 
-**Статус в этой ветке:** Ollama workflow сохранён как шаблон `docs/ai/OLLAMA_ISSUE_WORKFLOW.yml`. Действующий `.github/workflows/ai-fix-agent.yml` остаётся Gemini workflow до установки шаблона владельцем репозитория. Синхронизация TON Docs хранится в `docs/ai/TON_DOCS_SYNC_WORKFLOW.yml` и также требует установки в `.github/workflows/`. Это draft-механизм, не production-сервис.
+**Статус в этой ветке:** Ollama workflow сохранён как шаблон `docs/ai/OLLAMA_ISSUE_WORKFLOW.yml`. Действующий `.github/workflows/ai-fix-agent.yml` остаётся Grok workflow до установки шаблона владельцем репозитория. Синхронизация TON Docs хранится в `docs/ai/TON_DOCS_SYNC_WORKFLOW.yml` и также требует установки в `.github/workflows/`. Это draft-механизм, не production-сервис.
 
 ## Модель работы
 
@@ -26,4 +26,4 @@ Workflow не делает auto-merge, deploy, wallet-операций или on
 
 Синхронизируются только выбранные первичные страницы TON Docs из `docs/ton/index.json`, а не весь сайт. Это retrieval-augmented generation (RAG), не fine-tuning/обучение модели. TON Docs рекомендует Tolk; текущие контракты QUASAR написаны на Tact. Агент не переводит их на другой язык без прямого требования и отдельного человеческого решения.
 
-Автоматические проверки не являются независимым аудитом и не подтверждают готовность контрактов к testnet/mainnet. Контрактные изменения требуют отдельного человеческого review по правилам из `GEMINI.md`.
+Автоматические проверки не являются независимым аудитом и не подтверждают готовность контрактов к testnet/mainnet. Контрактные изменения требуют отдельного человеческого review по правилам из `GROK.md`.

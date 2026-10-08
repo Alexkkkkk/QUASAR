@@ -1,4 +1,4 @@
-# QUASAR — инструкции для AI-агентов (Copilot / Gemini / Ollama)
+# QUASAR — инструкции для AI-агентов (Copilot / Grok / Ollama)
 
 ## Что это за проект
 
@@ -8,7 +8,7 @@ QUASAR — jetton-проект в сети TON на языке [Tact](https://do
 - `contracts/quasar_common.tact` — общие типы, TEP-74/TEP-89 сообщения, кошелёк `QuasarWallet`.
 - `contracts/quasar_defi.tact` — `QuasarDeFi`: AMM, стейкинг, фермы, депозиты.
 - `contracts/quasar_admin.tact` — `QuasarAdminTimelock`: timelock для владения и настройки.
-- `scripts/` — деплой, ABI-проверки, security-check, AI-оракул, TON Docs sync, issue-агент на Ollama.
+- `scripts/` — деплой, ABI-проверки, security-check, AI-оракул, TON Docs sync, issue-агенты: patch-only Grok (`scripts/grok_issue_agent.py`) и Ollama (`scripts/ollama_issue_agent.py`).
 - `tests/` — on-chain тесты на `@ton/sandbox` (`*.test.ts`) и Python-тесты tooling-а (`test_*.py`).
 - `website/` — статический сайт + метаданные jetton.
 - `docs/` — аудит-отчёты, чек-листы, конформанс-матрица TON.
