@@ -74,7 +74,7 @@ jobs:
           user_file="$RUNNER_TEMP/ai-discuss-user.txt"
           {
             printf 'Issue number: #%s\nTitle: %s\nBody:\n' "$ISSUE" "$ISSUE_TITLE"
-            cat "$GITHUB_EVENT_PATH" | jq -r '.issue.body // ""'
+            jq -r '.issue.body // ""' "$GITHUB_EVENT_PATH"
           } > "$user_file"
 
           request_file="$RUNNER_TEMP/ai-discuss-request.json"
