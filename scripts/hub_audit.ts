@@ -20,6 +20,7 @@ const ONLINE = process.argv.includes("--online");
 
 const REQUIRED_FILES = [
   ".github/workflows/ci.yml",
+  ".github/workflows/_checks.yml",
   ".github/workflows/labeler.yml",
   ".github/workflows/stale.yml",
   ".github/workflows/release.yml",
