@@ -14,6 +14,7 @@ const WORKFLOWS = join(ROOT, ".github", "workflows");
 
 const REQUIRED = [
   ".github/workflows/ci.yml",
+  ".github/workflows/_checks.yml",
   ".github/workflows/labeler.yml",
   ".github/workflows/stale.yml",
   ".github/workflows/release.yml",
@@ -117,6 +118,23 @@ test("hub: dependabot covers npm, the dApp, GitHub Actions and pip", () => {
 test("hub: the required `validate` check still exists in ci.yml", () => {
   const body = readFileSync(join(WORKFLOWS, "ci.yml"), "utf8");
   assert.match(body, /^ {2}validate:\s*$/m, "ci.yml must keep a job named validate");
+});
+
+test("hub: CI and AI-agent share checks, with generated patches applied before validation", () => {
+  const checks = readFileSync(join(WORKFLOWS, "_checks.yml"), "utf8");
+  const ci = readFileSync(join(WORKFLOWS, "ci.yml"), "utf8");
+  const aiFix = readFileSync(join(WORKFLOWS, "ai-fix-agent.yml"), "utf8");
+
+  assert.match(checks, /workflow_call:/, "the shared checks must be callable");
+  assert.match(ci, /validate:\s*\n\s+uses:\s+\.\/\.github\/workflows\/_checks\.yml/);
+  assert.match(aiFix, /validate:\s*\n\s+needs:\s+generate\s*\n\s+uses:\s+\.\/\.github\/workflows\/_checks\.yml/);
+  assert.match(aiFix, /patch_artifact:\s+ai-fix-patch/);
+
+  const applyIndex = checks.indexOf("Apply generated patch");
+  const setupNodeIndex = checks.indexOf("Set up Node.js");
+  assert.ok(applyIndex >= 0, "the shared checks must apply the optional patch");
+  assert.ok(setupNodeIndex >= 0, "the shared checks must run the existing validations");
+  assert.ok(applyIndex < setupNodeIndex, "the generated patch must be applied before validation");
 });
 
 test("hub: release dispatch input is passed safely and validated before use", () => {
