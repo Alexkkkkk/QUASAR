@@ -24,7 +24,7 @@
 
 - **CI** runs contract checks, tests, ABI and dApp validation, deployment checks, TypeScript checks, build hashes, and dependency audit on pushes and pull requests to main.
 - **GitHub Pages** publishes the website when website files change on main.
-- **AI issue agent** currently remains on the existing Gemini workflow. An Ollama (`qwen2.5-coder:3b`) implementation and TON Docs RAG workflow templates are in [`docs/ai/`](docs/ai/AI_ISSUE_AGENT.md); they become active only after a repository owner installs them under `.github/workflows/`. The intended flow is opt-in, isolated validation, and draft PR only—never automatic merge, deployment, or on-chain actions.
+- **AI issue agent** currently remains on the existing Groq workflow. An Ollama (`qwen2.5-coder:3b`) implementation and TON Docs RAG workflow templates are in [`docs/ai/`](docs/ai/AI_ISSUE_AGENT.md); they become active only after a repository owner installs them under `.github/workflows/`. The intended flow is opt-in, isolated validation, and draft PR only—never automatic merge, deployment, or on-chain actions.
 - **TON Docs context** is a seven-page, allowlisted Markdown snapshot. Sync scripts and review steps are documented in [TON Docs sync](docs/TON_DOCS_SYNC.md); refreshing it does not train model weights.
 - **Issue linking** closes issues only when an explicit closing keyword appears in the title, body, or merge-commit headline of a merged PR.
 

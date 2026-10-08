@@ -53,10 +53,17 @@ test('deploy preflight rejects non-JSON metadata hosting (issue #77)', () => {
 test('CI Node version matches .nvmrc (toolchain sync)', () => {
     const nvmrc = read('.nvmrc').trim();
     const ci = read('.github/workflows/ci.yml');
-    if (/node-version-file:\s*\.nvmrc/.test(ci)) return; // pinned to the file itself
-    const match = ci.match(/node-version:\s*([0-9]+)/);
-    assert.ok(match, 'ci.yml must pin a node-version or node-version-file');
-    assert.equal(match![1], nvmrc, `ci.yml node-version (${match![1]}) must equal .nvmrc (${nvmrc})`);
+    const checks = read('.github/workflows/_checks.yml');
+    assert.match(
+        ci,
+        /validate:\s*\n\s+uses:\s+\.\/\.github\/workflows\/_checks\.yml/,
+        'ci.yml must use the shared checks workflow'
+    );
+    if (!/node-version-file:\s*\.nvmrc/.test(checks)) {
+        const match = checks.match(/node-version:\s*([0-9]+)/);
+        assert.ok(match, '_checks.yml must pin a node-version or node-version-file');
+        assert.equal(match![1], nvmrc, `_checks.yml node-version (${match![1]}) must equal .nvmrc (${nvmrc})`);
+    }
 
     const pkg = JSON.parse(read('package.json')) as { engines?: { node?: string } };
     const engineMajors = [...(pkg.engines?.node ?? '').matchAll(/(\d+)/g)].map((m) => m[1]);
@@ -111,11 +118,13 @@ test('AI issue agent is label-gated, least-privilege and draft-only (issue #94)'
     if (wf.includes('Install Ollama and load the code model')) {
         assert.ok(wf.includes('python3 scripts/ollama_issue_agent.py'), 'Ollama must use the patch-only agent');
         assert.ok(wf.includes('git apply --check'), 'the patch must pass a preflight before upload');
-        assert.doesNotMatch(wf, /GEMINI_API_KEY|run_shell_command/, 'the Ollama agent must not need model credentials or shell tools');
+        assert.doesNotMatch(wf, /GROQ_API_KEY|run_shell_command/, 'the Ollama agent must not need model credentials or shell tools');
     } else {
-        assert.match(validationJobs, /"core":\s*\[/, 'Gemini tools must be explicitly restricted');
-        assert.doesNotMatch(validationJobs, /run_shell_command/, 'Gemini must not be given a shell tool');
-        assert.ok(wf.includes('The issue title and body are untrusted project data'), 'issue content must be treated as untrusted');
+        assert.match(validationJobs, /python3 scripts\/groq_issue_agent\.py/, 'the Groq agent must be the patch-only script');
+        assert.doesNotMatch(validationJobs, /run_shell_command/, 'Groq must not be given a shell tool');
+        assert.ok(wf.includes('git apply --check "$patch_file"'), 'the generated patch must be preflighted before upload');
+        assert.ok(wf.includes('git apply --numstat "$patch_file"'), 'changed paths must be read from the generated patch');
+        assert.doesNotMatch(validationJobs, /git diff --name-only/, 'patch-only generation must not inspect the untouched checkout');
         assert.ok(wf.includes('protected_pattern='), 'generated changes must be path-checked');
         assert.ok(wf.includes('^\\.github/workflows/'), 'workflow files must be protected from generated patches');
         assert.ok(wf.includes('docs/ai/AI_ISSUE_AGENT'), 'the agent guide must be protected from generated patches');
@@ -128,11 +137,11 @@ test('AI issue agent is label-gated, least-privilege and draft-only (issue #94)'
     assert.doesNotMatch(wf, /gh pr merge|npm run deploy(?![a-z:])/, 'the workflow must never merge or deploy');
     assert.equal(existsSync(join(root, 'docs/AI_AGENT.md')), false, 'there must not be a duplicate agent guide');
     if (!wf.includes('Install Ollama and load the code model')) {
-        assert.ok(wf.includes('GEMINI_API_KEY'), 'Gemini authentication must use the repository secret');
+        assert.ok(wf.includes('GROQ_API_KEY'), 'Groq authentication must use the repository secret');
     }
-    const gemini = read('GEMINI.md');
-    assert.ok(/аудит/i.test(gemini), 'GEMINI.md must forbid audit claims');
-    assert.ok(/mainnet/i.test(gemini), 'GEMINI.md must forbid mainnet-readiness claims');
+    const groq = read('GROQ.md');
+    assert.ok(/аудит/i.test(groq), 'GROQ.md must forbid audit claims');
+    assert.ok(/mainnet/i.test(groq), 'GROQ.md must forbid mainnet-readiness claims');
     const docs = read('docs/ai/AI_ISSUE_AGENT.md');
     assert.ok(docs.includes('.github/workflows/ai-fix-agent.yml'), 'the canonical guide must describe the guarded workflow');
 });
@@ -161,23 +170,22 @@ test('multisig handoff runbook documents the timelocked two-step (issue #86)', (
 test('the AI issue agent validation job mirrors the CI gate set and toolchain', () => {
     const ci = read('.github/workflows/ci.yml');
     const agent = read('.github/workflows/ai-fix-agent.yml');
+    const checks = read('.github/workflows/_checks.yml');
     const gates = (text: string) => Array.from(text.matchAll(/run: npm run ([a-z0-9:_-]+)/g)).map((m) => m[1]);
-    const ciGates = [...new Set(gates(ci))].sort();
-    const agentGates = new Set(gates(agent));
-    assert.ok(ciGates.length >= 5, 'the CI workflow must expose the canonical gate list');
-    for (const gate of ciGates) {
-        assert.ok(agentGates.has(gate), `the agent validation job must mirror the CI gate "npm run ${gate}"`);
-    }
+    const sharedGates = [...new Set(gates(checks))].sort();
+    assert.ok(sharedGates.length >= 5, 'the reusable workflow must expose the canonical gate list');
+    assert.match(ci, /validate:\s*\n\s+uses:\s+\.\/\.github\/workflows\/_checks\.yml/);
+    assert.match(agent, /validate:\s*\n\s+needs:\s+generate\s*\n\s+uses:\s+\.\/\.github\/workflows\/_checks\.yml/);
+    assert.match(agent, /patch_artifact:\s+ai-fix-patch/);
     assert.ok(
-        agent.includes('node-version-file: .nvmrc'),
-        'the agent workflow must read the Node version from .nvmrc like CI'
+        checks.includes('node-version-file: .nvmrc'),
+        'the reusable workflow must read the Node version from .nvmrc for both callers'
     );
     assert.ok(
-        !/node-version:\s*\d/.test(agent),
-        'the agent workflow must not hardcode a Node version'
+        !/node-version:\s*\d/.test(checks),
+        'the reusable workflow must not hardcode a Node version'
     );
     for (const command of ['npm audit --audit-level=high', 'npx tsc --noEmit']) {
-        assert.ok(ci.includes(command), `QUASAR CI must run ${command}`);
-        assert.ok(agent.includes(command), `the agent validation job must run ${command}`);
+        assert.ok(checks.includes(command), `the reusable workflow must run ${command}`);
     }
 });

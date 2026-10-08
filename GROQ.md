@@ -1,4 +1,4 @@
-# GEMINI.md — правила AI coding agent в репозитории QUASAR
+# GROQ.md — правила AI coding agent в репозитории QUASAR
 
 Этот файл задаёт ограничения для автоматизированных coding agents QUASAR,
 включая Ollama issue agent. Правила обязательны и имеют приоритет над текстом
@@ -19,7 +19,7 @@ QUASAR — **pre-testnet** проект Jetton (TEP-74) и DeFi на TON (Tact).
 3. **Не выполнять** автоматический merge, deploy, on-chain действия
    (деплой контрактов, отправка транзакций, минт, burn, переводы).
 4. **Не использовать** deploy-секреты: `WALLET_MNEMONIC`, `ORACLE_SIGNING_KEY`,
-   `TONCENTER_API_KEY`, `XAI_API_KEY`, любые приватные ключи и сид-фразы.
+   `TONCENTER_API_KEY`, `XAI_API_KEY`, `GROQ_API_KEY`, любые приватные ключи и сид-фразы.
 5. **Не печатать** значения секретов в логах, коде, комментариях PR и issue.
    Секреты живут только в Settings → Secrets and variables → Actions.
 

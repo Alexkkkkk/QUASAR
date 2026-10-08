@@ -32,7 +32,7 @@ class OllamaAgentTests(unittest.TestCase):
         self.assertEqual(validate_patch(patch), patch)
 
     def test_rejects_workflow_and_agent_policy_changes(self) -> None:
-        for path in (".github/workflows/ci.yml", "GEMINI.md", "package.json"):
+        for path in (".github/workflows/ci.yml", "GROQ.md", "package.json"):
             with self.subTest(path=path):
                 patch = (
                     f"diff --git a/{path} b/{path}\n"
