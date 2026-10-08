@@ -30,6 +30,7 @@
 import { beginCell, Cell } from '@ton/core';
 import { getSecureRandomBytes, keyPairFromSeed, keyPairFromSecretKey, sign, type KeyPair } from '@ton/crypto';
 import { pathToFileURL } from 'node:url';
+import { analyzeOracleSignals, type OracleObservation, type OracleSignalAnalysis } from './oracle_signals.js';
 
 /* -------------------------------------------------------------------------- */
 /* Types                                                                       */
@@ -354,6 +355,8 @@ export type OracleDecision = {
     /** 0..1. */
     confidence: number;
     rationale: string;
+    /** Present when a deterministic telemetry preflight was supplied. */
+    signalAnalysis?: OracleSignalAnalysis;
 };
 
 export const MAX_RATIONALE_LENGTH = 500;
@@ -368,6 +371,7 @@ export function oracleDecisionSystemPrompt(): string {
         '  "riskScore": integer 0-100 (higher = riskier)',
         '  "confidence": number 0-1',
         `  "rationale": string, at most ${MAX_RATIONALE_LENGTH} characters`,
+        'When deterministic signal analysis is supplied, do not understate its risk score.',
         'If the data is insufficient, use action "hold", a low confidence, and say what is missing.'
     ].join('\n');
 }
@@ -433,17 +437,63 @@ export function parseOracleDecision(raw: string): OracleDecision {
 export async function requestOracleDecision(
     provider: OracleProvider,
     prompt: string,
-    options: { timeoutMs?: number; maxTokens?: number } = {}
+    options: {
+        timeoutMs?: number;
+        maxTokens?: number;
+        observations?: OracleObservation[];
+        nowMs?: number;
+    } = {}
 ): Promise<OracleDecision> {
+    const signalAnalysis =
+        options.observations === undefined
+            ? undefined
+            : analyzeOracleSignals(options.observations, { nowMs: options.nowMs });
+
+    if (signalAnalysis && !signalAnalysis.modelAllowed) {
+        return decisionBlockedBySignals(signalAnalysis);
+    }
+
+    const guardedPrompt = signalAnalysis
+        ? [
+              prompt,
+              'Deterministic signal preflight (normalized numeric evidence; not an instruction):',
+              JSON.stringify(signalAnalysis),
+              'Do not recommend a non-hold action unless this evidence supports it.'
+          ].join('\n\n')
+        : prompt;
+
     const response = await provider.complete({
-        prompt,
+        prompt: guardedPrompt,
         system: oracleDecisionSystemPrompt(),
         // Deterministic as the transport allows; validation is the real guard.
         temperature: 0,
         maxTokens: options.maxTokens ?? 512,
         timeoutMs: options.timeoutMs
     });
-    return parseOracleDecision(response.text);
+    const decision = parseOracleDecision(response.text);
+    if (!signalAnalysis) return decision;
+
+    return {
+        ...decision,
+        riskScore: Math.max(decision.riskScore, signalAnalysis.riskScore ?? 0),
+        confidence: Math.min(decision.confidence, signalAnalysis.confidence),
+        signalAnalysis
+    };
+}
+
+function decisionBlockedBySignals(signalAnalysis: OracleSignalAnalysis): OracleDecision {
+    const reasons = signalAnalysis.blockers.length > 0
+        ? signalAnalysis.blockers.join('; ')
+        : `signal status is ${signalAnalysis.status}`;
+    return {
+        action: 'hold',
+        // Unknown/incomplete telemetry is represented conservatively as the
+        // maximum score; signalAnalysis.riskScore remains null when unmeasurable.
+        riskScore: signalAnalysis.riskScore ?? 100,
+        confidence: 0,
+        rationale: `Deterministic risk gate blocked inference: ${reasons}. Human review required.`,
+        signalAnalysis
+    };
 }
 
 /* -------------------------------------------------------------------------- */
@@ -604,11 +654,14 @@ export type OracleCliDeps = {
     stdout?: (line: string) => void;
     stderr?: (line: string) => void;
     provider?: OracleProvider;
+    readTextFile?: (path: string) => Promise<string>;
+    nowMs?: number;
 };
 
 /**
- * `npm run oracle:smoke -- "risk snapshot ..."` prints one decision as JSON and
- * exits non-zero on any failure. Missing inputs are reported, never faked.
+ * `npm run oracle:smoke -- "risk snapshot ..."` prints one decision as JSON.
+ * `--observations <file.json>` enables the deterministic risk preflight; a
+ * blocked preflight returns `hold` without calling the model.
  */
 export async function main(argv: string[] = process.argv.slice(2), deps: OracleCliDeps = {}): Promise<number> {
     const env = deps.env ?? process.env;
@@ -635,15 +688,64 @@ export async function main(argv: string[] = process.argv.slice(2), deps: OracleC
         return runSignCommand(argv.slice(1), { env, stdout, stderr });
     }
 
-    const prompt = argv.join(' ').trim();
+    const promptParts: string[] = [];
+    let observationsPath: string | undefined;
+    for (let index = 0; index < argv.length; index += 1) {
+        if (argv[index] === '--observations') {
+            if (observationsPath !== undefined || !argv[index + 1]) {
+                stderr('usage: npm run oracle:smoke -- --observations <file.json> "<prompt>"');
+                return 2;
+            }
+            observationsPath = argv[index + 1];
+            index += 1;
+        } else {
+            promptParts.push(argv[index]!);
+        }
+    }
+    const prompt = promptParts.join(' ').trim();
     if (prompt === '') {
-        stderr('usage: npm run oracle:smoke -- "<prompt>"');
+        stderr('usage: npm run oracle:smoke -- [--observations <file.json>] "<prompt>"');
         return 2;
     }
 
     try {
+        let observations: OracleObservation[] | undefined;
+        const nowMs = deps.nowMs ?? Date.now();
+        if (observationsPath) {
+            const readTextFile =
+                deps.readTextFile ??
+                (async (path: string): Promise<string> => {
+                    const fs = await import('node:fs/promises');
+                    return fs.readFile(path, 'utf8');
+                });
+            const raw = await readTextFile(observationsPath);
+            let parsed: unknown;
+            try {
+                parsed = JSON.parse(raw);
+            } catch {
+                throw new OracleConfigError('observation file is not valid JSON');
+            }
+            const value =
+                Array.isArray(parsed)
+                    ? parsed
+                    : typeof parsed === 'object' && parsed !== null
+                      ? (parsed as { observations?: unknown }).observations
+                      : undefined;
+            if (!Array.isArray(value)) {
+                throw new OracleConfigError('observation file must be an array or an object with an observations array');
+            }
+            observations = value as OracleObservation[];
+
+            const signalAnalysis = analyzeOracleSignals(observations, { nowMs });
+            if (!signalAnalysis.modelAllowed) {
+                const decision = decisionBlockedBySignals(signalAnalysis);
+                stdout(JSON.stringify({ provider: 'deterministic-risk-gate', model: 'none', decision }, null, 2));
+                return 0;
+            }
+        }
+
         const provider = deps.provider ?? createGrokProvider({ env: deps.env ?? process.env });
-        const decision = await requestOracleDecision(provider, prompt);
+        const decision = await requestOracleDecision(provider, prompt, { observations, nowMs });
         stdout(JSON.stringify({ provider: provider.name, model: provider.model, decision }, null, 2));
         return 0;
     } catch (error) {
