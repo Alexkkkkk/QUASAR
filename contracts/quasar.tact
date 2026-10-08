@@ -115,6 +115,9 @@ struct PendingMasterPayout { kind: Int; beneficiary: Address; amount: Int; d1: I
 // QUASAR MASTER
 // ═══════════════════════════════════════════════════════════════
 
+const QUASAR_AI_PRICE_HISTORY_CAP: Int = 2048;
+const QUASAR_AI_ANOMALY_CAP: Int = 1024;
+
 contract QuasarMaster with Deployable {
     // Keep enough TON reserved for rent and long-lived dictionary growth.
     // This changes the code hash and must be applied before public deployment.
@@ -176,6 +179,9 @@ contract QuasarMaster with Deployable {
     priceHistory: map<Int, Int>;
     anomalyLog: map<Int, AIRecommendation>;
     anomalyIndex: Int;
+    // F-34: dropped records are counted so the retention cap stays observable.
+    priceHistoryDropped: Int;
+    anomalyDropped: Int;
     minConfidence: Int as uint8;
     emergencyPause: Bool;
     aiActionCooldown: Int as uint32;
@@ -259,6 +265,8 @@ contract QuasarMaster with Deployable {
     govVotes: map<Int, Bool>;
     govProposalStake: map<Int, Int>;
     govProposalCount: Int;
+    // F-35: proposals that reached quorum, so a replayed proposalId cannot execute again.
+    govProposalExecuted: map<Int, Bool>;
     // Fee-config timelock (v5): owner changes apply only after an on-chain confirm.
     pendingFee: Int as uint16;
     pendingFeeBurnShare: Int;
@@ -331,6 +339,8 @@ contract QuasarMaster with Deployable {
         self.signalCount = 0;
         self.priceHistoryCount = 0;
         self.anomalyIndex = 0;
+        self.priceHistoryDropped = 0;
+        self.anomalyDropped = 0;
         self.minConfidence = 75;
         self.emergencyPause = false;
         self.aiActionCooldown = 21600;
@@ -377,6 +387,7 @@ contract QuasarMaster with Deployable {
         self.govQuorumBps = 1000; // 10% of the staked supply reaches quorum;
         self.govVotes = emptyMap();
         self.govProposalStake = emptyMap();
+        self.govProposalExecuted = emptyMap();
         self.pendingMasterPayouts = emptyMap();
         self.masterPayoutSeq = 0;
         self.govProposalCount = 0;
@@ -446,6 +457,17 @@ contract QuasarMaster with Deployable {
         self.pendingAiActions.set(id, now());
         self.aiActionIndex = id + 1;
         return id;
+    }
+    
+    // F-34: single bounded writer for the anomaly log, so every path shares the
+    // same retention cap and the dropped count stays observable.
+    fun _logAnomaly(action: String, confidence: Int, executed: Bool) {
+        if (self.anomalyIndex < QUASAR_AI_ANOMALY_CAP) {
+            self.anomalyLog.set(self.anomalyIndex, AIRecommendation{ timestamp: now(), action: action, confidence: confidence, executed: executed });
+            self.anomalyIndex = self.anomalyIndex + 1;
+        } else {
+            self.anomalyDropped = self.anomalyDropped + 1;
+        }
     }
     
     fun _isOwnerOverrideWindow(actionId: Int): Bool {
@@ -857,6 +879,10 @@ contract QuasarMaster with Deployable {
         self.reserveBalance = self.reserveBalance + msg.amount;
         
         let burnAmount: Int = msg.amount * self.feeBurnShare / 100;
+        // F-36: the fee burn must never exceed the circulating supply. The
+        // varint range check would abort later anyway; an explicit guard makes
+        // the invariant local, testable and independent of encoding details.
+        require(burnAmount <= self.totalSupply, "Burn exceeds supply");
         let remaining: Int = msg.amount - burnAmount;
         // Burned fees cannot remain spendable in the fee-backed reserve.
         self.reserveBalance = self.reserveBalance - burnAmount;
@@ -981,8 +1007,10 @@ contract QuasarMaster with Deployable {
         if (burnPart > self.reserveBalance) { burnPart = self.reserveBalance }
         // F-09: with an AMM configured, the non-burned share is swapped for
         // TON through the real DeFi pool; without one, the whole pool burns.
-        // swapPart is derived from the CAPPED burn part so the pool is always
-        // fully consumed (burn + swap = pool).
+        // swapPart is derived from the CAPPED burn part, so burn + swap equals
+        // `pool` only when the reserve can back the swap. When the cap below
+        // binds, `pool - burnPart - swapPart` remains in buybackPool for a later
+        // buyback instead of being consumed now (F-38).
         let swapPart: Int = self.defiAddress == newAddress(0, 0) ? 0 : pool - burnPart;
         if (swapPart > self.reserveBalance - burnPart) { swapPart = self.reserveBalance - burnPart }
         self.buybackPool = pool - burnPart - swapPart;
@@ -1392,8 +1420,7 @@ contract QuasarMaster with Deployable {
         self.feeBurnShare = msg.targetBurnShare;
         self.lastRebalanceTime = now();
         self.signalCount = self.signalCount + 1;
-        self.anomalyLog.set(self.anomalyIndex, AIRecommendation{ timestamp: now(), action: msg.recommendation, confidence: 100, executed: true });
-        self.anomalyIndex = self.anomalyIndex + 1;
+        self._logAnomaly(msg.recommendation, 100, true);
         let id: Int = self._logAiAction("Rebalance", oldBurnShare, msg.targetBurnShare, msg.recommendation);
         self.aiActionOldFeeBps.set(id, oldFeeBps);
         send(SendParameters{ to: sender(), value: 0, mode: SendRemainingValue | SendIgnoreErrors, body: EventAiAction{ actionId: id, actionType: "Rebalance", oldValue: oldBurnShare, newValue: msg.targetBurnShare }.toCell() });
@@ -1409,8 +1436,12 @@ contract QuasarMaster with Deployable {
         let oldPause: Bool = self.emergencyPause;
         let oldTrading: Bool = self.tradingEnabled;
         self.signalCount = self.signalCount + 1;
-        self.priceHistory.set(now(), msg.priceTon);
-        self.priceHistoryCount = self.priceHistoryCount + 1;
+        if (self.priceHistoryCount < QUASAR_AI_PRICE_HISTORY_CAP) {
+            self.priceHistory.set(now(), msg.priceTon);
+            self.priceHistoryCount = self.priceHistoryCount + 1;
+        } else {
+            self.priceHistoryDropped = self.priceHistoryDropped + 1;
+        }
         if (msg.action == 2 && msg.volatility > 5000) {
             self.feeBurnShare = 70;
         }
@@ -1441,8 +1472,7 @@ contract QuasarMaster with Deployable {
         let oldFeeBps: Int = self.feeBps;
         let oldPause: Bool = self.emergencyPause;
         let oldTrading: Bool = self.tradingEnabled;
-        self.anomalyLog.set(self.anomalyIndex, AIRecommendation{ timestamp: now(), action: msg.recommendedAction, confidence: 100, executed: false });
-        self.anomalyIndex = self.anomalyIndex + 1;
+        self._logAnomaly(msg.recommendedAction, 100, false);
         if (msg.severity == 3) {
             self.emergencyPause = true;
             self.tradingEnabled = false;
@@ -1494,8 +1524,7 @@ contract QuasarMaster with Deployable {
         } else if (msg.proposalType == 4) {
             self.aiActionOldBuybackThreshold.set(id, oldValue);
         }
-        self.anomalyLog.set(self.anomalyIndex, AIRecommendation{ timestamp: now(), action: msg.description, confidence: msg.confidence, executed: true });
-        self.anomalyIndex = self.anomalyIndex + 1;
+        self._logAnomaly(msg.description, msg.confidence, true);
         send(SendParameters{ to: sender(), value: 0, mode: SendRemainingValue | SendIgnoreErrors, body: EventAiAction{ actionId: id, actionType: actionType, oldValue: oldValue, newValue: msg.newValue }.toCell() });
     }
     
@@ -1595,6 +1624,9 @@ contract QuasarMaster with Deployable {
     receive(msg: GovernanceVote) {
         self._requireNotPaused();
         require(now() <= msg.deadline, "Vote expired");
+        // F-35: a proposal that already reached quorum is closed; a later voter
+        // cannot re-arm the tally with a different `kind` on the same id.
+        require(self.govProposalExecuted.get(msg.proposalId) == null, "Proposal already executed");
         let voteKey: Int = self._voteKey(sender(), msg.proposalId);
         require(self.govVotes.get(voteKey) == null, "Already voted");
         let staker: StakeInfo? = self.stakers.get(sender());
@@ -1639,6 +1671,7 @@ contract QuasarMaster with Deployable {
             // Quorum satisfied: the tally is consumed so the same proposal
             // cannot re-execute on late votes.
             self.govProposalStake.set(msg.proposalId, 0);
+            self.govProposalExecuted.set(msg.proposalId, true);
             emit(EventGovernanceExecuted{ proposalId: msg.proposalId, actionId: id }.toCell());
         }
     }
