@@ -14,6 +14,7 @@ test('AI PR review calls the xAI Grok API without unpinned composite actions', (
     assert.ok(workflow.includes('GROK_API_URL: "https://api.x.ai/v1/chat/completions"'));
     assert.ok(workflow.includes('GROK_MODEL: "grok-4.7"'));
     assert.ok(workflow.includes('secrets.GROK_API_KEY'));
+    assert.doesNotMatch(workflow, /\btemperature:/, 'use provider defaults for the reasoning model');
 });
 
 test('AI PR review passes the actual bounded diff and stays read-only', () => {
@@ -23,4 +24,9 @@ test('AI PR review passes the actual bounded diff and stays read-only', () => {
     assert.ok(workflow.includes('gh pr review "$PR" --comment'));
     assert.ok(!/gh pr (merge|approve)/.test(workflow), 'the review must never approve or merge');
     assert.ok(!/uses:.*@(?!3d3c42e5aac5ba805825da76410c181273ba90b1|820762786026740c76f36085b0efc47a31fe5020)[0-9a-f]{40}/.test(workflow.replace(/actions\/(checkout@3d3c42e5aac5ba805825da76410c181273ba90b1|setup-node@820762786026740c76f36085b0efc47a31fe5020)/g, '')) || true);
+});
+
+test('AI PR review reports a bounded provider error when the API returns a non-JSON body', () => {
+    assert.ok(workflow.includes('head -c 300 "$response_file"'));
+    assert.ok(workflow.includes('Grok API request failed (HTTP %s): %s'));
 });
