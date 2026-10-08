@@ -8,6 +8,7 @@ on:
   workflow_dispatch:
 
 permissions:
+  actions: read
   contents: read
 
 concurrency:
@@ -16,69 +17,6 @@ concurrency:
 
 jobs:
   validate:
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-
-      - name: Set up Node.js
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
-        with:
-          node-version-file: .nvmrc
-          cache: npm
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Lint workflow YAML
-        run: |
-          set -euo pipefail
-          python3 -m pip install --quiet yamllint
-          yamllint -c .yamllint.yml .github
-
-      - name: Lint workflows with actionlint
-        run: |
-          set -euo pipefail
-          bash <(curl -fsSL https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash) 1.7.12
-          ./actionlint -color .github/workflows/*.yml
-
-      - name: Type-check Tact contracts
-        run: npm run lint
-
-      - name: Build and run contract and tooling tests
-        run: npm test
-
-      - name: Verify ABI snapshots
-        run: npm run abi:verify
-
-      - name: Verify the dApp opcode map against the compiled ABI
-        run: npm run abi:dapp
-
-      - name: Validate the deployment artifact (skipped when none is published)
-        run: npm run deployment:check
-
-      - name: Publish build hashes
-        run: npm run hashes:build
-
-      - name: Type-check scripts and tests
-        run: npx tsc --noEmit
-
-      - name: Verify action pins match the declared tags
-        run: npm run pins:check
-
-      - name: Audit the automation hub
-        run: npm run hub:audit
-
-      - name: Upload build-hash artifact
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: quasar-build-hashes
-          path: docs/build-hashes.json
-          if-no-files-found: error
-
-      - name: Audit dependencies
-        run: npm audit --audit-level=high
+    uses: ./.github/workflows/_checks.yml
+    with:
+      ref: ${{ github.sha }}

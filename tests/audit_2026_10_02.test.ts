@@ -53,10 +53,17 @@ test('deploy preflight rejects non-JSON metadata hosting (issue #77)', () => {
 test('CI Node version matches .nvmrc (toolchain sync)', () => {
     const nvmrc = read('.nvmrc').trim();
     const ci = read('.github/workflows/ci.yml');
-    if (/node-version-file:\s*\.nvmrc/.test(ci)) return; // pinned to the file itself
-    const match = ci.match(/node-version:\s*([0-9]+)/);
-    assert.ok(match, 'ci.yml must pin a node-version or node-version-file');
-    assert.equal(match![1], nvmrc, `ci.yml node-version (${match![1]}) must equal .nvmrc (${nvmrc})`);
+    const checks = read('.github/workflows/_checks.yml');
+    assert.match(
+        ci,
+        /validate:\s*\n\s+uses:\s+\.\/\.github\/workflows\/_checks\.yml/,
+        'ci.yml must use the shared checks workflow'
+    );
+    if (!/node-version-file:\s*\.nvmrc/.test(checks)) {
+        const match = checks.match(/node-version:\s*([0-9]+)/);
+        assert.ok(match, '_checks.yml must pin a node-version or node-version-file');
+        assert.equal(match![1], nvmrc, `_checks.yml node-version (${match![1]}) must equal .nvmrc (${nvmrc})`);
+    }
 
     const pkg = JSON.parse(read('package.json')) as { engines?: { node?: string } };
     const engineMajors = [...(pkg.engines?.node ?? '').matchAll(/(\d+)/g)].map((m) => m[1]);
@@ -161,23 +168,22 @@ test('multisig handoff runbook documents the timelocked two-step (issue #86)', (
 test('the AI issue agent validation job mirrors the CI gate set and toolchain', () => {
     const ci = read('.github/workflows/ci.yml');
     const agent = read('.github/workflows/ai-fix-agent.yml');
+    const checks = read('.github/workflows/_checks.yml');
     const gates = (text: string) => Array.from(text.matchAll(/run: npm run ([a-z0-9:_-]+)/g)).map((m) => m[1]);
-    const ciGates = [...new Set(gates(ci))].sort();
-    const agentGates = new Set(gates(agent));
-    assert.ok(ciGates.length >= 5, 'the CI workflow must expose the canonical gate list');
-    for (const gate of ciGates) {
-        assert.ok(agentGates.has(gate), `the agent validation job must mirror the CI gate "npm run ${gate}"`);
-    }
+    const sharedGates = [...new Set(gates(checks))].sort();
+    assert.ok(sharedGates.length >= 5, 'the reusable workflow must expose the canonical gate list');
+    assert.match(ci, /validate:\s*\n\s+uses:\s+\.\/\.github\/workflows\/_checks\.yml/);
+    assert.match(agent, /validate:\s*\n\s+needs:\s+generate\s*\n\s+uses:\s+\.\/\.github\/workflows\/_checks\.yml/);
+    assert.match(agent, /patch_artifact:\s+ai-fix-patch/);
     assert.ok(
-        agent.includes('node-version-file: .nvmrc'),
-        'the agent workflow must read the Node version from .nvmrc like CI'
+        checks.includes('node-version-file: .nvmrc'),
+        'the reusable workflow must read the Node version from .nvmrc for both callers'
     );
     assert.ok(
-        !/node-version:\s*\d/.test(agent),
-        'the agent workflow must not hardcode a Node version'
+        !/node-version:\s*\d/.test(checks),
+        'the reusable workflow must not hardcode a Node version'
     );
     for (const command of ['npm audit --audit-level=high', 'npx tsc --noEmit']) {
-        assert.ok(ci.includes(command), `QUASAR CI must run ${command}`);
-        assert.ok(agent.includes(command), `the agent validation job must run ${command}`);
+        assert.ok(checks.includes(command), `the reusable workflow must run ${command}`);
     }
 });
