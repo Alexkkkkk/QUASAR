@@ -21,8 +21,9 @@ from .benchmarks import make_problem
 from .cmaes import CMAES
 from .evolution import DE
 from .objectives import decode_fee_profile, fee_profile_problem
+from .pso import PSO
 
-ALGORITHMS = {"tpe": TPE, "cmaes": CMAES, "de": DE, "sa": SA}
+ALGORITHMS = {"tpe": TPE, "cmaes": CMAES, "de": DE, "sa": SA, "pso": PSO}
 OBJECTIVES = ("sphere", "rastrigin", "rosenbrock", "fee_profile")
 
 
