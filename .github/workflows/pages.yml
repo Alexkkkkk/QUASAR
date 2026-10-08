@@ -23,6 +23,14 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  checks:
+    # Deploy gate: production publishes only after the shared checks
+    # (lint, actionlint, contract tests, ABI snapshots, pins, hub audit)
+    # pass on the deployed ref.
+    uses: ./.github/workflows/_checks.yml
+    with:
+      ref: ${{ github.sha }}
+
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -45,7 +53,7 @@ jobs:
           path: website
 
   deploy:
-    needs: build
+    needs: [checks, build]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     environment:
