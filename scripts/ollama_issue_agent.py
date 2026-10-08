@@ -30,7 +30,7 @@ MAX_DOC_PAGES = 4
 
 ALLOWED_SUFFIXES = {".tact", ".ts", ".js", ".mjs", ".cjs", ".json", ".md"}
 ALWAYS_CONTEXT = (
-    "GEMINI.md",
+    "GROQ.md",
     "docs/TON_CONFORMANCE_MATRIX.md",
     ".agents/memory/tact-runtime.md",
 )
@@ -38,7 +38,7 @@ PROTECTED_PATTERNS = (
     re.compile(r"^\.github/workflows/"),
     re.compile(r"^\.github/copilot-instructions\.md$"),
     re.compile(r"^\.agents/"),
-    re.compile(r"^GEMINI\.md$"),
+    re.compile(r"^GROQ\.md$"),
     re.compile(r"^docs/ai/AI_ISSUE_AGENT\.md$"),
     re.compile(r"^docs/ton/"),
     re.compile(r"^package(-lock)?\.json$"),
