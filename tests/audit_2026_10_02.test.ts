@@ -115,6 +115,9 @@ test('AI issue agent is label-gated, least-privilege and draft-only (issue #94)'
     } else {
         assert.match(validationJobs, /python3 scripts\/groq_issue_agent\.py/, 'the Groq agent must be the patch-only script');
         assert.doesNotMatch(validationJobs, /run_shell_command/, 'Groq must not be given a shell tool');
+        assert.ok(wf.includes('git apply --check "$patch_file"'), 'the generated patch must be preflighted before upload');
+        assert.ok(wf.includes('git apply --numstat "$patch_file"'), 'changed paths must be read from the generated patch');
+        assert.doesNotMatch(validationJobs, /git diff --name-only/, 'patch-only generation must not inspect the untouched checkout');
         assert.ok(wf.includes('protected_pattern='), 'generated changes must be path-checked');
         assert.ok(wf.includes('^\\.github/workflows/'), 'workflow files must be protected from generated patches');
         assert.ok(wf.includes('docs/ai/AI_ISSUE_AGENT'), 'the agent guide must be protected from generated patches');
