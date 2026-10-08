@@ -29,29 +29,29 @@ jobs:
           ref: ${{ github.event.repository.default_branch }}
           persist-credentials: false
 
-      - name: Require the Grok API key
+      - name: Require the Groq API key
         shell: bash
         env:
-          GROK_API_KEY: ${{ secrets.GROK_API_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
         run: |
           set -euo pipefail
-          if [[ -z "$GROK_API_KEY" ]]; then
-            echo "::error title=Missing Grok API key::Add GROK_API_KEY to repository Actions secrets."
+          if [[ -z "$GROQ_API_KEY" ]]; then
+            echo "::error title=Missing Groq API key::Add GROQ_API_KEY to repository Actions secrets."
             exit 1
           fi
 
-      - name: Generate a scoped patch with Grok
+      - name: Generate a scoped patch with Groq
         shell: bash
         env:
-          GROK_API_KEY: ${{ secrets.GROK_API_KEY }}
-          GROK_API_URL: "https://api.x.ai/v1/chat/completions"
-          GROK_MODEL: "grok-4.7"
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          GROQ_API_URL: "https://api.groq.com/openai/v1/chat/completions"
+          GROQ_MODEL: "openai/gpt-oss-120b"
         run: |
           set -euo pipefail
           # Patch-only agent: bounded RAG context goes to the OpenAI-compatible
-          # xAI endpoint, the model has no tools and returns a unified diff
+          # Groq endpoint, the model has no tools and returns a unified diff
           # validated by scripts/ollama_issue_agent.py::validate_patch.
-          python3 scripts/grok_issue_agent.py \
+          python3 scripts/groq_issue_agent.py \
             --event "$GITHUB_EVENT_PATH" \
             --output "$RUNNER_TEMP/ai-fix.patch" \
             --repo-root "$GITHUB_WORKSPACE" \
@@ -64,10 +64,10 @@ jobs:
           git add --intent-to-add --all
           changed=$(git diff --name-only --no-renames)
           if [[ -z "$changed" ]]; then
-            echo "::error::Grok produced no file changes. No pull request was created."
+            echo "::error::Groq produced no file changes. No pull request was created."
             exit 1
           fi
-          protected_pattern='(^\.github/workflows/|^GROK\.md$|^docs/AI_AGENT\.md$|^docs/ai/AI_ISSUE_AGENT\.md$|^package(-lock)?\.json$|^scripts/(deploy[^/]*|security_check\.ts|check_deployment\.ts|hub_audit\.ts|sync_action_pins\.ts)$|(^|/)(deployment\.json|build-hashes\.json|action_pins\.lock\.json)$|(^|/)\.env($|\.)|(^|/)(seed([_-]?phrase)?|mnemonic|private[-_]?key|wallet[-_]?credentials?)(/|\.|$))'
+          protected_pattern='(^\.github/workflows/|^GROQ\.md$|^docs/AI_AGENT\.md$|^docs/ai/AI_ISSUE_AGENT\.md$|^package(-lock)?\.json$|^scripts/(deploy[^/]*|security_check\.ts|check_deployment\.ts|hub_audit\.ts|sync_action_pins\.ts)$|(^|/)(deployment\.json|build-hashes\.json|action_pins\.lock\.json)$|(^|/)\.env($|\.)|(^|/)(seed([_-]?phrase)?|mnemonic|private[-_]?key|wallet[-_]?credentials?)(/|\.|$))'
           blocked=$(printf '%s\n' "$changed" | grep -E "$protected_pattern" || true)
           if [[ -n "$blocked" ]]; then
             echo "::error::The patch touches protected files. No artifact or pull request was created."

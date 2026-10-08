@@ -218,7 +218,7 @@
   - Проверка: `tests/audit_2026_10_02.test.ts`.
 
 - [x] **T-19 Защищённый ИИ-агент и удаление auto-merge (issue #94).**
-  - Файлы: `.github/workflows/ai-fix.yml`, `GROK.md`,
+  - Файлы: `.github/workflows/ai-fix.yml`, `GROQ.md`,
     `docs/ai/AI_ISSUE_AGENT.md`; удалён `autopilot-automerge.yml`.
   - Проблема: прежний autopilot включал auto-merge для любого PR без review.
   - Исправление: агент запускается только по метке `ai-fix` от доверенного

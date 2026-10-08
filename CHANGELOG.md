@@ -50,9 +50,9 @@
 - ci: remove `.github/workflows/autopilot-automerge.yml`, which enabled
   auto-merge for every pull request without human review (#94).
 - feat(ci): add `.github/workflows/ai-fix.yml` — a manual-`ai-fix`-label
-  Grok CLI agent that works in an `ai/<issue>-*` branch and opens a draft PR
+  Groq API agent that works in an `ai/<issue>-*` branch and opens a draft PR
   only after `lint`, `security:check`, `test` and `tsc` pass; no merge, no
-  deploy, no deploy secrets. Add `GROK.md` rules and
+  deploy, no deploy secrets. Add `GROQ.md` rules and
   `docs/ai/AI_ISSUE_AGENT.md` (#94).
 - docs: add `docs/MULTISIG_HANDOFF_RUNBOOK.md` for wiring external 2-of-N
   multisig ownership through the existing timelocked two-step (#86).

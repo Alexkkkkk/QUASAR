@@ -8,7 +8,7 @@ name: AI issue discussion
 # to reveal secrets, change branch protection, merge PRs or perform
 # on-chain actions are ignored.
 #
-# Model: Grok via the xAI OpenAI-compatible API (GROK_API_KEY secret).
+# Model: Groq via the Groq OpenAI-compatible API (GROQ_API_KEY secret).
 
 on:
   issues:
@@ -36,23 +36,23 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Require the Grok API key
+      - name: Require the Groq API key
         shell: bash
         env:
-          GROK_API_KEY: ${{ secrets.GROK_API_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
         run: |
           set -euo pipefail
-          if [[ -z "$GROK_API_KEY" ]]; then
-            echo "::error title=Missing Grok API key::Add GROK_API_KEY to repository Actions secrets."
+          if [[ -z "$GROQ_API_KEY" ]]; then
+            echo "::error title=Missing Groq API key::Add GROQ_API_KEY to repository Actions secrets."
             exit 1
           fi
 
-      - name: Answer the question with Grok
+      - name: Answer the question with Groq
         shell: bash
         env:
-          GROK_API_KEY: ${{ secrets.GROK_API_KEY }}
-          GROK_API_URL: "https://api.x.ai/v1/chat/completions"
-          GROK_MODEL: "grok-4.7"
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          GROQ_API_URL: "https://api.groq.com/openai/v1/chat/completions"
+          GROQ_MODEL: "openai/gpt-oss-120b"
           ISSUE: ${{ github.event.issue.number }}
           ISSUE_TITLE: ${{ github.event.issue.title }}
         run: |
@@ -79,7 +79,7 @@ jobs:
 
           request_file="$RUNNER_TEMP/ai-discuss-request.json"
           jq -n \
-            --arg model "$GROK_MODEL" \
+            --arg model "$GROQ_MODEL" \
             --rawfile system "$system_file" \
             --rawfile user "$user_file" \
             '{
@@ -87,23 +87,22 @@ jobs:
               messages: [
                 { role: "system", content: $system },
                 { role: "user", content: $user }
-              ],
-              temperature: 0.2
+              ]
             }' > "$request_file"
 
           response_file="$RUNNER_TEMP/ai-discuss-response.json"
           if ! curl -sS --fail-with-body --max-time 600 \
-            -H "Authorization: Bearer $GROK_API_KEY" \
+            -H "Authorization: Bearer $GROQ_API_KEY" \
             -H "Content-Type: application/json" \
             --data-binary @"$request_file" \
-            "$GROK_API_URL" > "$response_file"; then
-            echo "::error::Grok API request failed."
+            "$GROQ_API_URL" > "$response_file"; then
+            echo "::error::Groq API request failed."
             exit 1
           fi
 
           if ! jq -er '.choices[0].message.content | select(type == "string" and length > 0)' \
             "$response_file" > "$RUNNER_TEMP/ai-discuss-answer.md"; then
-            echo "::error::Grok returned an empty answer."
+            echo "::error::Groq returned an empty answer."
             exit 1
           fi
 
@@ -116,10 +115,10 @@ jobs:
           set -euo pipefail
           ANSWER="$(cat "$RUNNER_TEMP/ai-discuss-answer.md")"
           if [[ -z "$ANSWER" ]]; then
-            echo "::error::Grok returned an empty answer."
+            echo "::error::Groq returned an empty answer."
             exit 1
           fi
-          gh issue comment "$ISSUE" --body "🤖 **AI-разбор (opt-in, только чтение, Grok)**
+          gh issue comment "$ISSUE" --body "🤖 **AI-разбор (opt-in, только чтение, Groq)**
 
           ${ANSWER}
 
