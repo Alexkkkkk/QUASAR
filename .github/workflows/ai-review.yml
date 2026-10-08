@@ -131,8 +131,41 @@ jobs:
           fi
           if ! jq -er '.choices[0].message.content | select(type == "string" and length > 0)' \
             "$response_file" > "$RUNNER_TEMP/ai-review-response.md"; then
-            echo "::error::Groq returned an empty review."
-            exit 1
+            echo "::warning::Groq returned an empty review; retrying once with a larger completion budget."
+            retry_request_file="$RUNNER_TEMP/ai-review-retry-request.json"
+            retry_response_file="$RUNNER_TEMP/ai-review-retry-response.json"
+            jq '.max_completion_tokens = 1200' "$request_file" > "$retry_request_file"
+
+            if ! http_status="$(
+              curl -sS --fail-with-body --max-time 300 \
+                -H "Authorization: Bearer $GROQ_API_KEY" \
+                -H "Content-Type: application/json" \
+                --data-binary @"$retry_request_file" \
+                --output "$retry_response_file" \
+                --write-out '%{http_code}' \
+                "$GROQ_API_URL"
+            )"; then
+              api_error="$(jq -r '(.error.message // .error // .message // .detail // empty) | tostring | gsub("[\\r\\n]+"; " ")' "$retry_response_file" 2>/dev/null || true)"
+              api_error="${api_error:0:300}"
+              if [[ -n "$api_error" ]]; then
+                printf '::error::Groq retry failed (HTTP %s): %s\n' "$http_status" "$api_error"
+              else
+                printf '::error::Groq retry failed (HTTP %s; no readable provider error).\n' "$http_status"
+              fi
+              exit 1
+            fi
+
+            if ! jq -e . "$retry_response_file" >/dev/null; then
+              echo "::error::Groq retry returned invalid JSON."
+              exit 1
+            fi
+            if ! jq -er '.choices[0].message.content | select(type == "string" and length > 0)' \
+              "$retry_response_file" > "$RUNNER_TEMP/ai-review-response.md"; then
+              finish_reason="$(jq -r '.choices[0].finish_reason // "unknown"' "$retry_response_file" 2>/dev/null | tr -cd '[:alnum:]_.-' | head -c 80)"
+              finish_reason="${finish_reason:-unknown}"
+              printf '::error::Groq returned an empty review after retry (finish_reason: %s).\n' "$finish_reason"
+              exit 1
+            fi
           fi
 
       - name: Publish the review summary as a comment
