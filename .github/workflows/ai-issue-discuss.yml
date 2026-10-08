@@ -77,6 +77,14 @@ jobs:
             jq -r '.issue.body // ""' "$GITHUB_EVENT_PATH"
           } > "$user_file"
 
+          python3 - "$user_file" <<'PY'
+          from pathlib import Path
+          import sys
+          path = Path(sys.argv[1])
+          text = path.read_text(encoding="utf-8", errors="replace")
+          path.write_text(text[:6000], encoding="utf-8")
+          PY
+
           request_file="$RUNNER_TEMP/ai-discuss-request.json"
           jq -n \
             --arg model "$GROQ_MODEL" \
@@ -84,6 +92,7 @@ jobs:
             --rawfile user "$user_file" \
             '{
               model: $model,
+              max_completion_tokens: 1200,
               messages: [
                 { role: "system", content: $system },
                 { role: "user", content: $user }

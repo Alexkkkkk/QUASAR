@@ -9,6 +9,9 @@ from unittest.mock import patch
 from scripts.groq_issue_agent import (
     DEFAULT_API_URL,
     DEFAULT_MODEL,
+    MAX_PROMPT_CHARS,
+    MAX_RESPONSE_TOKENS,
+    bound_prompt,
     call_groq,
     resolve_groq_api_key,
 )
@@ -41,6 +44,12 @@ class GroqIssueAgentTests(unittest.TestCase):
     def test_defaults_target_groq_and_a_supported_model(self) -> None:
         self.assertEqual(DEFAULT_API_URL, "https://api.groq.com/openai/v1/chat/completions")
         self.assertEqual(DEFAULT_MODEL, "openai/gpt-oss-120b")
+        self.assertEqual(MAX_RESPONSE_TOKENS, 1200)
+
+    def test_prompt_is_bounded_for_the_configured_tpm_budget(self) -> None:
+        bounded = bound_prompt("x" * (MAX_PROMPT_CHARS + 100))
+        self.assertLessEqual(len(bounded), MAX_PROMPT_CHARS)
+        self.assertTrue(bounded.endswith("[Prompt truncated to fit the configured Groq request budget.]\n"))
 
     def test_call_uses_openai_compatible_payload_without_temperature_override(self) -> None:
         patch_text = "diff --git a/tests/example.test.ts b/tests/example.test.ts\n"
@@ -65,7 +74,8 @@ class GroqIssueAgentTests(unittest.TestCase):
         self.assertEqual(request.get_header("Authorization"), "Bearer test-key")
         payload = json.loads(request.data.decode("utf-8"))
         self.assertEqual(payload["model"], DEFAULT_MODEL)
-        self.assertEqual(payload["max_completion_tokens"], 8192)
+        self.assertEqual(payload["max_completion_tokens"], MAX_RESPONSE_TOKENS)
+        self.assertLessEqual(len(payload["messages"][1]["content"]), MAX_PROMPT_CHARS)
         self.assertNotIn("temperature", payload)
 
 

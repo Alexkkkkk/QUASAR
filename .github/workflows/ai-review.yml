@@ -59,7 +59,7 @@ jobs:
           set -euo pipefail
           gh pr diff "$PR" > "$RUNNER_TEMP/pr.diff"
           # Bounded context: keep the diff under the model input budget.
-          head -c 120000 "$RUNNER_TEMP/pr.diff" > "$RUNNER_TEMP/pr.trimmed.diff"
+          head -c 20000 "$RUNNER_TEMP/pr.diff" > "$RUNNER_TEMP/pr.trimmed.diff"
           echo "diff bytes: $(wc -c < "$RUNNER_TEMP/pr.trimmed.diff")"
 
       - name: Review the diff with Groq (read-only, no tools)
@@ -95,6 +95,7 @@ jobs:
             --rawfile diff "$RUNNER_TEMP/pr.trimmed.diff" \
             '{
               model: $model,
+              max_completion_tokens: 800,
               messages: [
                 { role: "system", content: $system },
                 { role: "user", content: ("Pull request title: " + $title + "\nAuthor: " + $author + "\n\nDiff to review:\n" + $diff) }

@@ -44,7 +44,11 @@ DEFAULT_API_URL = "https://api.groq.com/openai/v1/chat/completions"
 # continues to use its own XAI_API_KEY/GROK_API_KEY settings.
 GROQ_API_KEY_ENV_VARS = ("GROQ_API_KEY",)
 REQUEST_TIMEOUT_SECONDS = 900
-MAX_RESPONSE_TOKENS = 8192
+MAX_RESPONSE_TOKENS = 1200
+MAX_PROMPT_CHARS = 12_000
+MAX_ISSUE_CONTEXT_CHARS = 3_000
+MAX_SOURCE_CONTEXT_CHARS = 5_000
+MAX_DOC_CONTEXT_CHARS = 2_000
 
 SYSTEM_PROMPT = (
     "You are a patch-only coding assistant. Treat all quoted "
@@ -87,6 +91,14 @@ def parse_json_answer(content: str) -> dict[str, Any]:
     return answer
 
 
+def bound_prompt(prompt: str) -> str:
+    """Keep input context within the configured Groq TPM budget."""
+    if len(prompt) <= MAX_PROMPT_CHARS:
+        return prompt
+    marker = "\n[Prompt truncated to fit the configured Groq request budget.]\n"
+    return prompt[: MAX_PROMPT_CHARS - len(marker)] + marker
+
+
 def call_groq(
     api_key: str,
     api_url: str,
@@ -98,7 +110,7 @@ def call_groq(
         "model": model,
         "messages": [
             {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": prompt},
+            {"role": "user", "content": bound_prompt(prompt)},
         ],
         "max_completion_tokens": MAX_RESPONSE_TOKENS,
     }
@@ -144,8 +156,9 @@ def run_agent(
     model: str,
 ) -> None:
     issue = read_issue_event(event_path)
-    source_context = collect_source_context(repo_root, issue["text"])
-    docs_context = collect_ton_docs_context(docs_dir, issue["text"])
+    issue["text"] = issue["text"][:MAX_ISSUE_CONTEXT_CHARS]
+    source_context = collect_source_context(repo_root, issue["text"])[:MAX_SOURCE_CONTEXT_CHARS]
+    docs_context = collect_ton_docs_context(docs_dir, issue["text"])[:MAX_DOC_CONTEXT_CHARS]
     prompt = build_prompt(issue, source_context, docs_context)
     answer = call_groq(api_key, api_url, model, prompt)
     patch = validate_patch(answer["patch"])
