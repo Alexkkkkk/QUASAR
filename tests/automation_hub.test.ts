@@ -231,3 +231,16 @@ test("hub: the migrated event workflows are gone (no orphan triggers)", () => {
     assert.ok(!existsSync(join(WORKFLOWS, legacy)), `${legacy} must be removed after the hub migration`);
   }
 });
+
+test("hub: ai-review idempotency scans the review feed, not only issue comments (issue #156)", () => {
+  const body = readFileSync(join(WORKFLOWS, "_ai-review.yml"), "utf8");
+  assert.match(body, /pulls\/\$\{PR\}\/reviews/, "the guard must scan the pull-request reviews feed");
+  assert.match(body, /issues\/\$\{PR\}\/comments/, "the guard must still scan issue comments");
+});
+
+test("hub: ai-merge readies drafts and queues auto-merge without bypassing protection (issue #155)", () => {
+  const body = readFileSync(join(WORKFLOWS, "_ai-merge.yml"), "utf8");
+  assert.match(body, /gh pr ready "\$TARGET" --repo "\$GITHUB_REPOSITORY"/, "a draft agent PR must be marked ready before merge");
+  assert.match(body, /gh pr merge "\$TARGET" --repo "\$GITHUB_REPOSITORY" --squash --auto --delete-branch/, "the merge must queue with --auto");
+  assert.match(body, /reviewDecision/, "a human approving review must still be required");
+});
