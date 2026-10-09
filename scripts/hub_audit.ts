@@ -21,12 +21,18 @@ const ONLINE = process.argv.includes("--online");
 const REQUIRED_FILES = [
   ".github/workflows/ci.yml",
   ".github/workflows/_checks.yml",
+  ".github/workflows/quasar.yml",
+  ".github/workflows/_ai-fix.yml",
+  ".github/workflows/_ai-review.yml",
+  ".github/workflows/_close-issues.yml",
+  ".github/workflows/_hub-audit.yml",
+  ".github/workflows/_stale.yml",
+  ".github/workflows/_ai-merge.yml",
+  ".github/workflows/_pr-polish.yml",
+  ".github/workflows/_dms.yml",
   ".github/workflows/labeler.yml",
-  ".github/workflows/stale.yml",
   ".github/workflows/release.yml",
-  ".github/workflows/ai-fix-agent.yml",
   ".github/workflows/ai-ollama-agent.yml",
-  ".github/workflows/hub-audit.yml",
   ".github/workflows/dependency-review.yml",
   ".github/workflows/dependabot-auto-merge.yml",
   ".github/workflows/auto-update-prs.yml",
@@ -43,7 +49,9 @@ const REQUIRED_FILES = [
   "scripts/action_pins.json",
   "scripts/sync_action_pins.ts",
   "scripts/hub_audit.ts",
+  "scripts/router.mjs",
   "tests/automation_hub.test.ts",
+  "tests/router.test.mjs",
 ];
 
 /** pull_request_target is tolerated in exactly this file, and only with a guard. */
@@ -202,17 +210,21 @@ function checkLocalSurface(): void {
     }
   }
 
-  for (const file of ["ai-fix-agent.yml", "ai-ollama-agent.yml"]) {
+  for (const file of ["_ai-fix.yml", "ai-ollama-agent.yml"]) {
     const path = join(WORKFLOW_DIR, file);
-    if (!existsSync(path)) continue;
+    if (!existsSync(path)) {
+      fail(`${file}: the AI issue agent is required`);
+      continue;
+    }
     const body = readFileSync(path, "utf8");
     const before = failures.length;
     if (file === "ai-ollama-agent.yml" && /secrets\.(?!GITHUB_TOKEN)[A-Z_]+/.test(body)) {
       fail(`${file}: the local-model agent must only use the ephemeral GITHUB_TOKEN`);
     }
-    if (!/draft: always-true/.test(body)) fail(`${file}: the agent must open draft pull requests only`);
+    if (!/draft:\s*(true|always-true)/.test(body)) fail(`${file}: the agent must open draft pull requests only`);
     if (/scripts\/deploy/.test(body)) fail(`${file}: the agent must not invoke deploy scripts`);
-    if (failures.length === before) ok(`${file}: draft-only, no deploy scripts, no extra secrets`);
+    if (!/github\.actor == github\.repository_owner/.test(body)) fail(`${file}: the agent must stay owner-gated`);
+    if (failures.length === before) ok(`${file}: draft-only, owner-gated, no deploy scripts`);
   }
 
   console.log("\n[5] Required status checks exist as real jobs");
@@ -226,6 +238,92 @@ function checkLocalSurface(): void {
   if (!known.has("validate")) fail("ci.yml must keep a job named `validate`: it is a required check");
   else ok("required check `validate` is produced by ci.yml");
   notes.push(`jobs discovered: ${[...known].sort().join(", ")}`);
+
+  console.log("\n[7] Workflow-level permissions stay read-only (write belongs to jobs)");
+  for (const path of workflowFiles()) {
+    const rel = path.slice(ROOT.length + 1);
+    const body = readFileSync(path, "utf8");
+    const top = /^permissions:[^\n]*\n([\s\S]*?)(?=^\S)/m.exec(body);
+    if (top && /:\s*write\b/.test(top[1])) {
+      fail(`${rel}: grants write at the workflow level; keep write on the job level`);
+    } else if (top) {
+      ok(`${rel}: workflow-level permissions are read-only`);
+    }
+  }
+
+  console.log("\n[8] Reusable modules are workflow_call-only");
+  const eventWorkflows = new Set([
+    "ci.yml",
+    "quasar.yml",
+    "ai-issue-discuss.yml",
+    "ai-ollama-agent.yml",
+    "auto-update-prs.yml",
+    "dependabot-auto-merge.yml",
+    "dependency-review.yml",
+    "labeler.yml",
+    "pages.yml",
+    "pin-refresh.yml",
+    "release.yml",
+  ]);
+  for (const path of workflowFiles()) {
+    const name = basename(path);
+    const header = readFileSync(path, "utf8").split(/^jobs:/m)[0];
+    if (name.startsWith("_")) {
+      const onBlock = /^on:\s*\n((?:[ \t].*\n|\n)*)/m.exec(header);
+      const firstLine = onBlock
+        ? (onBlock[1].split("\n").find((line) => line.trim() !== "") ?? "").trim()
+        : "";
+      if (firstLine !== "workflow_call:") {
+        fail(`${name}: a reusable module must open its \`on:\` with workflow_call (found "${firstLine || "no on:"}")`);
+      } else if (/^\s{2}(push|pull_request|pull_request_target|issues|schedule|workflow_dispatch):\s*$/m.test(onBlock![1])) {
+        fail(`${name}: a module must not declare its own event triggers`);
+      } else ok(`${name}: workflow_call only`);
+    } else if (!eventWorkflows.has(name)) {
+      warn(`${name}: not in the known event-workflow list`);
+    }
+  }
+
+  console.log("\n[9] Migrated event surface has no orphan triggers");
+  for (const legacy of [
+    "ai-fix-agent.yml",
+    "ai-review.yml",
+    "autopilot-issues.yml",
+    "hub-audit.yml",
+    "stale.yml",
+  ]) {
+    if (existsSync(join(WORKFLOW_DIR, legacy))) {
+      fail(`${legacy}: still present after the hub migration (orphan trigger)`);
+    } else ok(`${legacy}: removed (routed through quasar.yml)`);
+  }
+  for (const path of workflowFiles()) {
+    const name = basename(path);
+    if (name === "quasar.yml") continue;
+    const body = readFileSync(path, "utf8");
+    for (const cron of ["0 6 * * 1", "0 3 * * *", "0 9 * * *"]) {
+      if (body.includes(cron)) fail(`${name}: duplicates a hub schedule (${cron}) outside the orchestrator`);
+    }
+  }
+  for (const rel of [".github/workflows/quasar.yml", "scripts/router.mjs", "tests/router.test.mjs"]) {
+    if (existsSync(join(ROOT, rel))) ok(`${rel} present`);
+    else fail(`missing hub entry point: ${rel}`);
+  }
+
+  console.log("\n[10] Secrets are passed explicitly, never inherited");
+  let inherited = false;
+  for (const path of workflowFiles()) {
+    const rel = path.slice(ROOT.length + 1);
+    // Strip block scalars and comment lines first: a prose mention of the
+    // forbidden key inside a comment or a run-script must not trip the rule.
+    const effective = stripBlockScalars(readFileSync(path, "utf8"))
+      .split("\n")
+      .filter((line) => !/^\s*#/.test(line))
+      .join("\n");
+    if (/^\s*secrets:\s*inherit\s*$/m.test(effective)) {
+      fail(`${rel}: secrets: inherit is forbidden`);
+      inherited = true;
+    }
+  }
+  if (!inherited) ok("no workflow uses secrets: inherit");
 }
 
 async function api(token: string, repo: string, path: string): Promise<unknown | null> {

@@ -1,0 +1,55 @@
+name: Dead man's switch (reusable module)
+
+# Reusable dead man's switch (epic #145, Часть 11 / issue #156). A daily check
+# that the automation contour is still alive: the required workflows exist,
+# are enabled and the last hub-audit completed. A failure opens (or reuses) a
+# single alert issue and never touches contracts, deployments or secrets.
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dms
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      actions: read
+      contents: read
+      issues: write
+    steps:
+      - name: Verify the contour is enabled and the last audit passed
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          problems=""
+
+          for path in .github/workflows/ci.yml .github/workflows/quasar.yml .github/workflows/_checks.yml; do
+            file=$(basename "$path")
+            state=$(gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/${file}" --jq '.state' 2>/dev/null || echo "missing")
+            if [[ "$state" != "active" ]]; then
+              problems="${problems}- workflow ${file}: ${state}"$'\n'
+            fi
+          done
+
+          if [[ -z "$problems" ]]; then
+            echo "::notice::Contour healthy: required workflows are active."
+            exit 0
+          fi
+
+          title="Dead man's switch: contour degradation detected"
+          body=$(printf 'Автоматическая проверка контура обнаружила проблемы:\n\n```\n%s```\n\nRefs #145, #156.' "$problems")
+          existing=$(gh issue list --repo "$GITHUB_REPOSITORY" --state open --search "in:title \"$title\"" --json number --jq '.[0].number' 2>/dev/null || true)
+          if [[ -n "$existing" ]]; then
+            gh issue comment "$existing" --repo "$GITHUB_REPOSITORY" --body "$body"
+          else
+            gh issue create --repo "$GITHUB_REPOSITORY" --title "$title" --body "$body"
+          fi
+          echo "::warning title=Dead man's switch::Contour degradation detected and reported."

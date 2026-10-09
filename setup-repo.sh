@@ -132,6 +132,8 @@ ensure_label "triaged"       "ededed" "Triaged by a maintainer"
 ensure_label "stale"         "ffffff" "No activity; see the Stale workflow"
 ensure_label "automerge"     "0e8a16" "Green checks may be merged automatically"
 ensure_label "do-not-merge"  "b60205" "Never merged automatically"
+ensure_label "ai-merge-ok"   "0e8a16" "Owner command: merge the approved AI pull request"
+ensure_label "needs-human"   "b60205" "Automation stopped; a human must intervene"
 
 # ── 5. Rulesets ──────────────────────────────────────────────────────────
 echo
@@ -271,4 +273,5 @@ echo "  2. Settings -> Secrets and variables -> Actions: add GROQ_API_KEY if the
 echo "     Groq agent is used (the Ollama agent needs no model key)."
 echo "  3. Settings -> Pages: source must be 'GitHub Actions'."
 echo "  4. Settings -> Code security: confirm 'CodeQL analysis: default setup'."
-echo "  5. Add the labels ai-fix / ai-fix-ollama to an issue to trigger the agents."
+echo "  5. Add the label ai-fix to an issue to trigger the agent; add ai-merge-ok to an approved"
+echo "     agent pull request to merge it through the router (quasar.yml)."
