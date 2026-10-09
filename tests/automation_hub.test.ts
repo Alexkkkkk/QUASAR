@@ -15,12 +15,18 @@ const WORKFLOWS = join(ROOT, ".github", "workflows");
 const REQUIRED = [
   ".github/workflows/ci.yml",
   ".github/workflows/_checks.yml",
+  ".github/workflows/quasar.yml",
+  ".github/workflows/_ai-fix.yml",
+  ".github/workflows/_ai-review.yml",
+  ".github/workflows/_close-issues.yml",
+  ".github/workflows/_hub-audit.yml",
+  ".github/workflows/_stale.yml",
+  ".github/workflows/_ai-merge.yml",
+  ".github/workflows/_pr-polish.yml",
+  ".github/workflows/_dms.yml",
   ".github/workflows/labeler.yml",
-  ".github/workflows/stale.yml",
   ".github/workflows/release.yml",
-  ".github/workflows/ai-fix-agent.yml",
   ".github/workflows/ai-ollama-agent.yml",
-  ".github/workflows/hub-audit.yml",
   ".github/workflows/dependency-review.yml",
   ".github/workflows/dependabot-auto-merge.yml",
   ".github/workflows/auto-update-prs.yml",
@@ -41,6 +47,8 @@ const REQUIRED = [
   "scripts/autofix/apply_fixes.sh",
   "docs/AUTOFIX.md",
   "AGENTS.md",
+  "scripts/router.mjs",
+  "tests/router.test.mjs",
 ];
 
 function stripBlockScalars(text: string): string {
@@ -131,7 +139,7 @@ test("hub: the required `validate` check still exists in ci.yml", () => {
 test("hub: CI and AI-agent share checks, with generated patches applied before validation", () => {
   const checks = readFileSync(join(WORKFLOWS, "_checks.yml"), "utf8");
   const ci = readFileSync(join(WORKFLOWS, "ci.yml"), "utf8");
-  const aiFix = readFileSync(join(WORKFLOWS, "ai-fix-agent.yml"), "utf8");
+  const aiFix = readFileSync(join(WORKFLOWS, "_ai-fix.yml"), "utf8");
 
   assert.match(checks, /workflow_call:/, "the shared checks must be callable");
   assert.match(ci, /validate:\s*\n\s+uses:\s+\.\/\.github\/workflows\/_checks\.yml/);
@@ -185,4 +193,41 @@ test("hub: the pull-request updater rebases onto main and merges without approva
   assert.match(body, /gh pr merge/, "expected an automatic merge of green pull requests");
   assert.match(body, /do-not-merge/, "the do-not-merge label must be respected");
   assert.ok(!/actions\/checkout@/.test(body), "the updater must not check out pull-request code");
+});
+
+test("hub: the orchestrator routes events into the reusable modules only", () => {
+  const wf = readFileSync(join(WORKFLOWS, "quasar.yml"), "utf8");
+  assert.match(wf, /^ {2}route:\s*$/m, "the orchestrator must expose a route job");
+  assert.match(wf, /node scripts\/router\.mjs/, "the route job runs the pure router");
+  for (const mod of ["_ai-fix.yml", "_ai-review.yml", "_close-issues.yml", "_ai-merge.yml", "_pr-polish.yml", "_hub-audit.yml", "_stale.yml", "_dms.yml"]) {
+    assert.ok(wf.includes(`./.github/workflows/${mod}`), `quasar.yml must route into ${mod}`);
+  }
+  assert.ok(!wf.includes("secrets: inherit"), "the orchestrator must pass secrets explicitly");
+});
+
+test("hub: reusable modules are workflow_call only, with write on the terminal job", () => {
+  const modules = readdirSync(WORKFLOWS).filter((f) => f.startsWith("_") && /\.ya?ml$/.test(f));
+  assert.ok(modules.length >= 8, `expected the module set, found ${modules.length}`);
+  for (const file of modules) {
+    const body = stripBlockScalars(readFileSync(join(WORKFLOWS, file), "utf8"));
+    const onBlock = /^on:\s*\n((?:[ \t].*\n|\n)*)/m.exec(body);
+    assert.ok(onBlock, `${file}: missing an on: block`);
+    const first = onBlock![1].split("\n").find((l) => l.trim() !== "");
+    assert.equal((first ?? "").trim(), "workflow_call:", `${file}: a module must open on: with workflow_call`);
+  }
+});
+
+test("hub: no workflow grants write at the workflow level", () => {
+  for (const file of workflowFiles()) {
+    const body = readFileSync(join(WORKFLOWS, file), "utf8");
+    const top = /^permissions:[^\n]*\n([\s\S]*?)(?=^\S)/m.exec(body);
+    if (!top) continue;
+    assert.ok(!/:\s*write\b/.test(top[1]), `${file}: write must live on the job, not the workflow`);
+  }
+});
+
+test("hub: the migrated event workflows are gone (no orphan triggers)", () => {
+  for (const legacy of ["ai-fix-agent.yml", "ai-review.yml", "autopilot-issues.yml", "hub-audit.yml", "stale.yml"]) {
+    assert.ok(!existsSync(join(WORKFLOWS, legacy)), `${legacy} must be removed after the hub migration`);
+  }
 });

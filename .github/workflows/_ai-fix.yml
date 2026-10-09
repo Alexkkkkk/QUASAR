@@ -1,12 +1,19 @@
-name: QUASAR AI issue agent
+name: QUASAR AI issue agent (reusable module)
+
+# Reusable ai-fix module (epic #145, Шаг 3 / issue #148). The policies are
+# unchanged: the label only works from the owner, protected paths are
+# rejected, the generated patch is validated on an isolated checkout, and the
+# module can only open a draft pull request. The caller passes only the one
+# secret the agent needs — never `secrets: inherit`.
 
 on:
-  issues:
-    types: [labeled]
+  workflow_call:
+    secrets:
+      GROQ_API_KEY:
+        required: false
 
 permissions:
   contents: read
-  issues: read
 
 concurrency:
   group: ai-fix-${{ github.event.issue.number }}
@@ -36,7 +43,7 @@ jobs:
         run: |
           set -euo pipefail
           if [[ -z "$GROQ_API_KEY" ]]; then
-            echo "::error title=Missing Groq API key::Add GROQ_API_KEY to repository Actions secrets."
+            echo "::error title=Missing Groq API key::The caller must pass the GROQ_API_KEY secret to this reusable workflow."
             exit 1
           fi
 
@@ -75,7 +82,7 @@ jobs:
             echo "::error::Groq produced no file changes. No pull request was created."
             exit 1
           fi
-          protected_pattern='(^\.github/workflows/|^GROQ\.md$|^docs/AI_AGENT\.md$|^docs/ai/AI_ISSUE_AGENT\.md$|^package(-lock)?\.json$|^scripts/(deploy[^/]*|security_check\.ts|check_deployment\.ts|hub_audit\.ts|sync_action_pins\.ts)$|(^|/)(deployment\.json|build-hashes\.json|action_pins\.lock\.json)$|(^|/)\.env($|\.)|(^|/)(seed([_-]?phrase)?|mnemonic|private[-_]?key|wallet[-_]?credentials?)(/|\.|$))'
+          protected_pattern='(^\.github/workflows/|^GROQ\.md$|^docs/AI_AGENT\.md$|^docs/ai/AI_ISSUE_AGENT\.md$|^package(-lock)?\.json$|^scripts/(deploy[^/]*|security_check\.ts|check_deployment\.ts|hub_audit\.ts|sync_action_pins\.ts)$|(^|/)(deployment\.json|build-hashes\.json|action_pins\.lock\.json)$|(^|/)\.env($|\.)(^|/)(seed([_-]?phrase)?|mnemonic|private[-_]?key|wallet[-_]?credentials?)(/|\.|$))'
           blocked=$(printf '%s\n' "$changed" | grep -E "$protected_pattern" || true)
           if [[ -n "$blocked" ]]; then
             echo "::error::The patch touches protected files. No artifact or pull request was created."
@@ -146,5 +153,5 @@ jobs:
             The run creates a separate branch and draft PR only. It does not merge, deploy, use wallet credentials, or perform on-chain actions.
 
             Fixes #${{ github.event.issue.number }}
-          draft: always-true
+          draft: true
           delete-branch: true
