@@ -47,3 +47,9 @@ test('AI PR review retries one empty completion and still fails closed without c
     assert.ok(workflow.includes('--max-time 300'));
     assert.ok(workflow.includes('Groq returned an empty review after retry'));
 });
+
+test('AI PR review retries provider rate limits with a bounded delay', () => {
+    assert.equal((workflow.match(/--retry 2/g) ?? []).length, 2);
+    assert.ok(workflow.includes('--retry-delay 30'));
+    assert.ok(workflow.includes('--retry-max-time 120'));
+});
