@@ -126,6 +126,49 @@ an out-of-range model answer is rejected instead of relayed.
 npm run oracle:smoke -- "reserve ratio is 4%, 24h outflow 12%"
 ```
 
+### Deterministic risk-signal preflight
+
+`scripts/oracle_signals.ts` adds a read-only statistical layer before model
+inference. It computes EWMA return volatility, robust MAD-based outlier counts,
+maximum price/liquidity drawdown, and cumulative outflow as a percentage of
+starting liquidity. The risk score is the maximum of those normalized signals,
+so a single severe signal cannot be averaged away.
+
+The CLI accepts a normalized JSON window:
+
+```json
+{
+  "observations": [
+    {
+      "timestampMs": 1800000000000,
+      "priceUsd": 1.25,
+      "liquidityUsd": 500000,
+      "outflowUsd": 1200
+    }
+  ]
+}
+```
+
+```bash
+npm run oracle:smoke -- --observations risk-window.json "Assess current QUASAR risk"
+npm run oracle:signals:test
+```
+
+Every sample must have an increasing timestamp, positive price/liquidity, and
+non-negative outflow. Defaults require 24 samples, a latest sample no older
+than five minutes, confidence of at least 0.7, and a risk score below 70 before
+Grok is called. Stale, incomplete, or high-risk windows return `hold` locally
+without an API call. When inference is allowed, the normalized statistics are
+passed to Grok and the returned risk score cannot understate the deterministic
+score. The signing command remains separate and is never invoked by this gate.
+
+Thresholds are conservative starter heuristics, not trained/calibrated market
+limits or financial advice. This repository does not currently define an
+authoritative live DEX price/liquidity feed; callers must supply normalized
+observations from a source they have verified. Do not use the output to automate
+trading or contract parameter changes without calibration, independent review,
+and a separately approved data adapter.
+
 The tests never touch the network because `fetch` is injectable:
 
 ```bash

@@ -46,6 +46,19 @@ test('AI PR review reports a bounded provider error when the API returns a non-J
     assert.ok(workflow.includes('Groq API request failed (HTTP %s): %s'));
 });
 
+test('AI PR review retries one empty completion and still fails closed without content', () => {
+    assert.ok(workflow.includes('retrying once with a larger completion budget'));
+    assert.ok(workflow.includes("jq '.max_completion_tokens = 1200'"));
+    assert.ok(workflow.includes('--max-time 300'));
+    assert.ok(workflow.includes('Groq returned an empty review after retry'));
+});
+
+test('AI PR review retries provider rate limits with a bounded delay', () => {
+    assert.equal((workflow.match(/--retry 2/g) ?? []).length, 2);
+    assert.ok(workflow.includes('--retry-delay 30'));
+    assert.ok(workflow.includes('--retry-max-time 120'));
+});
+
 test('AI PR review is a reusable module fed by the orchestrator router', () => {
     assert.match(workflow, /^\s*workflow_call:/m, 'the review module must be reusable');
     const orchestrator = readFileSync(join(root, '.github/workflows/quasar.yml'), 'utf8');
