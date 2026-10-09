@@ -102,10 +102,19 @@ test('every environment variable read by scripts is documented in .env.example',
 });
 
 test('AI issue agent is label-gated, least-privilege and draft-only (issue #94)', () => {
-    const wf = read('.github/workflows/ai-fix-agent.yml');
+    const wf = read('.github/workflows/_ai-fix.yml');
+    const orchestrator = read('.github/workflows/quasar.yml');
     const legacy = join(root, '.github/workflows/ai-fix.yml');
     assert.equal(existsSync(legacy), false, 'the older shell-capable workflow must be removed');
-    assert.match(wf, /issues:\s*\n\s*types:\s*\[labeled\]/, 'the agent must run only from the label event');
+    // After the hub migration (epic #145) the label event is owned by the
+    // orchestrator; the module itself is workflow_call-only.
+    assert.match(orchestrator, /issues:\s*\n\s*types:\s*\[labeled\]/, 'the label event must be routed by the orchestrator');
+    assert.match(
+        orchestrator,
+        /if:\s+needs\.route\.outputs\['ai-fix'\]\s*==\s*'true'/,
+        'ai-fix must run only on a router decision'
+    );
+    assert.match(wf, /^\s*workflow_call:/m, 'the module must be reusable');
     assert.ok(wf.includes("github.event.label.name == 'ai-fix'"), 'the ai-fix label must be required');
     assert.ok(wf.includes('github.actor == github.repository_owner'), 'only the repository owner may trigger the agent');
     const writeJobStart = wf.indexOf('  open-draft-pr:');
@@ -131,7 +140,7 @@ test('AI issue agent is label-gated, least-privilege and draft-only (issue #94)'
     }
     assert.match(writeJob, /contents:\s*write/);
     assert.match(writeJob, /pull-requests:\s*write/);
-    assert.match(writeJob, /draft:\s*always-true/, 'the agent must create draft PRs');
+    assert.match(writeJob, /draft:\s*true/, 'the agent must create draft PRs');
     // Negative lookahead keeps the deploy guard from also matching the read-only
     // 'npm run deployment:check' validation gate that CI runs.
     assert.doesNotMatch(wf, /gh pr merge|npm run deploy(?![a-z:])/, 'the workflow must never merge or deploy');
@@ -143,7 +152,7 @@ test('AI issue agent is label-gated, least-privilege and draft-only (issue #94)'
     assert.ok(/аудит/i.test(groq), 'GROQ.md must forbid audit claims');
     assert.ok(/mainnet/i.test(groq), 'GROQ.md must forbid mainnet-readiness claims');
     const docs = read('docs/ai/AI_ISSUE_AGENT.md');
-    assert.ok(docs.includes('.github/workflows/ai-fix-agent.yml'), 'the canonical guide must describe the guarded workflow');
+    assert.ok(docs.includes('.github/workflows/_ai-fix.yml'), 'the canonical guide must describe the guarded module');
 });
 test('the blanket auto-merge autopilot is removed (issue #94)', () => {
     assert.ok(
@@ -169,7 +178,7 @@ test('multisig handoff runbook documents the timelocked two-step (issue #86)', (
 
 test('the AI issue agent validation job mirrors the CI gate set and toolchain', () => {
     const ci = read('.github/workflows/ci.yml');
-    const agent = read('.github/workflows/ai-fix-agent.yml');
+    const agent = read('.github/workflows/_ai-fix.yml');
     const checks = read('.github/workflows/_checks.yml');
     const gates = (text: string) => Array.from(text.matchAll(/run: npm run ([a-z0-9:_-]+)/g)).map((m) => m[1]);
     const sharedGates = [...new Set(gates(checks))].sort();

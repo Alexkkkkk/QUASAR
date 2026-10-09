@@ -43,7 +43,7 @@ test('wallet and transaction controls fail closed unless testnet contracts are c
 
 
 test('merged-PR issue closer only acts on explicit references', () => {
-    const workflow = read('.github/workflows/autopilot-issues.yml');
+    const workflow = read('.github/workflows/_close-issues.yml');
     assert.match(workflow, /github\.event\.pull_request\.merged == true/);
     assert.ok(workflow.includes('--json title,body,mergeCommit'));
     assert.ok(workflow.includes("grep -oiE '(closes?|closed|fix|fixes|fixed|resolves?|resolved) #[0-9]+'"));

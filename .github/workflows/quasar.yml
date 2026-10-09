@@ -1,0 +1,150 @@
+name: QUASAR automation router
+
+# Single event entry point for the label-, review-, merge- and schedule-driven
+# automation (epic #145, Шаг 4 / issue #149).
+#
+# Deterministic CI keeps its own entry (`ci.yml`, job `validate`) so the
+# required status check and the README badge stay untouched; this orchestrator
+# routes the AI surface into the reusable `_*.yml` modules. Every decision
+# comes from `scripts/router.mjs` (pure function, covered by
+# `tests/router.test.mjs`), and each downstream job is conditional on that
+# decision. Top-level permissions stay read-only; write access lives only in
+# the terminal jobs of the called modules. Secrets are passed explicitly
+# per module — never inherited wholesale.
+
+on:
+  issues:
+    types: [labeled]
+  pull_request:
+    types: [opened, synchronize, reopened, closed]
+  schedule:
+    - cron: "0 6 * * 1"
+    - cron: "0 3 * * *"
+    - cron: "0 9 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: quasar-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  route:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    outputs:
+      ai-fix: ${{ steps.decide.outputs.ai-fix }}
+      ai-review: ${{ steps.decide.outputs.ai-review }}
+      close-issues: ${{ steps.decide.outputs.close-issues }}
+      ai-merge: ${{ steps.decide.outputs.ai-merge }}
+      pr-polish: ${{ steps.decide.outputs.pr-polish }}
+      dms: ${{ steps.decide.outputs.dms }}
+      hub-audit: ${{ steps.decide.outputs.hub-audit }}
+      stale: ${{ steps.decide.outputs.stale }}
+    steps:
+      - name: Check out the default branch without persisted credentials
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+
+      - name: Decide which jobs this event runs
+        id: decide
+        env:
+          EVENT: ${{ github.event_name }}
+          ISSUE_ACTION: ${{ github.event.action }}
+          LABEL: ${{ github.event.label.name }}
+          ACTOR: ${{ github.actor }}
+          OWNER: ${{ github.repository_owner }}
+          PR_ACTION: ${{ github.event.action }}
+          MERGED: ${{ github.event.pull_request.merged }}
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          CRON: ${{ github.event.schedule }}
+        run: node scripts/router.mjs
+
+  ai-fix:
+    needs: route
+    if: needs.route.outputs['ai-fix'] == 'true'
+    # The caller must grant the union of the module's job-level permissions;
+    # a called workflow can only downgrade them. Write access stays on this
+    # terminal job, never on the workflow level.
+    permissions:
+      actions: read
+      contents: write
+      issues: read
+      pull-requests: write
+    uses: ./.github/workflows/_ai-fix.yml
+    secrets:
+      GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+
+  ai-review:
+    needs: route
+    if: needs.route.outputs['ai-review'] == 'true'
+    permissions:
+      contents: read
+      pull-requests: write
+    uses: ./.github/workflows/_ai-review.yml
+    secrets:
+      GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+
+  close-issues:
+    needs: route
+    if: needs.route.outputs['close-issues'] == 'true'
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: read
+    uses: ./.github/workflows/_close-issues.yml
+
+  ai-merge:
+    needs: route
+    if: needs.route.outputs['ai-merge'] == 'true'
+    permissions:
+      contents: write
+      pull-requests: write
+    uses: ./.github/workflows/_ai-merge.yml
+
+  pr-polish:
+    needs: route
+    if: needs.route.outputs['pr-polish'] == 'true'
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+    uses: ./.github/workflows/_pr-polish.yml
+    secrets:
+      GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+
+  hub-audit:
+    needs: route
+    if: needs.route.outputs['hub-audit'] == 'true'
+    permissions:
+      contents: read
+      issues: write
+    uses: ./.github/workflows/_hub-audit.yml
+
+  stale:
+    needs: route
+    if: needs.route.outputs['stale'] == 'true'
+    permissions:
+      issues: write
+      pull-requests: write
+    uses: ./.github/workflows/_stale.yml
+
+  dms:
+    needs: route
+    if: needs.route.outputs['dms'] == 'true'
+    permissions:
+      actions: read
+      contents: read
+      issues: write
+    uses: ./.github/workflows/_dms.yml

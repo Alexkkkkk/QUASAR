@@ -15,7 +15,7 @@ on:
     types: [labeled]
 
 permissions:
-  issues: write
+  contents: read
 
 concurrency:
   group: ai-discuss-${{ github.event.issue.number }}

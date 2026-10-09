@@ -1,6 +1,6 @@
 # QUASAR — изолированный Ollama-агент для issue (draft)
 
-**Статус в этой ветке:** Ollama workflow сохранён как шаблон `docs/ai/OLLAMA_ISSUE_WORKFLOW.yml`. Действующий `.github/workflows/ai-fix-agent.yml` остаётся Groq workflow до установки шаблона владельцем репозитория. Синхронизация TON Docs хранится в `docs/ai/TON_DOCS_SYNC_WORKFLOW.yml` и также требует установки в `.github/workflows/`. Это draft-механизм, не production-сервис.
+**Статус в этой ветке:** Ollama workflow сохранён как шаблон `docs/ai/OLLAMA_ISSUE_WORKFLOW.yml`. Действующий модуль `.github/workflows/_ai-fix.yml` остаётся Groq workflow до установки шаблона владельцем репозитория. Синхронизация TON Docs хранится в `docs/ai/TON_DOCS_SYNC_WORKFLOW.yml` и также требует установки в `.github/workflows/`. Это draft-механизм, не production-сервис.
 
 ## Модель работы
 
@@ -11,7 +11,9 @@
 5. Отдельный job на чистом checkout применяет патч и запускает те же проверки, что и CI, на версии Node из `.nvmrc`: `npm run lint`, `npm test`, `npm run abi:verify`, `npm run abi:dapp`, `npm run deployment:check`, `npm run hashes:build`, `npx tsc --noEmit`, `npm audit --audit-level=high`. В этом job нет ключа модели и write-доступа.
 6. Только после успешной проверки отдельный job получает write-права на contents и pull requests и создаёт или обновляет draft PR в `ai/<issue>-agent`.
 
-Workflow не делает auto-merge, deploy, wallet-операций или on-chain действий. Человек проверяет каждый diff и сам принимает решение о merge. Синхронизация документации также создаёт только draft PR; автоматически обновлённые страницы не попадают в `main` без review.
+Событие метки теперь маршрутизируется оркестратором `.github/workflows/quasar.yml` (эпик #145): чистый роутер `scripts/router.mjs` решает, какой reusable-модуль запускать, а сами модули (`_ai-fix`, `_ai-review`, `_close-issues`, `_ai-merge`, `_pr-polish`, `_hub-audit`, `_stale`, `_dms`) объявляют только `workflow_call`. Merge по метке `ai-merge-ok` возможен только для агентских веток при зелёных проверках и уже имеющемся человеческом approval.
+
+Workflow не делает auto-merge без human approval, deploy, wallet-операций или on-chain действий. Человек проверяет каждый diff и сам принимает решение о merge. Синхронизация документации также создаёт только draft PR; автоматически обновлённые страницы не попадают в `main` без review.
 
 ## Настройка
 

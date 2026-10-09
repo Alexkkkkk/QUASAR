@@ -13,6 +13,7 @@
  *   issues + labeled `ai-merge-ok` by the owner        -> ai-merge=true
  *   pull_request opened/synchronize/reopened           -> ai-review=true
  *   copilot/* head branch PRs                          -> ai-review=true (second opinion)
+ *   pull_request synchronize on ai/* or copilot/*      -> pr-polish=true
  *   pull_request closed && merged                      -> close-issues=true
  *   schedule `0 6 * * 1` (Monday 06:00 UTC)            -> hub-audit=true
  *   schedule `0 3 * * *`                               -> stale=true
@@ -24,7 +25,24 @@ import { appendFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
-const OUTPUTS = ["checks", "ai-fix", "ai-review", "close-issues", "ai-merge", "dms", "hub-audit", "stale"];
+const OUTPUTS = [
+  "checks",
+  "ai-fix",
+  "ai-review",
+  "close-issues",
+  "ai-merge",
+  "pr-polish",
+  "dms",
+  "hub-audit",
+  "stale",
+];
+
+/** Branch prefixes owned by an automated coding agent (issues #155, #156, #157). */
+export const AGENT_BRANCH_PREFIXES = ["ai/", "copilot/"];
+
+export function isAgentBranch(headRef) {
+  return AGENT_BRANCH_PREFIXES.some((prefix) => String(headRef ?? "").startsWith(prefix));
+}
 
 export function route(env) {
   const result = {
@@ -33,6 +51,7 @@ export function route(env) {
     "ai-review": "false",
     "close-issues": "false",
     "ai-merge": "false",
+    "pr-polish": "false",
     dms: "false",
     "hub-audit": "false",
     stale: "false",
@@ -57,8 +76,15 @@ export function route(env) {
       }
       // Copilot coding agent branches always get the platform checks plus a
       // second-opinion ai-review, never the legacy ai-fix path (issue #157).
-      if (headRef.startsWith("copilot/") && (env.PR_ACTION ?? "") !== "closed") {
+      if (headRef.startsWith("copilot/") && action !== "closed") {
         result["ai-review"] = "true";
+      }
+      // The polish loop only ever starts from a new commit on an agent branch;
+      // the module itself still requires a failing check before it edits
+      // anything, so a bare `synchronize` cannot start an infinite loop
+      // (issues #149, #156).
+      if (action === "synchronize" && isAgentBranch(headRef)) {
+        result["pr-polish"] = "true";
       }
       break;
     }
