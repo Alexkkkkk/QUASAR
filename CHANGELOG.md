@@ -1,5 +1,30 @@
 # Changelog
 
+## 2026-10-09 — ci(automation): единый контур QUASAR — оркестратор и reusable-модули (эпик #145)
+
+- `ci(automation)`: добавлен оркестратор `.github/workflows/quasar.yml` — единственная
+  точка входа для событий меток, pull request и расписаний; решение принимает чистый
+  роутер `scripts/router.mjs`, покрытый `tests/router.test.mjs` (#147, #149).
+- `ci(automation)`: логика пяти workflow'ов перенесена в reusable-модули
+  `_ai-fix.yml`, `_ai-review.yml`, `_close-issues.yml`, `_hub-audit.yml`, `_stale.yml`;
+  удалены их прежние event-файлы (`ai-fix-agent.yml`, `ai-review.yml`,
+  `autopilot-issues.yml`, `hub-audit.yml`, `stale.yml`) — orphan-триггеров не осталось
+  (#148, #149).
+- `feat(ci)`: добавлены модули L3 и guardrails: `_ai-merge.yml` (merge по метке
+  `ai-merge-ok` только для агентских веток при зелёных checks и человеческом approval),
+  `_pr-polish.yml` (ограниченный 15 итерациями авторемонт с меткой `needs-human`),
+  `_dms.yml` (dead man's switch) (#155, #156, #149).
+- `security(ci)`: write-права вынесены с уровня workflow на уровень job
+  (`pages.yml`, `ai-issue-discuss.yml`); секреты передаются модулям явно, без
+  `secrets: inherit` (#150, #156).
+- `ci(audit)`: `scripts/hub_audit.ts` расширен правилами иммунной системы — write на
+  уровне workflow, `workflow_call`-only модули, orphan-триггеры, дубли расписаний,
+  наличие точки входа контура (#150).
+- `test`: `npm run hub:test` теперь прогоняет и `tests/router.test.mjs`; обновлены
+  `tests/automation_hub.test.ts`, `tests/audit_2026_10_02.test.ts`,
+  `tests/repository_page_safety.test.ts`, `tests/ai_review_workflow.test.ts`.
+- `chore(setup)`: добавлены метки `ai-merge-ok` и `needs-human`.
+
 ## 2026-10-06 — audit: TON Connect manifest source link and guard coverage
 
 - docs(ton): три отчёта (`AUDIT_2026-10-02`, `AUDIT_2026-10-06`,

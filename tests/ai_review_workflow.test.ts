@@ -5,13 +5,18 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
-const workflow = readFileSync(join(root, '.github/workflows/ai-review.yml'), 'utf8');
+const workflow = readFileSync(join(root, '.github/workflows/_ai-review.yml'), 'utf8');
 const issueDiscussWorkflow = readFileSync(join(root, '.github/workflows/ai-issue-discuss.yml'), 'utf8');
 
 test('AI PR review calls the Groq API without unpinned composite actions', () => {
     assert.ok(!/gem/i.test(workflow), 'the workflow must not reference the deprecated provider');
     assert.doesNotMatch(workflow, /google-github-actions\/auth@v3|actions\/upload-artifact@v6/);
-    assert.match(workflow, /uses:\s+actions\/checkout@[0-9a-f]{40}\s+# v7\.0\.1/);
+    // The review module is read-only and needs no checkout: it collects the
+    // diff through `gh`. Any action it does use must be pinned to a SHA.
+    for (const [, ref] of workflow.matchAll(/uses:\s+([^\s#]+)\s*(?:#\s*(.*))?$/gm)) {
+        if (ref.startsWith('./') || ref.startsWith('docker://')) continue;
+        assert.match(ref, /@[0-9a-f]{40}$/, `unpinned action: ${ref}`);
+    }
     assert.ok(workflow.includes('GROQ_API_URL: "https://api.groq.com/openai/v1/chat/completions"'));
     assert.ok(workflow.includes('GROQ_MODEL: "openai/gpt-oss-120b"'));
     assert.ok(workflow.includes('max_completion_tokens: 800'));
@@ -52,4 +57,11 @@ test('AI PR review retries provider rate limits with a bounded delay', () => {
     assert.equal((workflow.match(/--retry 2/g) ?? []).length, 2);
     assert.ok(workflow.includes('--retry-delay 30'));
     assert.ok(workflow.includes('--retry-max-time 120'));
+});
+
+test('AI PR review is a reusable module fed by the orchestrator router', () => {
+    assert.match(workflow, /^\s*workflow_call:/m, 'the review module must be reusable');
+    const orchestrator = readFileSync(join(root, '.github/workflows/quasar.yml'), 'utf8');
+    assert.match(orchestrator, /uses:\s+\.\/\.github\/workflows\/_ai-review\.yml/);
+    assert.match(orchestrator, /if:\s+needs\.route\.outputs\['ai-review'\]\s*==\s*'true'/);
 });

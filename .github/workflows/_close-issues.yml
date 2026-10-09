@@ -1,19 +1,24 @@
-name: Autopilot issue closer
+name: Close referenced issues (reusable module)
+
+# Reusable close-issues module (epic #145, Шаг 3 / issue #148). Runs only for
+# merged pull requests, checks each issue's state before closing, and stays
+# silent when there is nothing to close.
 
 on:
-  pull_request:
-    types: [closed]
+  workflow_call:
 
 permissions:
   contents: read
-  issues: write
-  pull-requests: read
 
 jobs:
   close-issues:
     runs-on: ubuntu-latest
     if: github.event.pull_request.merged == true
     timeout-minutes: 10
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: read
     steps:
       - name: Check out merged head for commit messages
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
