@@ -1,9 +1,11 @@
-name: Stale
+name: Stale (reusable module)
+
+# Reusable stale module (epic #145, Шаг 3 / issue #148). Same mark-and-close
+# policy, now triggered through the orchestrator router instead of its own
+# cron.
 
 on:
-  schedule:
-    - cron: "0 3 * * *"
-  workflow_dispatch:
+  workflow_call:
 
 permissions:
   contents: read

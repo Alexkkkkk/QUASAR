@@ -1,0 +1,80 @@
+name: AI branch auto-merge (reusable module)
+
+# Reusable L3 merge module (epic #145, Часть 10 / issue #155). The repository
+# owner adds the `ai-merge-ok` label to a pull request; the module then merges
+# only that pull request, and only when every safety condition holds:
+#   - the head branch is an agent branch (`ai/*`, `copilot/*`);
+#   - the required status checks are all green;
+#   - a human approving review is already present;
+#   - the `do-not-merge` label is absent.
+# Anything else is refused with an explanatory comment. The module never
+# touches non-agent branches, never deploys, never performs on-chain actions.
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ai-merge-${{ github.event.issue.number || github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  merge:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Decide whether agent branches may be merged
+        env:
+          GH_TOKEN: ${{ github.token }}
+          OWNER: ${{ github.repository_owner }}
+          ACTOR: ${{ github.actor }}
+          LABEL: ${{ github.event.label.name }}
+          TARGET: ${{ github.event.issue.number || github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+
+          if [[ "$ACTOR" != "$OWNER" || "$LABEL" != "ai-merge-ok" ]]; then
+            echo "::notice::ai-merge is owner-only and requires the ai-merge-ok label; nothing to do."
+            exit 0
+          fi
+
+          pr=$(gh pr view "$TARGET" --repo "$GITHUB_REPOSITORY" \
+            --json number,headRefName,isDraft,mergeStateStatus,reviewDecision,labels \
+            --jq '.' 2>/dev/null || true)
+          if [[ -z "$pr" ]]; then
+            echo "::notice::#$TARGET is not a pull request; ai-merge only merges pulled requests."
+            exit 0
+          fi
+
+          head=$(jq -r '.headRefName' <<< "$pr")
+          if [[ "$head" != ai/* && "$head" != copilot/* ]]; then
+            echo "::warning title=ai-merge refused::Branch $head is not an agent branch; merge it by hand."
+            exit 0
+          fi
+          if [[ "$(jq -r '.isDraft' <<< "$pr")" == "true" ]]; then
+            echo "::warning title=ai-merge refused::The pull request is still a draft."
+            exit 0
+          fi
+          if jq -e '.labels[].name | select(. == "do-not-merge")' <<< "$pr" >/dev/null; then
+            echo "::warning title=ai-merge refused::The do-not-merge label is present."
+            exit 0
+          fi
+          if [[ "$(jq -r '.reviewDecision' <<< "$pr")" != "APPROVED" ]]; then
+            echo "::warning title=ai-merge refused::A human approving review is required first."
+            exit 0
+          fi
+
+          rollup=$(gh pr view "$TARGET" --repo "$GITHUB_REPOSITORY" --json statusCheckRollup \
+            --jq '[.statusCheckRollup[] | (.conclusion // .state // "PENDING")] | if length == 0 then "none" elif all(. == "SUCCESS" or . == "NEUTRAL" or . == "SKIPPED") then "green" else "pending" end')
+          if [[ "$rollup" != "green" ]]; then
+            echo "::warning title=ai-merge refused::Status checks are not green ($rollup)."
+            exit 0
+          fi
+
+          gh pr merge "$TARGET" --repo "$GITHUB_REPOSITORY" --squash --delete-branch
+          echo "::notice::Merged agent pull request #$TARGET ($head) after green checks and human approval."

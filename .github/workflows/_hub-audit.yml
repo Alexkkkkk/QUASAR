@@ -1,16 +1,11 @@
-name: Automation hub audit
+name: Automation hub audit (reusable module)
+
+# Reusable hub-audit module (epic #145, Шаг 3 / issue #148). Same audits as
+# before, now triggered through the orchestrator router instead of its own
+# cron. Write permissions stay on the job level.
 
 on:
-  schedule:
-    - cron: "0 6 * * 1"
-  workflow_dispatch:
-  push:
-    branches: [main]
-    paths:
-      - ".github/**"
-      - "scripts/hub_audit.ts"
-      - "scripts/sync_action_pins.ts"
-      - "scripts/action_pins.json"
+  workflow_call:
 
 permissions:
   contents: read

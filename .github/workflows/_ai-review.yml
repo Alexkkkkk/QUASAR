@@ -1,26 +1,26 @@
-name: AI PR review
+name: AI PR review (reusable module)
 
-# AI-review for open/updated PRs. Read-only by design: the workflow can
-# only publish a review comment. It never approves, never pushes commits,
-# never merges and never deploys.
+# Reusable ai-review module (epic #145, Шаг 3 / issue #148). Read-only by
+# design: the module can only publish a review comment. It never approves,
+# never pushes commits, never merges and never deploys.
 #
-# Model: Groq via the Groq API using the existing GROQ_API_KEY secret (the
-# same key name the off-chain oracle accepts, see .env.example). The call
-# is a stateless OpenAI-compatible chat completion: no tools, no file
-# access, no workspace trust — the diff is passed as bounded prompt data.
+# Idempotency (issue #156): the comment carries a hidden marker with the head
+# SHA, and the module skips publishing when a comment for the same head SHA
+# already exists, so synchronize events without new commits never duplicate
+# the review.
 #
-# Per issue #107, if Copilot coding agent / GitHub Models are not enabled
-# for the repository, the existing external-model integration remains the
-# actual implementation; no new paid API keys are introduced without an
-# explicit owner decision.
+# The model call is a stateless OpenAI-compatible chat completion: no tools,
+# no file access, no workspace trust — the diff is passed as bounded prompt
+# data. The caller passes only GROQ_API_KEY, never `secrets: inherit`.
 
 on:
-  pull_request:
-    types: [opened, synchronize, reopened]
+  workflow_call:
+    secrets:
+      GROQ_API_KEY:
+        required: false
 
 permissions:
   contents: read
-  pull-requests: write
 
 concurrency:
   group: ai-review-${{ github.event.pull_request.number }}
@@ -34,12 +34,6 @@ jobs:
       contents: read
       pull-requests: write
     steps:
-      - name: Check out the default branch without persisted credentials
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          ref: ${{ github.event.repository.default_branch }}
-          persist-credentials: false
-
       - name: Require the Groq API key
         shell: bash
         env:
@@ -47,7 +41,7 @@ jobs:
         run: |
           set -euo pipefail
           if [[ -z "$GROQ_API_KEY" ]]; then
-            echo "::error title=Missing Groq API key::Add GROQ_API_KEY to repository Actions secrets."
+            echo "::error title=Missing Groq API key::The caller must pass the GROQ_API_KEY secret to this reusable workflow."
             exit 1
           fi
 
@@ -62,7 +56,22 @@ jobs:
           head -c 20000 "$RUNNER_TEMP/pr.diff" > "$RUNNER_TEMP/pr.trimmed.diff"
           echo "diff bytes: $(wc -c < "$RUNNER_TEMP/pr.trimmed.diff")"
 
+      - name: Skip the review when this head SHA was already reviewed
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          gh api "repos/${GITHUB_REPOSITORY}/issues/${PR}/comments?per_page=100" --paginate --jq '.[].body' \
+            > "$RUNNER_TEMP/existing-comments.txt" 2>/dev/null || true
+          if grep -qF "ai-review:${HEAD_SHA}" "$RUNNER_TEMP/existing-comments.txt"; then
+            echo "A review for head ${HEAD_SHA} already exists - skipping to stay idempotent."
+            echo "SKIP=true" >> "$GITHUB_ENV"
+          fi
+
       - name: Review the diff with Groq (read-only, no tools)
+        if: env.SKIP != 'true'
         shell: bash
         env:
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
@@ -112,7 +121,7 @@ jobs:
               --write-out '%{http_code}' \
               "$GROQ_API_URL"
           )"; then
-            api_error="$(jq -r '(.error.message // .error // .message // .detail // empty) | tostring | gsub("[\\r\\n]+"; " ")' "$response_file" 2>/dev/null || true)"
+            api_error="$(jq -r '(.error.message // .error // .message // .detail // empty) | tostring | gsub("[\r\n]+"; " ")' "$response_file" 2>/dev/null || true)"
             if [[ -z "$api_error" && -s "$response_file" ]]; then
               api_error="$(head -c 300 "$response_file" | tr '\r\n\t' '   ' | sed 's/[^[:print:]]/?/g')"
             fi
@@ -136,9 +145,11 @@ jobs:
           fi
 
       - name: Publish the review summary as a comment
+        if: env.SKIP != 'true'
         env:
           GH_TOKEN: ${{ github.token }}
           PR: ${{ github.event.pull_request.number }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           set -euo pipefail
           REVIEW="$(cat "$RUNNER_TEMP/ai-review-response.md")"
@@ -146,11 +157,9 @@ jobs:
             echo "::error::Groq returned an empty review."
             exit 1
           fi
-          gh pr review "$PR" --comment \
-            --body "🤖 **AI-review (read-only, Groq)**
-
-          ${REVIEW}
-
-          ---
-          *Это автоматический обзор для человека-ревьюера. Он не является
-          одобрением: merge/deploy остаётся решением владельца.*"
+          {
+            printf '<!-- ai-review:%s -->\n\n' "$HEAD_SHA"
+            printf '🤖 **AI-review (read-only, Groq)**\n\n%s\n\n---\n' "$REVIEW"
+            printf '*Это автоматический обзор для человека-ревьюера. Он не является\nодобрением: merge/deploy остаётся решением владельца.*'
+          } > "$RUNNER_TEMP/ai-review-comment.md"
+          gh pr review "$PR" --comment --body-file "$RUNNER_TEMP/ai-review-comment.md"
