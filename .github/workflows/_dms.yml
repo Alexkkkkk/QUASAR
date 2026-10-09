@@ -45,7 +45,7 @@ jobs:
           fi
 
           title="Dead man's switch: contour degradation detected"
-          body=$(printf 'Автоматическая проверка контура обнаружила проблемы:\n\n```\n%s```\n\nRefs #145, #156.' "$problems")
+          body=$(printf "%s\n\n\`\`\`\n%s\`\`\`\n\nRefs #145, #156." "Автоматическая проверка контура обнаружила проблемы:" "$problems")
           existing=$(gh issue list --repo "$GITHUB_REPOSITORY" --state open --search "in:title \"$title\"" --json number --jq '.[0].number' 2>/dev/null || true)
           if [[ -n "$existing" ]]; then
             gh issue comment "$existing" --repo "$GITHUB_REPOSITORY" --body "$body"
