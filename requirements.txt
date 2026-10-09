@@ -1,0 +1,2 @@
+# Python dependency used by scripts/optimization/neural.py and tests/test_neural.py
+numpy==2.2.6

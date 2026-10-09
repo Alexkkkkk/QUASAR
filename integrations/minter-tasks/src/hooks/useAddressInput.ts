@@ -16,7 +16,7 @@ export function useAddressInput() {
 
   const onClear = useCallback(() => {
     setAddressInput((prev) => ({ ...prev, value: "" }));
-  }, []);
+  }, [setAddressInput]);
 
   const setValue = (val: string) => setAddressInput((prev) => ({ ...prev, value: val }));
 

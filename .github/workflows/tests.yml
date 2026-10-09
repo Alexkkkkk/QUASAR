@@ -61,6 +61,10 @@ jobs:
         if: matrix.package == 'contracts'
         run: node --import tsx --test tests/*.test.ts
 
+      - name: Install Python dependencies (contracts)
+        if: matrix.package == 'contracts'
+        run: python3 -m pip install --quiet -r requirements.txt
+
       - name: Run unittest suites
         if: matrix.package == 'contracts'
         run: python3 -m unittest discover -s tests -p 'test_*.py'
@@ -68,7 +72,7 @@ jobs:
       - name: Install dependencies (dApp)
         if: matrix.package == 'dapp'
         working-directory: integrations/minter-tasks
-        run: npm ci
+        run: npm ci --ignore-scripts
 
       - name: Run dApp unit tests
         if: matrix.package == 'dapp'
@@ -85,9 +89,9 @@ jobs:
           SKIP_PREFLIGHT_CHECK: true
         run: npm run build
 
-      - name: Set up pytest
+      - name: Set up Python test dependencies
         if: matrix.package == 'python'
-        run: python3 -m pip install --quiet pytest
+        run: python3 -m pip install --quiet -r requirements.txt pytest
 
       - name: Run Python tests with pytest
         if: matrix.package == 'python'
