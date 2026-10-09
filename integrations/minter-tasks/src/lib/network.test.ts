@@ -11,7 +11,6 @@ import {
   getNetwork,
   NETWORK_CONFIG,
   setSearchParam,
-  TONCENTER_API_KEY,
 } from "./network";
 import { scannerUrl } from "utils";
 
@@ -55,14 +54,14 @@ test("uses fixed Toncenter clients and explorers per network", async () => {
   expect(mainnet).not.toBe(testnet);
   expect(mainnet.parameters.endpoint).toBe(NETWORK_CONFIG.mainnet.toncenterV2);
   expect(testnet.parameters.endpoint).toBe(NETWORK_CONFIG.testnet.toncenterV2);
+  // No runtime key is injected in the test environment: the client must fall
+  // back to keyless requests and must never carry a bundled credential.
   expect(getToncenterClientParameters("mainnet")).toEqual({
     endpoint: NETWORK_CONFIG.mainnet.toncenterV2,
-    apiKey: TONCENTER_API_KEY,
     timeout: 12_000,
   });
   expect(getToncenterClientParameters("testnet")).toEqual({
     endpoint: NETWORK_CONFIG.testnet.toncenterV2,
-    apiKey: TONCENTER_API_KEY,
     timeout: 12_000,
   });
   expect(getEndpoint("testnet")).toBe("https://testnet.toncenter.com/api/v2/jsonRPC");
@@ -70,6 +69,34 @@ test("uses fixed Toncenter clients and explorers per network", async () => {
   expect(scannerUrl("testnet", false, false)).toBe("https://testnet.tonscan.org/jetton");
   expect(scannerUrl("mainnet", false, true)).toBe("https://tonscan.org/address");
   expect(scannerUrl("mainnet", false, false)).toBe("https://tonscan.org/jetton");
+});
+
+test("injects a Toncenter key only from the runtime config, never from the bundle", () => {
+  expect(getToncenterClientParameters("mainnet")).not.toHaveProperty("apiKey");
+
+  window.__TONCENTER_RUNTIME_CONFIG__ = { apiKey: "runtime-only-key" };
+  try {
+    expect(getToncenterClientParameters("mainnet")).toEqual({
+      endpoint: NETWORK_CONFIG.mainnet.toncenterV2,
+      apiKey: "runtime-only-key",
+      timeout: 12_000,
+    });
+  } finally {
+    delete window.__TONCENTER_RUNTIME_CONFIG__;
+  }
+});
+
+test("routes Toncenter calls through the same-origin proxy when the host injects one", async () => {
+  window.__TONCENTER_RUNTIME_CONFIG__ = { proxyUrl: "/api/toncenter" };
+  try {
+    expect(getEndpoint("testnet")).toBe("/api/toncenter");
+    expect(getToncenterClientParameters("testnet")).toEqual({
+      endpoint: "/api/toncenter",
+      timeout: 12_000,
+    });
+  } finally {
+    delete window.__TONCENTER_RUNTIME_CONFIG__;
+  }
 });
 
 test("retries only transient Toncenter failures", () => {

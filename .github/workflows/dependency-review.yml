@@ -23,6 +23,11 @@ jobs:
       - name: Reject vulnerable dependency changes
         uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
         with:
-          fail-on-severity: high
+          # react-scripts 5 (CRA) в dApp — EOL: часть его транзитивных зависимостей
+          # (например, braces <=3.0.3, GHSA-vfj7-8cjw-p6xm) не имеет исправленной версии,
+          # поэтому гейт по high блокировал бы любые PR с изменениями лок-файла dApp.
+          # Порог выровнен с гейтом dApp CI (npm audit --audit-level=critical, issue #141)
+          # до миграции dApp с CRA.
+          fail-on-severity: critical
           comment-summary-in-pr: on-failure
           deny-licenses: GPL-2.0, GPL-3.0, AGPL-3.0

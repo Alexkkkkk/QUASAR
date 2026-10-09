@@ -31,7 +31,7 @@ export const EditLogoPopup = ({
   const { jettonLogo, setLogoUrl } = useJettonLogo();
   const [tempUrl, setTempUrl] = useState("");
   const [tempUrlDirty, setTempUrlDirty] = useState(false);
-  const [inputFocus, setInputFocus] = useState(false);
+  const [, setInputFocus] = useState(false);
   const textAreaRef = useRef<HTMLTextAreaElement>(null);
   useAutosizeTextArea(textAreaRef.current, tempUrl);
 

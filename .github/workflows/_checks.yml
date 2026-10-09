@@ -68,6 +68,9 @@ jobs:
       - name: Type-check Tact contracts
         run: npm run lint
 
+      - name: Install Python dependencies
+        run: python3 -m pip install --quiet -r requirements.txt
+
       - name: Build and run contract and tooling tests
         run: npm test
 

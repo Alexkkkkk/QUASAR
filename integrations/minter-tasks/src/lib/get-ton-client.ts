@@ -1,5 +1,6 @@
 import { Address, TonClient } from "ton";
-import { Network, NETWORK_CONFIG, TONCENTER_API_KEY } from "./network";
+import { Network, getToncenterBaseUrl } from "./network";
+import { getToncenterApiKey } from "./toncenter-credentials";
 
 const MAX_ATTEMPTS = 3;
 
@@ -78,9 +79,12 @@ class ToncenterClient extends TonClient {
 const clients = new Map<Network, TonClient>();
 
 export function getToncenterClientParameters(network: Network) {
+  const apiKey = getToncenterApiKey();
   return {
-    endpoint: NETWORK_CONFIG[network].toncenterV2,
-    apiKey: TONCENTER_API_KEY,
+    endpoint: getToncenterBaseUrl(network, "v2"),
+    // No key configured -> keyless public endpoint. The key is never a
+    // build-time constant, so it cannot leak through the bundle (issue #141).
+    ...(apiKey ? { apiKey } : {}),
     timeout: 12_000,
   };
 }
@@ -95,5 +99,5 @@ export async function getClient(network: Network): Promise<TonClient> {
 }
 
 export function getEndpoint(network: Network): string {
-  return NETWORK_CONFIG[network].toncenterV2;
+  return getToncenterBaseUrl(network, "v2");
 }

@@ -1,0 +1,109 @@
+name: QUASAR issue triage
+
+# Полная автоматическая сортировка входящих issue: метки по содержимому,
+# приоритет, маршрутизация security-задач и мгновенный отчёт автору.
+# Read-only по коду: workflow не меняет файлы, не создаёт ветки и PR.
+
+on:
+  issues:
+    types: [opened, reopened, edited]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: triage-${{ github.event.issue.number }}
+  cancel-in-progress: true
+
+jobs:
+  triage:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      issues: write
+    steps:
+      - name: Classify the issue and apply labels
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          ISSUE: ${{ github.event.issue.number }}
+          TITLE: ${{ github.event.issue.title }}
+          BODY: ${{ github.event.issue.body }}
+          AUTHOR: ${{ github.event.issue.user.login }}
+        run: |
+          set -euo pipefail
+
+          text="$(printf '%s\n%s' "$TITLE" "$BODY" | tr '[:upper:]' '[:lower:]')"
+          labels=()
+
+          add() { labels+=("$1"); }
+
+          # --- Маршрутизация по области -----------------------------------
+          grep -qiE 'contract|tact|jetton|tep-?74|tep-?89|minter|мастер' <<<"$text" && add contracts
+          grep -qiE 'defi|amm|pool|liquidity|farm|swap|пул' <<<"$text" && add defi
+          grep -qiE 'workflow|actions|ci\b|pipeline|автоматизац' <<<"$text" && add ci
+          grep -qiE 'dependabot|vulnerabilit|npm audit|cve-|уязвим' <<<"$text" && add security
+          grep -qiE 'minter-tasks|dapp|frontend|react|tonconnect|интерфейс' <<<"$text" && add dapp
+          grep -qiE 'docs?/|readme|whitepaper|документац' <<<"$text" && add docs
+          grep -qiE 'test|spec|покрыт' <<<"$text" && add tests
+
+          # --- Приоритет ---------------------------------------------------
+          if grep -qiE 'critical|critical severity|потеря средств|loss of funds|exploit|утечка ключ|private key|mnemonic|сид-фраз' <<<"$text"; then
+            add priority:critical
+          elif grep -qiE 'high|security|безопасн|vulnerab|уязвим|bypass|обход' <<<"$text"; then
+            add priority:high
+          elif grep -qiE 'bug|ошибк|падает|crash|broken|сломан' <<<"$text"; then
+            add priority:medium
+          else
+            add priority:low
+          fi
+
+          # --- Тип и автоматизация -----------------------------------------
+          if grep -qiE '^\[bug\]|bug|ошибк|дефект' <<<"$text"; then add bug; fi
+          if grep -qiE '^\[feature\]|feature|предлож|enhancement|улучш' <<<"$text"; then add enhancement; fi
+          add triaged
+
+          # Автопочинка предлагается, но включается только владельцем:
+          # workflow autofix реагирует на метку `autofix`.
+          if grep -qiE 'ci|сборк|build|тест|зависим|dependabot|уязвим|vulnerab' <<<"$text"; then
+            add autofix-candidate
+          fi
+
+          # Дедупликация и применение
+          unique=$(printf '%s\n' "${labels[@]}" | sort -u | paste -sd, -)
+          echo "Applying labels: $unique"
+          gh issue edit "$ISSUE" --repo "$REPO" --add-label "$unique"
+
+          {
+            echo "### Автоматическая сортировка issue #$ISSUE"
+            echo ""
+            echo "Метки: \`$unique\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Explain the routing to the author
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          ISSUE: ${{ github.event.issue.number }}
+        run: |
+          set -euo pipefail
+          {
+            echo "🤖 **Автоматическая сортировка**"
+            echo ""
+            echo "Задача размечена и поставлена в очередь. Что произойдёт дальше:"
+            echo ""
+            echo "1. **Диагностика** — при метке \`ai-discuss\` бот разберёт задачу и опубликует ответ."
+            echo "2. **Автопочинка** — при метке \`autofix\` (ставит владелец) workflow \`QUASAR autofix\`"
+            echo "   классифицирует отказ, применит детерминированные исправления, проверит их полным"
+            echo "   набором CI и откроет **draft PR**."
+            echo "3. **Проверка** — патч обязан пройти \`npm run lint\`, \`npm test\`, \`npx tsc --noEmit\`,"
+            echo "   \`npm run abi:verify\`, \`npm run abi:dapp\`, \`npm run pins:check\`, \`npm run hub:audit\`,"
+            echo "   \`npm audit\`. Красный CI = PR не создаётся."
+            echo "4. **Merge** — только вручную, человеком, после review каждого hunk."
+            echo ""
+            echo "Полная документация автоматизации: [\`docs/AUTOFIX.md\`](../blob/${{ github.event.repository.default_branch }}/docs/AUTOFIX.md)."
+            echo ""
+            echo "---"
+            echo "*Никогда не вставляйте в issue сид-фразы, приватные ключи, API-ключи и содержимое \`.env\`.*"
+          } > "$RUNNER_TEMP/comment.md"
+          gh issue comment "$ISSUE" --repo "$REPO" --body-file "$RUNNER_TEMP/comment.md"

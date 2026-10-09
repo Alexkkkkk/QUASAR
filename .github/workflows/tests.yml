@@ -1,0 +1,100 @@
+name: QUASAR Tests
+
+# Matrix test suite over every package in the monorepo:
+#   contracts — Tact build, security check, node:test suites, ABI snapshots
+#   dapp      — Create React App unit tests (watch mode disabled) + production build
+#   python    — the unittest-based agent tests, executed through pytest
+#
+# The Pages deploy (pages.yml) gates on the `checks` reusable workflow, so a
+# green merge to main is the only path to production.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tests-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tests:
+    name: Tests (${{ matrix.package }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        package: [contracts, dapp, python]
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        if: matrix.package != 'python'
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            integrations/minter-tasks/package-lock.json
+
+      - name: Install dependencies (contracts)
+        if: matrix.package == 'contracts'
+        run: npm ci
+
+      - name: Build contracts and run security check
+        if: matrix.package == 'contracts'
+        run: |
+          npm run build
+          npm run security:check
+
+      - name: Run node:test suites
+        if: matrix.package == 'contracts'
+        run: node --import tsx --test tests/*.test.ts
+
+      - name: Install Python dependencies (contracts)
+        if: matrix.package == 'contracts'
+        run: python3 -m pip install --quiet -r requirements.txt
+
+      - name: Run unittest suites
+        if: matrix.package == 'contracts'
+        run: python3 -m unittest discover -s tests -p 'test_*.py'
+
+      - name: Install dependencies (dApp)
+        if: matrix.package == 'dapp'
+        working-directory: integrations/minter-tasks
+        run: npm ci --ignore-scripts
+
+      - name: Run dApp unit tests
+        if: matrix.package == 'dapp'
+        working-directory: integrations/minter-tasks
+        env:
+          CI: true
+        run: npm test -- --watchAll=false
+
+      - name: Build the dApp (production)
+        if: matrix.package == 'dapp'
+        working-directory: integrations/minter-tasks
+        env:
+          CI: true
+          SKIP_PREFLIGHT_CHECK: true
+        run: npm run build
+
+      - name: Set up Python test dependencies
+        if: matrix.package == 'python'
+        run: python3 -m pip install --quiet -r requirements.txt pytest
+
+      - name: Run Python tests with pytest
+        if: matrix.package == 'python'
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+        run: python3 -m pytest tests -q
