@@ -202,4 +202,6 @@ jobs:
             printf '🤖 **AI-review (read-only, Groq)**\n\n%s\n\n---\n' "$REVIEW"
             printf '*Это автоматический обзор для человека-ревьюера. Он не является\nодобрением: merge/deploy остаётся решением владельца.*'
           } > "$RUNNER_TEMP/ai-review-comment.md"
-          gh pr review "$PR" --comment --body-file "$RUNNER_TEMP/ai-review-comment.md"
+          # No checkout in this module, so gh must never fall back to a local
+          # git repository: pass the repository explicitly via --repo.
+          gh pr review --repo "$GITHUB_REPOSITORY" "$PR" --comment --body-file "$RUNNER_TEMP/ai-review-comment.md"
