@@ -22,6 +22,9 @@ concurrency:
 
 jobs:
   checks:
+    permissions:
+      contents: read
+      actions: read
     # Deploy gate: production publishes only after the shared checks
     # (lint, actionlint, contract tests, ABI snapshots, pins, hub audit)
     # pass on the deployed ref.

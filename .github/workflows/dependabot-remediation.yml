@@ -115,6 +115,9 @@ jobs:
           npm audit fix --no-fund >/dev/null 2>&1 || true
           npm install --package-lock-only --ignore-scripts --no-fund >/dev/null 2>&1 || true
 
+      - name: Install Python test dependencies
+        run: python3 -m pip install --quiet -r requirements.txt
+
       - name: Validate the repaired tree
         run: |
           set -euo pipefail
