@@ -136,6 +136,7 @@ jobs:
     needs: route
     if: needs.route.outputs['stale'] == 'true'
     permissions:
+      contents: read
       issues: write
       pull-requests: write
     uses: ./.github/workflows/_stale.yml
