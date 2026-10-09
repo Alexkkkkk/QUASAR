@@ -153,5 +153,5 @@ jobs:
             The run creates a separate branch and draft PR only. It does not merge, deploy, use wallet credentials, or perform on-chain actions.
 
             Fixes #${{ github.event.issue.number }}
-          draft: always-true
+          draft: true
           delete-branch: true
