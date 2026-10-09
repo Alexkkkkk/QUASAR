@@ -81,7 +81,7 @@ jobs:
           fi
 
           title="autopilot unattended"
-          body=$(printf "Владелец не проявлял активность %s дн. (последний коммит: %s).\nМетки \\`ai-merge-ok\\` сняты с открытых PR — автономный merge приостановлен до возврата владельца.\n\nRefs #145, #156." "$silent_days" "$last_commit")
+          body=$(printf "Владелец не проявлял активность %s дн. (последний коммит: %s).\nМетки 'ai-merge-ok' сняты с открытых PR — автономный merge приостановлен до возврата владельца.\n\nRefs #145, #156." "$silent_days" "$last_commit")
           existing=$(gh issue list --repo "$GITHUB_REPOSITORY" --state open --search "in:title \"${title}\"" --json number --jq '.[0].number' 2>/dev/null || true)
           if [[ -n "$existing" ]]; then
             gh issue comment "$existing" --repo "$GITHUB_REPOSITORY" --body "$body"
