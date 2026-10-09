@@ -51,7 +51,12 @@ jobs:
           PR: ${{ github.event.pull_request.number }}
         run: |
           set -euo pipefail
-          gh pr diff "$PR" > "$RUNNER_TEMP/pr.diff"
+          # Fetch the unified diff straight from the REST API: the job is
+          # deliberately checkout-free (no workspace trust, no git objects),
+          # so `gh pr diff` cannot fall back to a local repository.
+          gh api "repos/${GITHUB_REPOSITORY}/pulls/${PR}" \
+            -H "Accept: application/vnd.github.diff" > "$RUNNER_TEMP/pr.diff"
+          test -s "$RUNNER_TEMP/pr.diff"
           # Bounded context: keep the diff under the model input budget.
           head -c 20000 "$RUNNER_TEMP/pr.diff" > "$RUNNER_TEMP/pr.trimmed.diff"
           echo "diff bytes: $(wc -c < "$RUNNER_TEMP/pr.trimmed.diff")"
@@ -197,4 +202,6 @@ jobs:
             printf '🤖 **AI-review (read-only, Groq)**\n\n%s\n\n---\n' "$REVIEW"
             printf '*Это автоматический обзор для человека-ревьюера. Он не является\nодобрением: merge/deploy остаётся решением владельца.*'
           } > "$RUNNER_TEMP/ai-review-comment.md"
-          gh pr review "$PR" --comment --body-file "$RUNNER_TEMP/ai-review-comment.md"
+          # No checkout in this module, so gh must never fall back to a local
+          # git repository: pass the repository explicitly via --repo.
+          gh pr review --repo "$GITHUB_REPOSITORY" "$PR" --comment --body-file "$RUNNER_TEMP/ai-review-comment.md"

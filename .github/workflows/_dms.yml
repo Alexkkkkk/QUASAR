@@ -53,3 +53,44 @@ jobs:
             gh issue create --repo "$GITHUB_REPOSITORY" --title "$title" --body "$body"
           fi
           echo "::warning title=Dead man's switch::Contour degradation detected and reported."
+
+      - name: Detect owner inactivity and strip stale merge labels
+        # Issue #156: if the owner has been silent for more than 7 days, open a
+        # single "autopilot unattended" issue (reused while it stays open) and
+        # idempotently remove the `ai-merge-ok` label from open PRs so no
+        # auto-merge can fire without owner supervision. Read-only otherwise.
+        env:
+          GH_TOKEN: ${{ github.token }}
+          OWNER: ${{ github.repository_owner }}
+          OWNER_SILENCE_DAYS: '7'
+        run: |
+          set -euo pipefail
+
+          last_commit=$(gh api "repos/${GITHUB_REPOSITORY}/commits?author=${OWNER}&per_page=1" \
+            --jq '.[0].commit.committer.date // empty' 2>/dev/null || true)
+          if [[ -z "$last_commit" ]]; then
+            last_commit=$(gh api "repos/${GITHUB_REPOSITORY}" --jq '.created_at')
+          fi
+
+          last_ts=$(date -d "$last_commit" +%s)
+          now_ts=$(date +%s)
+          silent_days=$(( (now_ts - last_ts) / 86400 ))
+          if (( silent_days <= OWNER_SILENCE_DAYS )); then
+            echo "::notice::Owner was active ${silent_days} day(s) ago - nothing to do."
+            exit 0
+          fi
+
+          title="autopilot unattended"
+          body=$(printf "Владелец не проявлял активность %s дн. (последний коммит: %s).\nМетки 'ai-merge-ok' сняты с открытых PR — автономный merge приостановлен до возврата владельца.\n\nRefs #145, #156." "$silent_days" "$last_commit")
+          existing=$(gh issue list --repo "$GITHUB_REPOSITORY" --state open --search "in:title \"${title}\"" --json number --jq '.[0].number' 2>/dev/null || true)
+          if [[ -n "$existing" ]]; then
+            gh issue comment "$existing" --repo "$GITHUB_REPOSITORY" --body "$body"
+          else
+            gh issue create --repo "$GITHUB_REPOSITORY" --title "$title" --body "$body"
+          fi
+
+          prs=$(gh pr list --repo "$GITHUB_REPOSITORY" --state open --label "ai-merge-ok" --json number --jq '.[].number')
+          for pr in $prs; do
+            gh pr edit "$pr" --repo "$GITHUB_REPOSITORY" --remove-label "ai-merge-ok" || true
+          done
+          echo "::warning title=Dead man's switch::Owner silent for ${silent_days} days - merge labels stripped."
