@@ -86,3 +86,53 @@
 Красная линия плана остаётся в силе: никаких wallet/on-chain действий из
 Actions, mainnet-деплой — вне автоматизации, `WALLET_MNEMONIC` не попадает
 ни в один workflow агента.
+
+## 11. Пакет 3 (обновление от 10.10.2026): части 20 и 21
+
+Файл плана обновлён до 2402 строк: к частям 1-19 добавлены две новые, прежний
+текст не тронут (в диффе одно добавление — с строки 1966, 434 добавленных
+строк, 0 удалённых).
+
+**Часть 20 — «Перевод действующего конвейера с Groq на Gemini»** (написана под
+фактическое состояние репозитория на 10.10.2026, где `_ai-fix.yml` и
+`_ai-review.yml` ходят в Groq через `scripts/groq_issue_agent.py` и curl).
+Что она требует:
+
+- новый repo secret `GEMINI_API_KEY` (создаёт владелец: Settings → Secrets and
+  variables → Actions); Groq-секрет удалять не обязательно — модули умеют оба;
+- `quasar.yml`: у вызовов `_ai-fix` и `_ai-review` передавать два секрета
+  (`gemini_api_key`, `groq_api_key`) вместо одного `GROQ_API_KEY`;
+- `_ai-fix.yml` и `_ai-review.yml`: в `on.workflow_call.secrets` объявить оба
+  секрета (оба `required: false`);
+- переключатель движка через `vars.AI_ENGINE` (`gemini` по умолчанию | `groq`);
+- новый `scripts/gemini_issue_agent.py` с тем же CLI-контрактом, что у
+  `groq_issue_agent.py` (`--event/--output/--repo-root/--docs-dir`), тем же
+  контрактом «вернуть unified diff» и той же валидацией через `validate_patch`
+  из `scripts/ollama_issue_agent.py`;
+- в `_ai-review.yml` — REST-эндпоинт OpenAI-совместимого слоя Gemini
+  (`https://generativelanguage.googleapis.com/v1beta/openai/chat/completions`),
+  модель `gemini-3.8-flash`, и замена `max_completion_tokens` на `max_tokens`
+  (Gemini первого не принимает); публикуемый комментарий помечается движком
+  (`ENGINE_LABEL` = Gemini | Groq).
+
+**Часть 21 — «Ансамбль Gemini + Groq: два движка на одну задачу».**
+
+Почему это снимает прежний блокер: часть 20 обращается к Gemini по обычному
+REST (`curl`/`urllib`), то есть не тянет в workflow
+`google-github-actions/run-gemini-cli`. Значит, `npm run pins:check` и раздел
+[2] hub-audit (`scripts/hub_audit.ts`) не ломаются — новых actions не
+появляется, пиннинг не задевается. Блокер №2 из раздела 3 закрывается, если
+внедрять именно по части 20, а не по сниппетам частей 16-19.
+
+Что придётся поправить вместе (проверено по файлам `main` на `afde54c`):
+`quasar.yml` сейчас передаёт только `GROQ_API_KEY`; `_ai-fix.yml` объявляет
+только `GROQ_API_KEY` и вызывает `scripts/groq_issue_agent.py`;
+`scripts/gemini_issue_agent.py` отсутствует. Переименование секретов в
+`workflow_call.secrets` обязано идти в одном коммите с вызовами в
+`quasar.yml` и с правкой `tests/automation_hub.test.ts`, иначе контур
+разъедется и hub-audit даст FAIL.
+
+Граница верификации: живой прогон Gemini-ветки из этого окружения проверить
+нельзя — нужен `GEMINI_API_KEY`, которого нет. Поэтому часть 20 требует вашего
+ключа и прогона на реальном PR; утверждать, что она «работает», до такого
+прогона нельзя.
