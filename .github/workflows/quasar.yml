@@ -21,6 +21,9 @@ on:
     - cron: "0 6 * * 1"
     - cron: "0 3 * * *"
     - cron: "0 9 * * *"
+    - cron: "20 3 * * *"
+    - cron: "*/15 * * * *"
+    - cron: "12,42 * * * *"
   workflow_dispatch:
 
 permissions:
@@ -45,6 +48,9 @@ jobs:
       dms: ${{ steps.decide.outputs.dms }}
       hub-audit: ${{ steps.decide.outputs.hub-audit }}
       stale: ${{ steps.decide.outputs.stale }}
+      learn: ${{ steps.decide.outputs.learn }}
+      idle-agent: ${{ steps.decide.outputs.idle-agent }}
+      scout: ${{ steps.decide.outputs.scout }}
     steps:
       - name: Check out the default branch without persisted credentials
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -149,3 +155,41 @@ jobs:
       contents: read
       issues: write
     uses: ./.github/workflows/_dms.yml
+
+  # Nightly memory: turn yesterday's runs into `docs/ai/failure_patterns.md`.
+  learn:
+    needs: route
+    if: needs.route.outputs['learn'] == 'true'
+    permissions:
+      contents: write
+      issues: read
+      pull-requests: write
+    uses: ./.github/workflows/_learn.yml
+
+  # Idle-time study pass: the module itself decides in five seconds whether the
+  # repository is idle and exits without doing anything when it is not.
+  idle-agent:
+    needs: route
+    if: needs.route.outputs['idle-agent'] == 'true'
+    permissions:
+      actions: read
+      contents: write
+      issues: write
+      pull-requests: write
+    uses: ./.github/workflows/_idle-agent.yml
+    secrets:
+      gemini_api_key: ${{ secrets.GEMINI_API_KEY }}
+
+  # Solution scout: scans repository health and opens `ai-fix` issues with a
+  # ready hypothesis; it never edits code itself.
+  scout:
+    needs: route
+    if: needs.route.outputs['scout'] == 'true'
+    permissions:
+      actions: read
+      contents: read
+      issues: write
+      pull-requests: read
+    uses: ./.github/workflows/_scout.yml
+    secrets:
+      gemini_api_key: ${{ secrets.GEMINI_API_KEY }}
