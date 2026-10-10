@@ -87,4 +87,4 @@ jobs:
           # checks + human approval) are satisfied; it never bypasses them
           # (#155).
           gh pr merge "$TARGET" --repo "$GITHUB_REPOSITORY" --squash --auto --delete-branch
-          echo "::notice::Merged agent pull request #$TARGET ($head) after green checks and human approval."
+          echo "::notice::Auto-merge enabled for agent pull request #$TARGET ($head); GitHub will merge it once all branch-protection rules are satisfied."
