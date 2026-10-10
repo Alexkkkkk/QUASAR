@@ -56,8 +56,15 @@ jobs:
             echo "::warning title=ai-merge refused::Branch $head is not an agent branch; merge it by hand."
             exit 0
           fi
+          # Agent pull requests are opened as drafts (draft-only policy). GitHub
+          # cannot record an approving review while a PR is a draft, and `pr`
+          # above is only a snapshot. Mark it ready, then stop; after a human
+          # approves, the owner can remove and re-add `ai-merge-ok` to rerun the
+          # merge checks (#155).
           if [[ "$(jq -r '.isDraft' <<< "$pr")" == "true" ]]; then
-            echo "::warning title=ai-merge refused::The pull request is still a draft."
+            echo "::notice::Marking draft pull request #$TARGET as ready for review."
+            gh pr ready "$TARGET" --repo "$GITHUB_REPOSITORY"
+            echo "::notice::PR #$TARGET is ready. After a human approval, remove and re-add the ai-merge-ok label to rerun the owner-only merge check."
             exit 0
           fi
           if jq -e '.labels[].name | select(. == "do-not-merge")' <<< "$pr" >/dev/null; then
@@ -76,5 +83,8 @@ jobs:
             exit 0
           fi
 
-          gh pr merge "$TARGET" --repo "$GITHUB_REPOSITORY" --squash --delete-branch
-          echo "::notice::Merged agent pull request #$TARGET ($head) after green checks and human approval."
+          # `--auto` queues the merge once the branch-protection gates (required
+          # checks + human approval) are satisfied; it never bypasses them
+          # (#155).
+          gh pr merge "$TARGET" --repo "$GITHUB_REPOSITORY" --squash --auto --delete-branch
+          echo "::notice::Auto-merge enabled for agent pull request #$TARGET ($head); GitHub will merge it once all branch-protection rules are satisfied."

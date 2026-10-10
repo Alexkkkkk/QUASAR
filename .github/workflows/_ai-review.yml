@@ -68,8 +68,14 @@ jobs:
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           set -euo pipefail
-          gh api "repos/${GITHUB_REPOSITORY}/issues/${PR}/comments?per_page=100" --paginate --jq '.[].body' \
-            > "$RUNNER_TEMP/existing-comments.txt" 2>/dev/null || true
+          # The review is published through `gh pr review --comment`, which lands
+          # in the pull-request *reviews* feed, not the issue-comment feed. Scan
+          # both surfaces so the guard actually sees earlier publications and a
+          # synchronize without new commits never duplicates the review (#156).
+          {
+            gh api "repos/${GITHUB_REPOSITORY}/issues/${PR}/comments?per_page=100" --paginate --jq '.[].body' 2>/dev/null || true
+            gh api "repos/${GITHUB_REPOSITORY}/pulls/${PR}/reviews?per_page=100" --paginate --jq '.[].body' 2>/dev/null || true
+          } > "$RUNNER_TEMP/existing-comments.txt"
           if grep -qF "ai-review:${HEAD_SHA}" "$RUNNER_TEMP/existing-comments.txt"; then
             echo "A review for head ${HEAD_SHA} already exists - skipping to stay idempotent."
             echo "SKIP=true" >> "$GITHUB_ENV"
