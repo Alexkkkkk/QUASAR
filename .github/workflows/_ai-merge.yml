@@ -56,13 +56,16 @@ jobs:
             echo "::warning title=ai-merge refused::Branch $head is not an agent branch; merge it by hand."
             exit 0
           fi
-          # Agent pull requests are opened as drafts (draft-only policy). The
-          # owner's `ai-merge-ok` command therefore also marks the pull request
-          # ready for review before merging; branch protection still requires
-          # the green checks and a human approval regardless (#155).
+          # Agent pull requests are opened as drafts (draft-only policy). GitHub
+          # cannot record an approving review while a PR is a draft, and `pr`
+          # above is only a snapshot. Mark it ready, then stop; after a human
+          # approves, the owner can remove and re-add `ai-merge-ok` to rerun the
+          # merge checks (#155).
           if [[ "$(jq -r '.isDraft' <<< "$pr")" == "true" ]]; then
             echo "::notice::Marking draft pull request #$TARGET as ready for review."
             gh pr ready "$TARGET" --repo "$GITHUB_REPOSITORY"
+            echo "::notice::PR #$TARGET is ready. After a human approval, remove and re-add the ai-merge-ok label to rerun the owner-only merge check."
+            exit 0
           fi
           if jq -e '.labels[].name | select(. == "do-not-merge")' <<< "$pr" >/dev/null; then
             echo "::warning title=ai-merge refused::The do-not-merge label is present."

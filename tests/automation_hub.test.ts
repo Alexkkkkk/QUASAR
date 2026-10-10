@@ -241,6 +241,10 @@ test("hub: ai-review idempotency scans the review feed, not only issue comments 
 test("hub: ai-merge readies drafts and queues auto-merge without bypassing protection (issue #155)", () => {
   const body = readFileSync(join(WORKFLOWS, "_ai-merge.yml"), "utf8");
   assert.match(body, /gh pr ready "\$TARGET" --repo "\$GITHUB_REPOSITORY"/, "a draft agent PR must be marked ready before merge");
+  const draftBlock = /if \[\[ "\$\(jq -r '\.isDraft' <<< "\$pr"\)" == "true" \]\]; then([\s\S]*?)\n\s+fi/.exec(body);
+  assert.ok(draftBlock, "the draft handling block must be present");
+  assert.match(draftBlock[1], /remove and re-add the ai-merge-ok label/, "the owner must be told how to rerun after human approval");
+  assert.match(draftBlock[1], /exit 0/, "the workflow must stop after readying a draft instead of using stale review data");
   assert.match(body, /gh pr merge "\$TARGET" --repo "\$GITHUB_REPOSITORY" --squash --auto --delete-branch/, "the merge must queue with --auto");
   assert.match(body, /reviewDecision/, "a human approving review must still be required");
 });
