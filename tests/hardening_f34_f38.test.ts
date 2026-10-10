@@ -76,9 +76,10 @@ async function stake(eco: any, user: any, amount: bigint) {
 
 test('F-35 behaviour: after quorum the same proposalId cannot be executed again by a later voter', async () => {
     const eco = await deployEco();
-    await stake(eco, eco.alice, 100n * QSR);
+    await stake(eco, eco.owner, 100n * QSR);
 
-    await eco.master.send(eco.alice.getSender(), { value: toNano('0.1') }, {
+    // H-1: the quorum execution runs on the owner's message
+    await eco.master.send(eco.owner.getSender(), { value: toNano('0.1') }, {
         $$type: 'GovernanceVote', proposalId: 42n, kind: 2n, flag: false, feeBps: 30n, deadline: DEADLINE, reason: 'halt trading'
     });
     assert.equal(await eco.master.getIsTradingEnabled(), false, 'the first quorum must execute the proposal');
