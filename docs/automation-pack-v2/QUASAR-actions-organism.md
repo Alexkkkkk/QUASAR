@@ -1729,7 +1729,8 @@ jobs:
         run: |
           set -euo pipefail
           npm ci --silent
-          npm run coverage -- --json > /tmp/cov.json || true
+          # TODO: this repository has no coverage script or scripts/perfect_queue.py yet.
+          # Implement both before enabling this staging-only workflow fragment.
           npx eslint . --format json > /tmp/lint.json || true
           target=$(python3 scripts/perfect_queue.py /tmp/cov.json /tmp/lint.json)
           echo "target=$target" >> "$GITHUB_OUTPUT"
