@@ -1,0 +1,47 @@
+  # Job для добавления в .github/workflows/autofix.yml ПОСЛЕ job heal.
+  # Требует outputs от plan/heal и artifact autofix-diagnosis.
+  escalate:
+    needs: [plan, diagnose, heal]
+    if: always() && needs.plan.outputs.work == 'true' && needs.heal.result == 'failure'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      actions: read
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: autofix-diagnosis
+          path: ${{ runner.temp }}/dx
+      - name: Open an ai-fix issue (dedup by label)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          open_issue=$(gh issue list --label autofix-escalation --state open \
+            --json number --jq '.[0].number' 2>/dev/null || true)
+          if [[ -n "$open_issue" ]]; then
+            echo "escalation already open: #$open_issue"
+            gh issue comment "$open_issue" --body "heal failed again (run $RUN_ID). Still blocked."
+            exit 0
+          fi
+          {
+            echo "## Failing checks on main (heal exhausted)"
+            echo
+            echo "Детерминированный heal не исцелил чек-сьют (run $RUN_ID)."
+            echo
+            echo '```'
+            cat "${RUNNER_TEMP}/dx"/* 2>/dev/null | head -200
+            echo '```'
+            echo
+            echo "Автоматика: повесьте label ai-fix — сработает полный агент (ensemble)."
+            echo "Если и агент не справится — ai-fix-super (SUPER-режим, 8 итераций)."
+            echo "Контекст: docs/ai/failure_patterns.md."
+          } > /tmp/issue-body.md
+          gh issue create --title "Failing checks on main (heal exhausted)" \
+            --label "autofix-escalation" --body-file /tmp/issue-body.md
