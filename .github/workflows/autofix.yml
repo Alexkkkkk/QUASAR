@@ -244,6 +244,13 @@ jobs:
           set -euo pipefail
           bash scripts/autofix/apply_fixes.sh
 
+      - name: Install Python dependencies for the check suite
+        # `npm test` below executes the unittest agent suites, and
+        # tests/test_neural.py imports numpy. Without requirements.txt the
+        # import fails, so heal could never go green even on a healthy tree
+        # (the same step exists in _checks.yml and tests.yml).
+        run: python3 -m pip install --quiet -r requirements.txt
+
       - name: Re-run the full check suite on the healed tree
         run: |
           set -euo pipefail

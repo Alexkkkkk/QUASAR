@@ -1026,6 +1026,11 @@
       ]
     },
     {
+      "name": "RefundPendingDeposit",
+      "opcode": "0xd1e47502",
+      "fields": []
+    },
+    {
       "name": "RegisterReferral",
       "opcode": "0xd3b50b23",
       "fields": [
