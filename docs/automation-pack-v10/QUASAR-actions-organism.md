@@ -1,5 +1,7 @@
 # QUASAR: от 15 отдельных workflow к единому автономному организму
 
+> Review-only design snapshot: это не активный workflow и примеры не готовы к прямому запуску. Перед установкой проверьте наличие всех скриптов и зависимостей в репозитории.
+
 Цель: GitHub Actions в QUASAR (Alexkkkkk/QUASAR) перестают быть «островами» и
 собираются в один управляемый контур — с сохранением текущих guardrails:
 read-only по умолчанию, protected paths, draft PR вместо merge, никаких
@@ -1729,10 +1731,8 @@ jobs:
         run: |
           set -euo pipefail
           npm ci --silent
-          npm run coverage -- --json > /tmp/cov.json || true
-          npx eslint . --format json > /tmp/lint.json || true
-          target=$(python3 scripts/perfect_queue.py /tmp/cov.json /tmp/lint.json)
-          echo "target=$target" >> "$GITHUB_OUTPUT"
+          # Review-only stub: coverage collection and scripts/perfect_queue.py are not configured here.
+          echo "target=none" >> "$GITHUB_OUTPUT"
 
   improve:
     needs: select
