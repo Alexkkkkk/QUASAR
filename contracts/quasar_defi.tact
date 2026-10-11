@@ -371,6 +371,15 @@ contract QuasarDeFi with Deployable {
             }
         }
     }
+
+    fun _restoreRemovedLiquidity(payoutId: Int, removal: PendingTonPayout) {
+        self.tonReserve += removal.tonOut;
+        let current: Int? = self.lpBalances.get(removal.beneficiary);
+        self.lpBalances.set(removal.beneficiary, (current == null ? 0 : current!!) + removal.lpAmount);
+        self.lpTotalSupply += removal.lpAmount;
+        self.pendingTonPayouts.set(payoutId, null);
+    }
+
     // The source wallet can accept PoolPayout while the downstream
     // InternalTransfer later bounces. Restore the exact logical reserve that
     // funded this payout and consume the record once.
