@@ -84,12 +84,12 @@ async function deposit(eco: Eco, user: any, amount: bigint) {
 test('gov: a non-staker cannot vote and a wallet cannot vote twice', async () => {
     const eco = await deployEco();
 
-    await expectRevert(eco.master.send(eco.alice.getSender(), { value: toNano('0.1') }, {
+    await expectRevert(eco.master.send(eco.owner.getSender(), { value: toNano('0.1') }, {
         $$type: 'GovernanceVote', proposalId: 1n, kind: 1, flag: false, feeBps: 30, deadline: DEADLINE, reason: 'no stake'
     }), 'voting without a stake must revert');
 
-    await stake(eco, eco.alice, 100n * QSR);
-    await eco.master.send(eco.alice.getSender(), { value: toNano('0.1') }, {
+    await stake(eco, eco.owner, 100n * QSR);
+    await eco.master.send(eco.owner.getSender(), { value: toNano('0.1') }, {
         $$type: 'GovernanceVote', proposalId: 1n, kind: 1, flag: false, feeBps: 30, deadline: DEADLINE, reason: 'first vote'
     });
     // A single staker is 100% of the staked supply, so this vote immediately
@@ -106,10 +106,10 @@ test('gov: a non-staker cannot vote and a wallet cannot vote twice', async () =>
 
 test('gov: a vote reaching quorum executes the proposal through the AI action log', async () => {
     const eco = await deployEco();
-    await stake(eco, eco.alice, 100n * QSR);
+    await stake(eco, eco.owner, 100n * QSR);
 
-    // one staker == 100% of the staked supply, quorum is 10% -> executes
-    await eco.master.send(eco.alice.getSender(), { value: toNano('0.1') }, {
+    // H-1: the quorum execution runs on the owner's message
+    await eco.master.send(eco.owner.getSender(), { value: toNano('0.1') }, {
         $$type: 'GovernanceVote', proposalId: 7n, kind: 2, flag: false, feeBps: 30, deadline: DEADLINE, reason: 'halt trading'
     });
     assert.equal(await eco.master.getIsTradingEnabled(), false, 'the trading toggle must execute on quorum');
@@ -128,10 +128,10 @@ test('gov: a vote reaching quorum executes the proposal through the AI action lo
 
 test('gov: emergency-pause proposal also disables trading without changing fee settings', async () => {
     const eco = await deployEco();
-    await stake(eco, eco.alice, 100n * QSR);
+    await stake(eco, eco.owner, 100n * QSR);
     const feeBefore = await eco.master.getGetFeeConfig();
 
-    await eco.master.send(eco.alice.getSender(), { value: toNano('0.1') }, {
+    await eco.master.send(eco.owner.getSender(), { value: toNano('0.1') }, {
         $$type: 'GovernanceVote', proposalId: 8n, kind: 3, flag: true, feeBps: 30, deadline: DEADLINE, reason: 'pause trading'
     });
 
@@ -154,9 +154,12 @@ test('veto: a staker can escrow separate QSR, reverse an action at threshold, an
     });
     await stake(eco, eco.alice, 100n * QSR);
 
-    // Create a reversible action. The single staker reaches governance quorum,
-    // which leaves action 0 inside the 24-hour community safety window.
-    await eco.master.send(eco.alice.getSender(), { value: toNano('0.1') }, {
+    // Create a reversible action. H-1: the quorum vote runs on the owner's
+    // message (alice keeps her stake for the veto escrow below). The owner's
+    // stake reaches the quorum and leaves action 0 inside the 24-hour
+    // community safety window.
+    await stake(eco, eco.owner, 100n * QSR);
+    await eco.master.send(eco.owner.getSender(), { value: toNano('0.1') }, {
         $$type: 'GovernanceVote', proposalId: 11n, kind: 2, flag: false, feeBps: 30, deadline: DEADLINE, reason: 'halt trading'
     });
     assert.equal(await eco.master.getIsTradingEnabled(), false);
@@ -185,11 +188,11 @@ test('gov: expired votes are rejected and unknown kinds revert', async () => {
     const eco = await deployEco();
     await stake(eco, eco.alice, 100n * QSR);
 
-    await expectRevert(eco.master.send(eco.alice.getSender(), { value: toNano('0.1') }, {
+    await expectRevert(eco.master.send(eco.owner.getSender(), { value: toNano('0.1') }, {
         $$type: 'GovernanceVote', proposalId: 2n, kind: 1, flag: false, feeBps: 30, deadline: 999n, reason: 'expired'
     }), 'a vote past its deadline must revert');
 
-    await expectRevert(eco.master.send(eco.alice.getSender(), { value: toNano('0.1') }, {
+    await expectRevert(eco.master.send(eco.owner.getSender(), { value: toNano('0.1') }, {
         $$type: 'GovernanceVote', proposalId: 3n, kind: 9, flag: false, feeBps: 30, deadline: DEADLINE, reason: 'unknown kind'
     }), 'an unknown proposal kind must revert');
 });

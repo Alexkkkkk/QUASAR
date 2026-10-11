@@ -35,11 +35,21 @@ suite. Findings are listed with the file/line range that carries them.
 | F-31 | `ExecuteAdminCall` had no sender check, so anyone could fire a queued call once the delay expired while `CancelAdminCall` stayed admin-only | `contracts/quasar_admin.tact:83-98`, `tests/audit_f31_f32.test.ts` | fixed | this pass |
 | F-32 | `AISetOracle`, `AIRotateOracle` and "Claim AI Control" moved the oracle without clearing `lastAiQueryId`, so a new oracle was rejected as "Stale AI query" | `contracts/quasar.tact:1303-1321`, `contracts/quasar.tact:1514-1521`, `tests/audit_f31_f32.test.ts` | fixed | this pass |
 | F-33 | `AISetFee` and `AISetAntiWhale` cannot change any state (their fields are pinned to compile-time constants) yet each logs two dictionary entries, consumes the 6h cooldown and burns a query id | `contracts/quasar.tact:1231-1240`, `contracts/quasar.tact:1255-1271` | open — #102 did not change either handler; design decision required, see `docs/NOTES-WIP.md` | this pass |
-| F-34 | `priceHistory` and `anomalyLog` grow without bound while the contract reserves only 0.05 TON, so rent can exceed the reserve | `contracts/quasar.tact:1352-1353`, `contracts/quasar.tact:1384-1385`, `contracts/quasar.tact:1437-1438` | fixed in review — bounded retention caps plus observable dropped counters (issue #139) | #139 |
-| F-35 | A governance `proposalId` is not single-use: the tally resets to 0 after quorum, so the same id can be executed again with a different `kind` from a later voter's message | `contracts/quasar.tact:1532-1580` | fixed in review — `govProposalExecuted` makes a proposalId single-use (issue #139) | #139 |
-| F-36 | `FeeTransfer` divides the fee split without an explicit `burnAmount <= totalSupply` guard; the varint range check catches it, but the abort is implicit | `contracts/quasar.tact:833-836` | fixed in review — explicit `burnAmount <= totalSupply` guard in `FeeTransfer` (issue #139) | #139 |
+| F-34 | `priceHistory` and `anomalyLog` grow without bound while the contract reserves only 0.05 TON, so rent can exceed the reserve | `contracts/quasar.tact:1352-1353`, `contracts/quasar.tact:1384-1385`, `contracts/quasar.tact:1437-1438` | fixed — bounded retention caps plus observable dropped counters (PR #140, merged 2026-10-08) | #139 |
+| F-35 | A governance `proposalId` is not single-use: the tally resets to 0 after quorum, so the same id can be executed again with a different `kind` from a later voter's message | `contracts/quasar.tact:1532-1580` | fixed — `govProposalExecuted` makes a proposalId single-use (PR #140, merged 2026-10-08) | #139 |
+| F-36 | `FeeTransfer` divides the fee split without an explicit `burnAmount <= totalSupply` guard; the varint range check catches it, but the abort is implicit | `contracts/quasar.tact:833-836` | fixed — explicit `burnAmount <= totalSupply` guard in `FeeTransfer` (PR #140, merged 2026-10-08) | #139 |
 | F-37 | AI authorisation is a single external address; `checkSignature` / `checkDataSignature` are unused, so the whole AI surface trusts one relayer key | `contracts/quasar.tact:387` | documented trust boundary — #102 did not change AI authorization | this pass |
-| F-38 | Comment in `_executeBuyback` claims the pool is "always fully consumed", but the `reserveBalance` cap can leave a remainder | `contracts/quasar.tact:930-936` | fixed in review — comment now states the reserve-cap remainder kept in `buybackPool` (issue #139) | #139 |
+| F-38 | Comment in `_executeBuyback` claims the pool is "always fully consumed", but the `reserveBalance` cap can leave a remainder | `contracts/quasar.tact:930-936` | fixed — comment now states the reserve-cap remainder kept in `buybackPool` (PR #140, merged 2026-10-08) | #139 |
+
+### External-audit package 2026-10-10 — H-1 / M-1 / M-3 / M-4 (entry gate to #62)
+
+| ID | Finding | File(s) / scope | Status | Issue |
+|----|---------|-----------------|--------|-------|
+| H-1 | `receive(msg: GovernanceVote)` executed economic proposals (fee / trading / emergency pause) on quorum with no sender authorization — the only state-changing master receiver without an owner/AI check | `contracts/quasar.tact` (`receive(msg: GovernanceVote)`) | fix in review — `self._requireOwner()` gates the receiver; on-chain regression in `tests/audit_h1_m1_governance_refund.test.ts` | #167 |
+| M-1 | The master had no `RefundPendingDeposit` receiver, so QSR deposited into `pendingQsrDeposits` but not consumed by `Stake` / `AddVesting` / veto escrow was locked in custody with no withdrawal path (DeFi has the mirror `RefundPendingQsr`) | `contracts/quasar.tact` (new receiver + kind-6 bounce branch in `_restoreMasterPayout`) | fix in review — refund receiver mirroring the DeFi path; on-chain regression in `tests/audit_h1_m1_governance_refund.test.ts` | #168 |
+| M-3 | Formulation not yet provided by the auditor — definitions absent from all repo docs (checked 2026-10-10) | — | open — awaiting the auditor / owner formulation | #169 |
+| M-4 | Formulation not yet provided by the auditor — definitions absent from all repo docs (checked 2026-10-10) | — | open — awaiting the auditor / owner formulation | #169 |
+
 
 
 ### Manual cross-check: PR #102 (merged 2026-10-05)
@@ -52,10 +62,12 @@ The merged diff and regression tests were checked against F-33–F-38. **None of
   exists and real deployment addresses are published. It had been closed as
   `completed`, which contradicted this document and the issue's own conditions;
   the tracker and this file are now aligned.
-- **Issue #139** tracks the contract hardening of F-34/F-35/F-36/F-38; when that
-  PR merges, the four rows above move from `fixed in review` to `fixed`. PR #102 changes contract storage/layout, so
-  all pre-#102 addresses are invalid; A-62.3 must use addresses from a deployment
-  of the post-#102 build. No canonical deployment addresses are published yet.
+- **Issue #139** tracked the contract hardening of F-34/F-35/F-36/F-38; PR #140
+  merged on 2026-10-08, so those four rows are `fixed`. PR #102 changes contract
+  storage/layout, so all pre-#102 addresses are invalid; A-62.3 must use addresses
+  from a deployment of the post-#102 build. No canonical deployment addresses are
+  published yet. The external-audit package: H-1 (#167) and M-1 (#168) are in
+  review; M-3/M-4 definitions are awaited in #169.
 - **Issue #107** remains open for the AI development cycle; it is a separate
   workflow task, not an audit finding.
 - Build hashes alone do **not** certify safety or readiness; they only make a

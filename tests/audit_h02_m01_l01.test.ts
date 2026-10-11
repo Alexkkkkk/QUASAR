@@ -133,17 +133,17 @@ const vote = (proposalId: bigint) => ({
 
 test('L-01 on-chain: one staker may vote on two different proposals', async () => {
     const eco = await deployEco();
-    await stake(eco, eco.alice, 1000n * 10n ** 9n);
-    const r1 = await eco.master.send(eco.alice.getSender(), { value: toNano('0.1') }, vote(1n));
+    await stake(eco, eco.owner, 1000n * 10n ** 9n);
+    const r1 = await eco.master.send(eco.owner.getSender(), { value: toNano('0.1') }, vote(1n));
     assert.ok(!anyComputeFailed(r1), 'the first proposal vote must succeed');
-    const r2 = await eco.master.send(eco.alice.getSender(), { value: toNano('0.1') }, vote(2n));
+    const r2 = await eco.master.send(eco.owner.getSender(), { value: toNano('0.1') }, vote(2n));
     assert.ok(!anyComputeFailed(r2), 'the same staker must be able to vote on a second proposal');
 });
 
 test('L-01 on-chain: the same proposal cannot be voted twice by one staker', async () => {
     const eco = await deployEco();
-    await stake(eco, eco.alice, 1000n * 10n ** 9n);
-    await eco.master.send(eco.alice.getSender(), { value: toNano('0.1') }, vote(1n));
-    const dup = await eco.master.send(eco.alice.getSender(), { value: toNano('0.1') }, vote(1n));
+    await stake(eco, eco.owner, 1000n * 10n ** 9n);
+    await eco.master.send(eco.owner.getSender(), { value: toNano('0.1') }, vote(1n));
+    const dup = await eco.master.send(eco.owner.getSender(), { value: toNano('0.1') }, vote(1n));
     assert.ok(anyComputeFailed(dup), 'a duplicate vote on the same proposal must revert');
 });

@@ -702,6 +702,11 @@ contract QuasarMaster with Deployable {
             let actionStake: Int? = self.vetoActionStake.get(op!!.d2);
             self.vetoActionStake.set(op!!.d2, (actionStake == null ? 0 : actionStake!!) + op!!.amount);
             self.totalVetoStake = self.totalVetoStake + op!!.amount;
+        } else if (op!!.kind == 6) {
+            // M-1: bounced deposit refund — re-credit the user's pending
+            // custody deposit so the funds stay withdrawable.
+            let p: Int? = self.pendingQsrDeposits.get(op!!.beneficiary);
+            self.pendingQsrDeposits.set(op!!.beneficiary, (p == null ? 0 : p!!) + op!!.amount);
         } else {
             require(false, "Unknown payout kind")
         }
@@ -1599,6 +1604,17 @@ contract QuasarMaster with Deployable {
         self._sendCustodiedTokens(sender(), amount!!, 5, key, msg.actionId, 0);
         emit(EventAiVetoReleased{ actionId: msg.actionId, voter: sender(), amount: amount!! }.toCell());
     }
+
+    // M-1: a user may recover an unconsumed custody deposit at any time,
+    // including while paused — the path returns only the sender's own QSR
+    // (mirror of the DeFi `RefundPendingQsr` receiver). A bounced payout is
+    // restored by the kind-6 branch of `_restoreMasterPayout`.
+    receive(msg: RefundPendingDeposit) {
+        let pending: Int? = self.pendingQsrDeposits.get(sender());
+        require(pending != null && pending!! > 0, "No pending deposit");
+        self.pendingQsrDeposits.set(sender(), 0);
+        self._sendCustodiedTokens(sender(), pending!!, 6, 0, 0, 0);
+    }
     
     receive("Claim AI Control") {
         self._requireOwner();
@@ -1621,7 +1637,12 @@ contract QuasarMaster with Deployable {
     // proposal executes immediately through the same validated paths and
     // the same reversible action log the AI oracle uses, so OwnerOverride
     // can reverse a governance decision within the usual window.
+    // H-1: executing an economic proposal (fee, trading, emergency pause) is
+    // an owner-gated action. The quorum execution below runs on the owner's
+    // message, so a staker can no longer pick `kind`/`proposalId` and move
+    // the economy unilaterally.
     receive(msg: GovernanceVote) {
+        self._requireOwner();
         self._requireNotPaused();
         require(now() <= msg.deadline, "Vote expired");
         // F-35: a proposal that already reached quorum is closed; a later voter
@@ -2235,6 +2256,7 @@ message CancelOwnerTransfer { }
 
 // ─── Governance (v5): stake-weighted voting on AI-oracle settings ───
 message GovernanceVote { proposalId: Int as uint64; kind: Int as uint8; flag: Bool; feeBps: Int as uint16; deadline: Int as uint32; reason: String }
+message RefundPendingDeposit { }
 message EventGovernanceVote { voter: Address; proposalId: Int; weight: Int }
 message EventGovernanceExecuted { proposalId: Int; actionId: Int }
 struct GovernanceState { quorumBps: Int; totalStaked: Int; proposals: Int }
