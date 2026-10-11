@@ -49,3 +49,43 @@ Fix (known-good): в PR, закрывающем issue, писать "Closes #N";
   при review проверять closing keywords
 Status: OPEN
 Seen: 2026-10-10, PR #170 (Refs #167, #168)
+
+## Pattern: recurring-QUASAR autofix
+Signature:
+  - workflow 'QUASAR autofix' failed 15x in last 200 runs
+Root cause: unknown
+Fix (known-good): unknown
+Status: OPEN
+Seen: 2026-10-11
+
+## Pattern: recurring-QUASAR automation router
+Signature:
+  - workflow 'QUASAR automation router' failed 11x in last 200 runs
+Root cause: unknown
+Fix (known-good): unknown
+Status: OPEN
+Seen: 2026-10-11
+
+## Pattern: recurring-QUASAR CI
+Signature:
+  - workflow 'QUASAR CI' failed 12x in last 200 runs
+Root cause: unknown
+Fix (known-good): unknown
+Status: OPEN
+Seen: 2026-10-11
+
+## Pattern: recurring-QUASAR Tests
+Signature:
+  - workflow 'QUASAR Tests' failed 8x in last 200 runs
+Root cause: unknown
+Fix (known-good): unknown
+Status: OPEN
+Seen: 2026-10-11
+
+## Pattern: recurring-QUASAR issue triage
+Signature:
+  - workflow 'QUASAR issue triage' failed 13x in last 200 runs
+Root cause: unknown
+Fix (known-good): unknown
+Status: OPEN
+Seen: 2026-10-11
