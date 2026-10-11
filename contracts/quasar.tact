@@ -687,7 +687,10 @@ contract QuasarMaster with Deployable {
             self.stakingRewardsPool = self.stakingRewardsPool + op!!.amount;
             let s: StakeInfo? = self.stakers.get(op!!.beneficiary);
             if (s != null) {
-                self.stakers.set(op!!.beneficiary, StakeInfo{ amount: s!!.amount, startTime: s!!.startTime, lastClaim: op!!.d1, lockEnd: s!!.lockEnd });
+                // FIX L-5 (audit pack v2): do NOT rewind lastClaim to d1. A
+                // bounce of the staking-reward leg must not re-credit a period
+                // already covered by a later top-up; anchor at now() instead.
+                self.stakers.set(op!!.beneficiary, StakeInfo{ amount: s!!.amount, startTime: s!!.startTime, lastClaim: now(), lockEnd: s!!.lockEnd });
             }
         } else if (op!!.kind == 4) {
             // Referral reward: restore the user and aggregate liabilities.
@@ -940,18 +943,26 @@ contract QuasarMaster with Deployable {
             }
         }
         
-        if (treasuryAmt > 0 && self.treasury != newAddress(0, 0)) {
-            // Treasury may only spend the unencumbered part of the reserve:
-            // pool allocations (buyback/staking) stay fully backed.
-            require(self.reserveBalance - self._poolEncumbrance() >= treasuryAmt, "Reserve encumbered");
-            self._sendTokens(self.treasury, treasuryAmt, msg.queryId, msg.originalSender);
-        }
-        
-        // Auto-buyback. A pending swap leg owns buybackSwapPending/QueryId;
-        // starting another swap here would overwrite the tracking record and
-        // desync the reserve accounting when the first proceeds arrive (M-03).
-        if (self.buybackEnabled && self.buybackSwapPending == 0 && self.buybackPool >= self.buybackThreshold && now() - self.lastBuybackTime >= self.buybackCooldown) {
-            self._executeBuyback(msg.queryId);
+        // FIX M-4a (audit pack v2): a pause silences the OUTGOING legs of the
+        // fee split (treasury transfer and the automatic buyback swap) but
+        // never the inbound accounting — the wallet that sent this fee is
+        // waiting for its TransferConfirmed, so dropping the whole message
+        // would freeze every transfer in the system. The burn leg and the
+        // referral-liability accounting above run in either mode.
+        if (!self.emergencyPause) {
+            if (treasuryAmt > 0 && self.treasury != newAddress(0, 0)) {
+                // Treasury may only spend the unencumbered part of the reserve:
+                // pool allocations (buyback/staking) stay fully backed.
+                require(self.reserveBalance - self._poolEncumbrance() >= treasuryAmt, "Reserve encumbered");
+                self._sendTokens(self.treasury, treasuryAmt, msg.queryId, msg.originalSender);
+            }
+            
+            // Auto-buyback. A pending swap leg owns buybackSwapPending/QueryId;
+            // starting another swap here would overwrite the tracking record and
+            // desync the reserve accounting when the first proceeds arrive (M-03).
+            if (self.buybackEnabled && self.buybackSwapPending == 0 && self.buybackPool >= self.buybackThreshold && now() - self.lastBuybackTime >= self.buybackCooldown) {
+                self._executeBuyback(msg.queryId);
+            }
         }
         
         // Emit fee distribution event
@@ -980,6 +991,11 @@ contract QuasarMaster with Deployable {
     // ═══════════════════════════════════════════════════════════
     
     receive(msg: TriggerBuyback) {
+        // FIX H-1 (audit pack v2): owner authentication runs BEFORE every state
+        // check, so an unauthenticated call always aborts with "Only owner"
+        // whatever the pool state, and cannot be used to probe buyback
+        // internals. QSR can never leave custody on a stranger's message.
+        self._requireOwner();
         self._requireNotPaused();
         require(self.buybackEnabled, "Buyback off");
         require(self.buybackPool >= self.buybackThreshold, "Pool low");
@@ -1118,7 +1134,10 @@ contract QuasarMaster with Deployable {
     }
     
     receive(msg: Unstake) {
-        self._requireNotPaused();
+        // FIX M-4b (audit pack v2): a pause must freeze new risk, not trap user
+        // principal. Unstake (principal plus accrued rewards) stays live while
+        // paused, mirroring DeFi's RemoveLiquidity. Stake, ClaimRewards and
+        // ClaimReferralRewards remain gated.
         require(msg.amount > 0, "Invalid amount");
         let staker: Address = sender();
         let info: StakeInfo? = self.stakers.get(staker);
@@ -1250,7 +1269,8 @@ contract QuasarMaster with Deployable {
     }
     
     receive(msg: ClaimVested) {
-        self._requireNotPaused();
+        // FIX M-4b (audit pack v2): a vesting claim is an existing entitlement,
+        // not a new position — it stays live during a pause.
         require(self.vestingEnabled, "Vesting off");
         let beneficiary: Address = sender();
         let info: VestingInfo? = self.vestingSchedules.get(beneficiary);
@@ -1648,19 +1668,34 @@ contract QuasarMaster with Deployable {
         // F-35: a proposal that already reached quorum is closed; a later voter
         // cannot re-arm the tally with a different `kind` on the same id.
         require(self.govProposalExecuted.get(msg.proposalId) == null, "Proposal already executed");
-        let voteKey: Int = self._voteKey(sender(), msg.proposalId);
+        // FIX M-2b (audit pack v2): the tally and the per-voter record are
+        // keyed on the HASH of the proposal CONTENT (kind, flag, feeBps), not
+        // on proposalId alone. Weight cast for one content variant can never
+        // accumulate toward a different variant reusing the same id
+        // (bait-and-switch), and a quorum reached on one content cannot
+        // execute another. Map types are unchanged (both keys stay Int), so
+        // the storage layout is untouched. The owner gate above is kept
+        // deliberately: the pack proposed dropping it, this branch does not.
+        let content: Cell = beginCell()
+            .storeUint(msg.proposalId, 64)
+            .storeUint(msg.kind, 8)
+            .storeUint(msg.flag ? 1 : 0, 1)
+            .storeUint(msg.feeBps, 32)
+            .endCell();
+        let tallyKey: Int = content.hash();
+        let voteKey: Int = self._voteKey(sender(), tallyKey);
         require(self.govVotes.get(voteKey) == null, "Already voted");
         let staker: StakeInfo? = self.stakers.get(sender());
         require(staker != null && staker!!.amount > 0, "Stake first");
         
         self.govVotes.set(voteKey, true);
-        let prev: Int? = self.govProposalStake.get(msg.proposalId);
+        let prev: Int? = self.govProposalStake.get(tallyKey);
         let prevStake: Int = prev == null ? 0 : prev!!;
         if (prev == null) {
             self.govProposalCount = self.govProposalCount + 1;
         }
         let newStake: Int = prevStake + staker!!.amount;
-        self.govProposalStake.set(msg.proposalId, newStake);
+        self.govProposalStake.set(tallyKey, newStake);
         
         emit(EventGovernanceVote{ voter: sender(), proposalId: msg.proposalId, weight: staker!!.amount }.toCell());
         
@@ -1691,7 +1726,9 @@ contract QuasarMaster with Deployable {
             }
             // Quorum satisfied: the tally is consumed so the same proposal
             // cannot re-execute on late votes.
-            self.govProposalStake.set(msg.proposalId, 0);
+            // FIX M-2b: consume the CONTENT tally only. Other content
+            // variants of the same proposalId stay voteable from zero.
+            self.govProposalStake.set(tallyKey, 0);
             self.govProposalExecuted.set(msg.proposalId, true);
             emit(EventGovernanceExecuted{ proposalId: msg.proposalId, actionId: id }.toCell());
         }

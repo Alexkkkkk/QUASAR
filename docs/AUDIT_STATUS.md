@@ -72,3 +72,42 @@ The merged diff and regression tests were checked against F-33–F-38. **None of
   workflow task, not an audit finding.
 - Build hashes alone do **not** certify safety or readiness; they only make a
   reviewed build reproducible.
+
+### Audit pack v2 — application record (2026-10-11)
+
+Source: audit pack v2 (`docs/audit-pack-v2/`, staged verbatim as review material in
+PR #182). Applied to the real contracts in a dedicated PR.
+
+| ID | Status | Where |
+|----|--------|-------|
+| H-1 | applied (reordered) | `contracts/quasar.tact` — `receive(TriggerBuyback)`: `_requireOwner()` moved ahead of every state check, so an unauthenticated call always aborts with "Only owner". Main already had the gate, but behind the pause/pool checks. |
+| M-1 | already in main | `RefundPendingDeposit` receiver + kind-6 bounce restore (PR #170). The pack's partial-refund variant was NOT adopted; the single-key shape is kept. |
+| M-2b | applied, owner gate kept | `receive(GovernanceVote)`: tally and per-voter record are now keyed on the hash of `(proposalId, kind, flag, feeBps)`. The pack removed the owner gate; this branch keeps it, so the message stays an owner action. |
+| M-3 | applied | `contracts/quasar_defi.tact` — `receive(PayoutFailed)` kind 2: the failed payout record re-credits the farmer's `pending` in addition to `farmRewardReserve`. |
+| M-4a | applied | `receive(FeeTransfer)`: treasury transfer and auto-buyback sit behind `if (!self.emergencyPause)`. Inbound accounting, the burn leg and referral liabilities are unaffected, so wallets still receive their `TransferConfirmed`. |
+| M-4b | applied | `Unstake` and `ClaimVested` no longer call `_requireNotPaused`; `Stake` / `ClaimRewards` / `ClaimReferralRewards` remain gated. |
+| M-4c | NOT applied | `ToggleTrading` keeps its name and opcode. Renaming to `ToggleMinting` would desynchronise the message name from `docs/abi/quasar-master.json` and `website/tonconnect.js`, and the pack's stated goal (no integration break) is met by leaving both as they are — the flag only gates minting already. |
+| L-1 | applied | DeFi buyback tombstone keeps a one-slot history (`prevBuyback*`) and the bounce handler routes pending / previous / unknown legs instead of reverting. |
+| L-2 | applied | `QUASAR_POOL_PAYOUT_MARKER` added to the shared wallet; pool payouts mark the downstream `InternalTransfer` query id and `bounced<InternalTransfer>` routes on the bit. Additionally (not in the pack) the `TokenExcesses` lookup normalises the marked id, otherwise a successful payout would never clear its pool record. |
+| L-3 | applied | The transfer residual is only sent when `responseDestination != addr_none`; otherwise it stays in the wallet. |
+| L-4 | NOT applied | The pack version returns compile-time constants from a runtime getter. `get_fee_config` reports the live fields today; returning constants would under-report `feeBps`/`feeBurnShare` after an AI rebalance or a governance vote. Suggest changing the *getter shape* (versioned or renamed) instead. |
+| L-5 | applied | `_restoreMasterPayout` kind 3 anchors `lastClaim` at `now()` instead of rewinding to `d1`. |
+| L-7 | applied | `estimateLpOut` returns 0 when either reserve is zero instead of dividing by zero. |
+| L-8 | not applicable to code | Documentation-only item; belongs to the minter dApp UI (wallet balance >= 0.075 TON pre-check). |
+
+Release gates after this change: contract code hashes changed, so
+`docs/abi/*.json` and `docs/build-hashes.json` were regenerated in the same commit and
+the published testnet addresses must be re-derived before any deployment.
+
+Pre-existing failures unrelated to the pack (they fail on `main` too, see the PR body
+for the command and the evidence): `L-01 on-chain: one staker may vote on two different
+proposals`, `H-1 on-chain: the owner can still execute a proposal on quorum`,
+`F-35 behaviour: after quorum the same proposalId cannot be executed again by a later
+voter`, `gov: a vote reaching quorum executes the proposal through the AI action log`,
+`gov: emergency-pause proposal also disables trading without changing fee settings`,
+`veto: a staker can escrow separate QSR, reverse an action at threshold, and release the
+escrow`, `defi: QSR success followed by TON bounce partially closes a liquidity removal`,
+`defi: SwapToQSR delivers QSR and consumes its payout record`. They look like the
+governance tests still expecting the pre-#170 (non-owner, proposalId-keyed) semantics
+and two DeFi bounce tests expecting a specific synthetic bounce sequence; triaging them
+is a follow-up, not part of this pack.
