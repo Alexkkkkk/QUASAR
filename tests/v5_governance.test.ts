@@ -132,13 +132,13 @@ test('gov: a proposalId cannot be reused with different parameters', async () =>
     await stake(eco, eco.alice, 100n * QSR);
 
     const first = await eco.master.send(eco.owner.getSender(), { value: toNano('0.1') }, {
-        $type: 'GovernanceVote', proposalId: 99n, kind: 2, flag: false, feeBps: 30, deadline: DEADLINE, reason: 'original payload'
+        $$type: 'GovernanceVote', proposalId: 99n, kind: 2, flag: false, feeBps: 30, deadline: DEADLINE, reason: 'original payload'
     });
     assert.ok(!anyComputeFailed(first), 'the first payload should create a sub-quorum tally');
     assert.equal(await eco.master.getGetProposalStake(99n), 1n * QSR, 'the public getter reports the pending tally by proposalId');
 
     const mismatch = await eco.master.send(eco.owner.getSender(), { value: toNano('0.1') }, {
-        $type: 'GovernanceVote', proposalId: 99n, kind: 3, flag: true, feeBps: 30, deadline: DEADLINE, reason: 'replacement payload'
+        $$type: 'GovernanceVote', proposalId: 99n, kind: 3, flag: true, feeBps: 30, deadline: DEADLINE, reason: 'replacement payload'
     }).catch(() => null);
     assert.ok(mismatch === null || anyComputeFailed(mismatch), 'a different payload for the same id must revert');
     assert.equal(await eco.master.getIsTradingEnabled(), true, 'the sub-quorum first payload has not executed');
