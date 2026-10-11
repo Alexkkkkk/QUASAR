@@ -1,0 +1,78 @@
+name: learn
+
+# Reusable nightly learning module (Часть 17.4). It never touches `main`:
+# the only file it may write is `docs/ai/failure_patterns.md`, and the result
+# is published as a draft pull request through the usual gates.
+#
+# Write access stays on the job level; the workflow-level block is read-only.
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: learn
+  cancel-in-progress: false
+
+jobs:
+  digest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write
+      issues: read
+      pull-requests: write
+    steps:
+      - name: Check out the default branch without persisted credentials
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+
+      - name: Collect the outcome history
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh run list --limit 200 --json workflowName,conclusion,createdAt,displayTitle \
+            > /tmp/runs.json
+          gh pr list --state all --limit 100 --json number,title,labels,mergedAt \
+            > /tmp/prs.json
+          gh issue list --state all --limit 100 --json number,title,labels,state \
+            > /tmp/issues.json
+
+      - name: Update the failure memory
+        run: |
+          set -euo pipefail
+          python3 scripts/learn_loop.py --runs /tmp/runs.json \
+            --prs /tmp/prs.json --issues /tmp/issues.json \
+            --patterns docs/ai/failure_patterns.md
+
+      - name: Open a self-improvement pull request when the patterns changed
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          changed=$(git diff --name-only)
+          if [[ -z "$changed" ]]; then
+            echo "no pattern changes tonight"
+            exit 0
+          fi
+          blocked=$(printf '%s\n' "$changed" | grep -E '^(\.github/workflows/|contracts/)' || true)
+          [[ -z "$blocked" ]] || { echo "::error::Learn touched protected paths: $blocked"; exit 1; }
+          # The learn loop may only ever rewrite its own memory file.
+          extra=$(printf '%s\n' "$changed" | grep -v -x 'docs/ai/failure_patterns.md' || true)
+          [[ -z "$extra" ]] || { echo "::error::Learn wrote outside its memory file: $extra"; exit 1; }
+          git config user.name quasar-autopilot
+          git config user.email autopilot@users.noreply.github.com
+          branch="autopilot/learn-$(date +%F)"
+          git checkout -b "$branch"
+          git add docs/ai/failure_patterns.md
+          git commit -m "docs(autopilot): nightly failure-pattern update"
+          git push "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" \
+            "HEAD:refs/heads/${branch}"
+          gh pr create --draft --repo "$GITHUB_REPOSITORY" --head "$branch" \
+            --title "Autopilot: failure-pattern update $(date +%F)" \
+            --body "Nightly learn loop. Gates: _checks, _ai-review, merge-bot. Only \`docs/ai/failure_patterns.md\` is touched."

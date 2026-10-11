@@ -7,7 +7,7 @@
  * Output: key=value lines on GITHUB_OUTPUT (or stdout when GITHUB_OUTPUT is
  *         unset, which is what the tests use).
  *
- * Routing table (epic #145, Части 3/10/11/13):
+ * Routing table (epic #145, Части 3/10/11/13/17/19):
  *   push / pull_request / workflow_dispatch            -> checks=true
  *   issues + labeled `ai-fix` by the owner             -> ai-fix=true (checks=false)
  *   issues + labeled `ai-merge-ok` by the owner        -> ai-merge=true
@@ -18,6 +18,9 @@
  *   schedule `0 6 * * 1` (Monday 06:00 UTC)            -> hub-audit=true
  *   schedule `0 3 * * *`                               -> stale=true
  *   schedule `0 9 * * *`                               -> dms=true (dead man's switch)
+ *   schedule `20 3 * * *`                              -> learn=true (nightly memory)
+ *   schedule every 15 minutes                            -> idle-agent=true (study in idle)
+ *   schedule `12,42 * * * *`                           -> scout=true (health scan 2x/hour)
  *   everything else                                    -> nothing
  */
 
@@ -35,6 +38,9 @@ const OUTPUTS = [
   "dms",
   "hub-audit",
   "stale",
+  "learn",
+  "idle-agent",
+  "scout",
 ];
 
 /** Branch prefixes owned by an automated coding agent (issues #155, #156, #157). */
@@ -55,6 +61,9 @@ export function route(env) {
     dms: "false",
     "hub-audit": "false",
     stale: "false",
+    learn: "false",
+    "idle-agent": "false",
+    scout: "false",
   };
 
   const event = env.EVENT ?? "";
@@ -106,6 +115,15 @@ export function route(env) {
       if (cron === "0 6 * * 1") result["hub-audit"] = "true";
       else if (cron === "0 3 * * *") result.stale = "true";
       else if (cron === "0 9 * * *") result.dms = "true";
+      // Nightly learning loop: turn the day's runs, PRs and issues into
+      // `docs/ai/failure_patterns.md` memory (Часть 17.4).
+      else if (cron === "20 3 * * *") result.learn = "true";
+      // Idle-time study pass: every wake-up costs five seconds when the
+      // repository is not idle, and the module is a single concurrency group.
+      else if (cron === "*/15 * * * *") result["idle-agent"] = "true";
+      // Solution scout: scan the health of the repository twice an hour and
+      // turn confident, auto-fixable findings into `ai-fix` issues.
+      else if (cron === "12,42 * * * *") result.scout = "true";
       break;
     }
 

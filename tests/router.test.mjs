@@ -103,3 +103,29 @@ test("router: unknown event selects nothing", () => {
   const r = route({ EVENT: "fork" });
   for (const v of Object.values(r)) assert.equal(v, "false");
 });
+
+test("router: nightly learn cron `20 3 * * *`", () => {
+  const r = route({ EVENT: "schedule", CRON: "20 3 * * *" });
+  assert.equal(r.learn, "true");
+  assert.equal(r.stale, "false");
+  assert.equal(r["hub-audit"], "false");
+});
+
+test("router: idle poll cron `*/15 * * * *` selects the idle agent only", () => {
+  const r = route({ EVENT: "schedule", CRON: "*/15 * * * *" });
+  assert.equal(r["idle-agent"], "true");
+  assert.equal(r.scout, "false");
+  assert.equal(r.learn, "false");
+});
+
+test("router: scout cron `12,42 * * * *` selects the scout only", () => {
+  const r = route({ EVENT: "schedule", CRON: "12,42 * * * *" });
+  assert.equal(r.scout, "true");
+  assert.equal(r["idle-agent"], "false");
+});
+
+test("router: the new nightly and poll slots never touch checks", () => {
+  for (const cron of ["20 3 * * *", "*/15 * * * *", "12,42 * * * *"]) {
+    assert.equal(route({ EVENT: "schedule", CRON: cron }).checks, "false", cron);
+  }
+});
