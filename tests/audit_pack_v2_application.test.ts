@@ -43,15 +43,16 @@ test("H-1: TriggerBuyback authenticates the owner before any state check", () =>
     assert.ok(auth < paused, "auth must run before the pause check, so a stranger always sees Only owner");
 });
 
-test("M-2b: governance weight is bound to the proposal content, not the id alone", () => {
+test("M-2b: each proposalId is bound to one immutable payload", () => {
     const body = section(masterSrc, "receive(msg: GovernanceVote)", "receive(msg: SetDefiAddress)");
-    assert.ok(body.includes("let tallyKey: Int = content.hash();"), "tally key must be the content hash");
-    assert.ok(body.includes("self.govVotes.get(voteKey)"), "per-voter record stays a map lookup");
-    assert.ok(body.includes("self.govProposalStake.set(tallyKey, newStake);"), "weight accumulates per content");
-    assert.ok(body.includes("self.govProposalStake.set(tallyKey, 0);"), "quorum consumes the content tally");
+    assert.ok(body.includes("let contentHash: Int = content.hash();"), "the content hash must be computed");
+    assert.ok(body.includes("self.govProposalContentHash.get(msg.proposalId)"), "the first payload is stored per proposalId");
+    assert.ok(body.includes("Proposal content mismatch"), "a different payload for the same id is rejected");
+    assert.ok(body.includes("self._voteKey(sender(), msg.proposalId)"), "per-voter dedup uses the public proposal id");
+    assert.ok(body.includes("self.govProposalStake.set(msg.proposalId, newStake);"), "tally remains readable by proposalId");
+    assert.ok(body.includes("self.govProposalStake.set(msg.proposalId, 0);"), "quorum consumes the id tally");
     assert.ok(body.includes("self.govProposalExecuted.set(msg.proposalId, true);"), "proposalId replay lock stays");
-    // deviation from the pack: the owner gate is retained
-    assert.ok(body.includes("self._requireOwner();"), "owner gate on GovernanceVote is kept deliberately");
+    assert.ok(body.includes("self._requireOwner();"), "owner gate on GovernanceVote remains");
 });
 
 test("M-4a: a pause silences the outgoing fee legs, never the inbound accounting", () => {

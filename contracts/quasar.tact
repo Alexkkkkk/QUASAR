@@ -288,6 +288,8 @@ contract QuasarMaster with Deployable {
     // custody/reserve counter.
     pendingMasterPayouts: map<Int, PendingMasterPayout>;
     masterPayoutSeq: Int as uint64;
+    // Bind each proposal id to its first voting payload; no alternate payload can reuse the id.
+    govProposalContentHash: map<Int, Int>;
     
     init(owner: Address, content: Cell, walletCode: Cell) {
         self.totalSupply = 0;
@@ -388,6 +390,7 @@ contract QuasarMaster with Deployable {
         self.govVotes = emptyMap();
         self.govProposalStake = emptyMap();
         self.govProposalExecuted = emptyMap();
+        self.govProposalContentHash = emptyMap();
         self.pendingMasterPayouts = emptyMap();
         self.masterPayoutSeq = 0;
         self.govProposalCount = 0;
@@ -1668,34 +1671,32 @@ contract QuasarMaster with Deployable {
         // F-35: a proposal that already reached quorum is closed; a later voter
         // cannot re-arm the tally with a different `kind` on the same id.
         require(self.govProposalExecuted.get(msg.proposalId) == null, "Proposal already executed");
-        // FIX M-2b (audit pack v2): the tally and the per-voter record are
-        // keyed on the HASH of the proposal CONTENT (kind, flag, feeBps), not
-        // on proposalId alone. Weight cast for one content variant can never
-        // accumulate toward a different variant reusing the same id
-        // (bait-and-switch), and a quorum reached on one content cannot
-        // execute another. Map types are unchanged (both keys stay Int), so
-        // the storage layout is untouched. The owner gate above is kept
-        // deliberately: the pack proposed dropping it, this branch does not.
+        // FIX M-2b: a proposal id is permanently bound to its first parameter set.
+        // This prevents bait-and-switch while keeping tally lookups keyed by the
+        // public proposalId, so get_proposal_stake(proposalId) remains accurate.
+        // The owner gate above is deliberately retained.
         let content: Cell = beginCell()
             .storeUint(msg.proposalId, 64)
             .storeUint(msg.kind, 8)
             .storeUint(msg.flag ? 1 : 0, 1)
             .storeUint(msg.feeBps, 32)
             .endCell();
-        let tallyKey: Int = content.hash();
-        let voteKey: Int = self._voteKey(sender(), tallyKey);
+        let contentHash: Int = content.hash();
+        let boundHash: Int? = self.govProposalContentHash.get(msg.proposalId);
+        require(boundHash == null || boundHash!! == contentHash, "Proposal content mismatch");
+        let voteKey: Int = self._voteKey(sender(), msg.proposalId);
         require(self.govVotes.get(voteKey) == null, "Already voted");
         let staker: StakeInfo? = self.stakers.get(sender());
         require(staker != null && staker!!.amount > 0, "Stake first");
-        
+        self.govProposalContentHash.set(msg.proposalId, contentHash);
         self.govVotes.set(voteKey, true);
-        let prev: Int? = self.govProposalStake.get(tallyKey);
+        let prev: Int? = self.govProposalStake.get(msg.proposalId);
         let prevStake: Int = prev == null ? 0 : prev!!;
         if (prev == null) {
             self.govProposalCount = self.govProposalCount + 1;
         }
         let newStake: Int = prevStake + staker!!.amount;
-        self.govProposalStake.set(tallyKey, newStake);
+        self.govProposalStake.set(msg.proposalId, newStake);
         
         emit(EventGovernanceVote{ voter: sender(), proposalId: msg.proposalId, weight: staker!!.amount }.toCell());
         
@@ -1728,7 +1729,7 @@ contract QuasarMaster with Deployable {
             // cannot re-execute on late votes.
             // FIX M-2b: consume the CONTENT tally only. Other content
             // variants of the same proposalId stay voteable from zero.
-            self.govProposalStake.set(tallyKey, 0);
+            self.govProposalStake.set(msg.proposalId, 0);
             self.govProposalExecuted.set(msg.proposalId, true);
             emit(EventGovernanceExecuted{ proposalId: msg.proposalId, actionId: id }.toCell());
         }
