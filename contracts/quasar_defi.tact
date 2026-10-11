@@ -340,17 +340,22 @@ contract QuasarDeFi with Deployable {
     // through excesses. A remove-liquidity TON leg is dispatched only after
     // this confirmation, so its two legs cannot race each other's rollback.
     receive(msg: TokenExcesses) {
-        let payout: PendingPayout? = self.pendingPayouts.get(msg.queryId);
+        // Pool payout IDs are marked in the downstream wallet transfer; normalize
+        // them before looking up this contract's unmarked payout ledger.
+        let payoutId: Int = msg.queryId >= QUASAR_POOL_PAYOUT_MARKER
+            ? msg.queryId - QUASAR_POOL_PAYOUT_MARKER
+            : msg.queryId;
+        let payout: PendingPayout? = self.pendingPayouts.get(payoutId);
         if (payout == null) { return }
         let receiverInit: StateInit = initOf QuasarWallet(payout!!.beneficiary, self.qsrMaster);
         require(sender() == contractAddress(receiverInit), "Unauthorized payout excess");
-        self.pendingPayouts.set(msg.queryId, null);
+        self.pendingPayouts.set(payoutId, null);
 
         if (payout!!.kind == 1) {
-            let removal: PendingTonPayout? = self.pendingTonPayouts.get(msg.queryId);
+            let removal: PendingTonPayout? = self.pendingTonPayouts.get(payoutId);
             require(removal != null && removal!!.kind == 1 && !removal!!.qsrSettled, "Unknown liquidity payout");
             if (removal!!.tonOut > 0) {
-                self.pendingTonPayouts.set(msg.queryId, PendingTonPayout{
+                self.pendingTonPayouts.set(payoutId, PendingTonPayout{
                     kind: removal!!.kind,
                     beneficiary: removal!!.beneficiary,
                     tonOut: removal!!.tonOut,
@@ -358,23 +363,14 @@ contract QuasarDeFi with Deployable {
                     lpAmount: removal!!.lpAmount,
                     qsrSettled: true
                 });
-                self._dispatchTon(removal!!.beneficiary, removal!!.tonOut, msg.queryId);
+                self._dispatchTon(removal!!.beneficiary, removal!!.tonOut, payoutId);
             } else {
                 // A QSR-only removal is complete after the wallet confirms the
                 // token leg; there is no TON message that can bounce later.
-                self.pendingTonPayouts.set(msg.queryId, null);
+                self.pendingTonPayouts.set(payoutId, null);
             }
         }
     }
-
-    fun _restoreRemovedLiquidity(payoutId: Int, removal: PendingTonPayout) {
-        self.tonReserve += removal.tonOut;
-        let current: Int? = self.lpBalances.get(removal.beneficiary);
-        self.lpBalances.set(removal.beneficiary, (current == null ? 0 : current!!) + removal.lpAmount);
-        self.lpTotalSupply += removal.lpAmount;
-        self.pendingTonPayouts.set(payoutId, null);
-    }
-
     // The source wallet can accept PoolPayout while the downstream
     // InternalTransfer later bounces. Restore the exact logical reserve that
     // funded this payout and consume the record once.
