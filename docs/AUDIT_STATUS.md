@@ -111,3 +111,22 @@ escrow`, `defi: QSR success followed by TON bounce partially closes a liquidity 
 governance tests still expecting the pre-#170 (non-owner, proposalId-keyed) semantics
 and two DeFi bounce tests expecting a specific synthetic bounce sequence; triaging them
 is a follow-up, not part of this pack.
+
+### M-4c documentation record — `ToggleTrading` semantics (2026-10-12)
+
+- `tradingEnabled` is consumed by exactly one check: `_requireTrading()` is
+  called only in `receive(msg: Mint)` (`contracts/quasar.tact:759`, defined at
+  line 426). The flag therefore gates minting only; peer-to-peer jetton
+  transfers between autonomous wallets never observe it.
+- `ToggleTrading` / `AIToggleTrading` and the `tradingEnabled` flag keep their
+  names and opcode: the pack rename `ToggleMinting` was NOT applied so that
+  `docs/abi/quasar-master.json` and `website/tonconnect.js` stay in sync
+  (`tests/audit_pack_v2_application.test.ts` documents this deviation).
+- While paused, `receive(msg: FeeTransfer)` skips the treasury transfer and
+  auto-buyback (M-4a) and `Unstake` / `ClaimVested` stay available (M-4b) —
+  see the application record above.
+- Renaming the message remains an owner design decision tied to an ABI version
+  bump; until then this record is the canonical description of the flag's
+  actual surface.
+
+Refs #179.
