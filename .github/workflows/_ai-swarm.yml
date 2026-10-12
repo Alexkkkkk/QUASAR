@@ -46,9 +46,10 @@ jobs:
       - name: Safety brake — stop after ${{ inputs.max_turns || 15 }} iterations
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          MAX_TURNS: ${{ inputs.max_turns || 15 }}
         run: |
           TURN=${TURN:-1}
-          if [ "$TURN" -gt "${{ inputs.max_turns || 15 }}" ]; then
+          if [ "$TURN" -gt "$MAX_TURNS" ]; then
             echo "::error::swarm turn limit reached ($TURN). Human must reset."
             gh issue create --title "swarm: needs-human (turn limit)" --label needs-human --body "Learning cycle hit the safety brake. Review drafts manually." || true
             exit 1
@@ -58,8 +59,6 @@ jobs:
         run: node scripts/ai/swarm/cli.mjs sync
 
       - name: Learn — aggregate lessons into rule drafts
-        env:
-          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
         run: node scripts/ai/swarm/cli.mjs learn
 
       - name: Rebuild shared RAG index

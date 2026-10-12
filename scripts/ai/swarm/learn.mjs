@@ -1,43 +1,8 @@
 // Learning engine: aggregate lessons -> promote proven rules into
-// pattern/pitfall drafts. Deterministic; optional LLM polish when a
-// provider key is present. Promotions NEVER auto-merge — human reviews
-// the draft PR, always.
+// pattern/pitfall drafts. Deterministic; no external model calls.
+// Promotions NEVER auto-merge — human reviews the draft PR, always.
 import { PROMOTION, PATTERNS_FILE, PITFALLS_FILE } from './config.mjs';
 import { readLessons, readMarkdown, writeDraft, writeState } from './knowledge.mjs';
-
-async function maybePolish(text) {
-  const key = process.env.GROQ_API_KEY || process.env.OPENAI_API_KEY;
-  if (!key) return text;
-  const base = process.env.GROQ_API_KEY
-    ? 'https://api.groq.com/openai/v1'
-    : 'https://api.openai.com/v1';
-  try {
-    const res = await fetch(base + '/chat/completions', {
-      method: 'POST',
-      headers: { authorization: `Bearer ${key}`, 'content-type': 'application/json' },
-      body: JSON.stringify({
-        model: process.env.SWARM_MODEL || 'llama-3.1-8b-instant',
-        temperature: 0,
-        max_tokens: 400,
-        messages: [
-          {
-            role: 'system',
-            content: 'You compress agent lessons into concise coding rules. '
-              + 'Output: a rule title, one-sentence rule, and why. '
-              + 'Plain text only, no markdown headers.',
-          },
-          { role: 'user', content: text },
-        ],
-      }),
-      signal: AbortSignal.timeout(20_000),
-    });
-    if (!res.ok) return text;
-    const data = await res.json();
-    return data.choices?.[0]?.message?.content?.trim() || text;
-  } catch {
-    return text; // network down -> never block learning on the LLM
-  }
-}
 
 function groupBySig(lessons) {
   const groups = new Map();
@@ -71,7 +36,7 @@ function ruleFor(a) {
   };
 }
 
-export async function learn({ dryRun = false } = {}) {
+export function learn({ dryRun = false } = {}) {
   const { lessons, quarantine, structural } = readLessons();
   const groups = groupBySig(lessons);
 
@@ -117,11 +82,6 @@ export async function learn({ dryRun = false } = {}) {
     ]),
   ].join('\n');
 
-  let polishedPatterns = patternDraft;
-  if (!dryRun && promoted.length > 0) {
-    polishedPatterns = await maybePolish(patternDraft);
-  }
-
   const report = {
     generatedAt: new Date().toISOString(),
     totals: {
@@ -137,7 +97,7 @@ export async function learn({ dryRun = false } = {}) {
   };
 
   if (!dryRun) {
-    writeDraft('patterns.md', polishedPatterns);
+    writeDraft('patterns.md', patternDraft);
     writeDraft('pitfalls.md', pitfallDraft);
     writeState('learn-report.json', report);
   }

@@ -49,7 +49,7 @@ jobs:
         with:
           node-version-file: .nvmrc
       - name: Swarm unit tests
-        run: node --test tests/swarm/
+        run: node --test tests/swarm/swarm.test.mjs
 
   weekly-cycle:
     needs: [gate, test]

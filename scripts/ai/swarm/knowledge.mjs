@@ -9,13 +9,26 @@ import {
 import { validateLesson, signatureOf, lessonId } from './schema.mjs';
 import { scanLessonLine, scanMarkdown } from './security.mjs';
 
+function createFileIfMissing(file, initialContent) {
+  let fd;
+  try {
+    fd = fs.openSync(file, 'wx', 0o600);
+  } catch (error) {
+    if (error?.code === 'EEXIST') return;
+    throw error;
+  }
+  try {
+    fs.writeFileSync(fd, initialContent);
+  } finally {
+    fs.closeSync(fd);
+  }
+}
+
 export function ensureDirs() {
   for (const d of [KNOWLEDGE_DIR, DRAFTS_DIR, STATE_DIR]) fs.mkdirSync(d, { recursive: true });
-  if (!fs.existsSync(LESSONS_FILE)) fs.writeFileSync(LESSONS_FILE, '');
-  if (!fs.existsSync(PATTERNS_FILE))
-    fs.writeFileSync(PATTERNS_FILE, '# Patterns\n\nPromoted, CI-proven rules all agents must follow.\n');
-  if (!fs.existsSync(PITFALLS_FILE))
-    fs.writeFileSync(PITFALLS_FILE, '# Pitfalls\n\nKnown failure modes. Check before shipping.\n');
+  createFileIfMissing(LESSONS_FILE, '');
+  createFileIfMissing(PATTERNS_FILE, '# Patterns\n\nPromoted, CI-proven rules all agents must follow.\n');
+  createFileIfMissing(PITFALLS_FILE, '# Pitfalls\n\nKnown failure modes. Check before shipping.\n');
 }
 
 export function readLessons() {
@@ -75,6 +88,15 @@ export function writeMarkdown(file, content) {
 
 export function writeDraft(name, content) {
   ensureDirs();
+  if (typeof name !== 'string' || path.basename(name) !== name || !/^[a-z0-9][a-z0-9._-]*\.md$/i.test(name)) {
+    throw new Error('invalid draft filename');
+  }
+  if (typeof content !== 'string') throw new TypeError('draft content must be a string');
+  if (Buffer.byteLength(content, 'utf8') > CAPS.maxKnowledgeKiB * 1024) {
+    throw new Error('draft exceeds size limit');
+  }
+  const sec = scanMarkdown(content);
+  if (!sec.safe) throw new Error(`content rejected: ${sec.violations.join(', ')}`);
   const file = path.join(DRAFTS_DIR, name);
   fs.writeFileSync(file, content);
   return file;
