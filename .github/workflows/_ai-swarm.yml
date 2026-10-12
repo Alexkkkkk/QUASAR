@@ -1,0 +1,84 @@
+name: ai-swarm-sync
+
+# Reusable cross-agent learning module. Runs the full loop:
+#   validate lessons -> learn (promote proven rules) -> sync (consistency)
+#   -> rag (rebuild shared index) -> open a DRAFT PR for human review.
+# Triggered only through the hub (swarm-dispatch.yml); it never declares
+# its own event triggers, mirroring every other `_`-module.
+#
+# Hard boundaries (same policy as the rest of the AI surface):
+#   - draft PR only, never auto-merge
+#   - no on-chain actions, no deployments
+#   - secrets in the knowledge base fail the run loudly
+
+on:
+  workflow_call:
+    inputs:
+      max_turns:
+        description: 'Safety brake on learning iterations'
+        type: number
+        default: 15
+
+permissions:
+  contents: read
+
+env:
+  TURN: ${{ github.run_attempt }}
+
+jobs:
+  swarm:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+
+      - name: Safety brake — stop after ${{ inputs.max_turns || 15 }} iterations
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TURN=${TURN:-1}
+          if [ "$TURN" -gt "${{ inputs.max_turns || 15 }}" ]; then
+            echo "::error::swarm turn limit reached ($TURN). Human must reset."
+            gh issue create --title "swarm: needs-human (turn limit)" --label needs-human --body "Learning cycle hit the safety brake. Review drafts manually." || true
+            exit 1
+          fi
+
+      - name: Validate knowledge base (schema + poison scan)
+        run: node scripts/ai/swarm/cli.mjs sync
+
+      - name: Learn — aggregate lessons into rule drafts
+        env:
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+        run: node scripts/ai/swarm/cli.mjs learn
+
+      - name: Rebuild shared RAG index
+        run: node scripts/ai/swarm/cli.mjs rag
+
+      - name: Open draft PR with promoted rules
+        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
+        with:
+          branch: ai/swarm-sync
+          title: 'ai(swarm): knowledge sync — promoted rules'
+          body: |
+            Automated cross-agent learning cycle.
+
+            - Promoted rules: see `docs/ai/knowledge/drafts/`
+            - Consistency report: `docs/ai/knowledge/state/sync-report.md`
+            - Policy: draft only, human review required, no auto-merge.
+
+            Reviewers: check for rule conflicts and quarantined entries before merge.
+          labels: ai-sync
+          draft: true
+          add-paths: |
+            docs/ai/knowledge/
