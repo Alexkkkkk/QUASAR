@@ -27,8 +27,8 @@
       "sha": "4391f3da665fdf50b6810c1a66712fb9ba21aa93"
     },
     "actions/configure-pages": {
-      "tag": "v5.0.0",
-      "sha": "983d7736d9b0ae728b81ab479565c72886d7745b"
+      "tag": "v6.0.0",
+      "sha": "45bfe0192ca1faeb007ade9deae92b16b8254a0d"
     },
     "actions/upload-pages-artifact": {
       "tag": "v5.0.0",
