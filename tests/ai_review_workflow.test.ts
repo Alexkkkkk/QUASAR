@@ -19,7 +19,7 @@ test('AI PR review calls the Groq API without unpinned composite actions', () =>
     }
     assert.ok(workflow.includes('GROQ_API_URL: "https://api.groq.com/openai/v1/chat/completions"'));
     assert.ok(workflow.includes('GROQ_MODEL: "openai/gpt-oss-120b"'));
-    assert.ok(workflow.includes('max_completion_tokens: 800'));
+    assert.ok(workflow.includes('max_completion_tokens: 4000'));
     assert.ok(workflow.includes('secrets.GROQ_API_KEY'));
     assert.ok(!workflow.includes('api.x.ai'));
     assert.ok(!workflow.includes('grok-4.7'));
@@ -48,9 +48,20 @@ test('AI PR review reports a bounded provider error when the API returns a non-J
 
 test('AI PR review retries one empty completion and still fails closed without content', () => {
     assert.ok(workflow.includes('retrying once with a larger completion budget'));
-    assert.ok(workflow.includes("jq '.max_completion_tokens = 1200'"));
+    assert.ok(workflow.includes("jq '.max_completion_tokens = 6000'"));
     assert.ok(workflow.includes('--max-time 300'));
     assert.ok(workflow.includes('Groq returned an empty review after retry'));
+});
+
+test('AI PR review budgets the reasoning tokens of gpt-oss-120b', () => {
+    // The reasoning tokens are drawn from the same max_completion_tokens
+    // budget as the answer. At an 800-token budget the model spent everything
+    // on reasoning, returned empty content with finish_reason "length" and the
+    // module failed closed on a healthy diff.
+    assert.ok(workflow.includes('GROQ_REASONING_EFFORT: "low"'), 'the reasoning effort must be pinned low');
+    assert.ok(workflow.includes('reasoning_effort: $effort'), 'the request must carry the reasoning_effort field');
+    assert.ok(workflow.includes('max_completion_tokens: 4000'), 'the first call must leave room for the review text');
+    assert.ok(workflow.includes("jq '.max_completion_tokens = 6000'"), 'the retry must widen the budget, not tighten it');
 });
 
 test('AI PR review retries provider rate limits with a bounded delay', () => {
