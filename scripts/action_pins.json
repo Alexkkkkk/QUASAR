@@ -10,7 +10,7 @@
     "actions/stale": "v11.0.0",
     "actions/configure-pages": "v6.0.0",
     "actions/upload-pages-artifact": "v5.0.0",
-    "actions/deploy-pages": "v4.0.5",
+    "actions/deploy-pages": "v5.0.1",
     "actions/attest-build-provenance": "v4.2.2",
     "actions/dependency-review-action": "v5.0.0",
     "dependabot/fetch-metadata": "v2.5.0",
