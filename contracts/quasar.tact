@@ -288,6 +288,8 @@ contract QuasarMaster with Deployable {
     // custody/reserve counter.
     pendingMasterPayouts: map<Int, PendingMasterPayout>;
     masterPayoutSeq: Int as uint64;
+    // Bind each proposal id to its first voting payload; no alternate payload can reuse the id.
+    govProposalContentHash: map<Int, Int>;
     
     init(owner: Address, content: Cell, walletCode: Cell) {
         self.totalSupply = 0;
@@ -388,6 +390,7 @@ contract QuasarMaster with Deployable {
         self.govVotes = emptyMap();
         self.govProposalStake = emptyMap();
         self.govProposalExecuted = emptyMap();
+        self.govProposalContentHash = emptyMap();
         self.pendingMasterPayouts = emptyMap();
         self.masterPayoutSeq = 0;
         self.govProposalCount = 0;
@@ -687,7 +690,10 @@ contract QuasarMaster with Deployable {
             self.stakingRewardsPool = self.stakingRewardsPool + op!!.amount;
             let s: StakeInfo? = self.stakers.get(op!!.beneficiary);
             if (s != null) {
-                self.stakers.set(op!!.beneficiary, StakeInfo{ amount: s!!.amount, startTime: s!!.startTime, lastClaim: op!!.d1, lockEnd: s!!.lockEnd });
+                // FIX L-5 (audit pack v2): do NOT rewind lastClaim to d1. A
+                // bounce of the staking-reward leg must not re-credit a period
+                // already covered by a later top-up; anchor at now() instead.
+                self.stakers.set(op!!.beneficiary, StakeInfo{ amount: s!!.amount, startTime: s!!.startTime, lastClaim: now(), lockEnd: s!!.lockEnd });
             }
         } else if (op!!.kind == 4) {
             // Referral reward: restore the user and aggregate liabilities.
@@ -940,18 +946,26 @@ contract QuasarMaster with Deployable {
             }
         }
         
-        if (treasuryAmt > 0 && self.treasury != newAddress(0, 0)) {
-            // Treasury may only spend the unencumbered part of the reserve:
-            // pool allocations (buyback/staking) stay fully backed.
-            require(self.reserveBalance - self._poolEncumbrance() >= treasuryAmt, "Reserve encumbered");
-            self._sendTokens(self.treasury, treasuryAmt, msg.queryId, msg.originalSender);
-        }
-        
-        // Auto-buyback. A pending swap leg owns buybackSwapPending/QueryId;
-        // starting another swap here would overwrite the tracking record and
-        // desync the reserve accounting when the first proceeds arrive (M-03).
-        if (self.buybackEnabled && self.buybackSwapPending == 0 && self.buybackPool >= self.buybackThreshold && now() - self.lastBuybackTime >= self.buybackCooldown) {
-            self._executeBuyback(msg.queryId);
+        // FIX M-4a (audit pack v2): a pause silences the OUTGOING legs of the
+        // fee split (treasury transfer and the automatic buyback swap) but
+        // never the inbound accounting — the wallet that sent this fee is
+        // waiting for its TransferConfirmed, so dropping the whole message
+        // would freeze every transfer in the system. The burn leg and the
+        // referral-liability accounting above run in either mode.
+        if (!self.emergencyPause) {
+            if (treasuryAmt > 0 && self.treasury != newAddress(0, 0)) {
+                // Treasury may only spend the unencumbered part of the reserve:
+                // pool allocations (buyback/staking) stay fully backed.
+                require(self.reserveBalance - self._poolEncumbrance() >= treasuryAmt, "Reserve encumbered");
+                self._sendTokens(self.treasury, treasuryAmt, msg.queryId, msg.originalSender);
+            }
+            
+            // Auto-buyback. A pending swap leg owns buybackSwapPending/QueryId;
+            // starting another swap here would overwrite the tracking record and
+            // desync the reserve accounting when the first proceeds arrive (M-03).
+            if (self.buybackEnabled && self.buybackSwapPending == 0 && self.buybackPool >= self.buybackThreshold && now() - self.lastBuybackTime >= self.buybackCooldown) {
+                self._executeBuyback(msg.queryId);
+            }
         }
         
         // Emit fee distribution event
@@ -980,6 +994,11 @@ contract QuasarMaster with Deployable {
     // ═══════════════════════════════════════════════════════════
     
     receive(msg: TriggerBuyback) {
+        // FIX H-1 (audit pack v2): owner authentication runs BEFORE every state
+        // check, so an unauthenticated call always aborts with "Only owner"
+        // whatever the pool state, and cannot be used to probe buyback
+        // internals. QSR can never leave custody on a stranger's message.
+        self._requireOwner();
         self._requireNotPaused();
         require(self.buybackEnabled, "Buyback off");
         require(self.buybackPool >= self.buybackThreshold, "Pool low");
@@ -1118,7 +1137,10 @@ contract QuasarMaster with Deployable {
     }
     
     receive(msg: Unstake) {
-        self._requireNotPaused();
+        // FIX M-4b (audit pack v2): a pause must freeze new risk, not trap user
+        // principal. Unstake (principal plus accrued rewards) stays live while
+        // paused, mirroring DeFi's RemoveLiquidity. Stake, ClaimRewards and
+        // ClaimReferralRewards remain gated.
         require(msg.amount > 0, "Invalid amount");
         let staker: Address = sender();
         let info: StakeInfo? = self.stakers.get(staker);
@@ -1250,7 +1272,8 @@ contract QuasarMaster with Deployable {
     }
     
     receive(msg: ClaimVested) {
-        self._requireNotPaused();
+        // FIX M-4b (audit pack v2): a vesting claim is an existing entitlement,
+        // not a new position — it stays live during a pause.
         require(self.vestingEnabled, "Vesting off");
         let beneficiary: Address = sender();
         let info: VestingInfo? = self.vestingSchedules.get(beneficiary);
@@ -1648,11 +1671,24 @@ contract QuasarMaster with Deployable {
         // F-35: a proposal that already reached quorum is closed; a later voter
         // cannot re-arm the tally with a different `kind` on the same id.
         require(self.govProposalExecuted.get(msg.proposalId) == null, "Proposal already executed");
+        // FIX M-2b: a proposal id is permanently bound to its first parameter set.
+        // This prevents bait-and-switch while keeping tally lookups keyed by the
+        // public proposalId, so get_proposal_stake(proposalId) remains accurate.
+        // The owner gate above is deliberately retained.
+        let content: Cell = beginCell()
+            .storeUint(msg.proposalId, 64)
+            .storeUint(msg.kind, 8)
+            .storeUint(msg.flag ? 1 : 0, 1)
+            .storeUint(msg.feeBps, 32)
+            .endCell();
+        let contentHash: Int = content.hash();
+        let boundHash: Int? = self.govProposalContentHash.get(msg.proposalId);
+        require(boundHash == null || boundHash!! == contentHash, "Proposal content mismatch");
         let voteKey: Int = self._voteKey(sender(), msg.proposalId);
         require(self.govVotes.get(voteKey) == null, "Already voted");
         let staker: StakeInfo? = self.stakers.get(sender());
         require(staker != null && staker!!.amount > 0, "Stake first");
-        
+        self.govProposalContentHash.set(msg.proposalId, contentHash);
         self.govVotes.set(voteKey, true);
         let prev: Int? = self.govProposalStake.get(msg.proposalId);
         let prevStake: Int = prev == null ? 0 : prev!!;
@@ -1691,6 +1727,8 @@ contract QuasarMaster with Deployable {
             }
             // Quorum satisfied: the tally is consumed so the same proposal
             // cannot re-execute on late votes.
+            // FIX M-2b: consume the CONTENT tally only. Other content
+            // variants of the same proposalId stay voteable from zero.
             self.govProposalStake.set(msg.proposalId, 0);
             self.govProposalExecuted.set(msg.proposalId, true);
             emit(EventGovernanceExecuted{ proposalId: msg.proposalId, actionId: id }.toCell());

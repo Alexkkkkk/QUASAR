@@ -88,7 +88,7 @@ test('M-01 source: DeFi settles the QSR leg before dispatching TON', () => {
     assert.ok(rl.includes('kind: 1,'), 'remove-liquidity must track its TON leg');
     assert.ok(rl.includes('self._sendQsr(sender(), qsrOut, 1, payoutId);'), 'the QSR leg must share the payout id');
     assert.ok(rl.indexOf('self._sendQsr(sender(), qsrOut, 1, payoutId);') < rl.indexOf('self._dispatchTon(sender(), tonOut, payoutId);'), 'TON must not be sent before QSR settles');
-    assert.ok(defiSrc.includes('self._dispatchTon(removal!!.beneficiary, removal!!.tonOut, msg.queryId);'), 'TEP-74 excesses must release the matching TON leg');
+    assert.ok(defiSrc.includes('self._dispatchTon(removal!!.beneficiary, removal!!.tonOut, payoutId);'), 'TEP-74 excesses must release the matching TON leg');
     const st = section(defiSrc, 'receive(msg: SwapToTON)', 'receive(msg: SwapToQSR)');
     assert.ok(st.includes('PendingTonPayout{ kind: 2'), 'swap-to-TON must track its TON leg');
     const sq = section(defiSrc, 'receive(msg: SwapToQSR)', 'receive(msg: ClaimFarmRewards)');

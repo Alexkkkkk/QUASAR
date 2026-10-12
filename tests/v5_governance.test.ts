@@ -126,6 +126,25 @@ test('gov: a vote reaching quorum executes the proposal through the AI action lo
     assert.equal(await eco.master.getGetProposalStake(7n), 0n, 'the quorum tally must be zeroed after execution');
 });
 
+test('gov: a proposalId cannot be reused with different parameters', async () => {
+    const eco = await deployEco();
+    await stake(eco, eco.owner, 100n * QSR);  // stakingMinStake is ton("100") — smaller stakes revert
+    await stake(eco, eco.alice, 1000n * QSR); // keeps the owner's vote below the 10% quorum
+
+    const first = await eco.master.send(eco.owner.getSender(), { value: toNano('0.1') }, {
+        $$type: 'GovernanceVote', proposalId: 99n, kind: 2, flag: false, feeBps: 30, deadline: DEADLINE, reason: 'original payload'
+    });
+    assert.ok(!anyComputeFailed(first), 'the first payload should create a sub-quorum tally');
+    assert.equal(await eco.master.getGetProposalStake(99n), 100n * QSR, 'the public getter reports the pending tally by proposalId');
+
+    const mismatch = await eco.master.send(eco.owner.getSender(), { value: toNano('0.1') }, {
+        $$type: 'GovernanceVote', proposalId: 99n, kind: 3, flag: true, feeBps: 30, deadline: DEADLINE, reason: 'replacement payload'
+    }).catch(() => null);
+    assert.ok(mismatch === null || anyComputeFailed(mismatch), 'a different payload for the same id must revert');
+    assert.equal(await eco.master.getIsTradingEnabled(), true, 'the sub-quorum first payload has not executed');
+    assert.equal(await eco.master.getGetProposalStake(99n), 100n * QSR, 'the rejected payload does not change the original tally');
+});
+
 test('gov: emergency-pause proposal also disables trading without changing fee settings', async () => {
     const eco = await deployEco();
     await stake(eco, eco.owner, 100n * QSR);

@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-11T16:59:33.089Z",
+  "generatedAt": "2026-10-11T08:10:17.339Z",
   "note": "Build-artifact hashes only. Mainnet/testnet addresses must be published separately once deployments exist.",
   "artifacts": [
     {
@@ -8,7 +8,7 @@
     },
     {
       "file": "build/quasar_QuasarMaster.code.boc",
-      "sha256": "a7a5c20352848737b98259a3b3382560a4cc3c4173f9261b1443e4a879c0b832"
+      "sha256": "69401dbe4f69fe852ba445ed3a03bf5df697cfa0a31a7a7e9065a700e07869f9"
     },
     {
       "file": "build/quasar_QuasarWallet.abi",
@@ -16,7 +16,7 @@
     },
     {
       "file": "build/quasar_QuasarWallet.code.boc",
-      "sha256": "b01e3a42b024616e856fc6c39b56be5dd9c47819b0303f3160b29e53adb2ff64"
+      "sha256": "1603c28096be9b75a1a3c46c1b95c66874143ddbdc14efea308acf2e4b539527"
     },
     {
       "file": "build/quasar_admin_QuasarAdminTimelock.abi",
@@ -32,23 +32,23 @@
     },
     {
       "file": "build/quasar_admin_QuasarWallet.code.boc",
-      "sha256": "b01e3a42b024616e856fc6c39b56be5dd9c47819b0303f3160b29e53adb2ff64"
+      "sha256": "1603c28096be9b75a1a3c46c1b95c66874143ddbdc14efea308acf2e4b539527"
     },
     {
       "file": "build/quasar_defi_QuasarDeFi.abi",
-      "sha256": "7e42d600cf524548a84ba14e7134c81cfeebb029a60243b53ddd464c43893623"
+      "sha256": "8f3f0a5d31bd855b5507d63212dd2a1bd4d82d1c5bdf7fd3cf0f824f6928e447"
     },
     {
       "file": "build/quasar_defi_QuasarDeFi.code.boc",
-      "sha256": "61b6c19057c803a95f0bf1ba8a5c8bec63a8ca8b488a9c84f7c042c2f5cf6ebb"
+      "sha256": "dd77556e11c14a0cd4e1c693b8dfab02b7fb003dd4bf75e191977090acdc47f7"
     },
     {
       "file": "build/quasar_defi_QuasarWallet.abi",
-      "sha256": "5a5f7d297748e87b50ff4c8dde63a752bdd7e6de8870654e837b777cd7fdadad"
+      "sha256": "768d392f2474064cfea53bb111b147150df61aaae94b1c40268f0ed248063453"
     },
     {
       "file": "build/quasar_defi_QuasarWallet.code.boc",
-      "sha256": "b01e3a42b024616e856fc6c39b56be5dd9c47819b0303f3160b29e53adb2ff64"
+      "sha256": "1603c28096be9b75a1a3c46c1b95c66874143ddbdc14efea308acf2e4b539527"
     }
   ]
 }

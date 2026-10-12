@@ -59,6 +59,10 @@ struct PendingPayout { amount: Int; kind: Int; beneficiary: Address }
 struct PendingTonPayout { kind: Int; beneficiary: Address; tonOut: Int; qsrAmount: Int; lpAmount: Int; qsrSettled: Bool }
 struct SwapQuote { tonIn: Int; qsrIn: Int; tonOut: Int; qsrOut: Int; fee: Int; priceImpactBps: Int }
 
+// FIX L-1 (audit pack v2): a buyback bounce whose query id is no longer the
+// tracked tombstone is reported instead of reverting.
+message EventBuybackBounceUnknown { queryId: Int as uint64 }
+
 // ═══════════════════════════════════════════════════════════════
 // QUASAR DeFi CONTRACT
 // ═══════════════════════════════════════════════════════════════
@@ -124,6 +128,14 @@ contract QuasarDeFi with Deployable {
     pendingBuybackQueryId: Int as uint64;
     pendingBuybackTonOut: Int as coins;
     pendingBuybackFee: Int as coins;
+    // FIX L-1 (audit pack v2): the buyback callback has no success ack, so the
+    // previous leg's restore data is kept in a one-slot history. A bounce that
+    // arrives after a newer leg replaced the tombstone is still restored
+    // instead of reverting and losing the TON.
+    prevBuybackActive: Bool;
+    prevBuybackQueryId: Int as uint64;
+    prevBuybackTonOut: Int as coins;
+    prevBuybackFee: Int as coins;
     
     init(owner: Address, qsrMaster: Address) {
         self.owner = owner;
@@ -163,6 +175,10 @@ contract QuasarDeFi with Deployable {
         self.pendingBuybackQueryId = 0;
         self.pendingBuybackTonOut = 0;
         self.pendingBuybackFee = 0;
+        self.prevBuybackActive = false;
+        self.prevBuybackQueryId = 0;
+        self.prevBuybackTonOut = 0;
+        self.prevBuybackFee = 0;
     }
     
     // ─── Reentrancy Guard ───
@@ -251,6 +267,12 @@ contract QuasarDeFi with Deployable {
         // QuasarMaster allows only one buyback swap at a time. A new marked
         // transfer therefore proves the previous callback was accepted; it is
         // safe to replace its bounce tombstone here.
+        // FIX L-1: shift the outgoing leg into the one-slot history before the
+        // tombstone is overwritten, so its late bounce stays restorable.
+        self.prevBuybackActive = self.pendingBuybackActive;
+        self.prevBuybackQueryId = self.pendingBuybackQueryId;
+        self.prevBuybackTonOut = self.pendingBuybackTonOut;
+        self.prevBuybackFee = self.pendingBuybackFee;
         self.pendingBuybackActive = true;
         self.pendingBuybackQueryId = queryId;
         self.pendingBuybackTonOut = tonOut;
@@ -318,17 +340,22 @@ contract QuasarDeFi with Deployable {
     // through excesses. A remove-liquidity TON leg is dispatched only after
     // this confirmation, so its two legs cannot race each other's rollback.
     receive(msg: TokenExcesses) {
-        let payout: PendingPayout? = self.pendingPayouts.get(msg.queryId);
+        // Pool payout IDs are marked in the downstream wallet transfer; normalize
+        // them before looking up this contract's unmarked payout ledger.
+        let payoutId: Int = msg.queryId >= QUASAR_POOL_PAYOUT_MARKER
+            ? msg.queryId - QUASAR_POOL_PAYOUT_MARKER
+            : msg.queryId;
+        let payout: PendingPayout? = self.pendingPayouts.get(payoutId);
         if (payout == null) { return }
         let receiverInit: StateInit = initOf QuasarWallet(payout!!.beneficiary, self.qsrMaster);
         require(sender() == contractAddress(receiverInit), "Unauthorized payout excess");
-        self.pendingPayouts.set(msg.queryId, null);
+        self.pendingPayouts.set(payoutId, null);
 
         if (payout!!.kind == 1) {
-            let removal: PendingTonPayout? = self.pendingTonPayouts.get(msg.queryId);
+            let removal: PendingTonPayout? = self.pendingTonPayouts.get(payoutId);
             require(removal != null && removal!!.kind == 1 && !removal!!.qsrSettled, "Unknown liquidity payout");
             if (removal!!.tonOut > 0) {
-                self.pendingTonPayouts.set(msg.queryId, PendingTonPayout{
+                self.pendingTonPayouts.set(payoutId, PendingTonPayout{
                     kind: removal!!.kind,
                     beneficiary: removal!!.beneficiary,
                     tonOut: removal!!.tonOut,
@@ -336,11 +363,11 @@ contract QuasarDeFi with Deployable {
                     lpAmount: removal!!.lpAmount,
                     qsrSettled: true
                 });
-                self._dispatchTon(removal!!.beneficiary, removal!!.tonOut, msg.queryId);
+                self._dispatchTon(removal!!.beneficiary, removal!!.tonOut, payoutId);
             } else {
                 // A QSR-only removal is complete after the wallet confirms the
                 // token leg; there is no TON message that can bounce later.
-                self.pendingTonPayouts.set(msg.queryId, null);
+                self.pendingTonPayouts.set(payoutId, null);
             }
         }
     }
@@ -375,6 +402,20 @@ contract QuasarDeFi with Deployable {
             }
         } else if (payout!!.kind == 2) {
             self.farmRewardReserve = self.farmRewardReserve + msg.amount;
+            // FIX M-3 (audit pack v2): refunding only the aggregate reserve lost
+            // the farmer's reward, because ClaimFarmRewards zeroes the user's
+            // `pending` at dispatch time. The failed payout record still holds
+            // amount + beneficiary, so re-credit this farmer's pending here.
+            // Equivalent to the pack's pending-map variant with no extra state
+            // and no record left to leak. A later claim pays it exactly once.
+            let failed: UserFarmInfo? = self.farmStakes.get(payout!!.beneficiary);
+            if (failed != null) {
+                self.farmStakes.set(payout!!.beneficiary, UserFarmInfo{
+                    staked: failed!!.staked,
+                    debt: failed!!.debt,
+                    pending: failed!!.pending + msg.amount
+                });
+            }
         } else if (payout!!.kind == 3) {
             let pending: Int? = self.pendingQsrDeposits.get(payout!!.beneficiary);
             self.pendingQsrDeposits.set(payout!!.beneficiary, pending == null ? msg.amount : pending!! + msg.amount);
@@ -768,20 +809,30 @@ contract QuasarDeFi with Deployable {
         }
     }
 
+    // FIX L-1 (audit pack v2): route the bounce instead of reverting on an
+    // unrecognised query id. An unknown leg is recorded in an event and the
+    // value is left in place — a revert here would drop the message value and
+    // desync the reserve accounting.
     bounced(msg: bounced<BuybackTon>) {
         require(sender() == self.qsrMaster, "Invalid buyback bounce source");
-        require(
-            self.pendingBuybackActive &&
-            msg.queryId == self.pendingBuybackQueryId &&
-            msg.tonAmount == self.pendingBuybackTonOut,
-            "Unknown buyback bounce"
-        );
-        self.tonReserve += msg.tonAmount;
-        self.feeAccumulatedTon -= self.pendingBuybackFee;
-        self.pendingBuybackActive = false;
-        self.pendingBuybackQueryId = 0;
-        self.pendingBuybackTonOut = 0;
-        self.pendingBuybackFee = 0;
+        if (msg.queryId == self.pendingBuybackQueryId && self.pendingBuybackActive && msg.tonAmount == self.pendingBuybackTonOut) {
+            self.tonReserve += msg.tonAmount;
+            self.feeAccumulatedTon -= self.pendingBuybackFee;
+            self.pendingBuybackActive = false;
+            self.pendingBuybackQueryId = 0;
+            self.pendingBuybackTonOut = 0;
+            self.pendingBuybackFee = 0;
+        } else if (msg.queryId == self.prevBuybackQueryId && self.prevBuybackActive && msg.tonAmount == self.prevBuybackTonOut) {
+            // Late bounce of the leg that the tombstone no longer tracks.
+            self.tonReserve += msg.tonAmount;
+            self.feeAccumulatedTon -= self.prevBuybackFee;
+            self.prevBuybackActive = false;
+            self.prevBuybackQueryId = 0;
+            self.prevBuybackTonOut = 0;
+            self.prevBuybackFee = 0;
+        } else {
+            emit(EventBuybackBounceUnknown{ queryId: msg.queryId }.toCell());
+        }
     }
 
     receive(msg: SweepTON) {
@@ -929,6 +980,9 @@ contract QuasarDeFi with Deployable {
             if (initialLiquidity <= self.minimumLiquidity) { return 0 }
             return initialLiquidity - self.minimumLiquidity;
         }
+        // FIX L-7 (audit pack v2): a getter must not throw. Zero reserves mean
+        // zero output, so guard the division instead of aborting the call.
+        if (self.tonReserve == 0 || self.qsrReserve == 0) { return 0 }
         let lpByTon: Int = (tonAmount * self.lpTotalSupply) / self.tonReserve;
         let lpByQsr: Int = (qsrAmount * self.lpTotalSupply) / self.qsrReserve;
         return self._min(lpByTon, lpByQsr);

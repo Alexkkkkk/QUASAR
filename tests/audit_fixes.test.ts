@@ -122,9 +122,12 @@ test('F-20 source: wallet cleanup messages authenticate their expected senders',
         );
 
         const excesses = section(wallet, 'receive(msg: TokenExcesses)', 'bounced(msg: bounced<InternalTransfer>)');
+        // L-2: a pool payout now travels with the marker bit set, so the wallet
+        // normalises the incoming query id before reading the pool ledger. The
+        // user-transfer ledger is still keyed by the raw query id.
         assert.ok(
             excesses.includes('pendingResponseReceivers.get(msg.queryId)') &&
-                excesses.includes('pendingPoolPayoutReceivers.get(msg.queryId)') &&
+                excesses.includes('pendingPoolPayoutReceivers.get(excessLocalId)') &&
                 excesses.includes('Unauthorized excess'),
             `${name} wallet must authenticate excesses against the expected destination wallet`
         );
@@ -134,7 +137,7 @@ test('F-20 source: wallet cleanup messages authenticate their expected senders',
             `${name} wallet must retain the pool payout destination for bounce authentication`
         );
         assert.ok(
-            excesses.includes('self.pendingPoolPayoutReceivers.set(msg.queryId, null);'),
+            excesses.includes('self.pendingPoolPayoutReceivers.set(excessLocalId, null);'),
             `${name} wallet must consume the pool receiver record with the payout`
         );
     }

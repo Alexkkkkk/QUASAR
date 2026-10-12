@@ -13,6 +13,11 @@ const QUASAR_MAX_WALLET_BPS: Int = 300;
 const QUASAR_TRANSFER_COOLDOWN: Int = 5;
 const QUASAR_MAX_TX_AMOUNT: Int = QUASAR_MAX_SUPPLY * QUASAR_MAX_TX_BPS / 10000;
 const QUASAR_MAX_WALLET_AMOUNT: Int = QUASAR_MAX_SUPPLY * QUASAR_MAX_WALLET_BPS / 10000;
+// FIX L-2 (audit pack v2): a pool payout carries a marker bit in the high bit
+// of its uint64 query id, so a user transfer whose query id happens to collide
+// with a pool payout sequence number can never be handled as a pool payout
+// when it bounces.
+const QUASAR_POOL_PAYOUT_MARKER: Int = 1 << 63;
 
 struct JettonWalletData { balance: Int; owner: Address; master: Address; walletCode: Cell }
 
@@ -133,14 +138,19 @@ contract QuasarWallet {
             return;
         }
 
-        let poolAmount: Int? = self.pendingPoolPayouts.get(msg.queryId);
+        // FIX L-2: the pool ledger is keyed by the unmarked payout id while
+        // excesses may arrive with the marker bit set — normalise the lookup.
+        let excessLocalId: Int = msg.queryId >= QUASAR_POOL_PAYOUT_MARKER
+            ? msg.queryId - QUASAR_POOL_PAYOUT_MARKER
+            : msg.queryId;
+        let poolAmount: Int? = self.pendingPoolPayouts.get(excessLocalId);
         if (poolAmount != null) {
-            let receiver: Address? = self.pendingPoolPayoutReceivers.get(msg.queryId);
+            let receiver: Address? = self.pendingPoolPayoutReceivers.get(excessLocalId);
             require(receiver != null, "Missing pool receiver");
             let receiverInit: StateInit = initOf QuasarWallet(receiver!!, self.master);
             require(sender() == contractAddress(receiverInit), "Unauthorized excess");
-            self.pendingPoolPayouts.set(msg.queryId, null);
-            self.pendingPoolPayoutReceivers.set(msg.queryId, null);
+            self.pendingPoolPayouts.set(excessLocalId, null);
+            self.pendingPoolPayoutReceivers.set(excessLocalId, null);
             return;
         }
 
@@ -162,17 +172,23 @@ contract QuasarWallet {
 
     bounced(msg: bounced<InternalTransfer>) {
         require(msg.amount > 0, "Invalid amount");
-        let poolAmount: Int? = self.pendingPoolPayouts.get(msg.queryId);
+        // FIX L-2 (audit pack v2): route by the marker bit FIRST. The pool
+        // ledger is consulted only for a marked query id, so an unmarked user
+        // transfer can no longer be captured by a colliding pool sequence.
+        let isPoolMarked: Bool = msg.queryId >= QUASAR_POOL_PAYOUT_MARKER;
+        let localId: Int = isPoolMarked ? msg.queryId - QUASAR_POOL_PAYOUT_MARKER : msg.queryId;
+        let poolAmount: Int? = isPoolMarked ? self.pendingPoolPayouts.get(localId) : null;
         if (poolAmount != null) {
-            self.pendingPoolPayouts.set(msg.queryId, null);
-            self.pendingPoolPayoutReceivers.set(msg.queryId, null);
+            self.pendingPoolPayouts.set(localId, null);
+            self.pendingPoolPayoutReceivers.set(localId, null);
             self.balance = self.balance + msg.amount;
             send(SendParameters{
                 to: self.owner,
                 value: 0,
                 bounce: false,
                 mode: SendRemainingValue | SendIgnoreErrors,
-                body: PayoutFailed{ queryId: msg.queryId, amount: msg.amount, destination: self.owner }.toCell()
+                // The owner-side ledger is keyed by the unmarked payout id.
+                body: PayoutFailed{ queryId: localId, amount: msg.amount, destination: self.owner }.toCell()
             });
             return;
         }
@@ -244,7 +260,10 @@ contract QuasarWallet {
             data: init.data
         });
         let residual: Int = context().value - ton("0.07") - ton("0.02");
-        if (residual > 0) {
+        // FIX L-3 (audit pack v2): addr_none is not a destination — sending the
+        // residual there burns TON. When the sender asked for no response the
+        // remainder stays in the wallet, where it funds the owner's future gas.
+        if (residual > 0 && msg.responseDestination != newAddress(0, 0)) {
             send(SendParameters{ to: msg.responseDestination, value: residual, bounce: false, mode: SendPayGasSeparately | SendIgnoreErrors, body: TokenExcesses{ queryId: msg.queryId }.toCell() });
         }
     }
@@ -264,7 +283,9 @@ contract QuasarWallet {
             bounce: true,
             mode: SendRemainingValue,
             body: InternalTransfer{
-                queryId: msg.queryId,
+                // FIX L-2: mark the downstream transfer so a bounce is routed
+                // to the pool ledger by construction, not by lookup order.
+                queryId: msg.queryId + QUASAR_POOL_PAYOUT_MARKER,
                 amount: msg.amount,
                 from: self.owner,
                 responseDestination: msg.responseDestination,
