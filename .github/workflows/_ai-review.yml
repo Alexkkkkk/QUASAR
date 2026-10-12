@@ -34,18 +34,19 @@ jobs:
       contents: read
       pull-requests: write
     steps:
-      - name: Require the Groq API key
+      - name: Check whether the optional Groq API key is available
         shell: bash
         env:
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
         run: |
           set -euo pipefail
           if [[ -z "$GROQ_API_KEY" ]]; then
-            echo "::error title=Missing Groq API key::The caller must pass the GROQ_API_KEY secret to this reusable workflow."
-            exit 1
+            echo "SKIP=true" >> "$GITHUB_ENV"
+            echo "::notice::GROQ_API_KEY was not passed; skipping optional AI review."
           fi
 
       - name: Collect the PR diff as bounded context
+        if: env.SKIP != 'true'
         env:
           GH_TOKEN: ${{ github.token }}
           PR: ${{ github.event.pull_request.number }}
@@ -62,6 +63,7 @@ jobs:
           echo "diff bytes: $(wc -c < "$RUNNER_TEMP/pr.trimmed.diff")"
 
       - name: Skip the review when this head SHA was already reviewed
+        if: env.SKIP != 'true'
         env:
           GH_TOKEN: ${{ github.token }}
           PR: ${{ github.event.pull_request.number }}
