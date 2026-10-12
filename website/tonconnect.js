@@ -48,6 +48,13 @@ const GAS = {
 const NANO = 1000000000n;
 const ONE_KILO = 1000n;
 
+// L-8 (issue #181): QuasarWallet spends up to 0.07 TON of the SOURCE wallet's
+// OWN balance on the gas legs of a transfer (0.02 internal_transfer + 0.05
+// FeeTransfer, both PayGasSeparately). A wallet below the 0.075 TON headroom
+// fails deposits/transfers with exit code 37 no matter how much value the
+// user attaches, so the UI must warn about a top-up before that happens.
+const MIN_WALLET_GAS_BALANCE = 75000000n; // 0.075 TON
+
 // ─── Initialize TON Connect ───
 export function initTonConnect() {
     if (typeof window === 'undefined') return;
@@ -188,7 +195,12 @@ async function loadBalances(address) {
         const res = await fetch(`${restEndpoint()}getAddressBalance?address=${address}`);
         const data = await res.json();
         if (data && data.result) {
-            setText('ton-balance', fmt(BigInt(data.result), 9, 'TON'));
+            const balance = BigInt(data.result);
+            setText('ton-balance', fmt(balance, 9, 'TON'));
+            // L-8 (issue #181): surface the gas top-up warning right where the
+            // balance renders — the wallet is about to fail operations otherwise.
+            const gasNote = document.getElementById('gas-warning');
+            if (gasNote) gasNote.style.display = balance < MIN_WALLET_GAS_BALANCE ? 'block' : 'none';
         }
     } catch (e) {
         console.error('[QUASAR] Balance load error:', e);
