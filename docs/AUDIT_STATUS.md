@@ -114,19 +114,41 @@ is a follow-up, not part of this pack.
 
 ### M-4c documentation record — `ToggleTrading` semantics (2026-10-12)
 
-- `tradingEnabled` is consumed by exactly one check: `_requireTrading()` is
-  called only in `receive(msg: Mint)` (`contracts/quasar.tact:759`, defined at
-  line 426). The flag therefore gates minting only; peer-to-peer jetton
-  transfers between autonomous wallets never observe it.
-- `ToggleTrading` / `AIToggleTrading` and the `tradingEnabled` flag keep their
-  names and opcode: the pack rename `ToggleMinting` was NOT applied so that
-  `docs/abi/quasar-master.json` and `website/tonconnect.js` stay in sync
-  (`tests/audit_pack_v2_application.test.ts` documents this deviation).
-- While paused, `receive(msg: FeeTransfer)` skips the treasury transfer and
-  auto-buyback (M-4a) and `Unstake` / `ClaimVested` stay available (M-4b) —
-  see the application record above.
-- Renaming the message remains an owner design decision tied to an ABI version
-  bump; until then this record is the canonical description of the flag's
-  actual surface.
+Verified against `main` at commit `0f8ba6cd` (2026-10-12); line numbers drift
+with refactors — treat the quoted symbols, not the numbers, as canonical.
+
+- **Where the flag is read.** `fun _requireTrading()` is declared at
+  `contracts/quasar.tact:426` and its body — `require(self.tradingEnabled,
+  "Trading off")` — is the *only* place the master contract reads the flag in
+  a guard; that single guard is invoked exactly once, at
+  `contracts/quasar.tact:759` inside `receive(msg: Mint)`. Grep over the
+  contract confirms there is no other `tradingEnabled` consumer acting as an
+  access gate (remaining occurrences are assignments in pause/toggle/replay
+  paths, not checks). Jetton transfers between autonomous wallets are executed
+  by the jetton **wallet** contracts and never consult this master-contract
+  flag, so the flag gates minting only — TEP-74 wallets keep transferring
+  while the flag is off.
+- **Naming / opcode stability.** `ToggleTrading`, `AIToggleTrading` and the
+  `tradingEnabled` flag keep their names and opcode. The audit pack's proposed
+  rename to `ToggleMinting` is intentionally NOT applied: as of commit
+  `0f8ba6cd`, `docs/abi/quasar-master.json` contains `ToggleTrading` and no
+  `ToggleMinting` entry, and `website/tonconnect.js` sends the same message.
+  A rename without a coordinated ABI/dApp update would change the observable
+  message surface, which TEP-74/TEP-89 compatibility practice treats as a
+  breaking change requiring a version bump. The deviation from the pack is
+  recorded in `tests/audit_pack_v2_application.test.ts`.
+- **Interaction with the pause (M-4a / M-4b).** While paused,
+  `receive(msg: FeeTransfer)` skips the treasury transfer and auto-buyback
+  (M-4a), and `Unstake` / `ClaimVested` stay available (M-4b) — see the
+  application record above.
+- **Automated coverage.** The pause behaviour above is pinned by tests:
+  `tests/audit_pack_v2_application.test.ts` —
+  "M-4a: a pause silences the outgoing fee legs, never the inbound accounting"
+  (line 58) asserts the `if (!self.emergencyPause)` guard, and
+  "M-4b: exits stay live while paused, entries stay gated" (line 67) asserts
+  `Unstake` / `ClaimVested` remain pause-free while `Stake` stays gated.
+- **Renaming is an owner decision.** Renaming the message remains an owner
+  design decision tied to an ABI version bump (see TEP note above); until then
+  this record is the canonical description of the flag's actual surface.
 
 Refs #179.
