@@ -222,7 +222,7 @@ jobs:
           persist-credentials: false
 
       - name: Download the diagnosis
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: autofix-evidence
           path: ${{ runner.temp }}/evidence
@@ -305,13 +305,13 @@ jobs:
           persist-credentials: false
 
       - name: Download the healed patch and the diagnosis
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: autofix-patch
           path: ${{ runner.temp }}/autofix
 
       - name: Download the diagnosis evidence
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: autofix-evidence
           path: ${{ runner.temp }}/evidence
@@ -433,7 +433,7 @@ jobs:
       issues: write
     steps:
       - name: Download the diagnosis
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: autofix-evidence
           path: ${{ runner.temp }}/dx
