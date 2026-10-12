@@ -23,3 +23,6 @@ build/
 build/deployment.json
 website/deployment.json
 actionlint
+
+# SwarmSync regenerated state (rebuild with: node scripts/ai/swarm/cli.mjs all)
+docs/ai/knowledge/state/

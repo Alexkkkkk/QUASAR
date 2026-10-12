@@ -13,10 +13,9 @@ name: Auto-update pull requests
 # does not start a new workflow run, which would leave the required checks
 # stale. Without the secret the job degrades to `secrets.GITHUB_TOKEN`.
 #
-# Merge policy: no approving review is required anywhere in this repository.
-# A pull request is merged when its status checks are green and it is either
-# authored by Dependabot, authored by the repository owner, or labelled
-# `automerge`. The `do-not-merge` label is always respected.
+# Merge policy: only Dependabot-authored PRs may get auto-merge enabled here.
+# Owner-authored and `automerge`-labelled PRs are never auto-merged by this workflow.
+# GitHub enforces the active required checks; `do-not-merge` is always respected.
 
 on:
   schedule:
@@ -24,7 +23,7 @@ on:
   workflow_dispatch:
     inputs:
       merge:
-        description: Merge pull requests whose checks are green
+        description: Enable auto-merge only for Dependabot PRs; required checks still apply
         type: boolean
         default: true
   push:
@@ -49,7 +48,6 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.AUTO_MERGE_TOKEN || secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
-          OWNER: ${{ github.repository_owner }}
           DO_MERGE: ${{ github.event.inputs.merge || 'true' }}
         run: |
           set -euo pipefail
@@ -89,30 +87,19 @@ jobs:
               continue
             fi
 
-            if [[ "$author" != "dependabot[bot]" && "$author" != "$OWNER" && ",${labels}," != *",automerge,"* ]]; then
-              echo "skip: ${author} is not auto-merge eligible; add the automerge label"
+            if [[ "$author" != "dependabot[bot]" ]]; then
+              echo "skip: only Dependabot PRs may be auto-merged; other PRs need a human decision"
               echo "::endgroup::"
               continue
             fi
 
-            rollup=$(gh pr view "$number" --repo "$REPO" --json statusCheckRollup \
-              --jq '[.statusCheckRollup[] | (.conclusion // .state // "PENDING")] | if length == 0 then "none" elif all(. == "SUCCESS" or . == "NEUTRAL" or . == "SKIPPED") then "green" else "pending" end')
-
-            case "$rollup" in
-              green)
-                if gh pr merge "$number" --repo "$REPO" --squash; then
-                  echo "ok: merged with a squash commit"
-                else
-                  echo "::warning title=Merge failed::PR #${number} could not be merged automatically."
-                fi
-                ;;
-              none)
-                echo "skip: no status checks reported yet"
-                ;;
-              *)
-                echo "skip: status checks are not green yet"
-                ;;
-            esac
+            # Delegate the merge gate to GitHub: active ruleset checks must all pass.
+            # Optional checks such as the AI reviewer do not override required CI.
+            if gh pr merge "$number" --repo "$REPO" --auto --squash; then
+              echo "ok: enabled auto-merge; GitHub will wait for required ruleset checks"
+            else
+              echo "::warning title=Auto-merge could not be enabled::PR #${number} remains open."
+            fi
 
             echo "::endgroup::"
           done <<< "$prs"
