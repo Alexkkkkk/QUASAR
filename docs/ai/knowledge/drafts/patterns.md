@@ -1,11 +1,11 @@
 # Pattern Drafts (auto-generated — human review required)
 
-## StaticCheck: Review swap deadline enforcement in QuasarDeFi
-- Rule: Revert when now > deadline at the top of every swap and liquidity entry point.
-- Why: Proven 2/2 runs green by ai-fix, ai-review.
-- Signature: `sig:d77eeda0123692ea`  |  evidence: 2 runs
+## HELD (adversarial counterexample) StaticCheck: Review swap deadline enforcement in QuasarDeFi
+- Proposed: Revert when now > deadline at the top of every swap and liquidity entry point.
+- Attack: COUNTEREXAMPLE: In the QuasarDeFi smart contract, the swap deadline enforcement rule is implemented in the `swap` function. However, the rule is not correctly enforced at the top of every swap and liquidity entry point. This can lead to a bug where the swap is executed before the deadline, resulting
+- Human must judge before this rule can be promoted.
 
-## BounceBug: Review bounced payout liability restore in QuasarMaster
-- Rule: On bounce, restore the exact stake/vesting/referral liability recorded at send time; never touch only the aggregate counter.
-- Why: Proven 2/2 runs green by ai-fix, ai-review.
-- Signature: `sig:5f2469b2bf290400`  |  evidence: 2 runs
+## HELD (adversarial counterexample) BounceBug: Review bounced payout liability restore in QuasarMaster
+- Proposed: On bounce, restore the exact stake/vesting/referral liability recorded at send time; never touch only the aggregate counter.
+- Attack: COUNTEREXAMPLE: In a scenario where the QuasarMaster contract is designed to restore the exact stake/vesting/referral liability recorded at the time of a send, but the contract does not properly handle the case where the user's balance is insufficient to cover the liability, the contract could be vu
+- Human must judge before this rule can be promoted.
