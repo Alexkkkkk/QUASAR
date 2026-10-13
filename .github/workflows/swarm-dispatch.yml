@@ -2,9 +2,10 @@ name: swarm-dispatch
 
 # Event router for the swarm — the swarm's "nervous system":
 #   change  -> gate (schema, poison scan, consistency) + unit tests
-#   idle    -> every 30 min a cheap scout checks for new lessons and runs
-#              the full learning cycle only when something changed
+#   poll    -> every minute a cheap scout checks for new lessons and runs
+#              the full cycle only when something changed
 #   manual  -> workflow_dispatch forces a full cycle
+# The resident Ollama loop lives in swarm-watch.yml.
 
 on:
   push:
@@ -13,23 +14,24 @@ on:
     paths:
       - 'docs/ai/knowledge/**'
       - 'scripts/ai/swarm/**'
-      - 'scripts/ai/autopilot/**'
-      - 'tests/autopilot.test.mjs'
   pull_request:
     paths:
       - 'docs/ai/knowledge/**'
       - 'scripts/ai/swarm/**'
-      - 'scripts/ai/autopilot/**'
-      - 'tests/autopilot.test.mjs'
   schedule:
-    - cron: '*/30 * * * *'   # idle mode: check every 30 min, learn only when something changed
+    - cron: '*/5 * * * *'    # cheap poll every 5 min (GitHub minimum; minute-precision lives in swarm-watch)
   workflow_dispatch:
 
 permissions:
   contents: read
 
+concurrency:
+  group: swarm-dispatch-${{ github.event_name }}
+  cancel-in-progress: false
+
 jobs:
   gate:
+    if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -45,6 +47,7 @@ jobs:
         run: node scripts/ai/swarm/cli.mjs sync
 
   test:
+    if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -57,13 +60,15 @@ jobs:
         with:
           node-version-file: .nvmrc
       - name: Swarm unit tests
-        run: node --test tests/swarm/swarm.test.mjs tests/autopilot.test.mjs
+        run: node --test tests/swarm/swarm.test.mjs
 
-  weekly-cycle:
+  # Minute poll. Backend from repo variable SWARM_LLM (default groq); when no
+  # API key is set, learning runs deterministically. The scout job inside
+  # _ai-swarm.yml skips the expensive cycle when there is nothing new.
+  cycle:
     needs: [gate, test]
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     permissions:
       contents: write
-      issues: write
       pull-requests: write
     uses: ./.github/workflows/_ai-swarm.yml
