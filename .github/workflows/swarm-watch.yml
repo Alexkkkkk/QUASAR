@@ -1,0 +1,107 @@
+name: swarm-watch
+
+# Resident watcher — the true "poll every minute" engine.
+#
+# GitHub delays per-minute cron runs under load (often 5-15 min), so instead
+# ONE job lives for hours: Ollama stays hot in memory (no reinstall per
+# cycle), and an inner loop checks for new lessons every 60 seconds.
+# When work appears: learn -> sync -> rag -> commit -> push branch -> draft PR
+# (autopilot's knowledge-merge then ingests it autonomously).
+#
+# The job restarts every 6h via cron because Actions caps a single job at 6h.
+#
+# Hard brakes unchanged: draft PR only, no on-chain actions.
+
+on:
+  schedule:
+    - cron: '0 */6 * * *'    # restart the resident every 6 hours
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: swarm-watch
+  cancel-in-progress: false   # never kill a running learning loop
+
+env:
+  OLLAMA_MODEL: 'qwen2.5-coder:1.5b'
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350      # safety margin below the 6h hard cap
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+
+      - name: Install Ollama
+        run: |
+          set -e
+          curl -fsSL https://ollama.com/install.sh | sh
+          mkdir -p "$HOME/.ollama/models"
+          echo "OLLAMA_URL=http://127.0.0.1:11434" >> "$GITHUB_ENV"
+
+      - name: Cache Ollama model
+        uses: actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        with:
+          path: ~/.ollama/models
+          key: ollama-${{ env.OLLAMA_MODEL }}-${{ runner.os }}
+
+      - name: Start Ollama and pull model
+        run: |
+          set -e
+          ollama serve > /tmp/ollama.log 2>&1 &
+          n=0
+          until curl -sf http://127.0.0.1:11434/api/tags >/dev/null 2>&1; do
+            n=$((n + 1))
+            if [ "$n" -ge 30 ]; then echo "ollama did not start in time"; exit 1; fi
+            sleep 2
+          done
+          ollama pull "$OLLAMA_MODEL"
+
+      - name: Resident learning loop (checks every 60s)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OLLAMA_URL: http://127.0.0.1:11434
+          OLLAMA_MODEL: ${{ env.OLLAMA_MODEL }}
+        run: |
+          set -e
+          BRANCH="ai/swarm-sync"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git checkout -B "$BRANCH" origin/main
+
+          while true; do
+            if node scripts/ai/swarm/cli.mjs pending >/dev/null 2>&1; then
+              echo "=== $(date -u +%Y-%m-%dT%H:%M:%SZ) new material — learning ==="
+              node scripts/ai/swarm/cli.mjs learn
+              node scripts/ai/swarm/cli.mjs sync
+              node scripts/ai/swarm/cli.mjs rag
+              git add docs/ai/knowledge
+              if ! git diff --cached --quiet; then
+                git commit -m "swarm: knowledge sync $(date -u +%Y-%m-%dT%H:%M)" || true
+                git pull --rebase origin "$BRANCH" 2>/dev/null || true
+                git push origin "HEAD:${BRANCH}" || true
+                OPEN_COUNT=$(gh pr list --head "$BRANCH" --json number --jq 'length')
+                if [ "$OPEN_COUNT" = "0" ]; then
+                  gh pr create --head "$BRANCH" --base main \
+                    --title "ai(swarm): knowledge sync — promoted rules" \
+                    --body "Automated by the resident watcher (Ollama local loop). Merged by autopilot knowledge-merge once checks are green." \
+                    --label ai-sync --draft || true
+                fi
+                git checkout -B "$BRANCH" origin/main
+              fi
+            fi
+            sleep 60
+          done
