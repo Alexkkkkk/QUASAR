@@ -6,6 +6,10 @@ name: ai-swarm-sync
 # Triggered only through the hub (swarm-dispatch.yml); it never declares
 # its own event triggers, mirroring every other `_`-module.
 #
+# Idle mode: the hub calls this module every 30 minutes; a cheap scout
+# job (seconds) skips the entire expensive cycle when there is nothing
+# new to learn. Compute is spent only when the knowledge base changed.
+#
 # Hard boundaries (same policy as the rest of the AI surface):
 #   - draft PR only, never auto-merge
 #   - no on-chain actions, no deployments
@@ -26,7 +30,35 @@ env:
   TURN: ${{ github.run_attempt }}
 
 jobs:
+  scout:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      changed: ${{ steps.check.outputs.changed }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410b181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+
+      - name: Idle check — anything new since last cycle?
+        id: check
+        run: |
+          if node scripts/ai/swarm/cli.mjs pending; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "idle: skipping full learning cycle"
+          fi
+
   swarm:
+    needs: [scout]
+    if: needs.scout.outputs.changed == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
@@ -34,7 +66,7 @@ jobs:
       pull-requests: write
     steps:
       - name: Check out repository
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410b181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 

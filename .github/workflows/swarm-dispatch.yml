@@ -2,10 +2,14 @@ name: swarm-dispatch
 
 # Event router for the swarm — the swarm's "nervous system":
 #   change  -> gate (schema, poison scan, consistency) + unit tests
-#   weekly  -> full learning cycle via the reusable _ai-swarm module
+#   idle    -> every 30 min a cheap scout checks for new lessons and runs
+#              the full learning cycle only when something changed
+#   manual  -> workflow_dispatch forces a full cycle
 
 on:
   push:
+    branches:
+      - main
     paths:
       - 'docs/ai/knowledge/**'
       - 'scripts/ai/swarm/**'
@@ -14,7 +18,7 @@ on:
       - 'docs/ai/knowledge/**'
       - 'scripts/ai/swarm/**'
   schedule:
-    - cron: '23 2 * * 1'   # Mondays 02:23 UTC — weekly learning cycle
+    - cron: '*/30 * * * *'   # idle mode: check every 30 min, learn only when something changed
   workflow_dispatch:
 
 permissions:
@@ -26,7 +30,7 @@ jobs:
     timeout-minutes: 10
     steps:
       - name: Check out repository
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410b181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - name: Set up Node.js
@@ -41,7 +45,7 @@ jobs:
     timeout-minutes: 10
     steps:
       - name: Check out repository
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410b181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - name: Set up Node.js
@@ -54,4 +58,7 @@ jobs:
   weekly-cycle:
     needs: [gate, test]
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    permissions:
+      contents: write
+      pull-requests: write
     uses: ./.github/workflows/_ai-swarm.yml

@@ -1,0 +1,124 @@
+name: autopilot
+
+# The conductor. Every 15 minutes it checks the four surfaces:
+# dependabot alerts, code-scanning alerts, the PR queue, and open issues.
+# It opens tracking issues for new findings, flags existing dependabot PRs
+# for auto-merge, and — only in mode=full — squash-merges green PRs
+# without human involvement.
+#
+# Modes (repository variable AUTOPILOT, default: guard):
+#   off    — jobs exit immediately
+#   guard  — scan + track + label, never merge
+#   full   — everything, rate-limited
+#
+# Hard brakes (scripts/ai/autopilot/cli.mjs, cannot be disabled by env):
+#   - open issue labeled `autopilot-stopped` -> everything halts
+#   - max 5 merges/day, max 3 new PRs/day
+#   - never merges PRs touching .github/workflows/**, contracts/**,
+#     script/** or .github/dependabot.yml — those need a human
+#
+# If dependabot API returns 403: add a classic PAT with `security_events`
+# scope as the AUTOPILOT_TOKEN secret.
+
+on:
+  schedule:
+    - cron: '7-59/15 * * * *'   # every 15 min, offset from the hour
+  workflow_dispatch:
+    inputs:
+      command:
+        description: 'Which command to run'
+        type: choice
+        options:
+          - all
+          - scan-dependabot
+          - scan-codescan
+          - merge-queue
+          - status
+        default: all
+
+permissions:
+  contents: read
+
+jobs:
+  mode:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      autopilot: ${{ steps.m.outputs.autopilot }}
+    steps:
+      - name: Resolve mode
+        id: m
+        env:
+          VARS: ${{ toJSON(vars) }}
+        run: |
+          MODE=$(echo "$VARS" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const v=JSON.parse(s||'{}');console.log(v.AUTOPILOT||'guard')})")
+          echo "autopilot=$MODE" >> "$GITHUB_OUTPUT"
+          echo "autopilot mode: $MODE"
+
+  scan-dependabot:
+    needs: [mode]
+    if: needs.mode.outputs.autopilot != 'off'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write
+      security-events: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410b181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+      - name: Scan dependabot alerts
+        env:
+          GH_TOKEN: ${{ secrets.AUTOPILOT_TOKEN || secrets.GITHUB_TOKEN }}
+          AUTOPILOT: ${{ needs.mode.outputs.autopilot }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: node scripts/ai/autopilot/cli.mjs scan-dependabot
+
+  scan-codescan:
+    needs: [mode]
+    if: needs.mode.outputs.autopilot != 'off'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      issues: write
+      security-events: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410b181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+      - name: Scan code-scanning alerts
+        env:
+          GH_TOKEN: ${{ secrets.AUTOPILOT_TOKEN || secrets.GITHUB_TOKEN }}
+          AUTOPILOT: ${{ needs.mode.outputs.autopilot }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: node scripts/ai/autopilot/cli.mjs scan-codescan
+
+  merge-queue:
+    needs: [mode]
+    if: needs.mode.outputs.autopilot == 'full'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410b181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+      - name: Merge green queue
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          AUTOPILOT: ${{ needs.mode.outputs.autopilot }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: node scripts/ai/autopilot/cli.mjs merge-queue
