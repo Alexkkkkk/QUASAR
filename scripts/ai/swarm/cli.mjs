@@ -6,9 +6,10 @@
 //   node scripts/ai/swarm/cli.mjs rag               rebuild retrieval index
 //   node scripts/ai/swarm/cli.mjs query "<text>"    fetch shared knowledge for a prompt
 //   node scripts/ai/swarm/cli.mjs teach '<json>'    append a lesson (validated + scanned)
+//   node scripts/ai/swarm/cli.mjs pending           idle gate: new material since last cycle?
 //   node scripts/ai/swarm/cli.mjs status            one-line swarm health
 //   node scripts/ai/swarm/cli.mjs all               learn + sync + rag (CI cycle)
-import { learn } from './learn.mjs';
+import { learn, hasPendingWork } from './learn.mjs';
 import { sync } from './sync.mjs';
 import { buildIndex, queryContext, query } from './rag.mjs';
 import { appendLesson, readLessons } from './knowledge.mjs';
@@ -50,6 +51,13 @@ async function main() {
       console.log(`teach: recorded ${lesson.id}`);
       break;
     }
+    case 'pending': {
+      const p = await hasPendingWork();
+      console.log(p ? 'pending: new material since last cycle'
+                    : 'idle: nothing new since last cycle');
+      if (!p) process.exitCode = 2;   // 2 = «пропустить тяжёлый цикл»
+      break;
+    }
     case 'status': {
       const { lessons } = readLessons();
       const r = sync();
@@ -65,7 +73,7 @@ async function main() {
       break;
     }
     default:
-      console.log('usage: cli.mjs [learn|sync|rag|query|teach|status|all]');
+      console.log('usage: cli.mjs [learn|sync|rag|query|teach|pending|status|all]');
       process.exitCode = cmd ? 1 : 0;
   }
 }

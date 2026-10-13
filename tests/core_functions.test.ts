@@ -145,7 +145,7 @@ test('mint: rejected for non-owner, while trading is off, and after minting stop
     assert.equal((await eco.master.getGetJettonData()).totalSupply, 0n, 'a rejected mint must not change supply');
 
     // trading off blocks minting
-    await eco.master.send(eco.owner.getSender(), { value: toNano('0.1') }, { $$type: 'ToggleTrading', enabled: false });
+    await eco.master.send(eco.owner.getSender(), { value: toNano('0.1') }, { $$type: 'ToggleMinting', enabled: false });
     assert.equal(await eco.master.getIsTradingEnabled(), false);
     await expectBlocked(
         eco.master.send(eco.owner.getSender(), { value: toNano('0.3') }, { $$type: 'Mint', amount: QSR, receiver: alice.address }),
@@ -153,7 +153,7 @@ test('mint: rejected for non-owner, while trading is off, and after minting stop
     );
 
     // permanent mint stop
-    await eco.master.send(eco.owner.getSender(), { value: toNano('0.1') }, { $$type: 'ToggleTrading', enabled: true });
+    await eco.master.send(eco.owner.getSender(), { value: toNano('0.1') }, { $$type: 'ToggleMinting', enabled: true });
     await eco.master.send(eco.owner.getSender(), { value: toNano('0.1') }, 'Stop Minting');
     await expectBlocked(
         eco.master.send(eco.owner.getSender(), { value: toNano('0.3') }, { $$type: 'Mint', amount: QSR, receiver: alice.address }),

@@ -5,8 +5,8 @@
  * file instead pins the fixes where they now live (the real contracts) and
  * records the deviations from the pack that this branch made on purpose:
  *   - the owner gate on GovernanceVote is KEPT (the pack removed it),
- *   - M-4c (ToggleTrading -> ToggleMinting) is NOT applied, so the message
- *     name keeps matching docs/abi and the dApp,
+ *   - M-4c (ToggleTrading -> ToggleMinting) IS applied with the previous
+ *     opcodes pinned, so the wire format and the dApp keep working,
  *   - M-1 keeps the single-key refund shape already in main instead of the
  *     partial-refund receiver from the pack,
  *   - L-4 is NOT applied because the pack version reports compile-time
