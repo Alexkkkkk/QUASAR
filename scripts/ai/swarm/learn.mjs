@@ -6,9 +6,10 @@ import { PROMOTION, PATTERNS_FILE, PITFALLS_FILE } from './config.mjs';
 import { readLessons, readMarkdown, writeDraft, writeState, readState } from './knowledge.mjs';
 
 async function maybePolish(text) {
+  const usingGroq = Boolean(process.env.GROQ_API_KEY);
   const key = process.env.GROQ_API_KEY || process.env.OPENAI_API_KEY;
   if (!key) return text;
-  const base = process.env.GROQ_API_KEY
+  const base = usingGroq
     ? 'https://api.groq.com/openai/v1'
     : 'https://api.openai.com/v1';
   try {
@@ -16,7 +17,7 @@ async function maybePolish(text) {
       method: 'POST',
       headers: { authorization: `Bearer ${key}`, 'content-type': 'application/json' },
       body: JSON.stringify({
-        model: process.env.SWARM_MODEL || 'llama-3.1-8b-instant',
+        model: process.env.SWARM_MODEL || (usingGroq ? 'llama-3.1-8b-instant' : 'gpt-4o-mini'),
         temperature: 0,
         max_tokens: 400,
         messages: [
@@ -146,9 +147,11 @@ export async function learn({ dryRun = false } = {}) {
 
 // Idle-mode gate: is there material newer than the last completed cycle?
 export async function hasPendingWork() {
-  const { lessons } = readLessons();
+  const { lessons, quarantine, structural } = readLessons();
+  if (quarantine.length > 0 || structural.length > 0) return true;
   const last = readState('learn-report.json');
   if (!last?.generatedAt) return lessons.length > 0;
   const since = Date.parse(last.generatedAt);
+  if (!Number.isFinite(since)) return true;
   return lessons.some((l) => Date.parse(l.ts) > since);
 }

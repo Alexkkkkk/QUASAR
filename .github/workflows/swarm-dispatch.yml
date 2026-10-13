@@ -13,10 +13,14 @@ on:
     paths:
       - 'docs/ai/knowledge/**'
       - 'scripts/ai/swarm/**'
+      - 'scripts/ai/autopilot/**'
+      - 'tests/autopilot.test.mjs'
   pull_request:
     paths:
       - 'docs/ai/knowledge/**'
       - 'scripts/ai/swarm/**'
+      - 'scripts/ai/autopilot/**'
+      - 'tests/autopilot.test.mjs'
   schedule:
     - cron: '*/30 * * * *'   # idle mode: check every 30 min, learn only when something changed
   workflow_dispatch:
@@ -30,7 +34,7 @@ jobs:
     timeout-minutes: 10
     steps:
       - name: Check out repository
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410b181273ba90b1 # v7.0.1
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - name: Set up Node.js
@@ -45,7 +49,7 @@ jobs:
     timeout-minutes: 10
     steps:
       - name: Check out repository
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410b181273ba90b1 # v7.0.1
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - name: Set up Node.js
@@ -53,12 +57,13 @@ jobs:
         with:
           node-version-file: .nvmrc
       - name: Swarm unit tests
-        run: node --test tests/swarm/swarm.test.mjs
+        run: node --test tests/swarm/swarm.test.mjs tests/autopilot.test.mjs
 
   weekly-cycle:
     needs: [gate, test]
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     permissions:
       contents: write
+      issues: write
       pull-requests: write
     uses: ./.github/workflows/_ai-swarm.yml

@@ -37,7 +37,7 @@ jobs:
       changed: ${{ steps.check.outputs.changed }}
     steps:
       - name: Check out repository
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410b181273ba90b1 # v7.0.1
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
@@ -52,8 +52,14 @@ jobs:
           if node scripts/ai/swarm/cli.mjs pending; then
             echo "changed=true" >> "$GITHUB_OUTPUT"
           else
-            echo "changed=false" >> "$GITHUB_OUTPUT"
-            echo "idle: skipping full learning cycle"
+            status=$?
+            if [ "$status" -eq 2 ]; then
+              echo "changed=false" >> "$GITHUB_OUTPUT"
+              echo "idle: skipping full learning cycle"
+            else
+              echo "::error::pending check failed with exit code $status"
+              exit "$status"
+            fi
           fi
 
   swarm:
@@ -63,10 +69,11 @@ jobs:
     timeout-minutes: 15
     permissions:
       contents: write
+      issues: write
       pull-requests: write
     steps:
       - name: Check out repository
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410b181273ba90b1 # v7.0.1
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
@@ -74,6 +81,15 @@ jobs:
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version-file: .nvmrc
+
+      - name: Ensure ai-sync label exists
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          exists=$(gh label list --repo "$GITHUB_REPOSITORY" --limit 100 --json name --jq 'any(.[]; .name == "ai-sync")')
+          if [ "$exists" != "true" ]; then
+            gh label create ai-sync --repo "$GITHUB_REPOSITORY" --color "5319e7" --description "Draft PR containing cross-agent swarm knowledge"
+          fi
 
       - name: Safety brake — stop after ${{ inputs.max_turns || 15 }} iterations
         env:

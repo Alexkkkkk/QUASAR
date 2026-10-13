@@ -1,24 +1,21 @@
 name: autopilot
 
-# The conductor. Every 15 minutes it checks the four surfaces:
-# dependabot alerts, code-scanning alerts, the PR queue, and open issues.
-# It opens tracking issues for new findings, flags existing dependabot PRs
-# for auto-merge, and — only in mode=full — squash-merges green PRs
-# without human involvement.
+# Every 15 minutes this workflow scans Dependabot and code-scanning alerts.
+# Guard mode tracks findings but never queues a merge. Full mode may enable
+# auto-merge only for green, eligible bot PRs or human-approved PRs.
 #
 # Modes (repository variable AUTOPILOT, default: guard):
 #   off    — jobs exit immediately
-#   guard  — scan + track + label, never merge
+#   guard  — scan + track findings, never merge
 #   full   — everything, rate-limited
 #
 # Hard brakes (scripts/ai/autopilot/cli.mjs, cannot be disabled by env):
 #   - open issue labeled `autopilot-stopped` -> everything halts
-#   - max 5 merges/day, max 3 new PRs/day
+#   - max 5 merges/day and max 3 new tracking issues per scan
 #   - never merges PRs touching .github/workflows/**, contracts/**,
-#     script/** or .github/dependabot.yml — those need a human
+#     scripts/** or .github/dependabot.yml — those need a human
 #
-# If dependabot API returns 403: add a classic PAT with `security_events`
-# scope as the AUTOPILOT_TOKEN secret.
+# Uses the workflow-scoped GITHUB_TOKEN; no personal access token is needed.
 
 on:
   schedule:
@@ -43,6 +40,8 @@ jobs:
   mode:
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    permissions:
+      issues: write
     outputs:
       autopilot: ${{ steps.m.outputs.autopilot }}
     steps:
@@ -52,21 +51,40 @@ jobs:
           VARS: ${{ toJSON(vars) }}
         run: |
           MODE=$(echo "$VARS" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const v=JSON.parse(s||'{}');console.log(v.AUTOPILOT||'guard')})")
+          case "$MODE" in
+            off|guard|full) ;;
+            *) echo "::error::Invalid AUTOPILOT mode: $MODE"; exit 1 ;;
+          esac
           echo "autopilot=$MODE" >> "$GITHUB_OUTPUT"
           echo "autopilot mode: $MODE"
 
+      - name: Ensure tracking labels exist
+        if: vars.AUTOPILOT != 'off' && inputs.command != 'status'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          ensure_label() {
+            local label="$1" color="$2" description="$3" exists
+            exists=$(gh label list --repo "$GITHUB_REPOSITORY" --limit 100 --json name --jq "any(.[]; .name == \"$label\")")
+            if [ "$exists" != "true" ]; then
+              gh label create "$label" --repo "$GITHUB_REPOSITORY" --color "$color" --description "$description"
+            fi
+          }
+          ensure_label autopilot-stopped "b60205" "Stops autopilot until this issue is closed"
+          ensure_label autopilot-dep "d93f0b" "Dependabot alert tracked by autopilot"
+          ensure_label autopilot-scan "0052cc" "Code scanning alert tracked by autopilot"
+
   scan-dependabot:
     needs: [mode]
-    if: needs.mode.outputs.autopilot != 'off'
+    if: needs.mode.outputs.autopilot != 'off' && (github.event_name == 'schedule' || inputs.command == 'all' || inputs.command == 'scan-dependabot')
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
       contents: read
       issues: write
-      pull-requests: write
       security-events: read
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410b181273ba90b1 # v7.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
@@ -74,21 +92,22 @@ jobs:
           node-version-file: .nvmrc
       - name: Scan dependabot alerts
         env:
-          GH_TOKEN: ${{ secrets.AUTOPILOT_TOKEN || secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           AUTOPILOT: ${{ needs.mode.outputs.autopilot }}
           GITHUB_REPOSITORY: ${{ github.repository }}
         run: node scripts/ai/autopilot/cli.mjs scan-dependabot
 
   scan-codescan:
     needs: [mode]
-    if: needs.mode.outputs.autopilot != 'off'
+    if: needs.mode.outputs.autopilot != 'off' && (github.event_name == 'schedule' || inputs.command == 'all' || inputs.command == 'scan-codescan')
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
+      contents: read
       issues: write
       security-events: read
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410b181273ba90b1 # v7.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
@@ -96,21 +115,46 @@ jobs:
           node-version-file: .nvmrc
       - name: Scan code-scanning alerts
         env:
-          GH_TOKEN: ${{ secrets.AUTOPILOT_TOKEN || secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           AUTOPILOT: ${{ needs.mode.outputs.autopilot }}
           GITHUB_REPOSITORY: ${{ github.repository }}
         run: node scripts/ai/autopilot/cli.mjs scan-codescan
 
+  status:
+    needs: [mode]
+    if: github.event_name == 'workflow_dispatch' && inputs.command == 'status'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+      - name: Show autopilot status
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          AUTOPILOT: ${{ needs.mode.outputs.autopilot }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: node scripts/ai/autopilot/cli.mjs status
+
   merge-queue:
     needs: [mode]
-    if: needs.mode.outputs.autopilot == 'full'
+    if: needs.mode.outputs.autopilot == 'full' && (github.event_name == 'schedule' || inputs.command == 'all' || inputs.command == 'merge-queue')
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
+      checks: read
       contents: write
+      issues: read
       pull-requests: write
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410b181273ba90b1 # v7.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
