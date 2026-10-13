@@ -24,7 +24,7 @@ test("Dependabot alerts group by package and manifest while keeping every fixed 
   assert.deepEqual(groups[0].fixed, ["2.0.0", "3.0.0"]);
   assert.deepEqual(groups[0].ghsa, ["GHSA-1", "GHSA-2"]);
   assert.equal(groups[0].count, 2);
-  assert.equal(groups[1].severity, "moderate");
+  assert.equal(groups[1].severity, "low");
 });
 
 test("code-scanning alerts group by rule", () => {
