@@ -19,8 +19,8 @@ process.env.GITHUB_WORKSPACE = FAKE_ROOT;
 const { LESSONS_FILE, PATTERNS_FILE, PITFALLS_FILE } = await import("../../scripts/ai/swarm/config.mjs");
 const { validateLesson, signatureOf, normalizeError } = await import("../../scripts/ai/swarm/schema.mjs");
 const { scanLessonLine } = await import("../../scripts/ai/swarm/security.mjs");
-const { readLessons, appendLesson, resetKnowledge, writeMarkdown, writeDraft } = await import("../../scripts/ai/swarm/knowledge.mjs");
-const { learn } = await import("../../scripts/ai/swarm/learn.mjs");
+const { readLessons, appendLesson, resetKnowledge, writeMarkdown, writeDraft, writeState } = await import("../../scripts/ai/swarm/knowledge.mjs");
+const { learn, hasPendingWork } = await import("../../scripts/ai/swarm/learn.mjs");
 const { sync } = await import("../../scripts/ai/swarm/sync.mjs");
 const { buildIndex, query, queryContext } = await import("../../scripts/ai/swarm/rag.mjs");
 
@@ -105,6 +105,20 @@ test("writeDraft rejects path traversal and poisoned content", () => {
   );
 });
 
+test("hasPendingWork skips completed lessons and detects newer lessons", async () => {
+  resetKnowledge();
+  writeState("learn-report.json", { generatedAt: "2026-10-07T00:00:00.000Z" });
+  appendLesson(good({ ts: "2026-10-06T12:00:00.000Z" }));
+  assert.equal(await hasPendingWork(), false);
+  appendLesson(good({ id: "ijkl5678mnop", agent: "ai-review", ts: "2026-10-07T00:00:01.000Z" }));
+  assert.equal(await hasPendingWork(), true);
+});
+
+test("hasPendingWork wakes the gate for malformed lesson lines", async () => {
+  resetKnowledge();
+  writeFileSync(LESSONS_FILE, "{not-json\n");
+  assert.equal(await hasPendingWork(), true);
+});
 test("learn promotes two identical green lessons and flags conflicts otherwise", async () => {
   resetKnowledge();
   appendLesson(good());
