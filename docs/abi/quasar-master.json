@@ -604,7 +604,7 @@
       ]
     },
     {
-      "name": "AIToggleTrading",
+      "name": "AIToggleMinting",
       "opcode": "0x0490d605",
       "fields": [
         {
@@ -1303,7 +1303,7 @@
       ]
     },
     {
-      "name": "ToggleTrading",
+      "name": "ToggleMinting",
       "opcode": "0xf1822da1",
       "fields": [
         {

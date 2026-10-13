@@ -39,7 +39,7 @@ message AISetFee { queryId: Int as uint64; feeBps: Int as uint16; reason: String
 message AISetTreasuryDirect { queryId: Int as uint64; treasury: Address; reason: String }
 message AISetAntiWhale { queryId: Int as uint64; maxTxBps: Int as uint16; maxWalletBps: Int as uint16; cooldown: Int as uint16; reason: String }
 message AISetBuybackDirect { queryId: Int as uint64; enabled: Bool; threshold: Int as coins; cooldown: Int as uint32; burnPercent: Int as uint8; reason: String }
-message AIToggleTrading { queryId: Int as uint64; enabled: Bool; reason: String }
+message(0x0490d605) AIToggleMinting { queryId: Int as uint64; enabled: Bool; reason: String }
 message AIEmergencyPause { queryId: Int as uint64; pause: Bool; severity: Int as uint8; reason: String }
 message AIRotateOracle { queryId: Int as uint64; newOracle: Address; reason: String }
 
@@ -61,7 +61,7 @@ message(0x642b7d07) Mint { amount: Int as coins; receiver: Address }
 // ─── Fee & Buyback Messages ───
 message SetTreasury { treasury: Address }
 message SetFeeConfig { feeBps: Int as uint16; burnShare: Int as uint8; maxTxBps: Int as uint16; maxWalletBps: Int as uint16; cooldown: Int as uint16 }
-message ToggleTrading { enabled: Bool }
+message(0xf1822da1) ToggleMinting { enabled: Bool }
 message TriggerBuyback { queryId: Int as uint64 }
 message CancelBuybackSwap { queryId: Int as uint64 }
 message SetBuybackConfig { enabled: Bool; threshold: Int as coins; cooldown: Int as uint32; burnPercent: Int as uint8 }
@@ -486,7 +486,7 @@ contract QuasarMaster with Deployable {
     // state than the owner safety window.
     fun _restoreAiAction(actionId: Int, act: AIActionLog) {
         if (act.actionType == "SetFee") { self.feeBps = act.oldValue }
-        else if (act.actionType == "ToggleTrading") { self.tradingEnabled = act.oldValue != 0 }
+        else if (act.actionType == "ToggleMinting") { self.tradingEnabled = act.oldValue != 0 }
         else if (act.actionType == "EmergencyPause") {
             let oldBurnShare: Int? = self.aiActionOldBurnShare.get(actionId);
             let oldPause: Int? = self.aiActionOldEmergencyPause.get(actionId);
@@ -1395,14 +1395,14 @@ contract QuasarMaster with Deployable {
         send(SendParameters{ to: sender(), value: 0, mode: SendRemainingValue | SendIgnoreErrors, body: EventAiAction{ actionId: id, actionType: "SetBuyback", oldValue: oldEnabled ? 1 : 0, newValue: msg.enabled ? 1 : 0 }.toCell() });
     }
     
-    receive(msg: AIToggleTrading) {
+    receive(msg: AIToggleMinting) {
         self._requireAiAccess();
         self._requireAiCooldown();
         self._requireFreshAiQuery(msg.queryId);
         let oldTrading: Bool = self.tradingEnabled;
         self.tradingEnabled = msg.enabled;
-        let id: Int = self._logAiAction("ToggleTrading", oldTrading ? 1 : 0, msg.enabled ? 1 : 0, msg.reason);
-        send(SendParameters{ to: sender(), value: 0, mode: SendRemainingValue | SendIgnoreErrors, body: EventAiAction{ actionId: id, actionType: "ToggleTrading", oldValue: oldTrading ? 1 : 0, newValue: msg.enabled ? 1 : 0 }.toCell() });
+        let id: Int = self._logAiAction("ToggleMinting", oldTrading ? 1 : 0, msg.enabled ? 1 : 0, msg.reason);
+        send(SendParameters{ to: sender(), value: 0, mode: SendRemainingValue | SendIgnoreErrors, body: EventAiAction{ actionId: id, actionType: "ToggleMinting", oldValue: oldTrading ? 1 : 0, newValue: msg.enabled ? 1 : 0 }.toCell() });
     }
     
     receive(msg: AIRotateOracle) {
@@ -1570,7 +1570,7 @@ contract QuasarMaster with Deployable {
         
         let act: AIActionLog = action!!;
         self.aiActionLog.set(msg.actionId, AIActionLog{ actionId: act.actionId, timestamp: act.timestamp, actionType: act.actionType, oldValue: act.oldValue, newValue: act.newValue, reason: act.reason, executed: act.executed, vetoed: act.vetoed, overridden: true });
-        // The helper below covers every logged kind: "SetFee", "ToggleTrading",
+        // The helper below covers every logged kind: "SetFee", "ToggleMinting",
         // "EmergencyPause", "SetAntiWhale", "SetTreasury", "RotateOracle",
         // "SetBuyback", act.actionType == "Rebalance", "GovernanceFee", "GovernanceBurn" and
         // "GovernanceBuybackThreshold". Rebalance restores with
@@ -1710,7 +1710,7 @@ contract QuasarMaster with Deployable {
             } else if (msg.kind == 2) {
                 let oldTrading: Int = self.tradingEnabled == true ? 1 : 0;
                 self.tradingEnabled = msg.flag;
-                id = self._logAiActionSilent("ToggleTrading", oldTrading, msg.flag == true ? 1 : 0, msg.reason);
+                id = self._logAiActionSilent("ToggleMinting", oldTrading, msg.flag == true ? 1 : 0, msg.reason);
             } else if (msg.kind == 3) {
                 let oldPause: Int = self.emergencyPause == true ? 1 : 0;
                 let oldTrading: Int = self.tradingEnabled == true ? 1 : 0;
@@ -1965,11 +1965,11 @@ contract QuasarMaster with Deployable {
         emit(EventAdminConfig{ action: "CancelFeeConfig", actor: sender(), valueA: 0, valueB: 0 }.toCell());
     }
     
-    receive(msg: ToggleTrading) {
+    receive(msg: ToggleMinting) {
         self._requireOwner();
         require(!self.aiFullAutonomy, "AI controls");
         self.tradingEnabled = msg.enabled;
-        emit(EventAdminConfig{ action: "ToggleTrading", actor: sender(), valueA: msg.enabled ? 1 : 0, valueB: 0 }.toCell());
+        emit(EventAdminConfig{ action: "ToggleMinting", actor: sender(), valueA: msg.enabled ? 1 : 0, valueB: 0 }.toCell());
     }
     
     receive(msg: SetBuybackConfig) {

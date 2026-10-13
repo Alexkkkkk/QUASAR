@@ -437,7 +437,7 @@ test('F7 source: the AI cooldown is unconditional and every logged action is ove
         'cooldown must not depend on aiFullAutonomy'
     );
     const override = section(masterSrc, 'receive(msg: OwnerOverride)', 'receive("Claim AI Control")');
-    for (const t of ['SetFee', 'ToggleTrading', 'EmergencyPause', 'SetAntiWhale', 'SetTreasury', 'RotateOracle', 'SetBuyback', 'Rebalance', 'GovernanceFee', 'GovernanceBurn', 'GovernanceBuybackThreshold']) {
+    for (const t of ['SetFee', 'ToggleMinting', 'EmergencyPause', 'SetAntiWhale', 'SetTreasury', 'RotateOracle', 'SetBuyback', 'Rebalance', 'GovernanceFee', 'GovernanceBurn', 'GovernanceBuybackThreshold']) {
         assert.ok(override.includes(`"${t}"`), `OwnerOverride must cover ${t}`);
     }
     assert.ok(masterSrc.includes('fun _logAiActionSilent('), 'market signals must be recorded in the action log');
