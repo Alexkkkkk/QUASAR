@@ -86,7 +86,7 @@ test('F-35 behaviour: after quorum the same proposalId cannot be executed again 
     assert.equal(await eco.master.getGetProposalStake(42n), 0n, 'the quorum tally must be consumed');
 
     // Re-enable trading through the owner so an illegal replay would be visible.
-    await eco.master.send(eco.owner.getSender(), { value: toNano('0.1') }, { $$type: 'ToggleTrading', enabled: true });
+    await eco.master.send(eco.owner.getSender(), { value: toNano('0.1') }, { $$type: 'ToggleMinting', enabled: true });
     assert.equal(await eco.master.getIsTradingEnabled(), true, 'the owner can re-enable trading');
 
     // A second staker pushes totalStaked to 200 QSR; 100/200 is still above the
