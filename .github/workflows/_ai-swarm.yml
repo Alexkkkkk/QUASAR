@@ -6,6 +6,10 @@ name: ai-swarm-sync
 # Triggered only through the hub (swarm-dispatch.yml); it never declares
 # its own event triggers, mirroring every other `_`-module.
 #
+# Idle mode: the hub calls this module every 30 minutes; a cheap scout
+# job (seconds) skips the entire expensive cycle when there is nothing
+# new to learn. Compute is spent only when the knowledge base changed.
+#
 # Hard boundaries (same policy as the rest of the AI surface):
 #   - draft PR only, never auto-merge
 #   - no on-chain actions, no deployments
@@ -26,11 +30,46 @@ env:
   TURN: ${{ github.run_attempt }}
 
 jobs:
+  scout:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      changed: ${{ steps.check.outputs.changed }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+
+      - name: Idle check — anything new since last cycle?
+        id: check
+        run: |
+          if node scripts/ai/swarm/cli.mjs pending; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          else
+            status=$?
+            if [ "$status" -eq 2 ]; then
+              echo "changed=false" >> "$GITHUB_OUTPUT"
+              echo "idle: skipping full learning cycle"
+            else
+              echo "::error::pending check failed with exit code $status"
+              exit "$status"
+            fi
+          fi
+
   swarm:
+    needs: [scout]
+    if: needs.scout.outputs.changed == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
       contents: write
+      issues: write
       pull-requests: write
     steps:
       - name: Check out repository
@@ -39,9 +78,18 @@ jobs:
           persist-credentials: false
 
       - name: Set up Node.js
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .nvmrc
+
+      - name: Ensure ai-sync label exists
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          exists=$(gh label list --repo "$GITHUB_REPOSITORY" --limit 100 --json name --jq 'any(.[]; .name == "ai-sync")')
+          if [ "$exists" != "true" ]; then
+            gh label create ai-sync --repo "$GITHUB_REPOSITORY" --color "5319e7" --description "Draft PR containing cross-agent swarm knowledge"
+          fi
 
       - name: Safety brake — stop after ${{ inputs.max_turns || 15 }} iterations
         env:

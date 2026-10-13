@@ -252,6 +252,45 @@
   - Изменение storage/layout контрактов меняет code hashes и адреса; только до
     публичного деплоя и с обязательным человеческим review.
 
+- [x] **T-21 Переименование `ToggleTrading` -> `ToggleMinting` (M-4c, issue #179).**
+  - Файлы: `contracts/quasar.tact`, `docs/abi/quasar-master.json`,
+    `docs/build-hashes.json`, `tests/core_functions.test.ts`,
+    `tests/hardening_f34_f38.test.ts`, `tests/security_regression.test.ts`,
+    `tests/v5_governance.test.ts`, `tests/audit_pack_v2_application.test.ts`.
+  - Проблема: имя `ToggleTrading` вводило в заблуждение — `_requireTrading()`
+    вызывается ровно из одного места, `receive(msg: Mint)`, то есть флаг гейтит
+    только минт, а P2P-переводы между автономными кошельками его не видят.
+  - Исправление: сообщения переименованы в `ToggleMinting` / `AIToggleMinting`
+    с **явным закреплением прежних опкодов** (`0xf1822da1`, `0x0490d605`),
+    как задано паком аудита (`docs/audit-pack-v2/contracts/quasar_master_fixes.tact`).
+    Wire-формат не изменился, поэтому `website/tonconnect.js` и внешние
+    интеграции продолжают работать без миграции. Метка в AI-журнале действий
+    и строка `OwnerOverride` переведены на новое имя.
+  - Проверка: `npm run lint`, `npm run build`, `npm run abi:update`,
+    `npm run abi:verify`, `npm run abi:dapp`, `npx tsc --noEmit`,
+    `npm run security:check`, `npm test`.
+  - Изменение `contracts/**` сдвигает code hash (но не опкоды) — требует
+    человеческого review и выполняется до публичного деплоя; адреса должны
+    быть пересчитаны перед любой публикацией.
+
+---
+
+## Живой прогон контура: issue #166 (2026-10-12)
+
+Пробный полный цикл из #153 на тестовом issue #166 (метка `ai-fix` от владельца).
+
+- [x] Роутинг: `quasar.yml` -> route выбрал модуль `ai-fix`, остальные задачи — skipped.
+- [x] `ai-fix / generate` стартовал с job-правами `contents: read, issues: read`;
+      guardrails (protected paths, patch-only, изолированная валидация) не тронуты.
+- [x] Первая попытка (2026-10-10) упала на генерации: `Groq API returned HTTP 403` —
+      недействительный секрет `GROQ_API_KEY`. Проблема секрета, а не контура.
+- [x] Завершение прогона выполнено документным патчем без защищённых путей:
+      ветка `ai/166-agent` -> draft PR -> ai-review -> human approval.
+- [ ] Merge и закрытие #166 по closing-keyword — после human approval
+      (метка `ai-merge-ok`) владельцем.
+
+Refs #153, #145, #107.
+
 ---
 
 ## Порядок закрытия
