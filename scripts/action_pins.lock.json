@@ -35,8 +35,8 @@
       "sha": "fc324d3547104276b827a68afc52ff2a11cc49c9"
     },
     "actions/deploy-pages": {
-      "tag": "v4.0.5",
-      "sha": "d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e"
+      "tag": "v5.0.1",
+      "sha": "368f82528645a54fb793d4d04e342629a3f51346"
     },
     "actions/attest-build-provenance": {
       "tag": "v4.2.2",
