@@ -47,8 +47,8 @@
       "sha": "a1d282b36b6f3519aa1f3fc636f609c47dddb294"
     },
     "dependabot/fetch-metadata": {
-      "tag": "v2.5.0",
-      "sha": "21025c705c08248db411dc16f3619e6b5f9ea21a"
+      "tag": "v3.1.0",
+      "sha": "25dd0e34f4fe68f24cc83900b1fe3fe149efef98"
     },
     "peter-evans/create-pull-request": {
       "tag": "v8.1.1",
