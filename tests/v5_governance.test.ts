@@ -118,7 +118,7 @@ test('gov: a vote reaching quorum executes the proposal through the AI action lo
     // the owner override window reads
     const action = await eco.master.getGetAiAction(0n);
     assert.ok(action, 'the governance execution must be logged as a reversible AI action');
-    assert.equal(action.actionType, 'ToggleTrading');
+    assert.equal(action.actionType, 'ToggleMinting');
     assert.equal(action.oldValue, 1n);
     assert.equal(action.newValue, 0n);
 
