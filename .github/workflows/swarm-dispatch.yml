@@ -19,7 +19,7 @@ on:
       - 'docs/ai/knowledge/**'
       - 'scripts/ai/swarm/**'
   schedule:
-    - cron: '* * * * *'      # poll every minute (GitHub may delay under load; swarm-watch is the precise engine)
+    - cron: '*/5 * * * *'    # cheap poll every 5 min (GitHub minimum; minute-precision lives in swarm-watch)
   workflow_dispatch:
 
 permissions:
@@ -72,6 +72,3 @@ jobs:
       contents: write
       pull-requests: write
     uses: ./.github/workflows/_ai-swarm.yml
-    with:
-      llm_backend: ${{ vars.SWARM_LLM || 'groq' }}
-      ollama_model: 'qwen2.5-coder:1.5b'
