@@ -252,6 +252,27 @@
   - Изменение storage/layout контрактов меняет code hashes и адреса; только до
     публичного деплоя и с обязательным человеческим review.
 
+- [x] **T-21 Переименование `ToggleTrading` -> `ToggleMinting` (M-4c, issue #179).**
+  - Файлы: `contracts/quasar.tact`, `docs/abi/quasar-master.json`,
+    `docs/build-hashes.json`, `tests/core_functions.test.ts`,
+    `tests/hardening_f34_f38.test.ts`, `tests/security_regression.test.ts`,
+    `tests/v5_governance.test.ts`, `tests/audit_pack_v2_application.test.ts`.
+  - Проблема: имя `ToggleTrading` вводило в заблуждение — `_requireTrading()`
+    вызывается ровно из одного места, `receive(msg: Mint)`, то есть флаг гейтит
+    только минт, а P2P-переводы между автономными кошельками его не видят.
+  - Исправление: сообщения переименованы в `ToggleMinting` / `AIToggleMinting`
+    с **явным закреплением прежних опкодов** (`0xf1822da1`, `0x0490d605`),
+    как задано паком аудита (`docs/audit-pack-v2/contracts/quasar_master_fixes.tact`).
+    Wire-формат не изменился, поэтому `website/tonconnect.js` и внешние
+    интеграции продолжают работать без миграции. Метка в AI-журнале действий
+    и строка `OwnerOverride` переведены на новое имя.
+  - Проверка: `npm run lint`, `npm run build`, `npm run abi:update`,
+    `npm run abi:verify`, `npm run abi:dapp`, `npx tsc --noEmit`,
+    `npm run security:check`, `npm test`.
+  - Изменение `contracts/**` сдвигает code hash (но не опкоды) — требует
+    человеческого review и выполняется до публичного деплоя; адреса должны
+    быть пересчитаны перед любой публикацией.
+
 ---
 
 ## Порядок закрытия
