@@ -34,7 +34,9 @@ export function ensureDirs() {
 export function readLessons() {
   ensureDirs();
   const raw = fs.readFileSync(LESSONS_FILE, 'utf8');
-  const lines = raw.split('\n').filter((l) => l.trim().length > 0);
+  // Comment lines (# ...) and blank lines are human documentation, not data:
+  // skip them before JSON parsing instead of counting them as structural errors.
+  const lines = raw.split('\n').filter((l) => { const t = l.trim(); return t.length > 0 && !t.startsWith('#'); });
   const lessons = [];
   const quarantine = [];
   const structural = [];
