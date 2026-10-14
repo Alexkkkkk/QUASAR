@@ -109,7 +109,11 @@ test('F-01 source: jetton metadata URL is not the dead hardcoded default and is 
     assert.ok(!meta.image.includes('quasar-ton.netlify.app'), 'metadata image must not point at the dead domain');
     // The image must come from an origin that serves it as image/png, not the
     // text/plain raw host (audit 2026-10-02, #77).
-    assert.ok(!meta.image.includes('raw.githubusercontent.com'), 'metadata image must not use the text/plain raw host');
+    const imageHost = new URL(meta.image).hostname.toLowerCase();
+    assert.ok(
+        imageHost !== 'raw.githubusercontent.com' && !imageHost.endsWith('.raw.githubusercontent.com'),
+        'metadata image must not use the text/plain raw host',
+    );
 });
 
 test('F-02 source: tonconnect manifest is repo-hosted and no config points at the dead domain', () => {
