@@ -45,8 +45,8 @@ test('no repository document cites a retired TON Docs path', () => {
 
 test('the conformance matrix cites the reachable replacement sources', () => {
     const matrix = readFileSync(join(root, 'docs', 'TON_CONFORMANCE_MATRIX.md'), 'utf8');
-    assert.match(matrix, /https:\/\/docs\.ton\.org\/contracts\/standard\/tokens\/jettons\/find/);
-    assert.match(matrix, /https:\/\/docs\.ton\.org\/tolk\/overview/);
+    assert.match(matrix, /(?:^|[\s(`'\"<\[])(https:\/\/docs\.ton\.org\/contracts\/standard\/tokens\/jettons\/find)(?=$|[\s)`'\">.,;|\]])/m);
+    assert.match(matrix, /(?:^|[\s(`'\"<\[])(https:\/\/docs\.ton\.org\/tolk\/overview)(?=$|[\s)`'\">.,;|\]])/m);
 });
 
 test('the TON Connect audit notes cite the reachable replacement page', () => {
