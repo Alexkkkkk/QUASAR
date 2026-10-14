@@ -1,11 +1,9 @@
 name: swarm-dispatch
 
-# Event router for the swarm — the swarm's "nervous system":
-#   change  -> gate (schema, poison scan, consistency) + unit tests
-#   poll    -> every minute a cheap scout checks for new lessons and runs
-#              the full cycle only when something changed
-#   manual  -> workflow_dispatch forces a full cycle
-# The resident Ollama loop lives in swarm-watch.yml.
+# Event router for swarm knowledge changes:
+#   change -> validate schema, poison scan, consistency, and run unit tests
+#   manual -> workflow_dispatch runs the same validation checks
+# The resident learning loop lives in swarm-watch.yml.
 
 on:
   push:
@@ -18,8 +16,6 @@ on:
     paths:
       - 'docs/ai/knowledge/**'
       - 'scripts/ai/swarm/**'
-  schedule:
-    - cron: '*/5 * * * *'    # cheap poll every 5 min (GitHub minimum; minute-precision lives in swarm-watch)
   workflow_dispatch:
 
 permissions:
@@ -61,14 +57,3 @@ jobs:
           node-version-file: .nvmrc
       - name: Swarm unit tests
         run: node --test tests/swarm/swarm.test.mjs
-
-  # Minute poll. Backend from repo variable SWARM_LLM (default groq); when no
-  # API key is set, learning runs deterministically. The scout job inside
-  # _ai-swarm.yml skips the expensive cycle when there is nothing new.
-  cycle:
-    needs: [gate, test]
-    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
-    permissions:
-      contents: write
-      pull-requests: write
-    uses: ./.github/workflows/_ai-swarm.yml
