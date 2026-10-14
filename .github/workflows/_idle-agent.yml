@@ -108,26 +108,18 @@ jobs:
           } >> "$GITHUB_OUTPUT"
 
       - name: Study the target module (read-only)
-        id: explore
-        uses: google-github-actions/run-gemini-cli@f77273f4c914e4bf38440cf36a0369cb64a37489 # v0.1.22
         env:
-          GEMINI_CLI_TRUST_WORKSPACE: "true"
-        with:
-          gemini_api_key: ${{ secrets.gemini_api_key }}
-          gemini_cli_version: "0.62.0"
-          gemini_model: "gemini-3.8-flash"
-          settings: |-
-            { "model": { "maxSessionTurns": 20 },
-              "tools": { "core": [] } }
-          prompt: ${{ steps.prep.outputs.prompt }}
+          GEMINI_API_KEY: ${{ secrets.gemini_api_key }}
+          PROMPT: ${{ steps.prep.outputs.prompt }}
+        run: |
+          set -euo pipefail
+          printf '%s' "$PROMPT" | python3 scripts/gemini_rest_agent.py > "$RUNNER_TEMP/study-reply.txt"
 
       - name: Validate the findings against the schema
         id: findings
-        env:
-          REPLY: ${{ steps.explore.outputs.summary }}
         run: |
           set -euo pipefail
-          if ! python3 scripts/validate_findings.py scripts/explore.schema.json <<< "$REPLY" \
+          if ! python3 scripts/validate_findings.py scripts/explore.schema.json < "$RUNNER_TEMP/study-reply.txt" \
             > "$RUNNER_TEMP/findings.json"; then
             echo "count=0" >> "$GITHUB_OUTPUT"
             exit 0
@@ -159,31 +151,37 @@ jobs:
             echo 'prompt<<GEMINI_PROMPT_EOF'
             printf 'Apply the validated findings to module %s.\n' "$TARGET"
             cat <<'TXT'
-          Run npm run lint && npm test && npx tsc --noEmit after every change;
-          iterate up to 6 times until the full command exits 0. Add tests for
-          every bug you fix. HARD BOUNDARIES: never modify contracts/,
+          Return ONLY a text unified diff beginning with diff --git.
+          You have no tools. Use the source excerpts below, preserve unrelated
+          code, and change only files within the target module.
+          HARD BOUNDARIES: never modify contracts/,
           .github/workflows/, deploy/security/hub scripts, package manifests,
           .env/keys material. No network beyond your model API.
           Findings:
           TXT
             cat "$RUNNER_TEMP/findings.json"
+            printf '\nSource excerpts:\n'
+            cat "$RUNNER_TEMP/study-files.txt"
             echo 'GEMINI_PROMPT_EOF'
           } >> "$GITHUB_OUTPUT"
 
-      - name: Fix the findings until the checks pass
+      - name: Generate and preflight a scoped fix without model tools
         if: steps.findings.outputs.count != '0'
-        uses: google-github-actions/run-gemini-cli@f77273f4c914e4bf38440cf36a0369cb64a37489 # v0.1.22
         env:
-          GEMINI_CLI_TRUST_WORKSPACE: "true"
-        with:
-          gemini_api_key: ${{ secrets.gemini_api_key }}
-          gemini_cli_version: "0.62.0"
-          gemini_model: "gemini-3.8-flash"
-          settings: |-
-            { "model": { "maxSessionTurns": 40 },
-              "tools": { "core": ["read_file","grep_search","glob","write_file",
-                                  "replace","run_shell_command"] } }
-          prompt: ${{ steps.fixprompt.outputs.prompt }}
+          GEMINI_API_KEY: ${{ secrets.gemini_api_key }}
+          PROMPT: ${{ steps.fixprompt.outputs.prompt }}
+          TARGET: ${{ needs.idle-gate.outputs.target }}
+        run: |
+          set -euo pipefail
+          printf '%s' "$PROMPT" | python3 scripts/gemini_rest_agent.py > "$RUNNER_TEMP/idle-reply.txt"
+          python3 scripts/idle_patch.py "$TARGET" < "$RUNNER_TEMP/idle-reply.txt" > "$RUNNER_TEMP/idle.patch"
+          git apply --check "$RUNNER_TEMP/idle.patch"
+          git apply "$RUNNER_TEMP/idle.patch"
+          git diff --check
+
+      - name: Install Python dependencies for contract tooling tests
+        if: steps.findings.outputs.count != '0'
+        run: python3 -m pip install --quiet -r requirements.txt
 
       - name: Machine-verify the green tree, guard the red lines and push
         if: steps.findings.outputs.count != '0'
@@ -193,6 +191,7 @@ jobs:
         run: |
           set -euo pipefail
           npm run lint && npm test && npx tsc --noEmit
+          git add --intent-to-add --all
           changed=$(git diff --name-only)
           blocked=$(printf '%s\n' "$changed" | grep -E '^(\.github/workflows/|contracts/|scripts/(deploy|security_check|hub_audit|sync_action_pins)|package(-lock)?\.json$|(^|/)(deployment|build-hashes|action_pins\.lock)\.json$|(^|/)\.env($|\.)|mnemonic|seed|private[-_]?key)' || true)
           [[ -z "$blocked" ]] || { echo "::error::Idle fix touched red lines: $blocked"; exit 1; }
