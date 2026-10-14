@@ -55,9 +55,24 @@ jobs:
           # Fetch the unified diff straight from the REST API: the job is
           # deliberately checkout-free (no workspace trust, no git objects),
           # so `gh pr diff` cannot fall back to a local repository.
-          gh api "repos/${GITHUB_REPOSITORY}/pulls/${PR}" \
-            -H "Accept: application/vnd.github.diff" > "$RUNNER_TEMP/pr.diff"
-          test -s "$RUNNER_TEMP/pr.diff"
+          fetched=false
+          for attempt in 1 2 3; do
+            if gh api "repos/${GITHUB_REPOSITORY}/pulls/${PR}" \
+              -H "Accept: application/vnd.github.diff" > "$RUNNER_TEMP/pr.diff"; then
+              fetched=true
+              break
+            fi
+            sleep "$((attempt * 2))"
+          done
+          if [[ "$fetched" != true ]]; then
+            echo "::error::Unable to fetch PR diff after three attempts."
+            exit 1
+          fi
+          if [[ ! -s "$RUNNER_TEMP/pr.diff" ]]; then
+            echo "SKIP=true" >> "$GITHUB_ENV"
+            echo "::notice::PR has no file changes; nothing to review."
+            exit 0
+          fi
           # Bounded context: keep the diff under the model input budget.
           head -c 20000 "$RUNNER_TEMP/pr.diff" > "$RUNNER_TEMP/pr.trimmed.diff"
           echo "diff bytes: $(wc -c < "$RUNNER_TEMP/pr.trimmed.diff")"
