@@ -6,8 +6,8 @@ name: QUASAR Ollama pull-request agent
 #
 # Safety model (unchanged from ai-ollama-agent.yml):
 #   * owner-only: the label works only for github.repository_owner;
-#   * trusted code only: the workspace is always the DEFAULT branch, so PR code
-#     is never executed even though pull_request_target exposes secrets;
+#   * trusted code only: the workspace is always the DEFAULT branch;
+#     fork label events are excluded, and no privileged PR trigger is used;
 #   * protected paths are rejected and the patch must apply cleanly;
 #   * the module can only open a DRAFT pull request on an ai/<pr>-ollama branch.
 #     Merging stays with the existing ai-merge module: the owner adds
@@ -15,7 +15,7 @@ name: QUASAR Ollama pull-request agent
 # It never pushes to an existing branch, never merges, never deploys.
 
 on:
-  pull_request_target:
+  pull_request:
     types: [labeled]
   workflow_dispatch:
     inputs:
@@ -42,7 +42,8 @@ jobs:
     if: >-
       (github.event_name == 'workflow_dispatch') ||
       (github.event.label.name == 'ai-fix-ollama' &&
-       github.actor == github.repository_owner)
+       github.actor == github.repository_owner &&
+       github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: ubuntu-latest
     timeout-minutes: 45
     permissions:
@@ -82,7 +83,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          gh pr view "$PR" --json number,title,body,labels,user > "$RUNNER_TEMP/pr.json"
+          gh pr view "$PR" --repo "$GITHUB_REPOSITORY" --json number,title,body,labels,author > "$RUNNER_TEMP/pr.json"
           gh api "repos/${GITHUB_REPOSITORY}/pulls/${PR}" \
             -H "Accept: application/vnd.github.diff" > "$RUNNER_TEMP/pr.diff"
           python3 - "$RUNNER_TEMP/pr.json" "$RUNNER_TEMP/pr.diff" "$RUNNER_TEMP/manual-event.json" <<'PY'
@@ -99,7 +100,7 @@ jobs:
               + "\n\n--- Current pull request diff ---\n"
               + diff,
               "labels": pr.get("labels") or [],
-              "user": pr.get("user") or {},
+              "user": pr.get("author") or {},
           }
           payload = {
               "issue": issue,
@@ -201,6 +202,9 @@ jobs:
 
       - name: Type-check Tact contracts
         run: npm run lint
+
+      - name: Install Python dependencies for contract tooling tests
+        run: python3 -m pip install --quiet -r requirements.txt
 
       - name: Build and run contract and tooling tests
         run: npm test
