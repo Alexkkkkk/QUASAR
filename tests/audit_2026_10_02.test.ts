@@ -24,8 +24,9 @@ test('TEP-64 off-chain metadata is hosted on a JSON-capable origin (issue #77)',
         metadata.image.startsWith('https://alexkkkkk.github.io/QUASAR/'),
         `metadata.image must be hosted on the Pages origin, got ${metadata.image}`
     );
+    const imageHost = new URL(metadata.image).hostname.toLowerCase();
     assert.ok(
-        !metadata.image.includes('raw.githubusercontent.com'),
+        imageHost !== 'raw.githubusercontent.com' && !imageHost.endsWith('.raw.githubusercontent.com'),
         'metadata.image must not be served from raw.githubusercontent.com'
     );
 });

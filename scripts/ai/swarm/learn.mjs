@@ -291,7 +291,11 @@ export async function learn({ dryRun = false } = {}) {
 
 // Idle-mode gate: is there material newer than the last completed cycle?
 export async function hasPendingWork() {
-  const { lessons } = readLessons();
+  const { lessons, structural } = readLessons();
+  // Malformed / schema-invalid lesson lines are pending work too. They used to
+  // be ignored here, so a broken line could sit in lessons.jsonl forever and
+  // never wake the learning gate again.
+  if (structural.length > 0) return true;
   const last = readState('learn-report.json');
   if (!last?.generatedAt) return lessons.length > 0;
   const since = Date.parse(last.generatedAt);

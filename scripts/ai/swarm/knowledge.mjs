@@ -100,8 +100,14 @@ export function writeDraft(name, content) {
   const sec = scanMarkdown(content);
   if (!sec.safe) throw new Error(`content rejected: ${sec.violations.join(', ')}`);
   const file = path.join(DRAFTS_DIR, name);
-  fs.writeFileSync(file, content);
-  return file;
+  // Defence in depth for the file-write sink (code scanning
+  // js/http-to-file-access, alert #17): the destination is resolved and
+  // re-checked against DRAFTS_DIR, so no name can escape the directory.
+  const root = path.resolve(DRAFTS_DIR) + path.sep;
+  const resolved = path.resolve(file);
+  if (!resolved.startsWith(root)) throw new Error('invalid draft path');
+  fs.writeFileSync(resolved, content, 'utf8');
+  return resolved;
 }
 
 export function writeState(name, obj) {
