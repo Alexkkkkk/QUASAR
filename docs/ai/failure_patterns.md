@@ -89,3 +89,19 @@ Root cause: unknown
 Fix (known-good): unknown
 Status: OPEN
 Seen: 2026-10-11
+
+## Pattern: recurring-swarm-dispatch
+Signature:
+  - workflow 'swarm-dispatch' failed 4x in last 200 runs
+Root cause: unknown
+Fix (known-good): unknown
+Status: OPEN
+Seen: 2026-10-14
+
+## Pattern: recurring-swarm-watch
+Signature:
+  - workflow 'swarm-watch' failed 4x in last 200 runs
+Root cause: unknown
+Fix (known-good): unknown
+Status: OPEN
+Seen: 2026-10-14
