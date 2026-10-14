@@ -292,6 +292,8 @@ export async function learn({ dryRun = false } = {}) {
 // Idle-mode gate: is there material newer than the last completed cycle?
 export async function hasPendingWork() {
   const { lessons, quarantine, structural } = readLessons();
+  // Preserve both branch intentions: malformed lines and quarantined entries
+  // must wake the gate instead of silently stalling the learning cycle.
   if (quarantine.length > 0 || structural.length > 0) return true;
   const last = readState('learn-report.json');
   if (!last?.generatedAt) return lessons.length > 0;
