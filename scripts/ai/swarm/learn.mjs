@@ -30,7 +30,7 @@ export function llmConfig() {
   return null;
 }
 
-async function llm(system, user, maxTokens = 400) {
+export async function llm(system, user, maxTokens = 400) {
   const ep = llmConfig();
   if (!ep) return null;
   try {
