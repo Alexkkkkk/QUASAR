@@ -72,7 +72,11 @@ jobs:
 
       - name: Resident learning loop (checks every 60s)
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # A PAT (repo secret ACTIONS_PAT) is preferred: pushes made with the
+          # ephemeral GITHUB_TOKEN do not trigger pull_request workflows, so
+          # the required checks would never start and the knowledge PR could
+          # never merge autonomously. Falls back to GITHUB_TOKEN when unset.
+          GH_TOKEN: ${{ secrets.ACTIONS_PAT || secrets.GITHUB_TOKEN }}
           OLLAMA_URL: http://127.0.0.1:11434
           OLLAMA_MODEL: ${{ env.OLLAMA_MODEL }}
         run: |
