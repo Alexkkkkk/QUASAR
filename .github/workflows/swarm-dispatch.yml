@@ -1,11 +1,12 @@
 name: swarm-dispatch
 
-# Event router for the swarm — the swarm's "nervous system":
-#   change  -> gate (schema, poison scan, consistency) + unit tests
-#   idle    -> every 30 min a cheap scout checks for new lessons and runs
-#              the full learning cycle only when something changed
-#   weekly  -> Sunday 03:17 UTC deep cycle on local Ollama (free, slow)
-#   manual  -> workflow_dispatch forces a full cycle
+# Event router for swarm knowledge changes:
+#   change -> validate schema, poison scan, consistency, and run unit tests
+#   manual -> workflow_dispatch runs the same checks and then the full learning
+#             cycle through the reusable _ai-swarm.yml module
+# The resident (idle) learning loop lives in swarm-watch.yml; this hub owns no
+# schedule of its own (#223 removed the duplicate cycle, PR #217 keeps the
+# on-demand path to the learning module).
 
 on:
   push:
@@ -18,16 +19,18 @@ on:
     paths:
       - 'docs/ai/knowledge/**'
       - 'scripts/ai/swarm/**'
-  schedule:
-    - cron: '*/30 * * * *'   # idle mode: check every 30 min, learn only when something changed
-    - cron: '17 3 * * 0'     # Sunday 03:17 UTC: deep cycle with local Ollama (free, slow)
   workflow_dispatch:
 
 permissions:
   contents: read
 
+concurrency:
+  group: swarm-dispatch-${{ github.event_name }}
+  cancel-in-progress: false
+
 jobs:
   gate:
+    if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -36,13 +39,14 @@ jobs:
         with:
           persist-credentials: false
       - name: Set up Node.js
-        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.0.0
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .nvmrc
       - name: Gate knowledge changes (schema, poison, consistency)
         run: node scripts/ai/swarm/cli.mjs sync
 
   test:
+    if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -51,31 +55,8 @@ jobs:
         with:
           persist-credentials: false
       - name: Set up Node.js
-        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.0.0
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .nvmrc
       - name: Swarm unit tests
         run: node --test tests/swarm/swarm.test.mjs
-
-  weekly-cycle:
-    needs: [gate, test]
-    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
-    permissions:
-      contents: write
-      pull-requests: write
-    uses: ./.github/workflows/_ai-swarm.yml
-    with:
-      llm_backend: 'groq'   # fast path: Groq if GROQ_API_KEY exists, else deterministic
-
-  # Sunday 03:17 UTC: slow, free, fully-local deep learning pass.
-  # Ollama runs inside the runner; model is cached between weeks.
-  deep-cycle:
-    needs: [gate, test]
-    if: github.event_name == 'schedule' && github.event.schedule == '17 3 * * 0'
-    permissions:
-      contents: write
-      pull-requests: write
-    uses: ./.github/workflows/_ai-swarm.yml
-    with:
-      llm_backend: 'ollama'
-      ollama_model: 'qwen2.5-coder:1.5b'

@@ -291,8 +291,11 @@ export async function learn({ dryRun = false } = {}) {
 
 // Idle-mode gate: is there material newer than the last completed cycle?
 export async function hasPendingWork() {
-  const { lessons, quarantine, structural } = readLessons();
-  if (quarantine.length > 0 || structural.length > 0) return true;
+  const { lessons, structural } = readLessons();
+  // Malformed / schema-invalid lesson lines are pending work too (the branch
+  // intent: "wake learning gate for invalid entries"). They used to be
+  // ignored here, so a broken line could silence the gate for good.
+  if (structural.length > 0) return true;
   const last = readState('learn-report.json');
   if (!last?.generatedAt) return lessons.length > 0;
   const since = Date.parse(last.generatedAt);
@@ -300,26 +303,7 @@ export async function hasPendingWork() {
 }
 
 // New-agent curriculum: one file distilled from everything the swarm knows.
-export async function generateOnboarding({ outFile } = {}) {
-  const { lessons } = readLessons();
-  const patterns = readMarkdown(PATTERNS_FILE).replace(/^#[^\n]*\n/, '').trim();
-  const pitfalls = readMarkdown(PITFALLS_FILE).replace(/^#[^\n]*\n/, '').trim();
-  const counts = new Map();
-  for (const l of lessons) counts.set(l.task, (counts.get(l.task) ?? 0) + 1);
-  const top = [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 20);
-
-  const md = [
-    '# AI Onboarding — generated from swarm knowledge', '',
-    'New agents start here. Everything below was learned by the swarm;',
-    're-verify against current code before relying on it.', '',
-    '## Hard-won patterns', '', patterns, '',
-    '## Known pitfalls', '', pitfalls, '',
-    '## Hottest topics (by lesson count)', '',
-    ...(top.length ? top.map(([t, n]) => `- ${t} (${n} lessons)`) : ['- (no lessons yet)']), '',
-    '_Regenerate: `node scripts/ai/swarm/cli.mjs onboard`_', '',
-  ].join('\n');
-
-  const file = outFile ?? path.join(KNOWLEDGE_DIR, '..', 'ONBOARDING.md');
+  const file = outFile ?? path.join(KNOWLEDGE_DIR, 'ONBOARDING.md');
   writeMarkdown(file, md);
   return file;
 }
