@@ -44,12 +44,16 @@ test("merge queue requires settled green checks and protects manual holds", () =
   assert.equal(isMergeableCandidate({ ...base, statusCheckRollup: [{ conclusion: "FAILURE" }] }).why, "checks-failed:1");
   assert.equal(isMergeableCandidate({ ...base, statusCheckRollup: [{ conclusion: "SKIPPED" }] }).why, "no-successful-checks");
   assert.equal(isMergeableCandidate({ ...base, labels: [{ name: "automerge" }, { name: "do-not-merge" }] }).why, "do-not-merge");
-  assert.equal(isMergeableCandidate({ ...base, reviewDecision: "REVIEW_REQUIRED" }).why, "human-approval-required");
+  // Fully autonomous mode: a missing human approval and a missing automerge
+  // label no longer block the queue — green required checks are the only gate.
+  assert.equal(isMergeableCandidate({ ...base, reviewDecision: "REVIEW_REQUIRED" }).ok, true);
+  assert.equal(isMergeableCandidate({ ...base, labels: [] }).ok, true);
 });
 
-test("only approved bot PRs bypass the human review requirement", () => {
-  const bot = { isDraft: false, mergeable: "MERGEABLE", labels: [], author: { login: "dependabot[bot]" }, statusCheckRollup: [{ conclusion: "SUCCESS" }] };
-  assert.equal(isMergeableCandidate(bot).ok, true);
+test("fully autonomous queue: unlabeled unreviewed PRs merge on green checks", () => {
+  const pr = { isDraft: false, mergeable: "MERGEABLE", labels: [], reviewDecision: "REVIEW_REQUIRED", author: { login: "contributor" }, statusCheckRollup: [{ conclusion: "SUCCESS" }] };
+  assert.equal(isMergeableCandidate(pr).ok, true);
+  assert.equal(isMergeableCandidate({ ...pr, isDraft: true }).why, "draft");
 });
 
 test("protected path detection includes scripts and workflow files", () => {
