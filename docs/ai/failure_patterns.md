@@ -97,3 +97,19 @@ Root cause: unknown
 Fix (known-good): PR #119 merged 2026-10-07
 Status: RESOLVED
 Seen: 2026-10-13
+
+## Pattern: recurring-swarm-dispatch
+Signature:
+  - workflow 'swarm-dispatch' failed 4x in last 200 runs
+Root cause: unknown
+Fix (known-good): unknown
+Status: OPEN
+Seen: 2026-10-14
+
+## Pattern: recurring-swarm-watch
+Signature:
+  - workflow 'swarm-watch' failed 4x in last 200 runs
+Root cause: unknown
+Fix (known-good): unknown
+Status: OPEN
+Seen: 2026-10-14
