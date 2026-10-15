@@ -4,7 +4,8 @@ name: AI branch auto-merge (reusable module)
 # label to a pull request (or the scout/pr-polish loop adds it automatically);
 # the module then merges only that pull request, and only when every safety
 # condition holds:
-#   - the head branch is an agent branch (`ai/*`, `copilot/*`);
+#   - the head branch is an agent branch (`ai/*`, `copilot/*`, `autopilot/*`,
+#     `fix/*`);
 #   - the required status checks are all green;
 #   - the `do-not-merge` label is absent.
 # Branch protection requires only the status checks — no review gate (fully
@@ -54,18 +55,19 @@ jobs:
           fi
 
           head=$(jq -r '.headRefName' <<< "$pr")
-          if [[ "$head" != ai/* && "$head" != copilot/* ]]; then
+          if [[ "$head" != ai/* && "$head" != copilot/* && "$head" != autopilot/* && "$head" != fix/* ]]; then
             echo "::warning title=ai-merge refused::Branch $head is not an agent branch; merge it by hand."
             exit 0
           fi
-          # Agent pull requests are opened as drafts (draft-only policy). Mark
-          # the draft ready, then stop; re-labeling with `ai-merge-ok` reruns
-          # the merge checks (#155).
+          # Agent pull requests are opened as drafts (draft-only policy).
+          # Mark the draft ready and CONTINUE in the same run: the remaining
+          # guards (do-not-merge, green status rollup, --auto merge) all run
+          # against this exact head commit, so a second labeling round adds
+          # nothing but latency (fixes the two-step flow of #155).
           if [[ "$(jq -r '.isDraft' <<< "$pr")" == "true" ]]; then
             echo "::notice::Marking draft pull request #$TARGET as ready for review."
             gh pr ready "$TARGET" --repo "$GITHUB_REPOSITORY"
-            echo "::notice::PR #$TARGET is ready; remove and re-add the ai-merge-ok label to rerun the merge check."
-            exit 0
+            echo "::notice::PR #$TARGET is ready; continuing with the merge checks."
           fi
           if jq -e '.labels[].name | select(. == "do-not-merge")' <<< "$pr" >/dev/null; then
             echo "::warning title=ai-merge refused::The do-not-merge label is present."
