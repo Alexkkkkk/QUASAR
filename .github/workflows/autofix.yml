@@ -208,6 +208,8 @@ jobs:
   # 3. Детерминированное лечение: форматтеры, безопасные обновления, аудит-фиксы.
   # ---------------------------------------------------------------------------
   heal:
+    outputs:
+      no_changes: ${{ steps.patch.outputs.no_changes }}
     needs: [plan, diagnose]
     if: needs.plan.outputs.should_run == 'true'
     runs-on: ubuntu-latest
@@ -264,15 +266,16 @@ jobs:
           npm audit --audit-level=high
 
       - name: Produce the patch
+        id: patch
         run: |
           set -euo pipefail
           git add --intent-to-add --all
           git diff --binary --full-index --no-renames > "$RUNNER_TEMP/autofix.patch"
           if [[ ! -s "$RUNNER_TEMP/autofix.patch" ]]; then
-            echo "no_changes=true" >> "$GITHUB_ENV"
+            echo "no_changes=true" >> "$GITHUB_OUTPUT"
             echo "Детерминированные фиксеры не изменили ни одного файла."
           else
-            echo "no_changes=false" >> "$GITHUB_ENV"
+            echo "no_changes=false" >> "$GITHUB_OUTPUT"
             echo "Размер патча: $(wc -c < "$RUNNER_TEMP/autofix.patch") байт"
           fi
 
@@ -289,7 +292,7 @@ jobs:
   # ---------------------------------------------------------------------------
   publish:
     needs: [plan, diagnose, heal]
-    if: needs.plan.outputs.should_run == 'true'
+    if: needs.plan.outputs.should_run == 'true' && needs.heal.outputs.no_changes == 'false'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:

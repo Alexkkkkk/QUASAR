@@ -6,6 +6,8 @@
 //   node scripts/ai/autopilot/cli.mjs all
 //   node scripts/ai/autopilot/cli.mjs scan-dependabot
 //   node scripts/ai/autopilot/cli.mjs scan-codescan
+//   node scripts/ai/autopilot/cli.mjs scan-reverts
+//   node scripts/ai/autopilot/cli.mjs knowledge-merge
 //   node scripts/ai/autopilot/cli.mjs merge-queue
 //   node scripts/ai/autopilot/cli.mjs status
 //
@@ -21,6 +23,7 @@
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { appendLesson, readState, writeState } from '../swarm/knowledge.mjs';
 
 const VALID_MODES = new Set(['off', 'guard', 'full']);
 
@@ -46,6 +49,10 @@ const MAX_ISSUES = boundedLimit(process.env.AUTOPILOT_MAX_ISSUES, 3, 3);
 const STOP_LABEL = 'autopilot-stopped';
 const DEP_LABEL = 'autopilot-dep';
 const SCAN_LABEL = 'autopilot-scan';
+
+// Autonomous knowledge ingestion: a PR may self-merge only when EVERY file
+// lives under the knowledge base. One foreign file -> human required.
+const KNOWLEDGE_PREFIX = 'docs/ai/knowledge/';
 
 // ---------- pure helpers (unit-tested) ----------
 
@@ -113,6 +120,25 @@ const PROTECTED_PREFIXES = ['.github/workflows/', 'contracts/', 'scripts/', '.gi
 
 export function touchesProtectedPaths(files) {
   return (files || []).some((f) => PROTECTED_PREFIXES.some((p) => f.path.startsWith(p)));
+}
+
+// Parse `git log --grep=^Revert --format=%h %s` output.
+export function parseRevertLog(log) {
+  return String(log || '')
+    .split('\n')
+    .map((l) => l.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const m = line.match(/^([0-9a-f]{7,40})\s+Revert\s+["\u201c](.+?)["\u201d](\s+\(#(\d+)\))?/i);
+      if (!m) return null;
+      return { sha: m[1], subject: m[2], pr: m[4] || null };
+    })
+    .filter(Boolean);
+}
+
+export function filesWithinKnowledge(files) {
+  const list = files || [];
+  return list.length > 0 && list.every((f) => f.path.startsWith(KNOWLEDGE_PREFIX));
 }
 
 // ---------- gh wrapper ----------
@@ -289,16 +315,96 @@ function cmdMergeQueue() {
 }
 
 
+// Reverts are the strongest human signal: record them as pitfall lessons so
+// the swarm never re-introduces a change a human had to roll back.
+function cmdScanReverts() {
+  if (!guard('scan-reverts')) return;
+  const prev = readState('revert-scan.json', { since: null, seen: [] });
+  const since = prev.since || new Date(Date.now() - 30 * 86400_000).toISOString();
+  const r = spawnSync('git', ['log', '--since=' + since, '--grep=^Revert', '--format=%h %s'], { encoding: 'utf8' });
+  if (r.status !== 0) { console.log('autopilot: git log unavailable — skipping'); return; }
+  const entries = parseRevertLog(r.stdout).filter((e) => !prev.seen.includes(e.sha));
+  if (!entries.length) {
+    console.log('autopilot: no new reverts');
+    writeState('revert-scan.json', { since: new Date().toISOString(), seen: prev.seen });
+    return;
+  }
+  let recorded = 0;
+  for (const e of entries) {
+    try {
+      appendLesson({
+        agent: 'human',
+        kind: 'pitfall',
+        task: 'reverted: ' + e.subject,
+        error: { type: 'RevertedChange', message: 'commit ' + e.sha + ' reverted "' + e.subject + '"' },
+        solution: 'Never reintroduce "' + e.subject + '" without understanding why it was reverted (PR ' + (e.pr || 'n/a') + ').',
+        evidence: { tests: true, ...(e.pr ? { pr: '#' + e.pr } : {}) },
+      });
+      recorded++;
+      console.log('autopilot: revert lesson recorded (' + e.sha + ')');
+    } catch (err) {
+      console.log('autopilot: revert ' + e.sha + ' rejected: ' + err.message);
+    }
+  }
+  writeState('revert-scan.json', {
+    since: new Date().toISOString(),
+    seen: [...prev.seen, ...entries.map((e) => e.sha)].slice(-500),
+  });
+  console.log('autopilot: scan-reverts done — new=' + entries.length + ' recorded=' + recorded);
+}
+
+// Knowledge PRs (label ai-sync) land autonomously once their checks are
+// green — but only while every touched file stays inside the knowledge base.
+function cmdKnowledgeMerge() {
+  if (MODE !== 'full') { console.log('autopilot: knowledge-merge needs mode=full (now ' + MODE + ')'); return; }
+  if (!guard('knowledge-merge')) return;
+  const merged = mergesToday();
+  if (merged >= MAX_MERGES) { console.log('autopilot: daily merge cap (' + MAX_MERGES + ') reached'); return; }
+  const prs = gh(['pr', 'list', '--limit', '100', '--json',
+    'number,title,labels,isDraft,mergeable,reviewDecision,statusCheckRollup,author,autoMergeRequest']);
+  const queuedAlready = prs.filter((pr) => Boolean(pr.autoMergeRequest)).length;
+  let budget = remainingMergeBudget(MAX_MERGES, merged, queuedAlready);
+  if (budget <= 0) { console.log('autopilot: daily merge cap includes ' + merged + ' completed and ' + queuedAlready + ' already queued'); return; }
+  let queuedNow = 0, skipped = 0;
+  for (const pr of prs) {
+    if (budget <= 0) break;
+    if (pr.autoMergeRequest) { skipped++; continue; }
+    const isKnowledge = (pr.labels || []).some((l) => l.name === 'ai-sync');
+    if (!isKnowledge) { skipped++; continue; }
+    if (pr.reviewDecision === 'CHANGES_REQUESTED') { skipped++; continue; }
+    if (pr.mergeable !== 'MERGEABLE') { skipped++; console.log('autopilot: #' + pr.number + ' skipped — mergeable=' + pr.mergeable); continue; }
+    const files = gh(['pr', 'view', String(pr.number), '--json', 'files']);
+    if (!filesWithinKnowledge(files.files)) {
+      console.log('autopilot: #' + pr.number + ' skipped — touches files outside ' + KNOWLEDGE_PREFIX + ' (needs human)');
+      skipped++;
+      continue;
+    }
+    const rollup = Array.isArray(pr.statusCheckRollup) ? pr.statusCheckRollup : [];
+    const failed = rollup.filter((check) => check && check.conclusion != null && !OK_CONCLUSIONS.has(check.conclusion));
+    if (failed.length > 0) { skipped++; continue; }
+    // draft knowledge PRs become ready once their checks are green —
+    // autonomy means no human clicks "Ready for review" either.
+    if (pr.isDraft) gh(['pr', 'ready', String(pr.number)], { json: false });
+    gh(['pr', 'merge', String(pr.number), '--squash', '--auto', '--delete-branch'], { json: false });
+    console.log('autopilot: enabled auto-merge for knowledge PR #' + pr.number + ' (' + pr.title + ')');
+    budget--;
+    queuedNow++;
+  }
+  console.log('autopilot: knowledge-merge done — newlyQueued=' + queuedNow + ' completedToday=' + merged + ' alreadyQueued=' + queuedAlready + ' skipped=' + skipped);
+}
+
 export function main(command = process.argv[2]) {
   try {
     switch (command) {
       case 'all': cmdScanDependabot(); cmdScanCodescan(); cmdMergeQueue(); break;
       case 'scan-dependabot': cmdScanDependabot(); break;
       case 'scan-codescan': cmdScanCodescan(); break;
+      case 'scan-reverts': cmdScanReverts(); break;
+      case 'knowledge-merge': cmdKnowledgeMerge(); break;
       case 'merge-queue': cmdMergeQueue(); break;
       case 'status': cmdStatus(); break;
       default:
-        console.log('usage: cli.mjs [all|scan-dependabot|scan-codescan|merge-queue|status]');
+        console.log('usage: cli.mjs [all|scan-dependabot|scan-codescan|scan-reverts|merge-queue|knowledge-merge|status]');
         if (command) process.exitCode = 1;
     }
   } catch (e) {

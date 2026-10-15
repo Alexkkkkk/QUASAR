@@ -2,7 +2,7 @@
 
 ## HELD (adversarial counterexample) StaticCheck: Review swap deadline enforcement in QuasarDeFi
 - Proposed: Revert when now > deadline at the top of every swap and liquidity entry point.
-- Attack: COUNTEREXAMPLE: In the QuasarDeFi smart contract, the swap deadline enforcement rule is implemented in the `swap` function. However, the rule is not correctly enforced at the top of every swap and liquidity entry point. This can lead to a bug where the swap is executed before the deadline, resulting
+- Attack: COUNTEREXAMPLE: In a scenario where the deadline is set to a very short time (e.g., 1 minute), the swap function might be called multiple times within that time frame. If the deadline is enforced at the top of every swap, it could cause the swap to fail if the deadline has already passed when the sw
 - Human must judge before this rule can be promoted.
 
 ## HELD (adversarial counterexample) BounceBug: Review bounced payout liability restore in QuasarMaster
