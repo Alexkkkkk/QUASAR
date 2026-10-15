@@ -2,8 +2,11 @@ name: swarm-dispatch
 
 # Event router for swarm knowledge changes:
 #   change -> validate schema, poison scan, consistency, and run unit tests
-#   manual -> workflow_dispatch runs the same validation checks
-# The resident learning loop lives in swarm-watch.yml.
+#   manual -> workflow_dispatch runs the same checks and then the full learning
+#             cycle through the reusable _ai-swarm.yml module
+# The resident (idle) learning loop lives in swarm-watch.yml; this hub owns no
+# schedule of its own (#223 removed the duplicate cycle, PR #217 keeps the
+# on-demand path to the learning module).
 
 on:
   push:
