@@ -123,6 +123,9 @@ export function writeDraft(name, content) {
     if (error?.code === 'ELOOP' || error?.code === 'EMLINK') throw new Error('invalid draft path');
     throw error;
   }
+  // codeql[js/http-to-file-access] Intended sink: persisting LLM-polished drafts for human review is the
+  // module's purpose; content is gated upstream by scanMarkdown (secrets/prompt-injection quarantine)
+  // and a hard size cap, the name is allow-listed and the write uses an O_NOFOLLOW 0600 descriptor.
   try {
     fs.writeFileSync(fd, content, { encoding: 'utf8' });
   } finally {

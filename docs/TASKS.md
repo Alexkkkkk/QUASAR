@@ -311,6 +311,9 @@
     поведенческий тест: подложенный в drafts symlink отклоняется
     (`invalid draft path`), цель симлинка остаётся нетронутой
     (`tests/swarm/swarm.test.mjs`).
+    Сам контент черновика производен от сети по дизайну (LLM-polish ради human review):
+    у sink добавлен документированный suppression-комментарий CodeQL с обоснованием
+    (guard-рейлы scanMarkdown + лимит размера + allow-list + O_NOFOLLOW выше).
   - ⚠ `scripts/deploy_defi.ts` входит в список защищённых путей `AGENTS.md` §3,
     поэтому изменение опубликовано **только draft PR** — merge и любой деплой
     остаются за владельцем. Опкоды, ABI, code hash и адреса не затрагиваются:
