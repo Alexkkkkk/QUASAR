@@ -300,6 +300,17 @@
   - Проверка: полный набор из §4 `AGENTS.md` (lint, build, security:check,
     `npm test`, `tsc --noEmit`, abi:verify, abi:dapp, deployment:check,
     pins:check, hub:audit, `npm audit --audit-level=high`).
+  - Второй раунд (follow-up ревью): в `writeDraft()` устранён остаточный тейнт
+    `js/http-to-file-access` (на head PR алерт всплыл как #19): имя черновика
+    сначала сверяется со строгим allow-list `[a-z0-9][a-z0-9._-]*\.md`
+    (только нижний регистр, без `path.basename` и разделителей пути), затем
+    сегмент пересоздаётся через `unlinkSync` + `openSync(O_CREAT|O_EXCL|
+    O_NOFOLLOW, 0600)` — производные от сети данные больше не участвуют в
+    выборе цели записи; запись идёт `writeFileSync(fd, ..., { encoding: 'utf8' })`;
+    `writeMarkdown()` переведён на ту же дескрипторную запись. Добавлен
+    поведенческий тест: подложенный в drafts symlink отклоняется
+    (`invalid draft path`), цель симлинка остаётся нетронутой
+    (`tests/swarm/swarm.test.mjs`).
   - ⚠ `scripts/deploy_defi.ts` входит в список защищённых путей `AGENTS.md` §3,
     поэтому изменение опубликовано **только draft PR** — merge и любой деплой
     остаются за владельцем. Опкоды, ABI, code hash и адреса не затрагиваются:

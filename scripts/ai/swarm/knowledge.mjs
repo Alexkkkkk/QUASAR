@@ -90,7 +90,13 @@ export function writeMarkdown(file, content) {
 
 export function writeDraft(name, content) {
   ensureDirs();
-  if (typeof name !== 'string' || path.basename(name) !== name || !/^[a-z0-9][a-z0-9._-]*\.md$/i.test(name)) {
+  // Draft names originate from agent output, i.e. untrusted input: the exact
+  // shape is allow-listed BEFORE the name enters any path computation (code
+  // scanning js/http-to-file-access, alert #18). Lowercase alphanumerics plus
+  // `._-` only, single `.md` extension, no leading dot, no separators — so the
+  // name is a plain path token by construction and cannot carry traversal or
+  // a URL/protocol suffix past this point.
+  if (typeof name !== 'string' || !/^[a-z0-9][a-z0-9._-]*\.md$/.test(name)) {
     throw new Error('invalid draft filename');
   }
   if (typeof content !== 'string') throw new TypeError('draft content must be a string');
@@ -99,14 +105,16 @@ export function writeDraft(name, content) {
   }
   const sec = scanMarkdown(content);
   if (!sec.safe) throw new Error(`content rejected: ${sec.violations.join(', ')}`);
-  const file = path.join(DRAFTS_DIR, name);
-  // Defence in depth for the file-write sink (code scanning
-  // js/http-to-file-access, alert #18): the destination is resolved, re-checked
-  // against DRAFTS_DIR, and then opened with O_NOFOLLOW so a symlink planted
-  // inside the drafts directory cannot redirect the write outside it.
+  // Defence in depth for the file-write sink: the destination is re-derived
+  // from the validated token, re-checked against DRAFTS_DIR, and then opened
+  // with O_NOFOLLOW so a symlink planted inside the drafts directory cannot
+  // redirect the write outside it.
   const root = path.resolve(DRAFTS_DIR) + path.sep;
-  const resolved = path.resolve(file);
+  const resolved = path.resolve(path.join(DRAFTS_DIR, name));
   if (!resolved.startsWith(root)) throw new Error('invalid draft path');
+  // O_NOFOLLOW is POSIX-only; on other platforms the allow-list above remains
+  // the primary defence (the symlink attack itself needs a name shape that the
+  // allow-list already rejects).
   const flags = fs.constants.O_WRONLY | fs.constants.O_CREAT | fs.constants.O_TRUNC | fs.constants.O_NOFOLLOW;
   let fd;
   try {
@@ -116,7 +124,7 @@ export function writeDraft(name, content) {
     throw error;
   }
   try {
-    fs.writeFileSync(fd, content, 'utf8');
+    fs.writeFileSync(fd, content, { encoding: 'utf8' });
   } finally {
     fs.closeSync(fd);
   }

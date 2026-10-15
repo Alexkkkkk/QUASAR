@@ -27,7 +27,6 @@ test('js/http-to-file-access (#214): the draft sink cannot follow a symlink', ()
     const src = read('scripts/ai/swarm/knowledge.mjs');
     assert.ok(src.includes('O_NOFOLLOW'), 'writeDraft must open the resolved path with O_NOFOLLOW');
     assert.ok(src.includes('fs.closeSync(fd)'), 'the file descriptor must always be closed');
-    assert.ok(src.includes('closeSync(fd)'), 'the descriptor write path must close the handle');
 });
 
 test('js/file-system-race (#222): deployment.json is written atomically, never checked-then-written', () => {
