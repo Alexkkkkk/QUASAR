@@ -9,6 +9,25 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// Atomic write: the payload is fully written to a private temp file in the same
+// directory, flushed, and then renamed over the destination. rename(2) is
+// atomic on POSIX, so a concurrent reader can never observe a half-written
+// deployment.json and there is no check-then-write window left for a symlink or
+// another process to exploit (code scanning js/file-system-race, alert #5).
+function writeJsonAtomic(file: string, contents: string): void {
+    const dir = path.dirname(file);
+    fs.mkdirSync(dir, { recursive: true });
+    const tmp = path.join(dir, `.${path.basename(file)}.${process.pid}.tmp`);
+    const fd = fs.openSync(tmp, 'w', 0o600);
+    try {
+        fs.writeFileSync(fd, contents);
+        fs.fsyncSync(fd);
+    } finally {
+        fs.closeSync(fd);
+    }
+    fs.renameSync(tmp, file);
+}
+
 const network = process.env.TON_NETWORK?.trim().toLowerCase();
 if (network !== 'mainnet' && network !== 'testnet') {
     throw new Error('TON_NETWORK must be explicitly set to "mainnet" or "testnet"');
@@ -36,12 +55,16 @@ async function deploy() {
     });
 
     const deploymentPath = path.join(__dirname, '..', 'build', 'deployment.json');
-    if (!fs.existsSync(deploymentPath)) {
+    // Read directly and handle a missing/corrupt file in the catch block instead
+    // of testing existence first: a check-then-read on the same path is a TOCTOU
+    // race (code scanning js/file-system-race, alert #5).
+    let deployment: { contracts: Record<string, { address: string; name: string; deployedAt: string }> };
+    try {
+        deployment = JSON.parse(fs.readFileSync(deploymentPath, 'utf-8'));
+    } catch {
         console.error('Run deploy_all.ts first or create build/deployment.json');
         process.exit(1);
     }
-
-    const deployment = JSON.parse(fs.readFileSync(deploymentPath, 'utf-8'));
     const qsrMaster = Address.parse(deployment.contracts.master.address);
     const { QuasarDeFi } = await import('../build/quasar_defi_QuasarDeFi.js');
     const { QuasarMaster } = await import('../build/quasar_QuasarMaster.js');
@@ -73,11 +96,8 @@ async function deploy() {
         deployedAt: new Date().toISOString()
     };
     const deploymentJson = JSON.stringify(deployment, null, 2);
-    fs.writeFileSync(deploymentPath, deploymentJson);
-    fs.writeFileSync(
-        path.join(__dirname, '..', 'website', 'deployment.json'),
-        deploymentJson
-    );
+    writeJsonAtomic(deploymentPath, deploymentJson);
+    writeJsonAtomic(path.join(__dirname, '..', 'website', 'deployment.json'), deploymentJson);
     console.log('QuasarDeFi deployed and deployment.json updated.');
 }
 

@@ -48,7 +48,14 @@ test('deploy preflight rejects non-JSON metadata hosting (issue #77)', () => {
 
     const matrix = read('docs/TON_CONFORMANCE_MATRIX.md');
     assert.ok(matrix.includes('application/json'), 'the conformance matrix must record the JSON-capable origin');
-    assert.ok(matrix.includes('raw.githubusercontent.com'), 'the conformance matrix must identify the text/plain origin');
+    // The host is matched as a whole token rather than as a bare substring, so
+    // the assertion cannot be satisfied by an unrelated host that merely embeds
+    // the string (code scanning js/incomplete-url-substring-sanitization, alert #2).
+    assert.match(
+        matrix,
+        /(?:^|[\s(`'"<[])(raw\.githubusercontent\.com)(?=$|[\s)`'">.,;|\]])/m,
+        'the conformance matrix must identify the text/plain origin'
+    );
 });
 
 test('CI Node version matches .nvmrc (toolchain sync)', () => {
