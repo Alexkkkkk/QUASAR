@@ -13,7 +13,10 @@ permissions:
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  # Supersede runs on pull requests only. On a push to `main` this workflow
+  # reports the required `validate / verify` status, so cancelling those runs
+  # would drop the mandatory check result for the merged commit.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   validate:
