@@ -1,0 +1,97 @@
+name: automerge
+
+# Merges every green pull request automatically.
+#
+# "Green" means: every check required by the active branch ruleset
+# (validate / verify, CodeQL, Tests (contracts), Tests (dapp),
+# Tests (python), review) has SUCCEEDED on the pull request head commit,
+# and the branch has no merge conflicts. Draft pull requests and pull
+# requests carrying the `do-not-merge` label are never touched.
+#
+# The job only talks to the GitHub API through `gh`. It never checks out and
+# never executes pull-request code, so it is safe to run on untrusted PRs.
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, ready_for_review, labeled, unlabeled]
+  check_suite:
+    types: [completed]
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+  checks: read
+  statuses: read
+
+concurrency:
+  group: automerge
+  cancel-in-progress: true
+
+jobs:
+  automerge:
+    name: automerge
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Merge green pull requests
+        env:
+          GH_TOKEN: ${{ secrets.AUTO_MERGE_TOKEN || secrets.GITHUB_TOKEN }}
+          AUTO_MERGE_TOKEN: ${{ secrets.AUTO_MERGE_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -uo pipefail
+
+          echo "=== automerge run $(date -u +%FT%TZ) on $REPO ==="
+
+          if [ -z "${AUTO_MERGE_TOKEN:-}" ]; then
+            echo "::warning title=automerge::AUTO_MERGE_TOKEN is not set, using the ephemeral GITHUB_TOKEN. Merges made with GITHUB_TOKEN do not start follow-up workflow runs."
+          fi
+
+          merged=0; armed=0; waiting=0; skipped=0; failed=0
+
+          for n in $(gh api "repos/$REPO/pulls?state=open&per_page=100" --paginate --jq '.[].number'); do
+            pr=$(gh api "repos/$REPO/pulls/$n")
+            title=$(printf '%s' "$pr" | jq -r '.title')
+            draft=$(printf '%s' "$pr" | jq -r '.draft')
+            mergeable=$(printf '%s' "$pr" | jq -r '.mergeable')
+            state=$(printf '%s' "$pr" | jq -r '.mergeable_state')
+            labels=$(printf '%s' "$pr" | jq -r '[.labels[].name] | join(",")')
+            auto=$(printf '%s' "$pr" | jq -r 'if .auto_merge then "yes" else "no" end')
+
+            echo "--- #$n state=$state mergeable=$mergeable draft=$draft auto_merge=$auto labels=[$labels] :: $title"
+
+            if [ "$draft" = "true" ]; then
+              echo "    skip: draft pull request"; skipped=$((skipped+1)); continue
+            fi
+            case ",$labels," in
+              *,do-not-merge,*) echo "    skip: labelled do-not-merge"; skipped=$((skipped+1)); continue ;;
+            esac
+            if [ "$mergeable" = "false" ] || [ "$state" = "dirty" ]; then
+              echo "    skip: merge conflicts"; skipped=$((skipped+1)); continue
+            fi
+
+            if [ "$state" = "clean" ]; then
+              if out=$(gh pr merge "$n" -R "$REPO" --squash 2>&1); then
+                echo "    MERGED (squash)"; merged=$((merged+1)); continue
+              fi
+              echo "    direct merge refused, arming auto-merge instead: $out"
+            fi
+
+            if [ "$auto" = "yes" ]; then
+              echo "    auto-merge already armed; GitHub merges it as soon as the required checks pass"
+              waiting=$((waiting+1)); continue
+            fi
+
+            if out=$(gh pr merge "$n" -R "$REPO" --auto --squash 2>&1); then
+              echo "    auto-merge ARMED (squash)"; armed=$((armed+1))
+            else
+              echo "    ::warning title=automerge::could not arm auto-merge on #$n: $out"
+              failed=$((failed+1))
+            fi
+          done
+
+          echo "=== summary: merged=$merged armed=$armed waiting=$waiting skipped=$skipped failed=$failed ==="
+
