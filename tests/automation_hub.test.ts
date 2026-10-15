@@ -254,8 +254,8 @@ test("hub: ai-merge readies drafts and queues auto-merge without bypassing prote
   assert.match(body, /gh pr ready "\$TARGET" --repo "\$GITHUB_REPOSITORY"/, "a draft agent PR must be marked ready before merge");
   const draftBlock = /if \[\[ "\$\(jq -r '\.isDraft' <<< "\$pr"\)" == "true" \]\]; then([\s\S]*?)\n\s+fi/.exec(body);
   assert.ok(draftBlock, "the draft handling block must be present");
-  assert.match(draftBlock[1], /remove and re-add the ai-merge-ok label/, "the owner must be told how to rerun the merge check");
-  assert.match(draftBlock[1], /exit 0/, "the workflow must stop after readying a draft instead of using stale review data");
+  assert.match(draftBlock[1], /continuing with the merge checks/, "after readying a draft the same run proceeds to the merge checks");
+  assert.doesNotMatch(draftBlock[1], /exit 0/, "readying a draft must not stop the run: every later guard still applies to this head commit");
   assert.match(body, /gh pr merge "\$TARGET" --repo "\$GITHUB_REPOSITORY" --squash --auto --delete-branch/, "the merge must queue with --auto");
   assert.match(body, /Auto-merge enabled for agent pull request/, "the notice must not claim that an asynchronous auto-merge has completed");
   assert.doesNotMatch(body, /::notice::Merged agent pull request/, "the merge notice must not report success before GitHub completes the merge");
