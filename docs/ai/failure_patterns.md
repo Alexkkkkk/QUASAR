@@ -54,46 +54,46 @@ Seen: 2026-10-10, PR #170 (Refs #167, #168)
 Signature:
   - workflow 'QUASAR autofix' failed 15x in last 200 runs
 Root cause: unknown
-Fix (known-good): unknown
-Status: OPEN
+Fix (known-good): PR #119 merged 2026-10-07
+Status: RESOLVED
 Seen: 2026-10-11
 
 ## Pattern: recurring-QUASAR automation router
 Signature:
   - workflow 'QUASAR automation router' failed 11x in last 200 runs
 Root cause: unknown
-Fix (known-good): unknown
-Status: OPEN
+Fix (known-good): PR #119 merged 2026-10-07
+Status: RESOLVED
 Seen: 2026-10-11
 
 ## Pattern: recurring-QUASAR CI
 Signature:
   - workflow 'QUASAR CI' failed 12x in last 200 runs
 Root cause: unknown
-Fix (known-good): unknown
-Status: OPEN
+Fix (known-good): PR #119 merged 2026-10-07
+Status: RESOLVED
 Seen: 2026-10-11
 
 ## Pattern: recurring-QUASAR Tests
 Signature:
   - workflow 'QUASAR Tests' failed 8x in last 200 runs
 Root cause: unknown
-Fix (known-good): unknown
-Status: OPEN
+Fix (known-good): PR #119 merged 2026-10-07
+Status: RESOLVED
 Seen: 2026-10-11
 
 ## Pattern: recurring-QUASAR issue triage
 Signature:
   - workflow 'QUASAR issue triage' failed 13x in last 200 runs
 Root cause: unknown
-Fix (known-good): unknown
-Status: OPEN
+Fix (known-good): PR #119 merged 2026-10-07
+Status: RESOLVED
 Seen: 2026-10-11
 
 ## Pattern: recurring-QUASAR dApp CI
 Signature:
   - workflow 'QUASAR dApp CI' failed 2x in last 200 runs
 Root cause: unknown
-Fix (known-good): unknown
-Status: OPEN
+Fix (known-good): PR #119 merged 2026-10-07
+Status: RESOLVED
 Seen: 2026-10-13
