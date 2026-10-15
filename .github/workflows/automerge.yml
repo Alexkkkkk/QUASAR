@@ -34,9 +34,44 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
+      - name: Resolve merge token (GitHub App -> static PAT -> GITHUB_TOKEN)
+        id: auth
+        env:
+          APP_ID: ${{ secrets.QUASAR_APP_ID }}
+          APP_KEY: ${{ secrets.QUASAR_APP_KEY }}
+          OWNER: ${{ github.repository_owner }}
+        run: |
+          set -euo pipefail
+          if [ -z "${APP_ID:-}" ] || [ -z "${APP_KEY:-}" ]; then
+            echo "::notice title=automerge::QUASAR_APP_ID/QUASAR_APP_KEY not set - using static AUTO_MERGE_TOKEN fallback (no auto-rotation yet)."
+            exit 0
+          fi
+          printf '%s' "$APP_KEY" > /tmp/app.pem
+          b64url() { openssl base64 -A | tr '+/' '-_' | tr -d '='; }
+          now=$(date +%s)
+          h=$(printf '{"alg":"RS256","typ":"JWT"}' | b64url)
+          p=$(printf '{"iat":%d,"exp":%d,"iss":"%s"}' "$((now-30))" "$((now+540))" "$APP_ID" | b64url)
+          sig=$(printf '%s' "$h.$p" | openssl dgst -sha256 -sign /tmp/app.pem | b64url)
+          jwt="$h.$p.$sig"
+          rm -f /tmp/app.pem
+          inst=$(curl -sf -H "Authorization: Bearer $jwt" https://api.github.com/app/installations \
+                  | jq -r --arg owner "$OWNER" 'map(select(.account.login==$owner)) | .[0].id // empty')
+          if [ -z "$inst" ]; then
+            echo "::warning title=automerge::GitHub App is not installed for $OWNER - falling back to AUTO_MERGE_TOKEN."
+            exit 0
+          fi
+          tok=$(curl -sf -X POST -H "Authorization: Bearer $jwt" \
+                  "https://api.github.com/app/installations/$inst/access_tokens" | jq -r '.token // empty')
+          if [ -z "$tok" ]; then
+            echo "::warning title=automerge::Could not mint installation token - falling back to AUTO_MERGE_TOKEN."
+            exit 0
+          fi
+          echo "token=$tok" >> "$GITHUB_OUTPUT"
+          echo "Resolved merge token: GitHub App installation token (expires in ~1h, auto-rotated every run)."
+
       - name: Merge green pull requests
         env:
-          GH_TOKEN: ${{ secrets.AUTO_MERGE_TOKEN || secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ steps.auth.outputs.token || secrets.AUTO_MERGE_TOKEN || secrets.GITHUB_TOKEN }}
           AUTO_MERGE_TOKEN: ${{ secrets.AUTO_MERGE_TOKEN }}
           REPO: ${{ github.repository }}
         run: |
