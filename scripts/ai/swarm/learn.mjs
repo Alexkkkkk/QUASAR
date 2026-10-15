@@ -30,7 +30,7 @@ export function llmConfig() {
   return null;
 }
 
-async function llm(system, user, maxTokens = 400) {
+export async function llm(system, user, maxTokens = 400) {
   const ep = llmConfig();
   if (!ep) return null;
   try {
@@ -291,11 +291,10 @@ export async function learn({ dryRun = false } = {}) {
 
 // Idle-mode gate: is there material newer than the last completed cycle?
 export async function hasPendingWork() {
-  const { lessons, structural } = readLessons();
-  // Malformed / schema-invalid lesson lines are pending work too. They used to
-  // be ignored here, so a broken line could sit in lessons.jsonl forever and
-  // never wake the learning gate again.
-  if (structural.length > 0) return true;
+  const { lessons, quarantine, structural } = readLessons();
+  // Preserve both branch intentions: malformed lines and quarantined entries
+  // must wake the gate instead of silently stalling the learning cycle.
+  if (quarantine.length > 0 || structural.length > 0) return true;
   const last = readState('learn-report.json');
   if (!last?.generatedAt) return lessons.length > 0;
   const since = Date.parse(last.generatedAt);

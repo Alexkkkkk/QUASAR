@@ -7,11 +7,15 @@ name: swarm-watch
 # cycle), and an inner loop checks for new lessons every 60 seconds.
 # When work appears: learn -> sync -> rag -> commit -> push branch -> draft PR
 # (autopilot's knowledge-merge then ingests it autonomously).
+# Every 5th tick (~5 min) the resident agent also triages open issues:
+# classifies, answers authors, labels, hands fixable ones to fix-queue.
+#
+# Self-healing: a single failing cycle no longer kills the loop — failures are
+# counted, and only 3 consecutive ones raise a needs-human issue.
 #
 # The job restarts every 6h via cron because Actions caps a single job at 6h.
 #
-# Hard brakes unchanged: no on-chain actions. Knowledge PRs land fully
-# autonomously: self-healing rebase + auto-merge on green checks.
+# Hard brakes unchanged: draft PR only, no on-chain actions.
 
 on:
   schedule:
@@ -31,10 +35,11 @@ env:
 jobs:
   watch:
     runs-on: ubuntu-latest
-    timeout-minutes: 350      # safety margin below the 6h hard cap
     permissions:
       contents: write
       pull-requests: write
+      issues: write
+    timeout-minutes: 350      # safety margin below the 6h hard cap
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -62,21 +67,22 @@ jobs:
         run: |
           set -e
           ollama serve > /tmp/ollama.log 2>&1 &
-          n=0
-          until curl -sf http://127.0.0.1:11434/api/tags >/dev/null 2>&1; do
-            n=$((n + 1))
-            if [ "$n" -ge 30 ]; then echo "ollama did not start in time"; exit 1; fi
+          for attempt in $(seq 1 30); do
+            if curl -sf http://127.0.0.1:11434/api/tags >/dev/null 2>&1; then
+              break
+            fi
+            if [ "$attempt" -eq 30 ]; then
+              echo "ollama did not start in time"
+              cat /tmp/ollama.log
+              exit 1
+            fi
             sleep 2
           done
           ollama pull "$OLLAMA_MODEL"
 
-      - name: Resident learning loop (checks every 60s)
+      - name: Resident learning loop (checks every 60s, self-healing)
         env:
-          # A PAT (repo secret ACTIONS_PAT) is preferred: pushes made with the
-          # ephemeral GITHUB_TOKEN do not trigger pull_request workflows, so
-          # the required checks would never start and the knowledge PR could
-          # never merge autonomously. Falls back to GITHUB_TOKEN when unset.
-          GH_TOKEN: ${{ secrets.ACTIONS_PAT || secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OLLAMA_URL: http://127.0.0.1:11434
           OLLAMA_MODEL: ${{ env.OLLAMA_MODEL }}
         run: |
@@ -86,43 +92,45 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
           git checkout -B "$BRANCH" origin/main
+          set +e   # the loop must survive individual cycle failures
+          FAILS=0
+          TICK=0
 
           while true; do
+            TICK=$((TICK + 1))
+            # Every 5th tick (~5 min) the resident agent also scans /issues.
+            if [ $((TICK % 5)) -eq 0 ]; then
+              node scripts/ai/swarm/cli.mjs watch-issues || true
+            fi
+
             if node scripts/ai/swarm/cli.mjs pending >/dev/null 2>&1; then
               echo "=== $(date -u +%Y-%m-%dT%H:%M:%SZ) new material — learning ==="
-              node scripts/ai/swarm/cli.mjs learn
-              node scripts/ai/swarm/cli.mjs sync
-              node scripts/ai/swarm/cli.mjs rag
-              git add docs/ai/knowledge
-              if ! git diff --cached --quiet; then
-                git commit -m "swarm: knowledge sync $(date -u +%Y-%m-%dT%H:%M)" || true
-                # Reconcile with the remote branch without ever stopping the
-                # loop: rebase on top of the remote tip, and on conflict or
-                # divergence hard-reset to it (the cycle simply re-learns the
-                # material on the next pass instead of dying).
-                git fetch origin "$BRANCH" main || true
-                if git rev-parse --verify "origin/$BRANCH" >/dev/null 2>&1; then
-                  if ! git rebase "origin/$BRANCH" >/dev/null 2>&1; then
-                    git rebase --abort >/dev/null 2>&1 || true
-                    git reset --hard "origin/$BRANCH"
+              if node scripts/ai/swarm/cli.mjs learn && node scripts/ai/swarm/cli.mjs sync && node scripts/ai/swarm/cli.mjs rag; then
+                FAILS=0
+                git add docs/ai/knowledge
+                if ! git diff --cached --quiet; then
+                  git commit -m "swarm: knowledge sync $(date -u +%Y-%m-%dT%H:%M)" || true
+                  git pull --rebase origin "$BRANCH" 2>/dev/null || true
+                  git push origin "HEAD:${BRANCH}" || true
+                  OPEN_COUNT=$(gh pr list --head "$BRANCH" --json number --jq 'length')
+                  if [ "$OPEN_COUNT" = "0" ]; then
+                    gh pr create --head "$BRANCH" --base main \
+                      --title "ai(swarm): knowledge sync — promoted rules" \
+                      --body "Automated by the resident watcher (Ollama local loop). Merged by autopilot knowledge-merge once checks are green." \
+                      --label ai-sync --draft || true
                   fi
-                else
-                  git reset --hard "origin/main"
+                  git checkout -B "$BRANCH" origin/main
                 fi
-                git push origin "HEAD:${BRANCH}" || true
-                OPEN_COUNT=$(gh pr list --head "$BRANCH" --json number --jq 'length')
-                if [ "$OPEN_COUNT" = "0" ]; then
-                  gh pr create --head "$BRANCH" --base main \
-                    --title "ai(swarm): knowledge sync — promoted rules" \
-                    --body "Automated by the resident watcher (Ollama local loop). Lands autonomously via auto-merge once checks are green." \
-                    --label ai-sync --draft || true
-                  gh pr ready "$BRANCH" >/dev/null 2>&1 || true
+              else
+                FAILS=$((FAILS + 1))
+                echo "cycle failed (consecutive: $FAILS)"
+                if [ "$FAILS" -ge 3 ]; then
+                  gh issue create --title "swarm-watch: learning cycle keeps failing" \
+                    --label needs-human \
+                    --body "3 consecutive failures in the resident Ollama loop. Check the latest swarm-watch run logs." || true
+                  sleep 300
+                  FAILS=0
                 fi
-                # Fully autonomous landing: enable auto-merge on the knowledge
-                # PR (idempotent) so GitHub merges it as soon as the required
-                # checks are green — no human approval involved.
-                gh pr merge "$BRANCH" --squash --auto --delete-branch >/dev/null 2>&1 || true
-                git checkout -f -B "$BRANCH" origin/main
               fi
             fi
             sleep 60

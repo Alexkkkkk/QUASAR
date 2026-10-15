@@ -1,0 +1,119 @@
+name: automerge
+# Merges every green pull request automatically.
+#
+# "Green" means: every check required by the active branch ruleset
+# (validate / verify, CodeQL, Tests (contracts), Tests (dapp),
+# Tests (python), review) has SUCCEEDED on the pull request head commit,
+# and the branch has no merge conflicts. Draft pull requests and pull
+# requests carrying the `do-not-merge` label are never touched.
+#
+# The job only talks to the GitHub API through `gh`. It never checks out and
+# never executes pull-request code, so it is safe to run on untrusted PRs.
+#
+# Permissions follow the repository policy: the workflow level stays
+# read-only and the write scopes live on the job.
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, ready_for_review, labeled, unlabeled]
+  check_suite:
+    types: [completed]
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: automerge
+  cancel-in-progress: true
+jobs:
+  automerge:
+    name: automerge
+    permissions:
+      contents: write
+      pull-requests: write
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Resolve merge token (GitHub App -> static PAT -> GITHUB_TOKEN)
+        id: auth
+        env:
+          APP_ID: ${{ secrets.QUASAR_APP_ID }}
+          APP_KEY: ${{ secrets.QUASAR_APP_KEY }}
+          OWNER: ${{ github.repository_owner }}
+        run: |
+          set -euo pipefail
+          if [ -z "${APP_ID:-}" ] || [ -z "${APP_KEY:-}" ]; then
+            echo "::notice title=automerge::QUASAR_APP_ID/QUASAR_APP_KEY not set - using static AUTO_MERGE_TOKEN fallback (no auto-rotation yet)."
+            exit 0
+          fi
+          printf '%s' "$APP_KEY" > /tmp/app.pem
+          b64url() { openssl base64 -A | tr '+/' '-_' | tr -d '='; }
+          now=$(date +%s)
+          h=$(printf '{"alg":"RS256","typ":"JWT"}' | b64url)
+          p=$(printf '{"iat":%d,"exp":%d,"iss":"%s"}' "$((now-30))" "$((now+540))" "$APP_ID" | b64url)
+          sig=$(printf '%s' "$h.$p" | openssl dgst -sha256 -sign /tmp/app.pem | b64url)
+          jwt="$h.$p.$sig"
+          rm -f /tmp/app.pem
+          inst=$(curl -sf -H "Authorization: Bearer $jwt" https://api.github.com/app/installations \
+                  | jq -r --arg owner "$OWNER" 'map(select(.account.login==$owner)) | .[0].id // empty')
+          if [ -z "$inst" ]; then
+            echo "::warning title=automerge::GitHub App is not installed for $OWNER - falling back to AUTO_MERGE_TOKEN."
+            exit 0
+          fi
+          tok=$(curl -sf -X POST -H "Authorization: Bearer $jwt" \
+                  "https://api.github.com/app/installations/$inst/access_tokens" | jq -r '.token // empty')
+          if [ -z "$tok" ]; then
+            echo "::warning title=automerge::Could not mint installation token - falling back to AUTO_MERGE_TOKEN."
+            exit 0
+          fi
+          echo "token=$tok" >> "$GITHUB_OUTPUT"
+          echo "Resolved merge token: GitHub App installation token (expires in ~1h, auto-rotated every run)."
+
+      - name: Merge green pull requests
+        env:
+          GH_TOKEN: ${{ steps.auth.outputs.token || secrets.AUTO_MERGE_TOKEN || secrets.GITHUB_TOKEN }}
+          AUTO_MERGE_TOKEN: ${{ secrets.AUTO_MERGE_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -uo pipefail
+          echo "=== automerge run $(date -u +%FT%TZ) on $REPO ==="
+          if [ -z "${AUTO_MERGE_TOKEN:-}" ]; then
+            echo "::warning title=automerge::AUTO_MERGE_TOKEN is not set, using the ephemeral GITHUB_TOKEN."
+          fi
+          merged=0; armed=0; waiting=0; skipped=0; failed=0
+          for n in $(gh api "repos/$REPO/pulls?state=open&per_page=100" --paginate --jq '.[].number'); do
+            pr=$(gh api "repos/$REPO/pulls/$n")
+            title=$(printf '%s' "$pr" | jq -r '.title')
+            draft=$(printf '%s' "$pr" | jq -r '.draft')
+            mergeable=$(printf '%s' "$pr" | jq -r '.mergeable')
+            state=$(printf '%s' "$pr" | jq -r '.mergeable_state')
+            labels=$(printf '%s' "$pr" | jq -r '[.labels[].name] | join(",")')
+            auto=$(printf '%s' "$pr" | jq -r 'if .auto_merge then "yes" else "no" end')
+            echo "--- #$n state=$state mergeable=$mergeable draft=$draft auto_merge=$auto labels=[$labels] :: $title"
+            if [ "$draft" = "true" ]; then
+              echo "    skip: draft pull request"; skipped=$((skipped+1)); continue
+            fi
+            case ",$labels," in
+              *,do-not-merge,*) echo "    skip: labelled do-not-merge"; skipped=$((skipped+1)); continue ;;
+            esac
+            if [ "$mergeable" = "false" ] || [ "$state" = "dirty" ]; then
+              echo "    skip: merge conflicts"; skipped=$((skipped+1)); continue
+            fi
+            if [ "$state" = "clean" ]; then
+              if out=$(gh pr merge "$n" -R "$REPO" --squash 2>&1); then
+                echo "    MERGED (squash)"; merged=$((merged+1)); continue
+              fi
+              echo "    direct merge refused, arming auto-merge instead: $out"
+            fi
+            if [ "$auto" = "yes" ]; then
+              echo "    auto-merge already armed"
+              waiting=$((waiting+1)); continue
+            fi
+            if out=$(gh pr merge "$n" -R "$REPO" --auto --squash 2>&1); then
+              echo "    auto-merge ARMED (squash)"; armed=$((armed+1))
+            else
+              echo "    ::warning title=automerge::could not arm auto-merge on #$n: $out"
+              failed=$((failed+1))
+            fi
+          done
+          echo "=== summary: merged=$merged armed=$armed waiting=$waiting skipped=$skipped failed=$failed ==="

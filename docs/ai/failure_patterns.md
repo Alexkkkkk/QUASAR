@@ -90,6 +90,14 @@ Fix (known-good): unknown
 Status: OPEN
 Seen: 2026-10-11
 
+## Pattern: recurring-QUASAR dApp CI
+Signature:
+  - workflow 'QUASAR dApp CI' failed 2x in last 200 runs
+Root cause: unknown
+Fix (known-good): unknown
+Status: OPEN
+Seen: 2026-10-13
+
 ## Pattern: recurring-swarm-dispatch
 Signature:
   - workflow 'swarm-dispatch' failed 4x in last 200 runs

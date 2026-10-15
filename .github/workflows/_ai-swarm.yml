@@ -10,6 +10,10 @@ name: ai-swarm-sync
 # job (seconds) skips the entire expensive cycle when there is nothing
 # new to learn. Compute is spent only when the knowledge base changed.
 #
+# llm_backend=ollama runs a fully-local deep cycle: Ollama is installed
+# inside the runner, the model is cached between runs, and no knowledge
+# ever leaves the machine.
+#
 # Hard boundaries (same policy as the rest of the AI surface):
 #   - draft PR only, never auto-merge
 #   - no on-chain actions, no deployments
@@ -22,6 +26,14 @@ on:
         description: 'Safety brake on learning iterations'
         type: number
         default: 15
+      llm_backend:
+        description: 'LLM backend for polish/adversarial steps'
+        type: string
+        default: 'groq'
+      ollama_model:
+        description: 'Model to pull when llm_backend=ollama (CPU-friendly small model)'
+        type: string
+        default: 'qwen2.5-coder:1.5b'
 
 permissions:
   contents: read
@@ -66,7 +78,7 @@ jobs:
     needs: [scout]
     if: needs.scout.outputs.changed == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: ${{ inputs.llm_backend == 'ollama' && 45 || 15 }}
     permissions:
       contents: write
       issues: write
@@ -82,14 +94,36 @@ jobs:
         with:
           node-version-file: .nvmrc
 
-      - name: Ensure ai-sync label exists
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Set up local Ollama (llm_backend=ollama)
+        if: inputs.llm_backend == 'ollama'
         run: |
-          exists=$(gh label list --repo "$GITHUB_REPOSITORY" --limit 100 --json name --jq 'any(.[]; .name == "ai-sync")')
-          if [ "$exists" != "true" ]; then
-            gh label create ai-sync --repo "$GITHUB_REPOSITORY" --color "5319e7" --description "Draft PR containing cross-agent swarm knowledge"
-          fi
+          set -e
+          curl -fsSL https://ollama.com/install.sh | sh
+          mkdir -p "$HOME/.ollama/models"
+          echo "OLLAMA_URL=http://127.0.0.1:11434" >> "$GITHUB_ENV"
+
+      - name: Cache Ollama model (llm_backend=ollama)
+        if: inputs.llm_backend == 'ollama'
+        uses: actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        with:
+          path: ~/.ollama/models
+          key: ollama-${{ inputs.ollama_model }}-${{ runner.os }}
+
+      - name: Start Ollama and pull model (llm_backend=ollama)
+        if: inputs.llm_backend == 'ollama'
+        env:
+          MODEL: ${{ inputs.ollama_model }}
+        run: |
+          set -e
+          ollama serve > /tmp/ollama.log 2>&1 &
+          n=0
+          until curl -sf http://127.0.0.1:11434/api/tags >/dev/null 2>&1; do
+            n=$((n + 1))
+            if [ "$n" -ge 30 ]; then echo "ollama did not start in time"; exit 1; fi
+            sleep 2
+          done
+          ollama pull "$MODEL"
+          echo "MODEL=$MODEL" >> "$GITHUB_ENV"
 
       - name: Safety brake — stop after ${{ inputs.max_turns || 15 }} iterations
         env:
@@ -107,6 +141,10 @@ jobs:
         run: node scripts/ai/swarm/cli.mjs sync
 
       - name: Learn — aggregate lessons into rule drafts
+        env:
+          OLLAMA_URL: ${{ inputs.llm_backend == 'ollama' && 'http://127.0.0.1:11434' || '' }}
+          OLLAMA_MODEL: ${{ inputs.llm_backend == 'ollama' && inputs.ollama_model || '' }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
         run: node scripts/ai/swarm/cli.mjs learn
 
       - name: Rebuild shared RAG index
