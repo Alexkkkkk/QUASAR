@@ -273,6 +273,38 @@
     человеческого review и выполняется до публичного деплоя; адреса должны
     быть пересчитаны перед любой публикацией.
 
+- [x] **T-22 Закрытие последних открытых алертов CodeQL (#212, #214, #222).**
+  - Файлы: `tests/audit_2026_10_02.test.ts`, `scripts/ai/swarm/knowledge.mjs`,
+    `scripts/deploy_defi.ts`, `tests/code_scanning_regression.test.ts` (новый).
+  - Проблема: после PR #229 на `main` оставались три открытых алерта CodeQL,
+    каждый из которых заведён autopilot-ом как отдельный issue:
+    `js/incomplete-url-substring-sanitization` (#212, 3 вхождения),
+    `js/http-to-file-access` (#214, 1 вхождение) и
+    `js/file-system-race` (#222, 1 вхождение).
+  - Исправление:
+    - **#212** — проверка хоста `raw.githubusercontent.com` в
+      `tests/audit_2026_10_02.test.ts` переведена с подстроки
+      `matrix.includes(...)` на якорную проверку по границам токена: строка
+      `http://evil-host/raw.githubusercontent.com` больше не проходит проверку.
+    - **#214** — `writeDraft()` в `scripts/ai/swarm/knowledge.mjs` пишет не по
+      имени, а через файловый дескриптор, открытый с `O_NOFOLLOW` (0600), поэтому
+      символическая ссылка внутри `docs/ai/knowledge/drafts/` не может увести
+      запись за пределы каталога; дескриптор закрывается в `finally`.
+    - **#222** — в `scripts/deploy_defi.ts` убран TOCTOU-паттерн
+      `fs.existsSync()` + `fs.writeFileSync()`: чтение обёрнуто в try/catch, а
+      запись `deployment.json` идёт через хелпер `writeJsonAtomic()`
+      (temp-файл 0600 -> `fsync` -> `rename`), поэтому частично записанный файл
+      не наблюдаем для параллельного читателя.
+    - **Пин-тест** `tests/code_scanning_regression.test.ts` фиксирует форму всех
+      трёх фиксов, чтобы алерты не вернулись при рефакторинге.
+  - Проверка: полный набор из §4 `AGENTS.md` (lint, build, security:check,
+    `npm test`, `tsc --noEmit`, abi:verify, abi:dapp, deployment:check,
+    pins:check, hub:audit, `npm audit --audit-level=high`).
+  - ⚠ `scripts/deploy_defi.ts` входит в список защищённых путей `AGENTS.md` §3,
+    поэтому изменение опубликовано **только draft PR** — merge и любой деплой
+    остаются за владельцем. Опкоды, ABI, code hash и адреса не затрагиваются:
+    правка касается исключительно способа записи `deployment.json`.
+
 ---
 
 ## Живой прогон контура: issue #166 (2026-10-12)

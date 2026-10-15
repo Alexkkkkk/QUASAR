@@ -101,12 +101,25 @@ export function writeDraft(name, content) {
   if (!sec.safe) throw new Error(`content rejected: ${sec.violations.join(', ')}`);
   const file = path.join(DRAFTS_DIR, name);
   // Defence in depth for the file-write sink (code scanning
-  // js/http-to-file-access, alert #17): the destination is resolved and
-  // re-checked against DRAFTS_DIR, so no name can escape the directory.
+  // js/http-to-file-access, alert #18): the destination is resolved, re-checked
+  // against DRAFTS_DIR, and then opened with O_NOFOLLOW so a symlink planted
+  // inside the drafts directory cannot redirect the write outside it.
   const root = path.resolve(DRAFTS_DIR) + path.sep;
   const resolved = path.resolve(file);
   if (!resolved.startsWith(root)) throw new Error('invalid draft path');
-  fs.writeFileSync(resolved, content, 'utf8');
+  const flags = fs.constants.O_WRONLY | fs.constants.O_CREAT | fs.constants.O_TRUNC | fs.constants.O_NOFOLLOW;
+  let fd;
+  try {
+    fd = fs.openSync(resolved, flags, 0o600);
+  } catch (error) {
+    if (error?.code === 'ELOOP' || error?.code === 'EMLINK') throw new Error('invalid draft path');
+    throw error;
+  }
+  try {
+    fs.writeFileSync(fd, content, 'utf8');
+  } finally {
+    fs.closeSync(fd);
+  }
   return resolved;
 }
 
