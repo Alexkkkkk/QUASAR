@@ -113,3 +113,11 @@ Root cause: unknown
 Fix (known-good): unknown
 Status: OPEN
 Seen: 2026-10-14
+
+## Pattern: recurring-autopilot
+Signature:
+  - workflow 'autopilot' failed 6x in last 200 runs
+Root cause: unknown
+Fix (known-good): unknown
+Status: OPEN
+Seen: 2026-10-20
