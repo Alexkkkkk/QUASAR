@@ -1,6 +1,11 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
+import { spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
 import { boundedLimit, remainingMergeBudget, resolveMode, groupDependabotAlerts, groupCodeScanAlerts, isMergeableCandidate, touchesProtectedPaths } from "../scripts/ai/autopilot/cli.mjs";
+
+const repoRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
 
 test("mode and numeric limits fail closed and stay bounded", () => {
   assert.equal(resolveMode(undefined), "guard");
@@ -60,4 +65,11 @@ test("protected path detection includes scripts and workflow files", () => {
   assert.equal(touchesProtectedPaths([{ path: "scripts/ai/autopilot/cli.mjs" }]), true);
   assert.equal(touchesProtectedPaths([{ path: ".github/workflows/ci.yml" }]), true);
   assert.equal(touchesProtectedPaths([{ path: "src/app.js" }]), false);
+});
+
+test("revert-scan checkpoint is trackable while generated state stays ignored", () => {
+  const checkpoint = spawnSync("git", ["check-ignore", "--no-index", "docs/ai/knowledge/state/revert-scan.json"], { cwd: repoRoot, encoding: "utf8" });
+  const generated = spawnSync("git", ["check-ignore", "--no-index", "docs/ai/knowledge/state/sync-report.md"], { cwd: repoRoot, encoding: "utf8" });
+  assert.equal(checkpoint.status, 1, "workflow checkpoint must not be ignored by Git");
+  assert.equal(generated.status, 0, "regenerated report must remain ignored by Git");
 });
