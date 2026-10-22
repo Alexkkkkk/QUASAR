@@ -58,7 +58,7 @@ jobs:
         run: npx tsc --noEmit
 
       - name: Run the dApp test suite
-        run: CI=true npm test -- --watchAll=false --passWithNoTests
+        run: CI=true npm test
 
       - name: Production build
         run: CI=true npm run build

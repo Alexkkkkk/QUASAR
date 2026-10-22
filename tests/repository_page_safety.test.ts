@@ -32,7 +32,7 @@ test('wallet and transaction controls fail closed unless testnet contracts are c
     const start = page.indexOf('<section class="defi-section"');
     const end = page.indexOf('<!-- Footer -->', start);
     assert.ok(start >= 0 && end > start, 'the testnet workspace must exist');
-    const controls = [...page.slice(start, end).matchAll(/<(input|select|button)\b[^>]*>/gi)];
+    const controls = [...page.slice(start, end).matchAll(/<(input|select|button)\b(?:[^"'>]|"[^"]*")*>/gi)];
     assert.ok(controls.length > 0, 'the testnet workspace must have interactive controls');
     for (const [tag] of controls) assert.match(tag, /\sdisabled(?:\s|=|>)/i, 'controls must start disabled');
     assert.match(page, /config\.network === 'testnet'/);

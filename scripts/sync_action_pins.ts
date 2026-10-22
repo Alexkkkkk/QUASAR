@@ -18,7 +18,7 @@ import { execFileSync } from "node:child_process";
 import { readFileSync, existsSync, readdirSync } from "node:fs";
 import { join, resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import { atomicReplaceFiles } from "./atomic_files.ts";
+import { atomicReplaceFiles } from "./atomic_files.js";
 
 type PinFile = {
   schemaVersion: number;
