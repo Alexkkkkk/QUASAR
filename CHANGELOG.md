@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-10-22 — fix(web): точные суммы и защита подписи в отдельной ветке
+
+- Добавлен точный string → BigInt парсер сумм с ограничением TON Coins; transaction values больше не округляются через Number.
+- Website проверяет testnet chain и текущий account, передаёт network/from, нормализует адрес назначения и блокирует параллельные запросы подписи с восстановлением controls.
+- QSR deposit отвергается при смене account во время getter-запроса; штатный формат адресов deployment artifacts поддерживается.
+- Tasks обновляет default Jetton master при смене URL, не затирая ручной ввод. Добавлены поведенческие регрессионные тесты website и Tasks.
+- Согласована документация аудита с текущим кодом. Полные ограничения и результаты проверки: `docs/COMPLETION_2026-10-22.md`.
+- Изменения подготовлены в `ai/107-completion-hardening`, не merged в main. Dependency audit остаётся красным; draft PR блокируется обязательными гейтами. Контракты, workflow, корневые manifests/lock, merge и deployment не затронуты.
+
 ## 2026-10-09 — ci(automation): единый контур QUASAR — оркестратор и reusable-модули (эпик #145)
 
 - `ci(automation)`: добавлен оркестратор `.github/workflows/quasar.yml` — единственная
