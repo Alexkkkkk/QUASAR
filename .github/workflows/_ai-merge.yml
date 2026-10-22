@@ -1,15 +1,15 @@
 name: AI branch auto-merge (reusable module)
 
-# Fully autonomous merge module. The repository owner adds the `ai-merge-ok`
-# label to a pull request (or the scout/pr-polish loop adds it automatically);
-# the module then merges only that pull request, and only when every safety
+# Optional fast-path for an agent PR. The repository owner or an automation may
+# add `ai-merge-ok`, but this is not an approval: the regular automerge scheduler
+# handles every green PR without the label. This module queues only when every safety
 # condition holds:
 #   - the head branch is an agent branch (`ai/*`, `copilot/*`, `autopilot/*`,
 #     `fix/*`);
-#   - the required status checks are all green;
+#   - every one of the six required status contexts is SUCCESS on the current head;
 #   - the `do-not-merge` label is absent.
-# Branch protection requires only the status checks — no review gate (fully
-# autonomous AI mode). Anything else is
+# Branch protection requires zero approving reviews and the same status checks.
+# Anything else is
 # refused with an explanatory comment. The module never touches non-agent
 # branches, never deploys, never performs on-chain actions.
 
@@ -47,7 +47,7 @@ jobs:
           fi
 
           pr=$(gh pr view "$TARGET" --repo "$GITHUB_REPOSITORY" \
-            --json number,headRefName,isDraft,mergeStateStatus,labels \
+            --json number,headRefName,headRefOid,isDraft,mergeStateStatus,labels,statusCheckRollup \
             --jq '.' 2>/dev/null || true)
           if [[ -z "$pr" ]]; then
             echo "::notice::#$TARGET is not a pull request; ai-merge only merges pulled requests."
@@ -56,34 +56,41 @@ jobs:
 
           head=$(jq -r '.headRefName' <<< "$pr")
           if [[ "$head" != ai/* && "$head" != copilot/* && "$head" != autopilot/* && "$head" != fix/* ]]; then
-            echo "::warning title=ai-merge refused::Branch $head is not an agent branch; merge it by hand."
+            echo "::warning title=ai-merge refused::Branch $head is not an agent branch; nothing to do."
             exit 0
-          fi
-          # Agent pull requests are opened as drafts (draft-only policy).
-          # Mark the draft ready and CONTINUE in the same run: the remaining
-          # guards (do-not-merge, green status rollup, --auto merge) all run
-          # against this exact head commit, so a second labeling round adds
-          # nothing but latency (fixes the two-step flow of #155).
-          if [[ "$(jq -r '.isDraft' <<< "$pr")" == "true" ]]; then
-            echo "::notice::Marking draft pull request #$TARGET as ready for review."
-            gh pr ready "$TARGET" --repo "$GITHUB_REPOSITORY"
-            echo "::notice::PR #$TARGET is ready; continuing with the merge checks."
           fi
           if jq -e '.labels[].name | select(. == "do-not-merge")' <<< "$pr" >/dev/null; then
             echo "::warning title=ai-merge refused::The do-not-merge label is present."
             exit 0
           fi
-          # Fully autonomous mode: there is no review gate — the required
-          # status checks are the only quality gate.
+          required_checks=(
+            "validate / verify"
+            "CodeQL"
+            "Tests (contracts)"
+            "Tests (dapp)"
+            "Tests (python)"
+            "review"
+          )
+          rollup=$(jq -c '[.statusCheckRollup[]? | {name:(.name // .context), state:(.conclusion // .state // "PENDING")}]' <<< "$pr")
+          for context in "${required_checks[@]}"; do
+            state=$(jq -r --arg context "$context" '[.[] | select(.name == $context) | .state] | if length == 0 then "MISSING" else .[-1] end' <<< "$rollup")
+            if [[ "$state" != "SUCCESS" ]]; then
+              echo "::notice::Not queueing #$TARGET: required check '$context' is $state."
+              exit 0
+            fi
+          done
 
-          rollup=$(gh pr view "$TARGET" --repo "$GITHUB_REPOSITORY" --json statusCheckRollup \
-            --jq '[.statusCheckRollup[] | (.conclusion // .state // "PENDING")] | if length == 0 then "none" elif all(. == "SUCCESS" or . == "NEUTRAL" or . == "SKIPPED") then "green" else "pending" end')
-          if [[ "$rollup" != "green" ]]; then
-            echo "::warning title=ai-merge refused::Status checks are not green ($rollup)."
-            exit 0
+          # Promote only after the required gates pass, then queue GitHub's
+          # server-side auto-merge (the strict ruleset is still authoritative).
+          if [[ "$(jq -r '.isDraft' <<< "$pr")" == "true" ]]; then
+            gh pr ready "$TARGET" --repo "$GITHUB_REPOSITORY"
+            current_head=$(gh pr view "$TARGET" --repo "$GITHUB_REPOSITORY" --json headRefOid --jq '.headRefOid')
+            if [[ "$current_head" != "$(jq -r '.headRefOid' <<< "$pr")" ]]; then
+              echo "::notice::Head changed while promoting the draft; fresh checks are required."
+              exit 0
+            fi
           fi
 
-          # `--auto` queues the merge once the branch-protection gates (required
-          # status checks) are satisfied; it never bypasses them (#155).
+          # `--auto` never bypasses required checks or other active rules.
           gh pr merge "$TARGET" --repo "$GITHUB_REPOSITORY" --squash --auto --delete-branch
           echo "::notice::Auto-merge enabled for agent pull request #$TARGET ($head); GitHub will merge it once all branch-protection rules are satisfied."

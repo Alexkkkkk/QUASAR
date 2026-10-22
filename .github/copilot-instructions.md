@@ -56,8 +56,11 @@ CI (`.github/workflows/ci.yml`) запускает все эти проверк�
   от того, кто их написал.
 - Не изменяйте `.github/workflows/`, `package.json`, деплой-скрипты и
   `docs/ton/` в рамках issue-агента без явной задачи владельца.
-- Решения о merge, публикации релизов и любых on-chain действиях принимает
-  только человек. Агенты создают draft PR и не имеют прав на merge/deploy.
+- Merge approval не требуется: branch ruleset требует zero approving reviews,
+  zero bypass actors и обязательные зелёные checks; отдельный GitHub automerge
+  workflow переводит draft в ready/очередь только после успеха этих checks.
+  Агенты сами не вызывают merge. Публикация релизов, deployment и любые
+  on-chain действия остаются запрещёнными для автоматизации.
 
 ## Архитектурные инварианты (не ломать)
 

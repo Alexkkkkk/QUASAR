@@ -1,9 +1,16 @@
 # QUASAR: от 15 отдельных workflow к единому автономному организму
 
 Цель: GitHub Actions в QUASAR (Alexkkkkk/QUASAR) перестают быть «островами» и
-собираются в один управляемый контур — с сохранением текущих guardrails:
-read-only по умолчанию, protected paths, draft PR вместо merge, никаких
-on-chain действий.
+собираются в один управляемый контур — с сохранением guardrails: read-only по
+умолчанию, protected paths, draft PR до прохождения checks, CI-only auto-merge,
+никаких deploy и on-chain действий.
+
+> **Актуальное решение владельца от 2026-10-22 supersedes любые более старые
+> положения ниже о человеческом approving review:** main ruleset требует zero
+> approvals, zero bypass actors и шесть обязательных checks; auto-merge ставится
+> в очередь только после `SUCCESS` каждого check. GitHub Pages deploy workflow
+> отключён. Deployment контрактов и on-chain действия остаются запрещёнными.
+> Текущий контракт: [`RULESET_L3.md`](./RULESET_L3.md).
 
 ======================================================================
 ЧАСТЬ 1. Диагноз текущего состояния
@@ -21,8 +28,8 @@ on-chain действий.
   3. Модули не общаются между собой (нет состояния, нет шины).
   4. Права размазаны: сложно аудировать поверхность автоматизации
      (hub-audit проверяет 15 файлов вместо одного).
-  5. Установлен потолок автономности: ai-fix-agent создаёт только draft PR,
-     merge/deploy — только человек.
+  5. На момент написания был установлен потолок автономности: ai-fix-agent
+     создавал только draft PR, merge/deploy — только человек.
 
 Целевой принцип: ОДИН оркестратор (события -> router -> reusable-модули),
 общение через needs/outputs/artifacts/labels, hub-audit как иммунная система.

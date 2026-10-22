@@ -5,8 +5,8 @@ name: QUASAR Tests
 #   dapp      — Create React App unit tests (watch mode disabled) + production build
 #   python    — the unittest-based agent tests, executed through pytest
 #
-# The Pages deploy (pages.yml) gates on the `checks` reusable workflow, so a
-# green merge to main is the only path to production.
+# The GitHub Pages deploy workflow is intentionally disabled. These checks
+# remain required merge gates and do not publish the website or contracts.
 
 on:
   push:

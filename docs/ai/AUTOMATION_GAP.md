@@ -3,8 +3,10 @@
 Источник: `QUASAR-automation-pack(1).zip` -> полный текст плана в
 [`docs/ai/AUTOMATION_ORGANISM.md`](./AUTOMATION_ORGANISM.md) (19 частей).
 
-Проверено по состоянию `main` на коммите `f94de29`
-(`fix(ci): ai-review idempotency feed + ai-merge draft/auto-merge`).
+Историческая сверка была выполнена на `main` коммите `f94de29`. Обновление
+2026-10-22: владелец принял постоянную CI-only merge policy — zero approvals,
+zero bypass actors, strict required checks; GitHub Pages deployment отключён.
+Нижеописанные прежние blockers про обязательный human review superseded.
 
 ## 1. Уже внедрено (проверено чтением файлов)
 
@@ -17,7 +19,7 @@
 | 6 | `_ai-review.yml` | есть: read-only обзор, write только на комментирование |
 | 7 | `_close-issues.yml` | есть |
 | 8 | `_hub-audit.yml` + правила в `scripts/hub_audit.ts` | есть: разделы [7] «write только на job», [8] «`_*.yml` без своих триггеров», [9] «нет orphan-триггеров и дублей cron», [10] «нет `secrets: inherit`» |
-| 10 | L3: label `ai-merge-ok` | есть `_ai-merge.yml`: только владелец, только ветки `ai/*` и `copilot/*`, требует зелёные checks и человеческий approve, `do-not-merge` уважается |
+| 10 | L3: CI-only auto-merge | есть `_ai-merge.yml` и общий scheduler: ноль approving reviews, все обязательные checks должны быть SUCCESS; `do-not-merge` уважается. `ai-merge-ok` — необязательная команда, не approval |
 | 11 | Dead man's switch | есть `_dms.yml`: проверяет активность контура и снимает `ai-merge-ok` при молчании владельца > 7 дней |
 | 13 | Copilot coding agent | частично: `router.mjs` уже распознаёт `copilot/*` (`AGENT_BRANCH_PREFIXES`) и даёт им `ai-review` как второе мнение; правил hub-audit про rulesets для `copilot/*` пока нет |
 | 15 | `_pr-polish.yml` — цикл самовосстановления PR | есть |
@@ -39,12 +41,12 @@
 
 ## 3. Блокеры и ограничения перед реализацией остатка
 
-1. **Часть 14 противоречит уже принятому решению репозитория.**
-   `docs/ai/RULESET_L3.md` прямо фиксирует: `autonomy.json` / `merge-bot`
-   (L3-full) не включены, так как противоречат требованию human review из
-   issue #152; L4/on-chain закрыт намеренно. Поэтому `autonomy.json` и
-   `_merge-bot.yml` нельзя добавлять «молча» — это снятие требования
-   человеческого approve и решение владельца, а не техническая правка.
+1. **Политика approvals изменена по прямому решению владельца 2026-10-22.**
+   Main ruleset устанавливает `required_approving_review_count: 0`, не содержит
+   bypass actors и требует зелёные обязательные checks на актуальном base.
+   Автоматика ставит merge в очередь только после их успеха. `autonomy.json` /
+   `_merge-bot.yml` всё ещё не установлены, но отсутствие approval не зависит от
+   этих дополнительных компонентов. L4/deploy/on-chain остаётся запрещённым.
 2. **Пиннинг actions.** Любой новый workflow с
    `google-github-actions/run-gemini-cli` (как в сниппетах плана) ломает
    `npm run pins:check` и раздел [2] hub-audit: нужен 40-символьный SHA,
@@ -77,11 +79,10 @@
 4. Часть 17.4 (`_learn.yml`) и Часть 18 (`_perfect.yml`): ночные cron в
    `quasar.yml`, правки только не защищённых путей.
 
-Требует решения владельца:
+Не требуется дополнительного решения для отключения approvals:
 
-5. Часть 14 (`autonomy.json` + `_merge-bot.yml`) — снимает требование
-   human review (#152). Пока решение не принято, контур остаётся на
-   `_ai-merge.yml` с обязательным approve.
+5. Часть 14 (`autonomy.json` + `_merge-bot.yml`) — отдельное расширение
+   автоматизации; правила zero-approval и CI-only merge уже применены без него.
 
 Красная линия плана остаётся в силе: никаких wallet/on-chain действий из
 Actions, mainnet-деплой — вне автоматизации, `WALLET_MNEMONIC` не попадает

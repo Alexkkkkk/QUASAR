@@ -6,8 +6,8 @@ name: Dependabot auto-merge
 # guard. This job is safe by construction: it never checks out pull-request
 # code, never runs repository scripts and never reads a secret. It only asks
 # GitHub to merge a Dependabot pull request once the required checks are
-# satisfied. No approving review is required anywhere in this repository, so
-# the green checks are the only gate. It cannot merge anything else.
+# green. This workflow does not require approving reviews. Drafts, missing or
+# non-green required checks, and `do-not-merge` PRs are left untouched.
 on:
   pull_request_target:
     types: [opened, synchronize, reopened, ready_for_review]
@@ -36,7 +36,7 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Enable auto-merge for every dependency update
+      - name: Enable auto-merge only after required checks are green
         if: >-
           steps.metadata.outputs.update-type == 'version-update:semver-patch' ||
           steps.metadata.outputs.update-type == 'version-update:semver-minor' ||
@@ -44,8 +44,30 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_URL: ${{ github.event.pull_request.html_url }}
+          REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
+          required_checks=(
+            "validate / verify"
+            "CodeQL"
+            "Tests (contracts)"
+            "Tests (dapp)"
+            "Tests (python)"
+            "review"
+          )
+          pr=$(gh pr view "$PR_URL" --repo "$REPO" --json isDraft,labels,statusCheckRollup)
+          if [[ "$(jq -r '.isDraft' <<< "$pr")" == "true" ]] || jq -e '.labels[].name | select(. == "do-not-merge")' <<< "$pr" >/dev/null; then
+            echo "skip: draft or do-not-merge label is present"
+            exit 0
+          fi
+          rollup=$(jq -c '[.statusCheckRollup[]? | {name:(.name // .context), state:(.conclusion // .state // "PENDING")}]' <<< "$pr")
+          for context in "${required_checks[@]}"; do
+            state=$(jq -r --arg context "$context" '[.[] | select(.name == $context) | .state] | if length == 0 then "MISSING" else .[-1] end' <<< "$rollup")
+            if [[ "$state" != "SUCCESS" ]]; then
+              echo "skip: required check '$context' is $state; no auto-merge queued"
+              exit 0
+            fi
+          done
           gh pr merge --auto --squash "$PR_URL"
 
       - name: Note major updates
@@ -55,4 +77,4 @@ jobs:
           PR_URL: ${{ github.event.pull_request.html_url }}
         run: |
           set -euo pipefail
-          gh pr comment "$PR_URL" --body "Major update: auto-merge is enabled and the required checks decide. A red build keeps this pull request open."
+          gh pr comment "$PR_URL" --body "Major update: auto-merge is enabled only after all required checks are green; subsequent checks and strict branch protection remain enforced."
