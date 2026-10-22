@@ -2,9 +2,8 @@
 
 Актуальная политика QUASAR, обновлена 2026-10-22. Это не предложение: она
 применена к ruleset `QUASAR main protection` (id `24596486`) и хранится в
-[`ruleset-l3.json`](./ruleset-l3.json). Человеческие approving reviews отключены
-постоянно и в ruleset, и в legacy classic branch protection
-(`required_approving_review_count: 0`); review bypass allowances пусты.
+[`ruleset-l3.json`](./ruleset-l3.json). Ruleset не требует approving reviews;
+legacy classic review rule удалён, включая его review bypass allowances.
 
 ## Merge gates
 
@@ -29,10 +28,10 @@ GitHub Pages deploy workflow удалён и отключён. Авто-merge и
 
 ## Reapply the desired state
 
-`setup-repo.sh` применяет этот же файл `docs/ai/ruleset-l3.json` и проверяет,
-что Pages deployment workflow отсутствует. Скрипт также сбрасывает classic
-branch-protection review count до 0, если такой review rule существует, не снимая
-остальные защиты ветки. Для ручного применения ruleset:
+`setup-repo.sh` применяет этот же файл `docs/ai/ruleset-l3.json`, удаляет classic
+branch-protection review rule, если он существует, не снимая остальные защиты
+ветки, и проверяет, что Pages deployment workflow отсутствует. Для ручного
+применения ruleset:
 
 ```bash
 gh api --method PUT repos/Alexkkkkk/QUASAR/rulesets/24596486 \

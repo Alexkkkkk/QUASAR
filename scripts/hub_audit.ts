@@ -283,10 +283,9 @@ function checkLocalSurface(): void {
     fail("setup-repo.sh must not enable or configure GitHub Pages deployment");
   } else ok("setup-repo.sh does not enable GitHub Pages");
   if (setupScript.includes("branches/main/protection/required_pull_request_reviews") &&
-      /required_approving_review_count[^,}]*0/.test(setupScript) &&
-      setupScript.includes("bypass_pull_request_allowances")) {
-    ok("setup-repo.sh clears classic branch-protection approvals and review bypasses");
-  } else fail("setup-repo.sh must clear classic branch-protection approval requirements");
+      /gh api --method DELETE "\$review_endpoint" --silent/.test(setupScript)) {
+    ok("setup-repo.sh removes the classic branch-protection review gate");
+  } else fail("setup-repo.sh must remove the classic branch-protection review gate");
   if (/code-scanning\/default-setup/.test(setupScript)) known.add("CodeQL");
   const testWorkflow = readFileSync(join(WORKFLOW_DIR, "tests.yml"), "utf8");
   const testPackages = /package:\s*\[([^\]]+)\]/.exec(testWorkflow)?.[1]
