@@ -10,6 +10,9 @@
 - `required_approving_review_count: 0`; code-owner review, last-push approval и
   review-thread resolution не требуются.
 - `bypass_actors: []`; никто не обходит защиту ветки.
+- Не добавлять `update` / Restrict updates: GitHub разрешает изменение matching refs
+  только bypass actors; при пустом bypass это блокирует и auto-merge. Изменения main
+  всё равно обязаны идти через pull request rule. См. [Restrict updates](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/available-rules-for-rulesets).
 - Status checks обязательны и должны относиться к актуальной базе
   (`strict_required_status_checks_policy: true`): `validate / verify`, `CodeQL`,
   `Tests (contracts)`, `Tests (dapp)`, `Tests (python)`, `review`.

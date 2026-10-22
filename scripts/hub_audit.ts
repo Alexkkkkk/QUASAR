@@ -302,6 +302,9 @@ function checkLocalSurface(): void {
     else fail(`required check '${context}' is not produced by a workflow`);
   }
   const desiredRuleset = JSON.parse(readFileSync(join(ROOT, "docs/ai/ruleset-l3.json"), "utf8")) as Record<string, any>;
+  if (!(desiredRuleset.rules ?? []).some((rule: { type: string }) => rule.type === "update")) {
+    ok("desired main ruleset does not lock out CI auto-merge updates");
+  } else fail("desired main ruleset must not restrict updates when bypass_actors is empty");
   const desiredPullRule = desiredRuleset.rules?.find((rule: { type: string }) => rule.type === "pull_request");
   const desiredChecksRule = desiredRuleset.rules?.find((rule: { type: string }) => rule.type === "required_status_checks");
   const desiredContexts: string[] = (desiredChecksRule?.parameters?.required_status_checks ?? [])
@@ -480,6 +483,8 @@ async function checkLiveSettings(): Promise<void> {
         if (detail.enforcement !== "active") fail(`ruleset "${detail.name}": branch protection is not active`);
         if ((detail.bypass_actors ?? []).length > 0) fail(`ruleset "${detail.name}": bypass actors are forbidden`);
         else ok(`ruleset "${detail.name}": no bypass actors`);
+        if (!types.includes("update")) ok(`ruleset "${detail.name}": no update restriction blocking PR auto-merge`);
+        else fail(`ruleset "${detail.name}": update restriction blocks ref updates with no bypass actors`);
         if (!types.includes("required_linear_history")) warn(`ruleset "${detail.name}": linear history not required`);
         if (!types.includes("required_signatures")) warn(`ruleset "${detail.name}": commit signatures not required`);
         const pr = (detail.rules ?? []).find((rule: { type: string }) => rule.type === "pull_request");

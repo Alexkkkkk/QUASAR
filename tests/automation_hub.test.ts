@@ -186,6 +186,8 @@ test("hub: main ruleset permanently disables human approvals and bypass", () => 
   const pullRequest = ruleset.rules.find((rule: { type: string }) => rule.type === "pull_request");
   const checks = ruleset.rules.find((rule: { type: string }) => rule.type === "required_status_checks");
   assert.deepEqual(ruleset.bypass_actors, [], "no user or app may bypass the ruleset");
+  assert.ok(!ruleset.rules.some((rule: { type: string }) => rule.type === "update"),
+    "Restrict updates with no bypass actors would block CI-only auto-merge");
   assert.equal(pullRequest.parameters.required_approving_review_count, 0);
   assert.deepEqual(pullRequest.parameters.required_reviewers, []);
   assert.equal(pullRequest.parameters.require_code_owner_review, false);
