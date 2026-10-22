@@ -184,11 +184,15 @@ echo
 echo "== 5a. classic branch-protection review gate"
 review_endpoint="repos/$REPO/branches/main/protection/required_pull_request_reviews"
 if [[ "$DRY_RUN" == "1" ]]; then
-  echo "  [dry-run] remove classic review gate; preserve other branch protections"
+  echo "  [dry-run] set classic approving reviews to zero; preserve other branch protections"
 else
   if current_review=$(gh api "$review_endpoint" 2>&1); then
-    gh api --method DELETE "$review_endpoint" --silent
-    echo "  ok removed classic review gate and its bypass allowances"
+    gh api --method PATCH "$review_endpoint" \
+      -F dismiss_stale_reviews=false \
+      -F require_code_owner_reviews=false \
+      -F required_approving_review_count=0 \
+      -F require_last_push_approval=false >/dev/null
+    echo "  ok classic approving reviews set to zero"
   elif [[ "$current_review" == *"HTTP 404"* ]]; then
     echo "  ok no classic review rule exists; ruleset remains authoritative"
   else

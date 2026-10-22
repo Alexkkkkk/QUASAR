@@ -201,7 +201,10 @@ test("hub: main ruleset permanently disables human approvals and bypass", () => 
   assert.match(setup, /docs\/ai\/ruleset-l3\.json/);
   assert.doesNotMatch(setup, /bypass_actors.*actor_id/);
   assert.match(setup, /branches\/main\/protection\/required_pull_request_reviews/);
-  assert.match(setup, /gh api --method DELETE "\$review_endpoint" --silent/);
+  assert.match(setup, /gh api --method PATCH "\$review_endpoint"/);
+  assert.match(setup, /required_approving_review_count=0/);
+  assert.match(setup, /require_code_owner_reviews=false/);
+  assert.match(setup, /require_last_push_approval=false/);
   assert.doesNotMatch(setup, /repos\/\$REPO\/pages|build_type=workflow/);
 });
 
