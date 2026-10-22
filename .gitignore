@@ -25,4 +25,7 @@ website/deployment.json
 actionlint
 
 # SwarmSync regenerated state (rebuild with: node scripts/ai/swarm/cli.mjs all)
-docs/ai/knowledge/state/
+# The autopilot commits its revert-scan checkpoint; ignore other generated state.
+!docs/ai/knowledge/state/
+docs/ai/knowledge/state/*
+!docs/ai/knowledge/state/revert-scan.json
