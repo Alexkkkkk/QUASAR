@@ -32,14 +32,14 @@ export type JettonMetaDataKeys =
   | "uri";
 
 const jettonOnChainMetadataSpec: {
-  [key in JettonMetaDataKeys]: "utf8" | "ascii" | undefined;
+  [key in JettonMetaDataKeys]: "utf8" | "ascii" | "base64" | undefined;
 } = {
   name: "utf8",
   description: "utf8",
   image: "ascii",
   decimals: "utf8",
   symbol: "utf8",
-  image_data: undefined,
+  image_data: "base64",
   uri: "ascii",
 };
 

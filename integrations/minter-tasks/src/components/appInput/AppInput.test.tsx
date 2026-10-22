@@ -1,8 +1,9 @@
+import { vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { AppNumberInput } from "./AppInput";
 
 test("keeps a pasted negative amount negative so validation can reject it", () => {
-  const onChange = jest.fn();
+  const onChange = vi.fn();
   render(<AppNumberInput value="" label="Amount" onChange={onChange} />);
 
   fireEvent.change(screen.getByRole("textbox"), { target: { value: "-100" } });

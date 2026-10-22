@@ -104,6 +104,8 @@ export function isMergeableCandidate(pr) {
   if (pr.mergeable !== 'MERGEABLE') return { ok: false, why: 'mergeable=' + pr.mergeable };
   const labels = pr.labels || [];
   if (labels.some((label) => label.name === 'do-not-merge')) return { ok: false, why: 'do-not-merge' };
+  if (!Array.isArray(pr.files)) return { ok: false, why: 'missing-files' };
+  if (touchesProtectedPaths(pr.files)) return { ok: false, why: 'protected-paths' };
   // Fully autonomous mode: no human approving review and no automerge-label
   // requirement — the green required status checks are the only gate.
   const rollup = Array.isArray(pr.statusCheckRollup) ? pr.statusCheckRollup : [];
@@ -116,10 +118,25 @@ export function isMergeableCandidate(pr) {
   if (!rollup.some((check) => result(check) === 'SUCCESS')) return { ok: false, why: 'no-successful-checks' };
   return { ok: true, why: 'green' };
 }
-const PROTECTED_PREFIXES = ['.github/workflows/', 'contracts/', 'scripts/', '.github/dependabot.yml'];
+const PROTECTED_PREFIXES = [
+  '.github/workflows/', 'contracts/', 'scripts/', 'docs/ai/',
+  '.github/dependabot.yml',
+];
+const PROTECTED_FILES = new Set([
+  'AGENTS.md', 'GEMINI.md', '.github/copilot-instructions.md',
+  'package.json', 'package-lock.json',
+]);
 
 export function touchesProtectedPaths(files) {
-  return (files || []).some((f) => PROTECTED_PREFIXES.some((p) => f.path.startsWith(p)));
+  return (files || []).some((f) => {
+    const path = typeof f === 'string' ? f : f?.path;
+    if (typeof path !== 'string') return false;
+    return PROTECTED_FILES.has(path)
+      || PROTECTED_PREFIXES.some((prefix) => path.startsWith(prefix))
+      || /(^|\/)\.env[^/]*$/.test(path)
+      || /(^|\/)(deployment|build-hashes)\.json$/.test(path)
+      || /(^|\/)action_pins\.lock\.json$/.test(path);
+  });
 }
 
 // Parse `git log --grep=^Revert --format=%h %s` output.
@@ -294,7 +311,7 @@ function cmdMergeQueue() {
   if (!guard('merge-queue')) return;
   const merged = mergesToday();
   if (merged >= MAX_MERGES) { console.log('autopilot: daily merge cap (' + MAX_MERGES + ') reached'); return; }
-  const prs = gh(['pr', 'list', '--limit', '100', '--json', 'number,title,labels,isDraft,mergeable,reviewDecision,statusCheckRollup,author,autoMergeRequest']);
+  const prs = gh(['pr', 'list', '--limit', '100', '--json', 'number,title,labels,isDraft,mergeable,reviewDecision,statusCheckRollup,author,autoMergeRequest,files']);
   const queuedAlready = prs.filter((pr) => Boolean(pr.autoMergeRequest)).length;
   let budget = remainingMergeBudget(MAX_MERGES, merged, queuedAlready);
   if (budget <= 0) { console.log('autopilot: daily merge cap includes ' + merged + ' completed and ' + queuedAlready + ' already queued'); return; }
@@ -304,8 +321,6 @@ function cmdMergeQueue() {
     if (pr.autoMergeRequest) { skipped++; continue; }
     const verdict = isMergeableCandidate(pr);
     if (!verdict.ok) { skipped++; console.log('autopilot: #' + pr.number + ' skipped — ' + verdict.why); continue; }
-    // Fully autonomous mode: protected-path filtering is disabled; every
-    // green, non-draft PR is queued.
     gh(['pr', 'merge', String(pr.number), '--squash', '--auto', '--delete-branch'], { json: false });
     console.log('autopilot: enabled auto-merge for #' + pr.number + ' (' + pr.title + ')');
     budget--;

@@ -1,0 +1,50 @@
+[package]
+name = "quasar-tolk"
+description = "QUASAR Tolk migration, verified against the preserved Tact reference"
+version = "3.0.0"
+license = "MIT"
+
+[toolchain]
+acton = "1.2.1"
+
+[contracts.QuasarWallet]
+display-name = "QUASAR Jetton Wallet"
+src = "contracts/QuasarWallet.tolk"
+depends = []
+
+[contracts.QuasarMaster]
+display-name = "QUASAR Jetton Master"
+src = "contracts/QuasarMaster.tolk"
+depends = ["QuasarWallet"]
+
+[contracts.QuasarDeFi]
+display-name = "QUASAR DeFi"
+src = "contracts/QuasarDeFi.tolk"
+depends = ["QuasarWallet"]
+
+[contracts.QuasarAdminTimelock]
+display-name = "QUASAR Admin Timelock"
+src = "contracts/QuasarAdminTimelock.tolk"
+depends = []
+
+[build]
+out-dir = "build/artifacts"
+gen-dir = "build/gen"
+output-abi = "build/abi"
+output-boc = "build/boc"
+output-fift = "build/fift"
+output-sources = "build/sources"
+
+[test]
+fail-fast = true
+
+[fmt]
+width = 100
+ignore = []
+
+[import-mappings]
+acton = ".acton"
+contracts = "contracts"
+gen = "gen"
+tests = "tests"
+wrappers = "wrappers"

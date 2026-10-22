@@ -1,21 +1,24 @@
+import { vi } from "vitest";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { useState } from "react";
 import { MemoryRouter, useLocation, useNavigate } from "react-router-dom";
 import { RecoilRoot } from "recoil";
 import { useJettonLogo, useResetJettonLogoOnPathChange } from "./useJettonLogo";
 
-let mockJettonAddress: string | null = "master-address";
-let mockJettonStore: {
-  jettonImage?: string;
-  rawJettonImage?: string;
-  jettonMaster?: string;
-} = {};
-
-jest.mock("hooks/useJettonAddress", () => ({
-  useJettonAddress: () => ({ jettonAddress: mockJettonAddress }),
+const mocks = vi.hoisted(() => ({
+  jettonAddress: { current: "master-address" as string | null },
+  jettonStore: {
+    current: {} as { jettonImage?: string; rawJettonImage?: string; jettonMaster?: string },
+  },
 }));
 
-jest.mock("store/jetton-store/useJettonStore", () => () => mockJettonStore);
+vi.mock("hooks/useJettonAddress", () => ({
+  useJettonAddress: () => ({ jettonAddress: mocks.jettonAddress.current }),
+}));
+
+vi.mock("store/jetton-store/useJettonStore", () => ({
+  default: () => mocks.jettonStore.current,
+}));
 
 const LogoProbe = () => {
   const { jettonLogo, setLogoUrl, resetJetton, discardLogoDraft } = useJettonLogo();
@@ -58,8 +61,8 @@ const RouteLifecycleProbe = () => {
 };
 
 beforeEach(() => {
-  mockJettonAddress = "master-address";
-  mockJettonStore = {
+  mocks.jettonAddress.current = "master-address";
+  mocks.jettonStore.current = {
     jettonImage: "https://example.com/logo.png",
     rawJettonImage: "https://example.com/logo.png",
     jettonMaster: "master-address",
@@ -82,7 +85,7 @@ test("preserves the edited logo while a different wallet view reloads", async ()
     expect(screen.getByTestId("logo-url")).toHaveTextContent("https://example.com/edited.png"),
   );
 
-  mockJettonStore = {};
+  mocks.jettonStore.current = {};
   view.rerender(
     <RecoilRoot>
       <LogoProbe />
@@ -91,7 +94,7 @@ test("preserves the edited logo while a different wallet view reloads", async ()
 
   expect(screen.getByTestId("logo-url")).toHaveTextContent("https://example.com/edited.png");
 
-  mockJettonStore = {
+  mocks.jettonStore.current = {
     jettonImage: "https://example.com/logo.png",
     rawJettonImage: "https://example.com/logo.png",
     jettonMaster: "master-address",
@@ -116,7 +119,7 @@ test("adopts refreshed metadata until the user edits the logo", async () => {
     expect(screen.getByTestId("logo-url")).toHaveTextContent("https://example.com/logo.png"),
   );
 
-  mockJettonStore = {
+  mocks.jettonStore.current = {
     jettonImage: "https://example.com/refreshed.png",
     rawJettonImage: "https://example.com/refreshed.png",
     jettonMaster: "master-address",
@@ -132,7 +135,7 @@ test("adopts refreshed metadata until the user edits the logo", async () => {
   );
 
   fireEvent.click(screen.getByRole("button", { name: "Edit logo" }));
-  mockJettonStore = {
+  mocks.jettonStore.current = {
     jettonImage: "https://example.com/newer.png",
     rawJettonImage: "https://example.com/newer.png",
     jettonMaster: "master-address",
@@ -150,8 +153,8 @@ test("adopts refreshed metadata until the user edits the logo", async () => {
 });
 
 test("does not clear an edited logo outside a parameterized jetton route", () => {
-  mockJettonAddress = null;
-  mockJettonStore = {};
+  mocks.jettonAddress.current = null;
+  mocks.jettonStore.current = {};
   render(
     <RecoilRoot>
       <LogoProbe />
@@ -180,15 +183,15 @@ test("preserves the edited logo when the metadata editor unmounts and remounts",
   fireEvent.click(screen.getByRole("button", { name: "Toggle editor" }));
   expect(screen.queryByTestId("logo-url")).not.toBeInTheDocument();
 
-  mockJettonStore = {};
+  mocks.jettonStore.current = {};
   fireEvent.click(screen.getByRole("button", { name: "Toggle editor" }));
 
   expect(screen.getByTestId("logo-url")).toHaveTextContent("https://example.com/edited.png");
 });
 
 test("preserves a draft across query changes and resets it across path changes", async () => {
-  mockJettonAddress = null;
-  mockJettonStore = {};
+  mocks.jettonAddress.current = null;
+  mocks.jettonStore.current = {};
   render(
     <RecoilRoot>
       <MemoryRouter initialEntries={["/jetton/master-address"]}>
@@ -208,8 +211,8 @@ test("preserves a draft across query changes and resets it across path changes",
 });
 
 test("ignores stale image callbacks after the logo URL changes", () => {
-  mockJettonAddress = null;
-  mockJettonStore = {};
+  mocks.jettonAddress.current = null;
+  mocks.jettonStore.current = {};
   const originalImage = global.Image;
   const images: Array<{
     src: string;

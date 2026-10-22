@@ -1,28 +1,30 @@
+import { vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter, useNavigate } from "react-router-dom";
 import { TasksPage } from ".";
 
-const mockAddTask = jest.fn();
-const mockShowNotification = jest.fn();
+const mocks = vi.hoisted(() => ({ addTask: vi.fn(), showNotification: vi.fn() }));
 
-jest.mock("@tonconnect/ui-react", () => ({
+vi.mock("@tonconnect/ui-react", () => ({
   useTonAddress: () => "",
 }));
 
-jest.mock("hooks/useNotification", () => () => ({
-  showNotification: mockShowNotification,
+vi.mock("hooks/useNotification", () => ({
+  default: () => ({ showNotification: mocks.showNotification }),
 }));
 
-jest.mock("store/tasks-store/useTasksStore", () => () => ({
-  tasks: [],
-  stats: { total: 0, active: 0, done: 0 },
-  addTask: mockAddTask,
-  toggleTask: jest.fn(),
-  removeTask: jest.fn(),
-  clearCompleted: jest.fn(),
+vi.mock("store/tasks-store/useTasksStore", () => ({
+  default: () => ({
+    tasks: [],
+    stats: { total: 0, active: 0, done: 0 },
+    addTask: mocks.addTask,
+    toggleTask: vi.fn(),
+    removeTask: vi.fn(),
+    clearCompleted: vi.fn(),
+  }),
 }));
 
-jest.mock("components/Screen", () => ({
+vi.mock("components/Screen", () => ({
   Screen: ({ children }: { children: React.ReactNode }) => children,
   ScreenContent: ({ children }: { children: React.ReactNode }) => children,
 }));
@@ -53,9 +55,9 @@ const addTask = (title: string) => {
 };
 
 beforeEach(() => {
-  mockAddTask.mockReset();
-  mockAddTask.mockReturnValue({ id: "task-id" });
-  mockShowNotification.mockReset();
+  mocks.addTask.mockReset();
+  mocks.addTask.mockReturnValue({ id: "task-id" });
+  mocks.showNotification.mockReset();
 });
 
 test("uses the new query jetton as the default for a task after navigation", async () => {
@@ -71,7 +73,7 @@ test("uses the new query jetton as the default for a task after navigation", asy
 
   addTask("Bound to Jetton B");
 
-  expect(mockAddTask).toHaveBeenCalledWith({
+  expect(mocks.addTask).toHaveBeenCalledWith({
     title: "Bound to Jetton B",
     description: "",
     jettonMaster: "jetton-b",
@@ -90,7 +92,7 @@ test("keeps a manually entered master address when the query jetton changes", as
 
   addTask("Keep manual binding");
 
-  expect(mockAddTask).toHaveBeenCalledWith({
+  expect(mocks.addTask).toHaveBeenCalledWith({
     title: "Keep manual binding",
     description: "",
     jettonMaster: "manual-master",

@@ -352,3 +352,15 @@ Refs #153, #145, #107.
 T-11/T-12 реализуют проверяемую часть P4. Реальный testnet deployment,
 публикация адресов и live smoke остаются явными внешними операциями и не
 выполняются CI без disposable wallet.
+
+
+## P1 — Полный аудит и синхронизация 2026-10-22
+
+- [~] **T-23 Устранение подтверждённых contract, dApp и automation regressions.**
+  - Ветка: `ai/full-audit-sync-2026-10`; исходный commit: `51011ad7e96827a77a167c7812e34e223d5f9d8a`.
+  - Контракты: outbound Master query IDs получили отдельное tagged namespace и allocator materialization before each send; payout bounce recovery больше не путает caller IDs с ledger IDs; governance vote key использует полный uint64 proposal ID; первый mint и mint-доставки подчиняются лимитам; wallet не потребляет forward payload при проверке mint marker; farm accrual settle-ится перед переключением; неподдерживаемая wallet-code migration закрыта fail-closed.
+  - dApp/minter: устранена гонка балансов при смене кошелька; TON Connect UI и `@ton/core` локально vendor/bundle; proxy явно маршрутизирует mainnet/testnet и v2/v3; `image_data` кодируется из base64 в on-chain binary snake form. UI подтверждает только `submitted`, не выдавая принятие wallet за on-chain success.
+  - Automation: auto-merge проверяет список файлов PR на protected paths; keygen не печатает приватный материал; scout падает закрыто при ошибках API; оптимизаторы соблюдают заявленный budget.
+  - Проверено: Tact compiler прямым запуском с увеличенным Node stack, 298 Node regression tests, 32 Python tests, `tsc --noEmit`, ABI verify, DApp ABI, deployment artifact check, pins check, hub audit и root `npm audit` (0 advisories). Minter install/build прошли, CI-mode test suite: 15 suites / 88 tests; dependency audit находит 57 advisories (7 moderate, 50 high), полный fix требует breaking upgrade и lockfile не менялся.
+  - Остаются blockers к закрытию/PR: `npm run build` с обычным launcher падает из-за Tact compiler stack overflow; `security_check.ts` содержит устаревший invariant старого qid guard; build hashes требуют regeneration после contract changes. Эти три protected areas не менялись. Отдельные findings об event-driven/manual workflow dispatch, multi-file atomic sync, pending-state reconciliation minter, unbounded AI action history и semantics emergency pause/trading остаются открытыми либо требуют уточнения требований.
+  - Изменения Tact меняют code hashes и адреса; никакого deployment, публикации адресов или on-chain действия не выполнялось.

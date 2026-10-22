@@ -22,6 +22,8 @@ class SA(Optimizer):
         self.step_frac = step_frac
 
     def optimize(self, problem: Problem, budget: int, seed: int) -> Result:
+        if not isinstance(budget, int) or isinstance(budget, bool) or budget < 1:
+            raise ValueError("budget must be a positive integer")
         rng = random.Random(seed)
         start = time.perf_counter()
         span = sum(problem.upper[d] - problem.lower[d] for d in range(problem.dims)) / problem.dims
@@ -30,9 +32,10 @@ class SA(Optimizer):
         f = problem.objective(x)
         best_f, best_x = f, list(x)
         history = [f]
-        alpha = (self.t_min / self.t0) ** (1.0 / max(budget, 1))
+        iterations = budget - 1
+        alpha = (self.t_min / self.t0) ** (1.0 / max(iterations, 1))
 
-        for step in range(budget):
+        for step in range(iterations):
             T = self.t0 * alpha ** step
             scale = self.step_frac * span * math.sqrt(T)
             cand = [problem.clamp_dim(x[d] + rng.gauss(0.0, scale), d) for d in range(problem.dims)]
@@ -45,6 +48,6 @@ class SA(Optimizer):
                     best_f, best_x = f, list(x)
 
         return Result(
-            self.name, problem.name, best_x, best_f, budget, history,
+            self.name, problem.name, best_x, best_f, len(history), history,
             time.perf_counter() - start,
         )

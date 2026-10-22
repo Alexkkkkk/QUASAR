@@ -14,8 +14,10 @@
  *     window.__TONCENTER_RUNTIME_CONFIG__ = { proxyUrl: "/api/toncenter" };
  *   </script>
  *
- * `proxyUrl` is the preferred form: a same-origin server endpoint that
- * attaches `X-API-Key` server-side, so the key never reaches the browser.
+ * `proxyUrl` is a same-origin proxy prefix. The client appends
+ * `/<network>/v2/jsonRPC` or `/<network>/v3`, allowing the host to select both
+ * network and API version before attaching `X-API-Key` server-side. The key
+ * never reaches the browser.
  * `apiKey` exists only for a server-side render or a test harness and must
  * never be populated from a build-time environment variable.
  */

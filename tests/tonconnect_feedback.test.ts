@@ -24,7 +24,8 @@ test('issue #65: TON Connect distinguishes cancellation from other failures', ()
     mustContain(web, 'function describeTonConnectError(error)', 'the dApp must classify TON Connect failures');
     mustContain(web, "kind: 'cancel'", 'user cancellation must map to a dedicated branch');
     mustContain(web, 'Transaction cancelled in wallet', 'the cancel branch must be surfaced to the user');
-    mustContain(web, 'return { ok: true, tx };', 'successful requests must return an explicit ok result');
+    mustContain(web, "Transaction submitted; waiting for on-chain confirmation.", 'wallet acceptance must not be reported as on-chain success');
+    mustContain(web, 'return { ok: true, submitted: true, tx };', 'successful wallet requests must explicitly remain in submitted/pending state');
     mustContain(web, "return { ok: false, cancelled: status.kind === 'cancel', error: e };", 'failed requests must preserve cancel/error state');
 });
 

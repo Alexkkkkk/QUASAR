@@ -1,19 +1,19 @@
+import { vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { Form } from "./Form";
 import { offchainFormSpec, onchainFormSpec } from "pages/deployer/data";
 
-const mockShowNotification = jest.fn();
-const mockDiscardLogoDraft = jest.fn();
+const mocks = vi.hoisted(() => ({ showNotification: vi.fn(), discardLogoDraft: vi.fn() }));
 
-jest.mock("@tonconnect/ui-react", () => ({
+vi.mock("@tonconnect/ui-react", () => ({
   useTonAddress: () => "EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c",
 }));
 
-jest.mock("hooks/useJettonAddress", () => ({
+vi.mock("hooks/useJettonAddress", () => ({
   useJettonAddress: () => ({ jettonAddress: undefined }),
 }));
 
-jest.mock("hooks/useJettonLogo", () => ({
+vi.mock("hooks/useJettonLogo", () => ({
   useJettonLogo: () => ({
     jettonLogo: {
       logoUrl: "https://example.com/logo.png",
@@ -22,17 +22,17 @@ jest.mock("hooks/useJettonLogo", () => ({
       isLoading: false,
       hasError: false,
     },
-    setIconHover: jest.fn(),
-    discardLogoDraft: mockDiscardLogoDraft,
+    setIconHover: vi.fn(),
+    discardLogoDraft: mocks.discardLogoDraft,
   }),
 }));
 
-jest.mock("hooks/useNotification", () => () => ({
-  showNotification: mockShowNotification,
+vi.mock("hooks/useNotification", () => ({
+  default: () => ({ showNotification: mocks.showNotification }),
 }));
 
-jest.mock("components/editLogoPopup", () => ({ EditLogoPopup: () => null }));
-jest.mock("components/logoAlertPopup", () => ({ LogoAlertPopup: () => null }));
+vi.mock("components/editLogoPopup", () => ({ EditLogoPopup: () => null }));
+vi.mock("components/logoAlertPopup", () => ({ LogoAlertPopup: () => null }));
 
 test("numeric form examples are stored as strings", () => {
   const numericInputs = [...onchainFormSpec, ...offchainFormSpec].filter(
@@ -44,7 +44,7 @@ test("numeric form examples are stored as strings", () => {
 });
 
 test("keeps repeated numeric examples as exact strings", async () => {
-  const onSubmit = jest.fn().mockResolvedValue(undefined);
+  const onSubmit = vi.fn().mockResolvedValue(undefined);
   render(
     <Form
       onSubmit={onSubmit}
@@ -74,11 +74,11 @@ test("keeps repeated numeric examples as exact strings", async () => {
 });
 
 test("discards the logo draft when metadata editing is cancelled", () => {
-  const onCancel = jest.fn();
-  render(<Form onSubmit={jest.fn()} inputs={[]} submitText="Save" onCancel={onCancel} />);
+  const onCancel = vi.fn();
+  render(<Form onSubmit={vi.fn()} inputs={[]} submitText="Save" onCancel={onCancel} />);
 
   fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
 
-  expect(mockDiscardLogoDraft).toHaveBeenCalledTimes(1);
+  expect(mocks.discardLogoDraft).toHaveBeenCalledTimes(1);
   expect(onCancel).toHaveBeenCalledTimes(1);
 });

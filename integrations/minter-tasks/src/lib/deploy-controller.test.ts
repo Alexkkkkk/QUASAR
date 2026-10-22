@@ -1,3 +1,4 @@
+import { vi, type Mock, type MockedFunction } from "vitest";
 import BN from "bn.js";
 import { Address, beginCell, toNano } from "ton";
 import { CHAIN, TonConnectUI } from "@tonconnect/ui-react";
@@ -29,29 +30,31 @@ import { sendTransactionAndTrack } from "./transaction";
 import { createDeployParams } from "./utils";
 import { ContractDeployer } from "./contract-deployer";
 
-jest.mock("./get-ton-client", () => ({
-  getClient: jest.fn(),
+vi.mock("./get-ton-client", () => ({
+  getClient: vi.fn(),
 }));
 
-jest.mock("./utils", () => ({
-  createDeployParams: jest.fn(),
-  zeroAddress: () => {
-    const { Address: TonAddress } = jest.requireActual("ton");
+vi.mock("./utils", async () => {
+  const { Address: TonAddress } = await vi.importActual<typeof import("ton")>("ton");
+  return {
+    createDeployParams: vi.fn(),
+    zeroAddress: () => {
     return TonAddress.parse(`0:${"00".repeat(32)}`);
-  },
-}));
+    },
+  };
+});
 
-jest.mock("./transaction", () => ({
-  ...jest.requireActual("./transaction"),
-  sendTransactionAndTrack: jest.fn(async () => ({
+vi.mock("./transaction", async () => ({
+  ...await vi.importActual<typeof import("./transaction")>("./transaction"),
+  sendTransactionAndTrack: vi.fn(async () => ({
     status: "confirmed",
     externalMessageHash: "hash",
   })),
 }));
 
-jest.mock("./make-get-call", () => ({
-  ...jest.requireActual("./make-get-call"),
-  makeGetCall: jest.fn(),
+vi.mock("./make-get-call", async () => ({
+  ...await vi.importActual<typeof import("./make-get-call")>("./make-get-call"),
+  makeGetCall: vi.fn(),
 }));
 
 const OWNER = Address.parse(`0:${"11".repeat(32)}`);
@@ -65,12 +68,12 @@ function connection(chain = CHAIN.TESTNET, address = OWNER) {
   } as unknown as TonConnectUI;
 }
 
-const mockedGetClient = getClient as jest.MockedFunction<typeof getClient>;
-const mockedMakeGetCall = makeGetCall as jest.Mock;
-const mockedSendTransactionAndTrack = sendTransactionAndTrack as jest.MockedFunction<
+const mockedGetClient = getClient as MockedFunction<typeof getClient>;
+const mockedMakeGetCall = makeGetCall as Mock;
+const mockedSendTransactionAndTrack = sendTransactionAndTrack as MockedFunction<
   typeof sendTransactionAndTrack
 >;
-const mockedCreateDeployParams = createDeployParams as jest.MockedFunction<
+const mockedCreateDeployParams = createDeployParams as MockedFunction<
   typeof createDeployParams
 >;
 
@@ -99,7 +102,7 @@ test.each([
 ])("routes every $name write through its matching ABI and TON values", async (version) => {
   const tonConnection = connection();
   const client = {
-    getContractState: jest.fn(async (address: Address) => {
+    getContractState: vi.fn(async (address: Address) => {
       if (!address.equals(MASTER)) throw new Error("Expected Jetton master address");
       return { code: version.code.toBoc() };
     }),
@@ -195,7 +198,7 @@ test("reads a revoked v2.1 admin as null", async () => {
     },
   );
   mockedGetClient.mockResolvedValue({
-    isContractDeployed: jest.fn(async () => false),
+    isContractDeployed: vi.fn(async () => false),
   } as any);
 
   const result = await jettonDeployController.getJettonDetails(MASTER, OWNER, "testnet");
@@ -220,10 +223,10 @@ function deployFixture() {
 
 test("reports an existing deterministic master without another deploy or initial mint", async () => {
   const { deterministicMaster } = deployFixture();
-  const getBalance = jest.fn();
+  const getBalance = vi.fn();
   mockedGetClient.mockResolvedValue({
     getBalance,
-    isContractDeployed: jest.fn(async () => true),
+    isContractDeployed: vi.fn(async () => true),
   } as any);
 
   const result = jettonDeployController.createJetton(
@@ -246,8 +249,8 @@ test("reports an existing deterministic master without another deploy or initial
 
 test("returns the authoritative completed-trace outcome for a fresh deploy", async () => {
   const { deterministicMaster } = deployFixture();
-  const getBalance = jest.fn(async () => toNano(1));
-  const isContractDeployed = jest.fn(async () => false);
+  const getBalance = vi.fn(async () => toNano(1));
+  const isContractDeployed = vi.fn(async () => false);
   mockedGetClient.mockResolvedValue({ getBalance, isContractDeployed } as any);
 
   const result = await jettonDeployController.createJetton(
@@ -269,13 +272,13 @@ test("returns the authoritative completed-trace outcome for a fresh deploy", asy
 
 test("requires 0.20 native coins while keeping the deploy message at 0.15", async () => {
   deployFixture();
-  const getBalance = jest
+  const getBalance = vi
     .fn()
     .mockResolvedValueOnce(toNano(0.15))
     .mockResolvedValueOnce(JETTON_DEPLOY_MIN_BALANCE);
   mockedGetClient.mockResolvedValue({
     getBalance,
-    isContractDeployed: jest.fn(async () => false),
+    isContractDeployed: vi.fn(async () => false),
   } as any);
   const params = {
     owner: OWNER,
@@ -298,8 +301,8 @@ test("requires 0.20 native coins while keeping the deploy message at 0.15", asyn
 test("propagates submitted deployment without waiting or inviting a duplicate mint", async () => {
   const { deterministicMaster } = deployFixture();
   mockedGetClient.mockResolvedValue({
-    getBalance: jest.fn(async () => toNano(1)),
-    isContractDeployed: jest.fn(async () => false),
+    getBalance: vi.fn(async () => toNano(1)),
+    isContractDeployed: vi.fn(async () => false),
   } as any);
   mockedSendTransactionAndTrack.mockResolvedValueOnce({ status: "submitted" });
 
@@ -335,7 +338,7 @@ test("rejects a deployed jetton wallet that reports another owner", async () => 
     },
   );
   mockedGetClient.mockResolvedValue({
-    isContractDeployed: jest.fn(async () => true),
+    isContractDeployed: vi.fn(async () => true),
   } as any);
 
   await expect(jettonDeployController.getJettonDetails(MASTER, OWNER, "testnet")).rejects.toThrow(

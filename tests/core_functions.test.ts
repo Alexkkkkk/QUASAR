@@ -84,12 +84,13 @@ function anyComputeFailed(res: any): boolean {
 }
 
 async function expectBlocked(p: Promise<any>, why: string): Promise<void> {
+    let result: any;
     try {
-        const res = await p;
-        assert.ok(anyComputeFailed(res), why);
+        result = await p;
     } catch {
-        // send() itself rejected the message — also a revert
+        return; // send() itself rejected the message — also a revert
     }
+    assert.ok(anyComputeFailed(result), why);
 }
 
 // ═══════════════ Deployment and init state ═══════════════
@@ -549,4 +550,68 @@ test('ai oracle: heartbeat keeps the oracle alive and timeouts mark it dead', as
     });
     assert.ok(!anyComputeFailed(beatRes), 'the oracle (owner by default) must be able to heartbeat');
     assert.equal(await eco.master.getIsAiAlive(), true);
+});
+
+
+test('mint: first transaction and repeated issuance obey the wallet policy', async () => {
+    const eco = await deployEco(false);
+    const alice = await eco.bc.treasury('mint-cap-alice');
+    const maxMint = 10_000_000n * QSR; // 1% of the configured 1B max supply
+
+    await expectBlocked(
+        eco.master.send(eco.owner.getSender(), { value: toNano('0.3') }, {
+            $$type: 'Mint', amount: maxMint + 1n, receiver: alice.address
+        }),
+        'the first mint must not bypass the configured per-transaction cap'
+    );
+    assert.equal((await eco.master.getGetJettonData()).totalSupply, 0n);
+
+    for (let i = 0; i < 3; i++) {
+        const result = await eco.master.send(eco.owner.getSender(), { value: toNano('0.3') }, {
+            $$type: 'Mint', amount: maxMint, receiver: alice.address
+        });
+        assert.ok(!anyComputeFailed(result), `mint ${i + 1} within the wallet cap must succeed`);
+    }
+
+    const before = await eco.master.getGetJettonData();
+    assert.equal(before.totalSupply, 3n * maxMint);
+    await expectBlocked(
+        eco.master.send(eco.owner.getSender(), { value: toNano('0.3') }, {
+            $$type: 'Mint', amount: maxMint, receiver: alice.address
+        }),
+        'mint marker must make repeated owner minting obey the recipient wallet cap'
+    );
+    assert.equal((await eco.master.getGetJettonData()).totalSupply, before.totalSupply, 'a bounced over-cap mint must roll back issuance');
+
+    const walletRaw = await QuasarWallet.fromInit(alice.address, eco.masterAddr);
+    const wallet = eco.bc.openContract(walletRaw);
+    assert.equal((await wallet.getGetWalletData()).balance, 30_000_000n * QSR);
+});
+
+test('defi farm: settle rewards accrued before disabling the farm', async () => {
+    const eco = await deployEco(true);
+    const lp = await eco.bc.treasury('farm-lp');
+    const farmFunding = 100n * QSR;
+
+    await creditDefiDeposit(eco, eco.owner.address, farmFunding);
+    await eco.defi.send(eco.owner.getSender(), { value: toNano('0.1') }, { $$type: 'FundFarm', amount: farmFunding });
+    await eco.defi.send(eco.owner.getSender(), { value: toNano('0.1') }, {
+        $$type: 'SetFarmConfig', rewardPerSecond: 100_000_000n, startTime: 1000, endTime: 2000
+    });
+    await eco.defi.send(eco.owner.getSender(), { value: toNano('0.1') }, { $$type: 'SetFarmEnabled', enabled: true });
+
+    await creditDefiDeposit(eco, lp.address, QSR);
+    await eco.defi.send(lp.getSender(), { value: toNano('10') }, {
+        $$type: 'AddLiquidity', tonAmount: toNano('10'), qsrAmount: QSR, minLpOut: 1n, deadline: DEADLINE
+    });
+
+    const reserveBefore = await eco.defi.getFarmRewardReserve();
+    eco.bc.now = 1010;
+    await eco.defi.send(eco.owner.getSender(), { value: toNano('0.1') }, { $$type: 'SetFarmEnabled', enabled: false });
+
+    const farm = await eco.defi.getFarmInfo();
+    const reserveAfter = await eco.defi.getFarmRewardReserve();
+    assert.equal(farm.lastUpdate, 1010n, 'the disable transaction must settle through its timestamp');
+    assert.equal(reserveBefore - reserveAfter, 1_000_000_000n, '10 seconds of active rewards must be accrued before disabling');
+    assert.ok(farm.accRewardPerShare > 0n, 'stakers must retain their accrued reward share after the toggle');
 });

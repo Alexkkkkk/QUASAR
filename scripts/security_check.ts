@@ -31,10 +31,14 @@ assertContains(master, 'require(self.totalSupply + msg.amount <= self.maxSupply,
 assertContains(master, 'fun _mintQueryId(): Int', 'mint bounces use a reserved query id');
 assertContains(master, 'queryId: self._mintQueryId(),', 'mint uses the reserved query id');
 assertContains(master, 'self.totalSupply = self.totalSupply - msg.amount;', 'mint bounces roll back total supply');
-assertContains(master, 'fun _requireNonMintQueryId(queryId: Int)', 'reserve payouts cannot impersonate mint bounces');
-assertContains(master, 'fun _sendTokensToDefi(amount: Int, queryId: Int)', 'dedicated DeFi fee transfer path');
+assertContains(master, 'const MASTER_TRANSFER_QUERY_PREFIX: Int = 1 << 63;', 'Master transfers use a disjoint query-id namespace');
+assertContains(master, 'fun _newMasterTransferQueryId(): Int {', 'every Master transfer has a generated query ID');
+assertContains(master, 'self.masterPayoutSeq = id;', 'the Master transfer sequence advances before dispatch');
+assertContains(master, 'let transferQueryId: Int = self._newMasterTransferQueryId();', 'transfer helpers materialize unique generated IDs');
+assertContains(master, 'if (msg.queryId >= MASTER_TRANSFER_QUERY_PREFIX) {', 'only Master-tagged bounces can restore payout entitlements');
+assertContains(master, 'let localId: Int = payoutId >= MASTER_TRANSFER_QUERY_PREFIX', 'payout ledger keys are normalized from tagged transfer IDs');
 assertContains(master, 'forwardTonAmount: ton("0.01")', 'DeFi fee transfer emits accounting notification');
-assertContains(master, 'self._sendTokensToDefi(defiAmt, msg.queryId);', 'fee split uses the accounting path');
+assertContains(master, 'self._sendTokensToDefi(defiAmt);', 'fee split uses the generated-ID accounting path');
 assertContains(master, 'receive(msg: ClaimReferralRewards)', 'referral rewards have a claim path');
 assertContains(master, 'self.pendingReferralRewards.set(referrer', 'referral rewards are escrowed before claim');
 assertContains(master, 'pendingReferralTotal: Int as coins;', 'referral liabilities have an aggregate reserve counter');

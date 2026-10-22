@@ -1,12 +1,13 @@
+import { vi, type MockedFunction } from "vitest";
 import BN from "bn.js";
 import { TonConnectUI } from "@tonconnect/ui-react";
 import { Address, beginCell } from "ton";
 import { ContractDeployer } from "./contract-deployer";
 import { sendTransactionAndTrack } from "./transaction";
 
-jest.mock("./transaction", () => ({
-  ...jest.requireActual("./transaction"),
-  sendTransactionAndTrack: jest.fn(async () => ({
+vi.mock("./transaction", async () => ({
+  ...await vi.importActual<typeof import("./transaction")>("./transaction"),
+  sendTransactionAndTrack: vi.fn(async () => ({
     status: "confirmed",
     externalMessageHash: "hash",
   })),
@@ -18,7 +19,7 @@ test("deploy request pins testnet, sender, friendly destination, StateInit and p
   const data = beginCell().storeUint(2, 2).endCell();
   const message = beginCell().storeUint(3, 2).endCell();
   const connection = {} as TonConnectUI;
-  const mockedSend = sendTransactionAndTrack as jest.MockedFunction<typeof sendTransactionAndTrack>;
+  const mockedSend = sendTransactionAndTrack as MockedFunction<typeof sendTransactionAndTrack>;
   mockedSend.mockResolvedValueOnce({ status: "confirmed", externalMessageHash: "hash" });
 
   const result = await new ContractDeployer().deployContract(

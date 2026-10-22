@@ -49,19 +49,46 @@ jobs:
     timeout-minutes: 5
     outputs:
       autopilot: ${{ steps.m.outputs.autopilot }}
+      command: ${{ steps.m.outputs.command }}
     steps:
       - name: Resolve mode
         id: m
         env:
           VARS: ${{ toJSON(vars) }}
+          COMMAND: ${{ inputs.command || 'all' }}
         run: |
           MODE=$(echo "$VARS" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const v=JSON.parse(s||'{}');console.log(v.AUTOPILOT||'guard')})")
           echo "autopilot=$MODE" >> "$GITHUB_OUTPUT"
+          echo "command=${COMMAND:-all}" >> "$GITHUB_OUTPUT"
           echo "autopilot mode: $MODE"
+          echo "requested command: ${COMMAND:-all}"
+
+  status:
+    needs: [mode]
+    if: needs.mode.outputs.command == 'status'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+      - name: Report autopilot status
+        env:
+          GH_TOKEN: ${{ secrets.AUTOPILOT_TOKEN || secrets.GITHUB_TOKEN }}
+          AUTOPILOT: ${{ needs.mode.outputs.autopilot }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: node scripts/ai/autopilot/cli.mjs status
 
   scan-dependabot:
     needs: [mode]
-    if: needs.mode.outputs.autopilot != 'off'
+    if: needs.mode.outputs.autopilot != 'off' && (needs.mode.outputs.command == 'all' || needs.mode.outputs.command == 'scan-dependabot')
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -85,7 +112,7 @@ jobs:
 
   scan-codescan:
     needs: [mode]
-    if: needs.mode.outputs.autopilot != 'off'
+    if: needs.mode.outputs.autopilot != 'off' && (needs.mode.outputs.command == 'all' || needs.mode.outputs.command == 'scan-codescan')
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -107,7 +134,7 @@ jobs:
 
   scan-reverts:
     needs: [mode]
-    if: needs.mode.outputs.autopilot != 'off'
+    if: needs.mode.outputs.autopilot != 'off' && (needs.mode.outputs.command == 'all' || needs.mode.outputs.command == 'scan-reverts')
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -140,7 +167,7 @@ jobs:
   # under docs/ai/knowledge/. One foreign file and a human is required.
   knowledge-merge:
     needs: [mode]
-    if: needs.mode.outputs.autopilot == 'full'
+    if: needs.mode.outputs.autopilot == 'full' && (needs.mode.outputs.command == 'all' || needs.mode.outputs.command == 'knowledge-merge')
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -162,7 +189,7 @@ jobs:
 
   merge-queue:
     needs: [mode]
-    if: needs.mode.outputs.autopilot == 'full'
+    if: needs.mode.outputs.autopilot == 'full' && (needs.mode.outputs.command == 'all' || needs.mode.outputs.command == 'merge-queue')
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:

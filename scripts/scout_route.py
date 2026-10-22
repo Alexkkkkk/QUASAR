@@ -9,7 +9,11 @@ Stdin: сырой ответ модели. Выход: план (для лого
 import json, re, subprocess, sys
 
 def gh(*args):
-    return subprocess.run(["gh", *args], capture_output=True, text=True)
+    result = subprocess.run(["gh", *args], capture_output=True, text=True)
+    if result.returncode != 0:
+        detail = (result.stderr or result.stdout or "gh command failed").strip()[:400]
+        raise RuntimeError(f"gh {args[0]} failed: {detail}")
+    return result
 
 def main() -> int:
     raw = sys.stdin.read()
@@ -42,12 +46,15 @@ def main() -> int:
         if auto and conf >= 0.7:
             title = f"Scout: {cause[:80]}"
             dup = gh("issue", "list", "--label", "ai-fix", "--state", "open",
-                     "--json", "title", "--jq",
-                     f".[] | select(.title == \"{title}\") | .title")
-            if dup.stdout.strip():
+                     "--json", "title")
+            try:
+                existing_titles = {item.get("title") for item in json.loads(dup.stdout)}
+            except (json.JSONDecodeError, AttributeError, TypeError) as exc:
+                raise RuntimeError("gh issue list returned invalid JSON") from exc
+            if title in existing_titles:
                 continue                       # уже есть такая задача
-            r = gh("issue", "create", "--title", title,
-                   "--label", "ai-fix,scout", "--body", body)
+            gh("issue", "create", "--title", title,
+               "--label", "ai-fix,scout", "--body", body)
             opened += 1
         elif target:
             gh("issue", "comment", str(target), "--body", body)

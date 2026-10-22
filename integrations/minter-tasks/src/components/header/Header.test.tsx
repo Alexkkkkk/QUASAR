@@ -1,3 +1,4 @@
+import { vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { SnackbarProvider } from "notistack";
 import { MemoryRouter } from "react-router-dom";
@@ -5,14 +6,14 @@ import { RecoilRoot } from "recoil";
 import { EXAMPLE_ADDRESS } from "consts";
 import { Header } from "./Header";
 
-jest.mock("components/appLogo", () => ({ AppLogo: () => null }));
-jest.mock("components/header/headerMenu/HeaderMenu", () => ({
+vi.mock("components/appLogo", () => ({ AppLogo: () => null }));
+vi.mock("components/header/headerMenu/HeaderMenu", () => ({
   HeaderMenu: () => null,
   MobileMenu: () => null,
 }));
 
 beforeAll(() => {
-  Element.prototype.scrollIntoView = jest.fn();
+  Element.prototype.scrollIntoView = vi.fn();
 });
 
 test("header example can be applied more than once", () => {

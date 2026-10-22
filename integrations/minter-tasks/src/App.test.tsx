@@ -1,3 +1,4 @@
+import { vi } from "vitest";
 import {
   buildJettonOnchainMetadata,
   readJettonMetadata,
@@ -6,7 +7,7 @@ import {
 } from "lib/jetton-minter";
 import { beginCell, Cell } from "ton";
 
-const fetchMock = jest.spyOn(global, "fetch");
+const fetchMock = vi.spyOn(globalThis, "fetch");
 
 function metadataResponse(data: unknown, status = 200): Response {
   return {
@@ -17,7 +18,12 @@ function metadataResponse(data: unknown, status = 200): Response {
   } as unknown as Response;
 }
 
-beforeEach(() => fetchMock.mockReset());
+beforeEach(() => {
+  fetchMock.mockReset();
+  fetchMock.mockImplementation((input) => {
+    throw new Error(`Unexpected metadata fetch: ${String(input)}`);
+  });
+});
 afterAll(() => fetchMock.mockRestore());
 
 test("Long serialization", async () => {
@@ -46,6 +52,15 @@ test("Long serialization", async () => {
 
 test("Short serialization", async () => {
   const data = { image: "nope" };
+  expect(await readJettonMetadata(buildJettonOnchainMetadata(data))).toEqual({
+    persistenceType: "onchain",
+    metadata: data,
+    isJettonDeployerFaultyOnChainData: false,
+  });
+});
+
+test("image_data base64 is stored as binary and round-trips unchanged", async () => {
+  const data = { image_data: Buffer.from([0, 255, 17, 32, 128]).toString("base64") };
   expect(await readJettonMetadata(buildJettonOnchainMetadata(data))).toEqual({
     persistenceType: "onchain",
     metadata: data,

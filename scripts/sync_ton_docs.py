@@ -11,7 +11,11 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import sys
+import tempfile
+import uuid
+from collections.abc import Callable
 from pathlib import Path
 from urllib.error import URLError
 from urllib.parse import urlparse
@@ -128,6 +132,83 @@ def desired_files(pages: dict[str, str], index: dict[str, object]) -> dict[Path,
     return files
 
 
+def atomic_write_files(
+    files: dict[Path, str],
+    replace_file: Callable[[Path, Path], None] | None = None,
+) -> None:
+    """Stage a complete snapshot, then replace files with rollback on failure."""
+    replace = replace_file or os.replace
+    staged: list[dict[str, object]] = []
+    try:
+        for target, content in files.items():
+            target.parent.mkdir(parents=True, exist_ok=True)
+            token = f"{os.getpid()}-{uuid.uuid4().hex}"
+            temp_path: Path | None = None
+            try:
+                with tempfile.NamedTemporaryFile(
+                    mode="w",
+                    encoding="utf-8",
+                    dir=target.parent,
+                    prefix=f".{target.name}.{token}.",
+                    suffix=".tmp",
+                    delete=False,
+                ) as temp:
+                    temp_path = Path(temp.name)
+                    temp.write(content)
+                    temp.flush()
+                    os.fsync(temp.fileno())
+                mode = target.stat().st_mode & 0o777 if target.exists() else 0o644
+                os.chmod(temp_path, mode)
+            except BaseException:
+                if temp_path is not None:
+                    temp_path.unlink(missing_ok=True)
+                raise
+            staged.append(
+                {
+                    "target": target,
+                    "temp": temp_path,
+                    "backup": target.with_name(f".{target.name}.{token}.bak") if target.exists() else None,
+                    "backed_up": False,
+                    "installed": False,
+                }
+            )
+
+        for item in staged:
+            target = item["target"]
+            backup = item["backup"]
+            if backup is not None:
+                replace(target, backup)
+                item["backed_up"] = True
+            replace(item["temp"], target)
+            item["installed"] = True
+    except BaseException as error:
+        rollback_errors: list[BaseException] = []
+        for item in reversed(staged):
+            target = item["target"]
+            backup = item["backup"]
+            try:
+                if item["installed"]:
+                    target.unlink(missing_ok=True)
+                if item["backed_up"] and backup is not None and backup.exists():
+                    replace(backup, target)
+            except BaseException as rollback_error:
+                rollback_errors.append(rollback_error)
+        for item in staged:
+            temp_path = item["temp"]
+            if isinstance(temp_path, Path):
+                temp_path.unlink(missing_ok=True)
+        if rollback_errors:
+            raise DocsSyncError(
+                "snapshot write failed and rollback was incomplete; backup files were retained"
+            ) from error
+        raise
+
+    for item in staged:
+        backup = item["backup"]
+        if isinstance(backup, Path):
+            backup.unlink(missing_ok=True)
+
+
 def sync(check_only: bool = False) -> int:
     pages, index = build_snapshot()
     files = desired_files(pages, index)
@@ -146,11 +227,9 @@ def sync(check_only: bool = False) -> int:
         print(f"TON Docs snapshot is current ({len(pages)} pages).")
         return 0
 
-    # Fetch and validate the entire source set before writing any local files,
-    # so a partial network failure never leaves a mixed-version corpus.
-    for path, content in files.items():
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(content, encoding="utf-8")
+    # Fetch and validate the entire source set before writing any local files;
+    # stage all files and roll back if an individual replacement fails.
+    atomic_write_files(files)
     print(
         f"TON Docs sync complete: {len(pages)} official pages, "
         f"{len(changed)} file(s) changed."
