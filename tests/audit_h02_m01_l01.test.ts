@@ -55,10 +55,10 @@ test('H-02 source: master registers typed pending payouts and restores them on b
     assert.ok(pp.includes('self._restoreMasterPayout(msg.queryId);'), 'a PoolPayout bounce must restore user state');
     const pf = section(masterSrc, 'receive(msg: PayoutFailed)', '// OWNER ADMIN');
     assert.ok(pf.includes('self._restoreMasterPayout(msg.queryId);'), 'PayoutFailed must restore user state');
-    assert.ok(
-        masterSrc.includes('self._restoreMasterPayout(msg.queryId);\n            self.reserveBalance = self.reserveBalance + msg.amount;'),
-        'a bounced reserve payout must restore the entitlement before the aggregate'
-    );
+    assert.ok(masterSrc.includes('msg.queryId >= MASTER_TRANSFER_QUERY_PREFIX'), 'only Master-generated IDs may restore a typed entitlement');
+    assert.ok(masterSrc.includes('MASTER_TRANSFER_QUERY_PREFIX + payoutId'), 'reserve payouts must carry a distinct tagged transport ID');
+    assert.ok(masterSrc.includes('let transferQueryId: Int = self._newMasterTransferQueryId();') && masterSrc.includes('self._sendInternalTransfer(to, amount, transferQueryId, from);'), 'treasury transfers must not reuse caller IDs');
+    assert.ok(masterSrc.includes('queryId: transferQueryId,'), 'DeFi/buyback transfers must use generated correlation IDs');
 });
 
 test('H-02 source: unstake/vesting/reward/referral dispatch through the ledger', () => {
@@ -100,6 +100,7 @@ test('M-01 source: DeFi settles the QSR leg before dispatching TON', () => {
 test('L-01 source: votes are unique per (voter, proposal)', () => {
     assert.ok(masterSrc.includes('govVotes: map<Int, Bool>;'), 'the vote map must be keyed by a composite key');
     assert.ok(masterSrc.includes('fun _voteKey(voter: Address, proposalId: Int): Int'), 'a (voter, proposal) key helper must exist');
+    assert.ok(masterSrc.includes('storeUint(proposalId, 64).storeAddress(voter).endCell().hash()'), 'the vote key must hash the full uint64 proposal and address');
     const gv = section(masterSrc, 'receive(msg: GovernanceVote)', '// DeFi SYNC');
     assert.ok(gv.includes('self.govVotes.get(voteKey)'), 'dedup must use the composite key');
     assert.ok(gv.includes('self.govVotes.set(voteKey, true);'), 'the vote must be recorded under the composite key');
@@ -136,14 +137,66 @@ test('L-01 on-chain: one staker may vote on two different proposals', async () =
     await stake(eco, eco.owner, 1000n * 10n ** 9n);
     const r1 = await eco.master.send(eco.owner.getSender(), { value: toNano('0.1') }, vote(1n));
     assert.ok(!anyComputeFailed(r1), 'the first proposal vote must succeed');
-    const r2 = await eco.master.send(eco.owner.getSender(), { value: toNano('0.1') }, vote(2n));
-    assert.ok(!anyComputeFailed(r2), 'the same staker must be able to vote on a second proposal');
+    const r2 = await eco.master.send(eco.owner.getSender(), { value: toNano('0.1') }, vote(0x1_0000_0001n));
+    assert.ok(!anyComputeFailed(r2), 'the same staker must be able to vote on a uint64 proposal above 32 bits');
 });
 
-test('L-01 on-chain: the same proposal cannot be voted twice by one staker', async () => {
+test('L-01 on-chain: the same uint64 proposal cannot be voted twice by one staker', async () => {
     const eco = await deployEco();
     await stake(eco, eco.owner, 1000n * 10n ** 9n);
-    await eco.master.send(eco.owner.getSender(), { value: toNano('0.1') }, vote(1n));
-    const dup = await eco.master.send(eco.owner.getSender(), { value: toNano('0.1') }, vote(1n));
+    const proposalId = 0x1_0000_0001n;
+    await eco.master.send(eco.owner.getSender(), { value: toNano('0.1') }, vote(proposalId));
+    const dup = await eco.master.send(eco.owner.getSender(), { value: toNano('0.1') }, vote(proposalId));
     assert.ok(anyComputeFailed(dup), 'a duplicate vote on the same proposal must revert');
+});
+
+
+test('H-02 on-chain: a bounced fee transfer cannot consume an unrelated live payout record', async () => {
+    const eco = await deployEco();
+    const perMint = 10_000_000n * 1_000_000_000n;
+
+    // Fund the Master-owned token wallet so a vesting PoolPayout can complete.
+    await eco.master.send(eco.owner.getSender(), { value: toNano('0.3') }, {
+        $$type: 'Mint', amount: perMint, receiver: eco.masterAddr
+    });
+    // Fill the default treasury wallet to its 3% cap; the later treasury leg
+    // will bounce and exercise Master-side InternalTransfer recovery.
+    for (let i = 0; i < 3; i++) {
+        await eco.master.send(eco.owner.getSender(), { value: toNano('0.3') }, {
+            $$type: 'Mint', amount: perMint, receiver: eco.owner.address
+        });
+    }
+    await eco.master.send(eco.owner.getSender(), { value: toNano('0.3') }, {
+        $$type: 'Mint', amount: perMint, receiver: eco.alice.address
+    });
+
+    const vestingAmount = 1_000_000n * 1_000_000_000n;
+    const masterWallet = await QuasarWallet.fromInit(eco.masterAddr, eco.masterAddr);
+    await eco.master.send(eco.bc.sender(masterWallet.address), { value: toNano('0.1') }, {
+        $$type: 'TokenNotification', queryId: 0n, amount: vestingAmount,
+        from: eco.owner.address, forwardPayload: beginCell().endCell().asSlice()
+    });
+    await eco.master.send(eco.owner.getSender(), { value: toNano('0.2') }, {
+        $$type: 'AddVesting', beneficiary: eco.alice.address, totalAmount: vestingAmount, cliff: 0n, duration: 100n
+    });
+    eco.bc.now = 1100;
+    const claim = await eco.master.send(eco.alice.getSender(), { value: toNano('0.3') }, { $$type: 'ClaimVested' });
+    assert.ok(!anyComputeFailed(claim), 'the first tracked payout must succeed and leave its unrelated record untouched');
+    const afterClaim = await eco.master.getGetVestingInfo(eco.alice.address);
+    assert.ok(afterClaim);
+    assert.equal(afterClaim.claimed, vestingAmount);
+
+    const aliceWallet = await QuasarWallet.fromInit(eco.alice.address, eco.masterAddr);
+    const feeBounce = await eco.master.send(eco.bc.sender(aliceWallet.address), { value: toNano('0.1') }, {
+        $$type: 'FeeTransfer', queryId: 1n, amount: perMint,
+        originalSender: eco.alice.address, originalReceiver: eco.owner.address
+    });
+    assert.ok(anyComputeFailed(feeBounce), 'the over-cap treasury transfer must bounce in the recipient wallet');
+    const afterBounce = await eco.master.getGetVestingInfo(eco.alice.address);
+    assert.ok(afterBounce);
+    assert.equal(
+        afterBounce.claimed,
+        vestingAmount,
+        'the unrelated queryId=1 bounce must not roll back the successful vesting entitlement'
+    );
 });

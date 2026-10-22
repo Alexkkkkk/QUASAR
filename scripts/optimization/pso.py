@@ -35,10 +35,12 @@ class PSO(Optimizer):
         self.v_max_frac = v_max_frac
 
     def optimize(self, problem: Problem, budget: int, seed: int) -> Result:
+        if not isinstance(budget, int) or isinstance(budget, bool) or budget < 1:
+            raise ValueError("budget must be a positive integer")
         rng = random.Random(seed)
         start = time.perf_counter()
         n = problem.dims
-        S = self.swarm_size
+        S = min(max(1, self.swarm_size), budget)
 
         pos = [problem.random_point(rng) for _ in range(S)]
         span = [

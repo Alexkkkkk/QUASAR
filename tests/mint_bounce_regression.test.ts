@@ -29,8 +29,9 @@ test('F-29 source: mint bounce rolls back supply instead of reserve', () => {
     assert.ok(bounce.includes('self.totalSupply = self.totalSupply - msg.amount;'), 'mint bounce must roll back supply');
     const mintBranch = bounce.slice(bounce.indexOf('if (msg.queryId == self._mintQueryId())'), bounce.indexOf('} else {'));
     assert.ok(!mintBranch.includes('self.reserveBalance = self.reserveBalance + msg.amount'), 'mint bounce must not create reserve');
-    assert.ok(masterSrc.includes('fun _requireNonMintQueryId(queryId: Int)'), 'reserve query ids need a mint collision guard');
-    assert.ok(masterSrc.includes('self._requireNonMintQueryId(queryId);'), 'reserve payouts must reject the reserved mint query id');
+    assert.ok(masterSrc.includes('msg.queryId >= MASTER_TRANSFER_QUERY_PREFIX'), 'only tagged Master transfers may enter payout restoration');
+    assert.ok(masterSrc.includes('fun _newMasterTransferQueryId(): Int'), 'reserve transfer IDs must be allocated from the Master namespace');
+    assert.ok(masterSrc.includes('self._sendInternalTransfer(to, amount, transferQueryId, from);'), 'treasury payouts must not reuse a caller ID');
 });
 
 test('F-29 on-chain: standard mint still credits the wallet and supply once', async () => {

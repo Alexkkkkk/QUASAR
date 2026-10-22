@@ -725,6 +725,9 @@ contract QuasarDeFi with Deployable {
     
     receive(msg: SetFarmEnabled) {
         require(sender() == self.owner, "Only owner");
+        // Settle the interval under the old state so disabling cannot erase
+        // rewards accrued since the last user-triggered update.
+        self._updateFarm();
         if (msg.enabled) {
             require(self.farmRewardReserve > 0, "Fund farm before enabling");
         }
@@ -1018,5 +1021,4 @@ contract QuasarDeFi with Deployable {
 // This is intentionally identical to the wallet in quasar.tact. Keeping the
 // definition here lets the DeFi contract derive its own Jetton-wallet address
 // with the same StateInit as the master and user wallets.
-
 

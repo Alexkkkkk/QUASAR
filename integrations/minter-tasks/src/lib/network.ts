@@ -40,7 +40,14 @@ export type ToncenterApi = "v2" | "v3";
  * otherwise the public Toncenter endpoint is used keyless.
  */
 export function getToncenterBaseUrl(network: Network, api: ToncenterApi): string {
-  return getToncenterProxyUrl() ?? NETWORK_CONFIG[network][api === "v2" ? "toncenterV2" : "toncenterV3"];
+  const proxy = getToncenterProxyUrl();
+  if (!proxy) {
+    return NETWORK_CONFIG[network][api === "v2" ? "toncenterV2" : "toncenterV3"];
+  }
+  const prefix = proxy.replace(/\/+$/, "");
+  return api === "v2"
+    ? `${prefix}/${network}/v2/jsonRPC`
+    : `${prefix}/${network}/v3`;
 }
 
 export function getNetwork(params: URLSearchParams): Network {

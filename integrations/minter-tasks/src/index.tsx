@@ -1,5 +1,5 @@
-var Buffer = require("buffer/").Buffer;
-global.Buffer = Buffer;
+import { Buffer } from "buffer";
+globalThis.Buffer = Buffer;
 /* eslint-disable import/first */
 import ReactDOM from "react-dom/client";
 import "./index.css";

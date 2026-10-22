@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import os
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -15,7 +17,7 @@ from scripts.ollama_issue_agent import (  # noqa: E402
     tokenize,
     validate_patch,
 )
-from scripts.sync_ton_docs import DocsSyncError, validate_source_url  # noqa: E402
+from scripts.sync_ton_docs import DocsSyncError, atomic_write_files, validate_source_url  # noqa: E402
 
 
 class OllamaAgentTests(unittest.TestCase):
@@ -78,6 +80,34 @@ class TonDocsSyncTests(unittest.TestCase):
         ):
             with self.subTest(url=url), self.assertRaises(DocsSyncError):
                 validate_source_url(url)
+
+    def test_atomic_snapshot_write_rolls_back_all_files_on_commit_failure(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            directory = Path(temporary)
+            first = directory / "first.md"
+            second = directory / "second.md"
+            added = directory / "added.md"
+            first.write_text("old first\n", encoding="utf-8")
+            second.write_text("old second\n", encoding="utf-8")
+            injected = False
+
+            def fail_second_install(source: Path, destination: Path) -> None:
+                nonlocal injected
+                if not injected and destination == second and source.name.endswith(".tmp"):
+                    injected = True
+                    raise OSError("injected second-file commit failure")
+                os.replace(source, destination)
+
+            with self.assertRaisesRegex(OSError, "injected second-file commit failure"):
+                atomic_write_files(
+                    {first: "new first\n", second: "new second\n", added: "new file\n"},
+                    fail_second_install,
+                )
+
+            self.assertEqual(first.read_text(encoding="utf-8"), "old first\n")
+            self.assertEqual(second.read_text(encoding="utf-8"), "old second\n")
+            self.assertFalse(added.exists())
+            self.assertEqual(sorted(path.name for path in directory.iterdir()), ["first.md", "second.md"])
 
 
 if __name__ == "__main__":

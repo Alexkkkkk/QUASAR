@@ -106,6 +106,7 @@ export function Input({
                 cursor: "pointer",
               },
             }}
+            component="span"
             variant="body2"
             onClick={() => onExampleClick()}>
             {" "}

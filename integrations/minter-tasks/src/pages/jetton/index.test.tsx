@@ -1,69 +1,74 @@
+import { vi } from "vitest";
 import { render, waitFor } from "@testing-library/react";
 import { Jetton } from ".";
 
-const mockGetJettonDetails = jest.fn();
-const mockInvalidateJettonDetails = jest.fn();
-const mockShowNotification = jest.fn();
-let mockSelectedAddress: string | null = null;
+const mocks = vi.hoisted(() => ({
+  getJettonDetails: vi.fn(),
+  invalidateJettonDetails: vi.fn(),
+  showNotification: vi.fn(),
+  selectedAddress: null as string | null,
+}));
 
-jest.mock("@tonconnect/ui-react", () => ({
+vi.mock("@tonconnect/ui-react", () => ({
   useTonAddress: () => "",
 }));
 
-jest.mock("hooks/useJettonAddress", () => ({
+vi.mock("hooks/useJettonAddress", () => ({
   useJettonAddress: () => ({
     isAddressEmpty: false,
     jettonAddress: "EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c",
   }),
 }));
 
-jest.mock("hooks/useNotification", () => () => ({
-  showNotification: mockShowNotification,
+vi.mock("hooks/useNotification", () => ({
+  default: () => ({ showNotification: mocks.showNotification }),
 }));
 
-jest.mock("store/jetton-store/useJettonStore", () => () => ({
-  getJettonDetails: mockGetJettonDetails,
-  invalidateJettonDetails: mockInvalidateJettonDetails,
+vi.mock("store/jetton-store/useJettonStore", () => ({
+  default: () => ({
+    getJettonDetails: mocks.getJettonDetails,
+    invalidateJettonDetails: mocks.invalidateJettonDetails,
+  }),
 }));
 
-jest.mock("react-router-dom", () => ({
-  ...jest.requireActual("react-router-dom"),
+vi.mock("react-router-dom", async () => ({
+  ...await vi.importActual<typeof import("react-router-dom")>("react-router-dom"),
   useSearchParams: () => [
-    new URLSearchParams(mockSelectedAddress ? { address: mockSelectedAddress } : {}),
+    new URLSearchParams(mocks.selectedAddress ? { address: mocks.selectedAddress } : {}),
   ],
 }));
 
-jest.mock("components/Screen", () => ({
+vi.mock("components/Screen", () => ({
   Screen: ({ children }: { children: React.ReactNode }) => children,
   ScreenContent: ({ children }: { children: React.ReactNode }) => children,
 }));
-jest.mock("pages/jetton/dataRow/token", () => ({ Token: () => null }));
-jest.mock("pages/jetton/styled", () => ({
+vi.mock("pages/jetton/dataRow/token", () => ({ Token: () => null }));
+vi.mock("pages/jetton/styled", () => ({
   StyledContainer: ({ children }: { children: React.ReactNode }) => children,
 }));
-jest.mock("pages/jetton/wallet", () => ({ Wallet: () => null }));
-jest.mock("./FaultyDeploy", () => () => null);
+vi.mock("pages/jetton/wallet", () => ({ Wallet: () => null }));
+vi.mock("./FaultyDeploy", () => ({ default: () => null }));
 
 beforeEach(() => {
-  mockGetJettonDetails.mockReset();
-  mockInvalidateJettonDetails.mockReset();
-  mockShowNotification.mockReset();
-  mockSelectedAddress = null;
+  mocks.getJettonDetails.mockReset();
+  mocks.invalidateJettonDetails.mockReset();
+  mocks.showNotification.mockReset();
+  mocks.selectedAddress = null;
 });
 
 test("reloads jetton details when the selected wallet query parameter changes", async () => {
   const view = render(<Jetton />);
 
-  await waitFor(() => expect(mockGetJettonDetails).toHaveBeenCalledTimes(1));
+  await waitFor(() => expect(mocks.getJettonDetails).toHaveBeenCalledTimes(1));
 
-  mockSelectedAddress = "0:1111111111111111111111111111111111111111111111111111111111111111";
+  mocks.selectedAddress = "0:1111111111111111111111111111111111111111111111111111111111111111";
   view.rerender(<Jetton />);
-  await waitFor(() => expect(mockGetJettonDetails).toHaveBeenCalledTimes(2));
+  await waitFor(() => expect(mocks.getJettonDetails).toHaveBeenCalledTimes(2));
 
-  mockSelectedAddress = null;
+  mocks.selectedAddress = null;
   view.rerender(<Jetton />);
-  await waitFor(() => expect(mockGetJettonDetails).toHaveBeenCalledTimes(3));
+  await waitFor(() => expect(mocks.getJettonDetails).toHaveBeenCalledTimes(3));
 
   view.unmount();
-  expect(mockInvalidateJettonDetails).toHaveBeenCalledTimes(3);
+  expect(mocks.invalidateJettonDetails).toHaveBeenCalledTimes(3);
 });

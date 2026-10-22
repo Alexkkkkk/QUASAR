@@ -1,11 +1,15 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { mkdtemp, readFile, rm, stat } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import {
     DEFAULT_GROK_MODEL,
     GrokProvider,
     GROK_API_KEY_ENV_VARS,
     MAX_RATIONALE_LENGTH,
     ORACLE_ACTIONS,
+    ORACLE_SIGNING_KEY_ENV,
     OracleAuthError,
     OracleConfigError,
     OracleError,
@@ -17,12 +21,41 @@ import {
     oracleDecisionSystemPrompt,
     parseOracleDecision,
     requestOracleDecision,
+    runKeygenCommand,
     resolveGrokApiKey,
     type FetchLike,
     type OracleProvider
 } from '../scripts/ai_oracle.js';
 
 const KEY = 'xai-test-key-not-a-real-secret';
+
+test('oracle keygen keeps private material out of stdout and writes a new mode-0600 file', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'quasar-oracle-keygen-'));
+    const outputPath = join(dir, 'oracle-key.json');
+    const output: string[] = [];
+    const errors: string[] = [];
+    try {
+        assert.equal(await runKeygenCommand({ outputPath, stdout: line => output.push(line), stderr: line => errors.push(line) }), 0);
+        const keyData = JSON.parse(await readFile(outputPath, 'utf8')) as Record<string, string>;
+        const secret = keyData[ORACLE_SIGNING_KEY_ENV];
+        assert.match(secret, /^[0-9a-f]{64}$/);
+        assert.equal(keyData.ORACLE_SIGNING_KEY_KIND, 'seed');
+        assert.equal((await stat(outputPath)).mode & 0o777, 0o600);
+        assert.doesNotMatch(output.join('\n'), new RegExp(secret));
+        assert.doesNotMatch(output.join('\n'), /seedHex|secretKeyHex|ORACLE_SIGNING_KEY/);
+        assert.equal(await runKeygenCommand({ outputPath, stdout: line => output.push(line), stderr: line => errors.push(line) }), 1);
+        assert.equal(output.length, 1, 'failed exclusive creation must not print another generated key');
+        assert.match(errors[0], /EEXIST/);
+    } finally {
+        await rm(dir, { recursive: true, force: true });
+    }
+});
+
+test('oracle keygen requires an explicit private-file path', async () => {
+    const errors: string[] = [];
+    assert.equal(await runKeygenCommand({ stderr: line => errors.push(line) }), 2);
+    assert.match(errors[0], /--out/);
+});
 
 type CapturedRequest = {
     url: string;

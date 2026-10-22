@@ -2,7 +2,7 @@ name: QUASAR Tests
 
 # Matrix test suite over every package in the monorepo:
 #   contracts — Tact build, security check, node:test suites, ABI snapshots
-#   dapp      — Create React App unit tests (watch mode disabled) + production build
+#   dapp      — Vitest unit tests (non-watch CLI) + production build
 #   python    — the unittest-based agent tests, executed through pytest
 #
 # The GitHub Pages deploy workflow is intentionally disabled. These checks
@@ -79,7 +79,7 @@ jobs:
         working-directory: integrations/minter-tasks
         env:
           CI: true
-        run: npm test -- --watchAll=false
+        run: npm test
 
       - name: Build the dApp (production)
         if: matrix.package == 'dapp'

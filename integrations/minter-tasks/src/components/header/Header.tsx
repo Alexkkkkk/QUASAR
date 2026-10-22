@@ -47,7 +47,7 @@ export const Header = () => {
             <HeaderExampleTextWrapper>
               <HeaderExampleText>
                 Enter an existing Jetton contract address.
-                <HeaderExampleLink variant="body2" onClick={() => setValue(EXAMPLE_ADDRESS)}>
+                <HeaderExampleLink onClick={() => setValue(EXAMPLE_ADDRESS)}>
                   {" "}
                   Use example.
                 </HeaderExampleLink>

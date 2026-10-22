@@ -66,6 +66,8 @@ interface Runtime {
         initTonConnect(): void;
         stakeQsr(amount: bigint): Promise<unknown>;
         depositQsr(target: 'master' | 'defi', amount: bigint): Promise<unknown>;
+        pendingDeposit(target: 'master' | 'defi', user: string): Promise<bigint>;
+        ensureQsrDeposit(target: 'master' | 'defi', amount: bigint): Promise<boolean>;
         isQuasarTestnetConfigReady(config: unknown): boolean;
     };
     ui: {
@@ -75,6 +77,8 @@ interface Runtime {
     };
     requests: Array<Record<string, unknown>>;
     controls: Array<{ disabled: boolean }>;
+    storage: Map<string, string>;
+    balances: { ton: { textContent: string }; qsr: { textContent: string }; gasWarning: { style: { display: string } } };
     config: { network: string; addresses: { master: string; defi: string } };
     setFetch(fetchImpl: (url: string, init?: unknown) => Promise<unknown>): void;
 }
@@ -85,8 +89,19 @@ function loadTonConnectRuntime(): Runtime {
     const requests: Array<Record<string, unknown>> = [];
     const controls = [{ disabled: false }, { disabled: true }];
     const walletAddress = { textContent: '' };
+    const balances = {
+        ton: { textContent: '—' },
+        qsr: { textContent: '—' },
+        gasWarning: { style: { display: 'none' } },
+    };
     const appSection = { classList: { add() {}, remove() {} } };
     const toasts: string[] = [];
+    const storage = new Map<string, string>();
+    const localStorage = {
+        getItem(key: string) { return storage.get(key) ?? null; },
+        setItem(key: string, value: string) { storage.set(key, value); },
+        removeItem(key: string) { storage.delete(key); },
+    };
     let ui: Runtime['ui'] | null = null;
     let fetchImpl: (url: string, init?: unknown) => Promise<unknown> = async () => {
         throw new Error('network is not mocked for this test');
@@ -133,11 +148,11 @@ function loadTonConnectRuntime(): Runtime {
     // TonConnect UI. Production exports are exposed only inside this vm context.
     const transformed = tonconnectSource
         .replace(
-            "import { beginCell, Cell, Address } from 'https://esm.sh/@ton/core@0.63.1?bundle';",
+            "import { beginCell, Cell, Address } from '@ton/core';",
             'const { beginCell, Cell, Address } = globalThis.__tonCore;',
         )
         .replace(/\bexport\s+(?=(async\s+function|function|const|let|class)\b)/g, '')
-        + '\nglobalThis.__websiteTestHooks = { initTonConnect, stakeQsr, depositQsr, isQuasarTestnetConfigReady };';
+        + '\nglobalThis.__websiteTestHooks = { initTonConnect, stakeQsr, depositQsr, pendingDeposit, ensureQsrDeposit, isQuasarTestnetConfigReady };';
 
     const sandbox: Record<string, any> = {
         __tonCore: { beginCell: browserBeginCell, Cell, Address },
@@ -154,10 +169,14 @@ function loadTonConnectRuntime(): Runtime {
             getElementById(id: string) {
                 if (id === 'wallet-address') return walletAddress;
                 if (id === 'defi') return appSection;
+                if (id === 'ton-balance') return balances.ton;
+                if (id === 'qsr-balance') return balances.qsr;
+                if (id === 'gas-warning') return balances.gasWarning;
                 return null;
             },
             querySelectorAll() { return controls; },
         },
+        localStorage,
         fetch(url: string, init?: unknown) { return fetchImpl(url, init); },
         TON_CONNECT_UI: { TonConnectUI },
         QUASAR_CONFIG: { network: 'testnet', addresses: { master, defi } },
@@ -174,6 +193,8 @@ function loadTonConnectRuntime(): Runtime {
         ui: ui!,
         requests,
         controls,
+        storage,
+        balances,
         config: sandbox.QUASAR_CONFIG,
         setFetch(implementation) { fetchImpl = implementation; },
     };
@@ -279,4 +300,57 @@ test('website deposit keeps its account snapshot and rejects an account changed 
 
     await deposit;
     assert.equal(runtime.requests.length, 0, 'deposit must not sign a payload whose response destination uses a stale account');
+});
+
+test('pending QSR getter errors fail closed and never trigger a duplicate deposit', async () => {
+    const runtime = loadTonConnectRuntime();
+    const owner = rawAddress('9');
+    runtime.ui.emit({ account: { address: owner, chain: TESTNET_CHAIN } });
+    runtime.setFetch(async () => ({
+        json: async () => ({ error: { message: 'Toncenter temporarily unavailable' } }),
+    }));
+
+    await assert.rejects(runtime.hooks.pendingDeposit('master', owner), /Toncenter temporarily unavailable/);
+    assert.equal(await runtime.hooks.ensureQsrDeposit('master', 1n), false);
+    assert.equal(runtime.requests.length, 0, 'an unreadable getter must not be interpreted as a zero balance');
+    assert.equal(runtime.storage.size, 0, 'the failed read must not create a new deposit intent');
+});
+
+test('a sufficient on-chain QSR deposit passes the prerequisite without another wallet transfer', async () => {
+    const runtime = loadTonConnectRuntime();
+    const owner = rawAddress('c');
+    runtime.ui.emit({ account: { address: owner, chain: TESTNET_CHAIN } });
+    runtime.setFetch(async () => ({
+        json: async () => ({ result: { stack: [['num', '0x2']] } }),
+    }));
+
+    assert.equal(await runtime.hooks.pendingDeposit('master', owner), 2n);
+    assert.equal(await runtime.hooks.ensureQsrDeposit('master', 2n), true);
+    assert.equal(runtime.requests.length, 0);
+});
+
+test('late balance responses from an old wallet session cannot overwrite the current account', async () => {
+    const runtime = loadTonConnectRuntime();
+    const firstOwner = rawAddress('a');
+    const currentOwner = rawAddress('b');
+    const firstBalance = deferred<{ json(): Promise<unknown> }>();
+
+    runtime.setFetch(async url => {
+        if (String(url).includes(`address=${firstOwner}`)) return firstBalance.promise;
+        if (String(url).includes('getAddressBalance')) return { json: async () => ({ result: '2000000000' }) };
+        throw new Error('getter responses are intentionally unavailable');
+    });
+
+    runtime.ui.emit({ account: { address: firstOwner, chain: TESTNET_CHAIN } });
+    runtime.ui.emit({ account: { address: currentOwner, chain: TESTNET_CHAIN } });
+    await new Promise(resolve => setTimeout(resolve, 0));
+    assert.match(runtime.balances.ton.textContent, /2\.0000 TON/);
+
+    firstBalance.resolve({ json: async () => ({ result: '9000000000' }) });
+    await new Promise(resolve => setTimeout(resolve, 0));
+    assert.match(runtime.balances.ton.textContent, /2\.0000 TON/);
+
+    runtime.ui.emit(null);
+    assert.equal(runtime.balances.ton.textContent, '—');
+    assert.equal(runtime.balances.qsr.textContent, '—');
 });

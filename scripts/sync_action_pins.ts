@@ -15,9 +15,10 @@
  */
 
 import { execFileSync } from "node:child_process";
-import { readFileSync, writeFileSync, existsSync, readdirSync, renameSync } from "node:fs";
-import { join, resolve, dirname, basename } from "node:path";
+import { readFileSync, existsSync, readdirSync } from "node:fs";
+import { join, resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { atomicReplaceFiles } from "./atomic_files.js";
 
 type PinFile = {
   schemaVersion: number;
@@ -111,12 +112,15 @@ function main(): void {
       2,
     ) + "\n";
   const lockPath = join(base, "scripts", "action_pins.lock.json");
+  const writes = new Map<string, string>();
 
   const drift: string[] = [];
   const stale: string[] = [];
 
-  if (existsSync(lockPath) && readFileSync(lockPath, "utf8") !== lockBody) {
-    stale.push("scripts/action_pins.lock.json");
+  const lockExists = existsSync(lockPath);
+  if (!lockExists || readFileSync(lockPath, "utf8") !== lockBody) {
+    if (checkOnly) stale.push("scripts/action_pins.lock.json");
+    else writes.set(lockPath, lockBody);
   }
 
   const files = listWorkflows(base, pins.workflowGlobs);
@@ -145,7 +149,7 @@ function main(): void {
     });
     if (rewritten !== original) {
       if (checkOnly) stale.push(file.slice(base.length + 1));
-      else writeFileSync(file, rewritten);
+      else writes.set(file, rewritten);
     }
   }
 
@@ -161,12 +165,7 @@ function main(): void {
     return;
   }
 
-  // Write atomically via a temporary file + rename: the lock file was read
-  // earlier in this run, so writing to the same path directly would race with
-  // any concurrent modification (CodeQL js/file-system-race).
-  const lockTmp = `${lockPath}.tmp-${process.pid}`;
-  writeFileSync(lockTmp, lockBody);
-  renameSync(lockTmp, lockPath);
+  atomicReplaceFiles([...writes].map(([path, content]) => ({ path, content })));
   console.log(`\nRewrote ${files.length} workflow file(s); wrote ${Object.keys(resolved).length} pins to scripts/action_pins.lock.json`);
   if (drift.length > 0) {
     console.log("\nPins that were corrected:");

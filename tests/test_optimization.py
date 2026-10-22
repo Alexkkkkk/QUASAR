@@ -79,3 +79,44 @@ def test_fee_profile_respects_contract_policy() -> None:
     assert problem.lower[0] <= params["fee_bps"] <= problem.upper[0]
     assert params["max_wallet_bps"] >= 2.5 * params["max_tx_bps"]
     assert result.best_f == fee_profile_objective(result.best_x)
+
+
+import unittest
+
+from scripts.optimization.annealing import SA as SimulatedAnnealing  # noqa: E402
+from scripts.optimization.evolution import DE  # noqa: E402
+from scripts.optimization.pso import PSO  # noqa: E402
+
+
+class EvaluationBudgetTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.problem = make_problem("sphere", 2)
+
+    def assert_respects_budget(self, optimizer, budget: int) -> None:
+        calls = 0
+
+        def objective(point):
+            nonlocal calls
+            calls += 1
+            return sum(value * value for value in point)
+
+        problem = type(self.problem)(
+            self.problem.name, list(self.problem.lower), list(self.problem.upper), objective
+        )
+        result = optimizer.optimize(problem, budget, seed=7)
+        self.assertLessEqual(calls, budget)
+        self.assertEqual(result.n_evals, calls)
+        self.assertEqual(len(result.history), calls)
+
+    def test_small_budgets_never_overrun_initial_population(self) -> None:
+        for optimizer in (DE(), PSO(), SimulatedAnnealing(), CMAES()):
+            for budget in (1, 2, 3, 4, 5, 7, 10):
+                with self.subTest(algorithm=optimizer.name, budget=budget):
+                    self.assert_respects_budget(optimizer, budget)
+
+    def test_nonpositive_and_noninteger_budgets_are_rejected(self) -> None:
+        for optimizer in (DE(), PSO(), SimulatedAnnealing(), CMAES()):
+            for budget in (0, -1, 1.5, True):
+                with self.subTest(algorithm=optimizer.name, budget=budget):
+                    with self.assertRaises(ValueError):
+                        optimizer.optimize(self.problem, budget, seed=7)

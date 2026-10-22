@@ -29,6 +29,7 @@
 
 import { beginCell, Cell } from '@ton/core';
 import { getSecureRandomBytes, keyPairFromSeed, keyPairFromSecretKey, sign, type KeyPair } from '@ton/crypto';
+import { writeFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
 import { analyzeOracleSignals, type OracleObservation, type OracleSignalAnalysis } from './oracle_signals.js';
 
@@ -668,17 +669,22 @@ export async function main(argv: string[] = process.argv.slice(2), deps: OracleC
     const stdout = deps.stdout ?? ((line: string) => console.log(line));
     const stderr = deps.stderr ?? ((line: string) => console.error(line));
 
-    // Loaded only when the CLI actually runs, so importing this module in tests
-    // has no environment side effects.
+    if (argv[0] === 'keygen') {
+        const outputPath = argv[1] === '--out' && argv[2] && argv.length === 3 ? argv[2] : undefined;
+        if (!outputPath) {
+            stderr('usage: npm run oracle:keygen -- --out <new-private-key-file>');
+            return 2;
+        }
+        return runKeygenCommand({ stdout, stderr, outputPath });
+    }
+
+    // Loaded only when non-keygen CLI commands actually run, so key generation
+    // never reads an ambient .env file and importing this module has no effects.
     try {
         const dotenv = await import('dotenv');
         dotenv.config();
     } catch {
         // dotenv is a dev dependency; a real environment still works without it.
-    }
-
-    if (argv[0] === 'keygen') {
-        return runKeygenCommand({ stdout });
     }
 
     // `npm run oracle:sign -- <action> <value> [nonce] [ttlSeconds]` keeps the
@@ -775,24 +781,39 @@ export function parseSignedActionArg(raw: string): SignedOracleAction | number {
 }
 
 /**
- * `npm run oracle:keygen` — create the Ed25519 key pair. Only the public key
- * goes on-chain; the seed stays in the operator's secret manager.
+ * `npm run oracle:keygen -- --out <file>` — create the Ed25519 key pair.
+ * Secret material is written only to a new mode-0600 file, never stdout.
  */
 export async function runKeygenCommand(deps: {
     stdout?: (line: string) => void;
+    stderr?: (line: string) => void;
+    outputPath?: string;
 } = {}): Promise<number> {
     const stdout = deps.stdout ?? ((line: string) => console.log(line));
+    const stderr = deps.stderr ?? ((line: string) => console.error(line));
+    if (!deps.outputPath) {
+        stderr('usage: npm run oracle:keygen -- --out <new-private-key-file>');
+        return 2;
+    }
     const seed = await getSecureRandomBytes(32);
     const keyPair = keyPairFromSeed(seed);
+    try {
+        await writeFile(deps.outputPath, `${JSON.stringify({
+            [ORACLE_SIGNING_KEY_ENV]: seed.toString('hex'),
+            ORACLE_SIGNING_KEY_KIND: 'seed'
+        }, null, 2)}\n`, { encoding: 'utf8', mode: 0o600, flag: 'wx' });
+    } catch (error) {
+        const code = typeof error === 'object' && error !== null && 'code' in error
+            ? String((error as { code: unknown }).code)
+            : 'write-error';
+        stderr(`unable to create private key file (${code}); choose a new local path`);
+        return 1;
+    }
     stdout(JSON.stringify({
         publicKeyHex: keyPair.publicKey.toString('hex'),
         publicKeyUint256: publicKeyToUint256(keyPair).toString(),
-        seedHex: seed.toString('hex'),
-        secretKeyHex: keyPair.secretKey.toString('hex'),
-        env: {
-            [ORACLE_SIGNING_KEY_ENV]: seed.toString('hex'),
-            ORACLE_SIGNING_KEY_KIND: 'seed'
-        },
+        keyFile: deps.outputPath,
+        keyFileMode: '0600',
         next: 'set the on-chain key with SetAiOracleKey(publicKey = publicKeyUint256)'
     }, null, 2));
     return 0;
@@ -819,7 +840,7 @@ export async function runSignCommand(
     }
     const keyHex = env[ORACLE_SIGNING_KEY_ENV];
     if (!keyHex || keyHex.trim() === '') {
-        stderr(`missing ${ORACLE_SIGNING_KEY_ENV} — generate one with \`npm run oracle:keygen\``);
+        stderr(`missing ${ORACLE_SIGNING_KEY_ENV} — generate a protected file with \`npm run oracle:keygen -- --out <new-private-key-file>\``);
         return 1;
     }
 

@@ -1,0 +1,177 @@
+---
+title: "Passing arguments"
+description: "Learn how to pass arguments to Tolk scripts from the command line"
+---
+
+Acton allows passing arguments from the command line to the Tolk scripts. Argument parsing is driven by the ABI for `main()`, so the passed values are interpreted according to the parameter types declared in the script.
+
+## Basic argument passing
+
+To define a script that accepts arguments, add parameters to the `main()` function. Acton maps one command-line argument to one `main()` parameter, in order.
+
+For example, consider a script that adds two numbers:
+
+```tolk title="scripts/add.tolk"
+import "@acton/io"
+
+fun main(a: int, b: int) {
+    println("The sum is: {}", a + b);
+}
+```
+
+Run this script and pass the arguments:
+
+```bash
+acton script scripts/add.tolk 10 20
+```
+
+The output will be:
+
+```text noCopy
+The sum is: 30
+```
+
+## How parsing works
+
+Acton reads the ABI for `main()` and parses the forwarded CLI values against those parameter types.
+
+- The number of CLI arguments must exactly match the number of `main()` parameters.
+- Arguments are positional.
+- Parsing is type-aware. A value like `10` can be interpreted differently depending on whether the parameter type is `int`, `string`, or `cell`.
+
+<Callout type="info">
+    If a shell argument contains spaces or square brackets, quote it to pass as a single value.
+</Callout>
+
+## Nullable values
+
+Use `null` for supported nullable types:
+
+```tolk title="scripts/processOptional.tolk"
+import "@acton/io"
+
+fun main(value: int?) {
+    println("Value: {}", value);
+}
+```
+
+Run it with:
+
+```bash
+# Pass null
+acton script scripts/processOptional.tolk null
+
+# Pass an actual value
+acton script scripts/processOptional.tolk 42
+```
+
+<Callout type="info">
+    `null` is the supported null literal for script arguments.
+</Callout>
+
+## Arrays
+
+Arrays are written inside square brackets. Whitespace-separated items and comma-separated items are both accepted:
+
+```tolk title="scripts/processArray.tolk"
+import "@acton/io"
+
+fun main(items: array<int>) {
+    println("Count: {}", items.size());
+    println("First: {}", items.get(0));
+    println("Sum: {}", items.get(0) + items.get(1) + items.get(2));
+}
+```
+
+Run it with:
+
+```bash
+acton script scripts/processArray.tolk "[10 20 30]"
+```
+
+## Strings
+
+Simple strings can be passed as ordinary shell arguments:
+
+```tolk title="scripts/helloString.tolk"
+import "@acton/io"
+
+fun main(name: string) {
+    println("Hello, {}", name);
+}
+```
+
+Execute it with:
+
+```bash
+acton script scripts/helloString.tolk World
+```
+
+Output:
+
+```text noCopy
+Hello, World
+```
+
+Pass a quoted string literal to provide escape sequences or explicit whitespace:
+
+```bash
+acton script scripts/helloString.tolk '"hello\nworld"'
+```
+
+<Callout type="info">
+    Shell quoting and Acton parsing are separate concerns. Use normal shell quoting for spaces, and preserve the inner double quotes to parse escape sequences such as `\n` only.
+</Callout>
+
+## Cells, slices, and `bitsN`
+
+`cell`, `slice`, and `bitsN` arguments use plain `.boc` in hex format.
+
+```tolk title="scripts/processCell.tolk"
+import "@acton/io"
+
+fun main(data: cell) {
+    val s = data.beginParse();
+    val value = s.loadUint(32);
+    println("Value from cell: {}", value);
+}
+```
+
+First, create a cell with some data and get its hex representation. Then, run the script:
+
+```bash
+# Example with a cell containing a 32-bit integer 999
+acton script scripts/processCell.tolk b5ee9c72...
+```
+
+For `bitsN`, pass the same plain BoC hex format as for a `slice`.
+
+## Addresses
+
+Use a user-friendly TON address string for `address`. For `address?`, `null` is also allowed:
+
+```tolk title="scripts/processAddress.tolk"
+import "@acton/io"
+
+fun main(owner: address, backup: address?) {
+    println("Owner: {}", owner);
+    println("Backup: {}", backup);
+}
+```
+
+```bash
+acton script scripts/processAddress.tolk EQBvDB_H7FFBs0nF4ap_DBdcOrwY_rMIpNVVOR6SWYFHByMJ null
+```
+
+<AvailabilityBadge since="Acton 1.2" />
+
+For `any_address`, pass an internal address or `addr_none`. For `any_address?`, `null` is also allowed and is distinct from `addr_none`.
+
+## Unsupported types
+
+The script CLI does not currently accept every ABI type directly. These parameter types are rejected:
+
+- `tuple`
+- `map` and `dict`
+- `builder`
+- structs, aliases, unions, `unknown`, and `lisp_list`

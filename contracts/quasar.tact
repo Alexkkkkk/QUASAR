@@ -3,6 +3,9 @@ import "@stdlib/content";
 import "./quasar_common";
 
 const BUYBACK_CALLBACK_TIMEOUT: Int = 3600;
+// Master-originated transfers use the upper half of the TEP-74 query-id space.
+// User-supplied transfer IDs are never forwarded into this namespace.
+const MASTER_TRANSFER_QUERY_PREFIX: Int = 1 << 63;
 
 // ═══════════════════════════════════════════════════════════════
 // QUASAR — The Ultimate Jetton v3.0
@@ -428,11 +431,17 @@ contract QuasarMaster with Deployable {
     // Mint transfers need a distinct query id because a bounced mint has a
     // different accounting consequence from a bounced reserve payout:
     // minting must roll back totalSupply, while a reserve payout must restore
-    // reserveBalance. Keep the value outside the normal application-owned
-    // query-id space and reject it from every non-mint payout path.
+    // reserveBalance. Keep the value outside the Master-generated query space.
     fun _mintQueryId(): Int { return 18446744073709551615 }
-    fun _requireNonMintQueryId(queryId: Int) {
-        require(queryId != self._mintQueryId(), "Reserved mint query id")
+
+    // Allocate IDs for every Master-originated InternalTransfer. Sharing this
+    // sequence with tracked payouts prevents unrelated transfer bounces from
+    // consuming a live entitlement record.
+    fun _newMasterTransferQueryId(): Int {
+        let id: Int = self.masterPayoutSeq + 1;
+        require(id < MASTER_TRANSFER_QUERY_PREFIX - 1, "Master query ids exhausted");
+        self.masterPayoutSeq = id;
+        return MASTER_TRANSFER_QUERY_PREFIX + id;
     }
 
     // Buyback and staking pools are sub-accounts inside the fee reserve.
@@ -606,29 +615,29 @@ contract QuasarMaster with Deployable {
                 from: myAddress(),
                 responseDestination: myAddress(),
                 forwardTonAmount: 0,
-                forwardPayload: emptySlice()
+                forwardPayload: beginCell().storeUint(QUASAR_MINT_TRANSFER_MARKER, 32).endCell().asSlice()
             }.toCell(),
             code: init.code,
             data: init.data
         });
     }
 
-    fun _sendTokens(to: Address, amount: Int, queryId: Int, from: Address) {
+    fun _sendTokens(to: Address, amount: Int, from: Address) {
         require(amount > 0, "Invalid transfer amount");
-        self._requireNonMintQueryId(queryId);
         require(self.reserveBalance >= amount, "Insufficient QSR reserve");
         self.reserveBalance = self.reserveBalance - amount;
-        self._sendInternalTransfer(to, amount, queryId, from);
+        let transferQueryId: Int = self._newMasterTransferQueryId();
+        self._sendInternalTransfer(to, amount, transferQueryId, from);
     }
 
     // Fee-funded DeFi liquidity is delivered with a notification so the pool
     // can account for the tokens in qsrReserve.
-    fun _sendTokensToDefi(amount: Int, queryId: Int) {
+    fun _sendTokensToDefi(amount: Int) {
         require(amount > 0, "Invalid DeFi transfer amount");
-        self._requireNonMintQueryId(queryId);
         require(self.defiAddress != newAddress(0, 0), "DeFi not configured");
         require(self.reserveBalance >= amount, "Insufficient QSR reserve");
         self.reserveBalance = self.reserveBalance - amount;
+        let transferQueryId: Int = self._newMasterTransferQueryId();
         let init: StateInit = initOf QuasarWallet(self.defiAddress, myAddress());
         send(SendParameters{
             to: contractAddress(init),
@@ -636,7 +645,7 @@ contract QuasarMaster with Deployable {
             bounce: true,
             mode: SendPayGasSeparately,
             body: InternalTransfer{
-                queryId: queryId,
+                queryId: transferQueryId,
                 amount: amount,
                 from: myAddress(),
                 responseDestination: myAddress(),
@@ -651,15 +660,15 @@ contract QuasarMaster with Deployable {
     // L-01: a vote is unique per (voter, proposal). Keying the map only by the
     // voter blocked a staker from ever voting again after their first proposal.
     fun _voteKey(voter: Address, proposalId: Int): Int {
-        // Composite 250-bit key: the proposal id occupies the high bits, so two
-        // different proposals can never collapse onto one key, while the voter
-        // identity fills the low bits.
-        return beginCell().storeUint(proposalId, 32).storeAddress(voter).endCell().asSlice().loadUint(250);
+        // Hash the full serialized pair: proposalId is uint64 and an Address
+        // needs 267 bits, so truncating a packed cell to a fixed uint loses data.
+        return beginCell().storeUint(proposalId, 64).storeAddress(voter).endCell().hash();
     }
 
     // H-02: register a typed pending payout before dispatch.
     fun _newMasterPayout(kind: Int, beneficiary: Address, amount: Int, d1: Int, d2: Int, d3: Int): Int {
         let id: Int = self.masterPayoutSeq + 1;
+        require(id < MASTER_TRANSFER_QUERY_PREFIX - 1, "Master query ids exhausted");
         self.masterPayoutSeq = id;
         self.pendingMasterPayouts.set(id, PendingMasterPayout{ kind: kind, beneficiary: beneficiary, amount: amount, d1: d1, d2: d2, d3: d3 });
         return id;
@@ -669,9 +678,12 @@ contract QuasarMaster with Deployable {
     // Idempotent: the record is consumed, so a duplicate failure report cannot
     // double-credit. Returns false when the id is not a tracked payout.
     fun _restoreMasterPayout(payoutId: Int): Bool {
-        let op: PendingMasterPayout? = self.pendingMasterPayouts.get(payoutId);
+        let localId: Int = payoutId >= MASTER_TRANSFER_QUERY_PREFIX
+            ? payoutId - MASTER_TRANSFER_QUERY_PREFIX
+            : payoutId;
+        let op: PendingMasterPayout? = self.pendingMasterPayouts.get(localId);
         if (op == null) { return false }
-        self.pendingMasterPayouts.set(payoutId, null);
+        self.pendingMasterPayouts.set(localId, null);
         if (op!!.kind == 1) {
             // Unstake principal: re-credit the stake and the staked total.
             let s: StakeInfo? = self.stakers.get(op!!.beneficiary);
@@ -745,7 +757,7 @@ contract QuasarMaster with Deployable {
         require(self.reserveBalance >= amount, "Insufficient QSR reserve");
         self.reserveBalance = self.reserveBalance - amount;
         let payoutId: Int = self._newMasterPayout(kind, to, amount, d1, 0, 0);
-        self._sendInternalTransfer(to, amount, payoutId, myAddress());
+        self._sendInternalTransfer(to, amount, MASTER_TRANSFER_QUERY_PREFIX + payoutId, myAddress());
     }
     
     // ═══════════════════════════════════════════════════════════
@@ -760,8 +772,10 @@ contract QuasarMaster with Deployable {
         self._requireOwner();
         require(self.mintable, "Minting off");
         
-        let maxTx: Int = self.totalSupply * self.maxTxBps / 10000;
-        if (self.totalSupply > 0) { require(msg.amount <= maxTx, "Max tx exceeded") }
+        // The configured transaction cap is based on max supply, so the first
+        // mint observes the same policy as every later mint.
+        let maxTx: Int = self.maxSupply * self.maxTxBps / 10000;
+        require(msg.amount <= maxTx, "Max tx exceeded");
         
         require(self.totalSupply + msg.amount <= self.maxSupply, "Max supply exceeded");
         self.totalSupply = self.totalSupply + msg.amount;
@@ -815,8 +829,10 @@ contract QuasarMaster with Deployable {
             self.totalSupply = self.totalSupply - msg.amount;
         } else {
             // H-02: a bounced reserve payout restores the user entitlement
-            // (staking reward pool / referral liability) before the aggregate.
-            self._restoreMasterPayout(msg.queryId);
+            // only when its generated query ID belongs to the Master namespace.
+            if (msg.queryId >= MASTER_TRANSFER_QUERY_PREFIX) {
+                self._restoreMasterPayout(msg.queryId);
+            }
             self.reserveBalance = self.reserveBalance + msg.amount;
             // A bounced buyback swap leg returns its amount to the buyback
             // pool, not to the free reserve.
@@ -917,7 +933,7 @@ contract QuasarMaster with Deployable {
         
         // Send fee share to DeFi pool
         if (defiAmt > 0 && self.defiAddress != newAddress(0, 0)) {
-            self._sendTokensToDefi(defiAmt, msg.queryId);
+            self._sendTokensToDefi(defiAmt);
         } else if (defiAmt > 0) {
             treasuryAmt = treasuryAmt + defiAmt;
         }
@@ -957,7 +973,7 @@ contract QuasarMaster with Deployable {
                 // Treasury may only spend the unencumbered part of the reserve:
                 // pool allocations (buyback/staking) stay fully backed.
                 require(self.reserveBalance - self._poolEncumbrance() >= treasuryAmt, "Reserve encumbered");
-                self._sendTokens(self.treasury, treasuryAmt, msg.queryId, msg.originalSender);
+                self._sendTokens(self.treasury, treasuryAmt, msg.originalSender);
             }
             
             // Auto-buyback. A pending swap leg owns buybackSwapPending/QueryId;
@@ -1045,7 +1061,7 @@ contract QuasarMaster with Deployable {
             self.reserveBalance = self.reserveBalance - burnPart;
         }
         if (swapPart > 0) {
-            self._sendBuybackToDefi(swapPart, queryId);
+            self._sendBuybackToDefi(swapPart);
         }
         // This event must be the final SendRemainingValue action. Sending it
         // before the DeFi leg can drain the action balance and abort the swap.
@@ -1067,13 +1083,14 @@ contract QuasarMaster with Deployable {
     // payload. The pool credits the liquidity and executes a real CPMM swap
     // atomically in the same transaction, then returns the TON proceeds via
     // BuybackTon.
-    fun _sendBuybackToDefi(amount: Int, queryId: Int) {
+    fun _sendBuybackToDefi(amount: Int) {
         require(amount > 0, "Invalid buyback swap amount");
         require(self.defiAddress != newAddress(0, 0), "DeFi not configured");
         require(self.reserveBalance >= amount, "Insufficient QSR reserve");
         self.reserveBalance = self.reserveBalance - amount;
         self.buybackSwapPending = amount;
-        self.buybackSwapQueryId = queryId;
+        let transferQueryId: Int = self._newMasterTransferQueryId();
+        self.buybackSwapQueryId = transferQueryId;
         self.buybackSwapDefiAddress = self.defiAddress;
         let markerPayload: Slice = beginCell().storeUint(0x5f4a3b21, 32).endCell().asSlice();
         let init: StateInit = initOf QuasarWallet(self.defiAddress, myAddress());
@@ -1083,7 +1100,7 @@ contract QuasarMaster with Deployable {
             bounce: true,
             mode: SendPayGasSeparately,
             body: InternalTransfer{
-                queryId: queryId,
+                queryId: transferQueryId,
                 amount: amount,
                 from: myAddress(),
                 responseDestination: myAddress(),
@@ -1833,13 +1850,12 @@ contract QuasarMaster with Deployable {
         emit(EventAdminConfig{ action: "AcceptOwner", actor: sender(), valueA: 0, valueB: 0 }.toCell());
     }
     
-    // ─── WALLET CODE MIGRATION (v5): two-step + timelock ───
+    // ─── LEGACY WALLET CODE MIGRATION (disabled until coordinated) ───
     receive(msg: ProposeWalletCode) {
         self._requireOwner();
-        require(!self.aiFullAutonomy, "AI controls");
-        self.pendingWalletCode = msg.newWalletCode;
-        self.walletCodeAt = now() + self.ownerTransferDelay;
-        emit(EventAdminConfig{ action: "ProposeWalletCode", actor: sender(), valueA: self.walletCodeAt, valueB: 0 }.toCell());
+        // A safe migration must update every master, wallet, and DeFi address
+        // derivation together. This contract version cannot do that atomically.
+        require(false, "Wallet code migration unsupported");
     }
 
     receive("Cancel Wallet Code") {
@@ -1849,17 +1865,11 @@ contract QuasarMaster with Deployable {
         emit(EventAdminConfig{ action: "CancelWalletCode", actor: sender(), valueA: 0, valueB: 0 }.toCell());
     }
 
-    // Jetton wallets already derived keep their deployed code; after this
-    // confirmation every newly derived wallet uses the migrated code. Existing
-    // wallets are reached through TEP-89 discovery plus a migration broadcast.
+    // Do not advertise a migration that changes the Master getter but leaves
+    // wallet addresses in Master/DeFi derivations on the compiled code.
     receive("Apply Wallet Code") {
         self._requireOwner();
-        require(self.pendingWalletCode != null, "Nothing pending");
-        require(self.walletCodeAt > 0 && now() >= self.walletCodeAt, "Wallet code timelock active");
-        self.walletCode = self.pendingWalletCode!!;
-        self.pendingWalletCode = null;
-        self.walletCodeAt = 0;
-        emit(EventAdminConfig{ action: "ApplyWalletCode", actor: sender(), valueA: 0, valueB: 0 }.toCell());
+        require(false, "Wallet code migration unsupported");
     }
 
     // ─── JETTON METADATA (TEP-64, issue #58): two-step + timelock ───
@@ -2178,7 +2188,8 @@ contract QuasarMaster with Deployable {
     get fun get_owner_transfer_at(): Int { return self.ownerTransferAt }
     get fun get_owner_transfer_delay(): Int { return self.ownerTransferDelay }
     get fun get_jetton_data(): JettonData {
-        return JettonData{ totalSupply: self.totalSupply, mintable: self.mintable, adminAddress: self.owner, jettonContent: self.content, jettonWalletCode: self.walletCode }
+        let walletInit: StateInit = initOf QuasarWallet(self.owner, myAddress());
+        return JettonData{ totalSupply: self.totalSupply, mintable: self.mintable, adminAddress: self.owner, jettonContent: self.content, jettonWalletCode: walletInit.code }
     }
 
     get fun get_max_supply(): Int { return self.maxSupply }
@@ -2335,5 +2346,3 @@ message EventAiSignedDecision { queryId: Int; nonce: Int; action: Int; value: In
 // ═══════════════════════════════════════════════════════════════
 // QUASAR WALLET — Optimized with fee deduction
 // ═══════════════════════════════════════════════════════════════
-
-

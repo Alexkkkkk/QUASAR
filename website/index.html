@@ -123,7 +123,7 @@
                             <option value="to-qsr">TON → QSR</option>
                         </select>
                         <input type="number" class="defi-input" id="swap-slippage" aria-label="Maximum slippage percentage" placeholder="Max slippage %" value="1" step="0.1" disabled>
-                        <button class="defi-btn defi-btn-swap" id="btn-swap" onclick="executeSwap()" disabled>Swap</button>
+                        <button class="defi-btn defi-btn-swap" id="btn-swap" onclick="runUiAction(() => executeSwap())" disabled>Swap</button>
                         <p style="color: var(--text-muted); font-size: 12px; margin-top: 10px;" id="swap-estimate">Enter amount to see estimate</p>
                     </div>
                     
@@ -132,11 +132,11 @@
                         <h3 class="purple">Liquidity Pool</h3>
                         <input type="number" class="defi-input" id="lp-ton" aria-label="TON amount to add" placeholder="TON Amount" step="0.000000001" disabled>
                         <input type="number" class="defi-input" id="lp-qsr" aria-label="QSR amount to add" placeholder="QSR Amount" step="0.000000001" disabled>
-                        <button class="defi-btn defi-btn-lp" id="btn-add-lp" onclick="addLiquidityFromUI()" disabled>Add Liquidity</button>
+                        <button class="defi-btn defi-btn-lp" id="btn-add-lp" onclick="runUiAction(() => addLiquidityFromUI())" disabled>Add Liquidity</button>
                         <hr style="border: none; border-top: 1px solid var(--border); margin: 15px 0;">
                         <input type="number" class="defi-input" id="lp-remove" aria-label="LP amount to remove" placeholder="LP Amount to Remove" step="0.000000001" disabled>
-                        <button class="defi-btn defi-btn-claim" id="btn-remove-lp" onclick="removeLiquidityFromUI()" disabled>Remove Liquidity</button>
-                        <button class="defi-btn defi-btn-claim" id="btn-refund-qsr" onclick="refundPendingQsrFromUI()" style="margin-top: 8px;" disabled>Refund Pending QSR</button>
+                        <button class="defi-btn defi-btn-claim" id="btn-remove-lp" onclick="runUiAction(() => removeLiquidityFromUI())" disabled>Remove Liquidity</button>
+                        <button class="defi-btn defi-btn-claim" id="btn-refund-qsr" onclick="runUiAction(() => refundPendingQsrFromUI())" style="margin-top: 8px;" disabled>Refund Pending QSR</button>
                     </div>
                     
                     <!-- Staking Card -->
@@ -144,10 +144,10 @@
                         <h3 class="green">Staking Vault</h3>
                         <input type="number" class="defi-input" id="stake-amount" aria-label="QSR amount to stake or unstake" placeholder="QSR to Stake" step="0.000000001" disabled>
                         <div style="display: flex; gap: 8px;">
-                            <button class="defi-btn defi-btn-stake" id="btn-stake" onclick="stakeFromUI()" style="flex:1;" disabled>Stake</button>
-                            <button class="defi-btn defi-btn-claim" id="btn-unstake" onclick="unstakeFromUI()" style="flex:1;" disabled>Unstake</button>
+                            <button class="defi-btn defi-btn-stake" id="btn-stake" onclick="runUiAction(() => stakeFromUI())" style="flex:1;" disabled>Stake</button>
+                            <button class="defi-btn defi-btn-claim" id="btn-unstake" onclick="runUiAction(() => unstakeFromUI())" style="flex:1;" disabled>Unstake</button>
                         </div>
-                        <button class="defi-btn defi-btn-claim" id="btn-claim-stake" onclick="claimStakingRewards()" style="margin-top: 8px;" disabled>Claim Rewards</button>
+                        <button class="defi-btn defi-btn-claim" id="btn-claim-stake" onclick="runUiAction(() => window.claimStakingRewards())" style="margin-top: 8px;" disabled>Claim Rewards</button>
                         <p style="color: var(--text-muted); font-size: 12px; margin-top: 10px;">30-day lock | Min 100 QSR | Rewards are not guaranteed</p>
                     </div>
                     
@@ -156,7 +156,7 @@
                         <h3 class="orange">Yield Farm</h3>
                         <p style="color: var(--text-secondary); font-size: 14px; margin-bottom: 15px;">Your LP tokens are auto-staked here</p>
                         <div class="balance-display" style="font-size: 18px;">~0.1 QSR/sec</div>
-                        <button class="defi-btn defi-btn-claim" id="btn-claim-farm" onclick="claimFarmRewardsFromUI()" style="margin-top: 15px;" disabled>Claim Farm Rewards</button>
+                        <button class="defi-btn defi-btn-claim" id="btn-claim-farm" onclick="runUiAction(() => claimFarmRewardsFromUI())" style="margin-top: 15px;" disabled>Claim Farm Rewards</button>
                         <p style="color: var(--text-muted); font-size: 12px; margin-top: 10px;">Rewards must be claimed explicitly; no auto-compound.</p>
                     </div>
                     
@@ -207,12 +207,11 @@
     <div id="ton-connect"></div>
     
     <!-- Scripts -->
-    <!-- Pinned: an unpinned @latest tag from a third-party CDN lets the
-         remote host change wallet-connecting code at will (supply-chain risk). -->
-    <script src="https://unpkg.com/@tonconnect/ui@3.0.2/dist/tonconnect-ui.min.js"></script>
+    <!-- Self-hosted, versioned vendor asset: wallet code cannot change at CDN runtime. -->
+    <script src="./vendor/tonconnect-ui-3.0.2.min.js"></script>
     <script src="config.js"></script>
     <script src="amounts.js"></script>
-    <script type="module" src="tonconnect.js"></script>
+    <script type="module" src="./vendor/tonconnect.bundle.js"></script>
     <script>
         // Generate starfield
         const starsContainer = document.getElementById('stars');
@@ -312,14 +311,30 @@
             return typeof formatter === 'function' ? formatter(amount) : amount.toString();
         }
 
+        let uiActionInProgress = false;
+        async function runUiAction(action) {
+            if (uiActionInProgress) {
+                showToast('Another contract action is still in progress', 'error');
+                return false;
+            }
+            uiActionInProgress = true;
+            const controls = Array.from(document.querySelectorAll('.defi-section input, .defi-section select, .defi-section button'));
+            const wasDisabled = controls.map(control => control.disabled);
+            controls.forEach(control => { control.disabled = true; });
+            try {
+                return await action();
+            } finally {
+                controls.forEach((control, index) => { control.disabled = wasDisabled[index]; });
+                uiActionInProgress = false;
+            }
+        }
+
         async function ensureQsrDeposit(target, amountNano) {
-            if (!window.depositQsr || !window.pendingDeposit) return false;
-            const pending = await window.pendingDeposit(target, window.__qsrOwner);
-            if (pending >= amountNano) return true;
-            const shortfall = amountNano - pending;
-            showToast(`Depositing ${formatNanoForDisplay(shortfall)} QSR first...`, 'success');
-            await window.depositQsr(target, shortfall);
-            return false;
+            if (typeof window.ensureQsrDeposit !== 'function') {
+                showToast('Safe QSR deposit verification is unavailable; no transaction was sent', 'error');
+                return false;
+            }
+            return window.ensureQsrDeposit(target, amountNano);
         }
 
         async function executeSwap() {

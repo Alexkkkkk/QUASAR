@@ -11,6 +11,7 @@ const QUASAR_WALLET_FEE_BPS: Int = 30;
 const QUASAR_MAX_TX_BPS: Int = 100;
 const QUASAR_MAX_WALLET_BPS: Int = 300;
 const QUASAR_TRANSFER_COOLDOWN: Int = 5;
+const QUASAR_MINT_TRANSFER_MARKER: Int = 0x4d494e54;
 const QUASAR_MAX_TX_AMOUNT: Int = QUASAR_MAX_SUPPLY * QUASAR_MAX_TX_BPS / 10000;
 const QUASAR_MAX_WALLET_AMOUNT: Int = QUASAR_MAX_SUPPLY * QUASAR_MAX_WALLET_BPS / 10000;
 // FIX L-2 (audit pack v2): a pool payout carries a marker bit in the high bit
@@ -79,8 +80,18 @@ contract QuasarWallet {
         let sourceInit: StateInit = initOf QuasarWallet(msg.from, self.master);
         require(sender() == self.master || sender() == contractAddress(sourceInit), "Unauthorized");
         require(msg.amount > 0, "Invalid amount");
-        if (msg.from != self.master) {
-            require(self.balance + msg.amount <= QUASAR_MAX_WALLET_AMOUNT, "Max wallet exceeded");
+        // Protocol-owned master custody and master-funded DeFi deposits are
+        // aggregate balances, not individual-holder balances. Mint deliveries
+        // to user wallets carry a private marker so they still obey the same
+        // wallet cap as ordinary incoming transfers.
+        if (self.owner != self.master) {
+            if (msg.from != self.master) {
+                require(self.balance + msg.amount <= QUASAR_MAX_WALLET_AMOUNT, "Max wallet exceeded");
+            } else if (msg.forwardPayload.bits() >= 32) {
+                if (msg.forwardPayload.preloadUint(32) == QUASAR_MINT_TRANSFER_MARKER) {
+                    require(self.balance + msg.amount <= QUASAR_MAX_WALLET_AMOUNT, "Max wallet exceeded");
+                }
+            }
         }
         self.balance = self.balance + msg.amount;
 

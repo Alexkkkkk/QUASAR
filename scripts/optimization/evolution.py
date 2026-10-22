@@ -25,10 +25,13 @@ class DE(Optimizer):
         self.CR = CR
 
     def optimize(self, problem: Problem, budget: int, seed: int) -> Result:
+        if not isinstance(budget, int) or isinstance(budget, bool) or budget < 1:
+            raise ValueError("budget must be a positive integer")
         rng = random.Random(seed)
         start = time.perf_counter()
         n = problem.dims
-        NP = self.pop_size or max(16, 4 * n)
+        requested_population = self.pop_size or max(16, 4 * n)
+        NP = min(max(4, requested_population), budget)
 
         pop = [problem.random_point(rng) for _ in range(NP)]
         fit = [problem.objective(x) for x in pop]

@@ -31,12 +31,13 @@ function anyComputeFailed(res: any): boolean {
 }
 
 async function expectRevert(p: Promise<any>, why: string): Promise<void> {
+    let result: any;
     try {
-        const res = await p;
-        assert.ok(anyComputeFailed(res), why);
+        result = await p;
     } catch {
-        // send() itself rejected the message — also a revert
+        return; // send() itself rejected the message — also a revert
     }
+    assert.ok(anyComputeFailed(result), why);
 }
 
 interface Eco {
@@ -239,7 +240,7 @@ test('timelock: SetFeeConfig only stages; Confirm Fee Config applies after the d
 
 // ═══════════════ 3. Wallet-code migration ═══════════════
 
-test('wallet migration: propose/apply is two-step, timelocked and owner-only', async () => {
+test('wallet migration: unsupported code changes fail closed and getter stays synchronized', async () => {
     const eco = await deployEco();
     const newCode = beginCell().storeUint(7, 8).endCell();
 
@@ -248,20 +249,34 @@ test('wallet migration: propose/apply is two-step, timelocked and owner-only', a
         $$type: 'ProposeWalletCode', newWalletCode: newCode
     }), 'only the owner can propose a wallet-code migration');
 
-    await eco.master.send(eco.owner.getSender(), { value: toNano('0.1') }, {
+    await expectRevert(eco.master.send(eco.owner.getSender(), { value: toNano('0.1') }, {
         $$type: 'ProposeWalletCode', newWalletCode: newCode
+    }), 'wallet-code migration must reject owner proposals until every derivation can be upgraded together');
+    assert.equal(await eco.master.getGetWalletCodeAt(), 0n, 'unsupported proposal must not create a misleading timelock');
+    assert.equal(await eco.master.getGetPendingWalletCode(), null, 'unsupported proposal must not stage code');
+    await expectRevert(
+        eco.master.send(eco.owner.getSender(), { value: toNano('0.1') }, 'Apply Wallet Code'),
+        'wallet-code application must remain disabled'
+    );
+    const data = await eco.master.getGetJettonData();
+    assert.ok(data.jettonWalletCode.equals(walletCode), 'getter must expose the compiled code used by wallet derivations');
+    const derived = await eco.master.getGetWalletAddress(eco.owner.address);
+    const expected = await QuasarWallet.fromInit(eco.owner.address, eco.masterAddr);
+    assert.ok(derived.equals(expected.address), 'advertised wallet code and derived wallet address must remain synchronized');
+});
+
+test('gov: uint64 proposal IDs above 32 bits remain votable', async () => {
+    const eco = await deployEco();
+    await stake(eco, eco.owner, 100n * QSR);
+    const proposalId = 0x1_0000_0001n;
+    const result = await eco.master.send(eco.owner.getSender(), { value: toNano('0.1') }, {
+        $$type: 'GovernanceVote', proposalId, kind: 1, flag: false, feeBps: 30,
+        deadline: DEADLINE, reason: 'uint64 regression'
     });
-    assert.equal(await eco.master.getGetWalletCodeAt(), 1000n + 172_800n, 'the timelock must be scheduled');
-
-    // applying before the timelock fails; the current code is untouched
-    const early = await eco.master.send(eco.owner.getSender(), { value: toNano('0.1') }, 'Apply Wallet Code')
-        .catch(() => null);
-    const earlyFailed = early === null || early.transactions.some((t: any) => t.description?.computePhase?.success === false);
-    assert.ok(earlyFailed, 'an early wallet-code application must revert');
-    assert.ok((await eco.master.getGetJettonData()).jettonWalletCode.equals(walletCode), 'the code must not change before the timelock');
-
-    eco.bc.now = 1000 + 172_800 + 1;
-    await eco.master.send(eco.owner.getSender(), { value: toNano('0.1') }, 'Apply Wallet Code');
-    assert.ok((await eco.master.getGetJettonData()).jettonWalletCode.equals(newCode), 'newly derived wallets must use the migrated code');
-    assert.equal(await eco.master.getGetWalletCodeAt(), 0n, 'the migration must clear its timelock');
+    assert.ok(!anyComputeFailed(result), 'a valid uint64 proposal ID must not overflow the vote key');
+    const duplicate = await eco.master.send(eco.owner.getSender(), { value: toNano('0.1') }, {
+        $$type: 'GovernanceVote', proposalId, kind: 1, flag: false, feeBps: 30,
+        deadline: DEADLINE, reason: 'uint64 duplicate regression'
+    });
+    assert.ok(anyComputeFailed(duplicate), 'the full uint64 proposal ID must remain protected against duplicate votes');
 });

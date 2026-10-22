@@ -45,6 +45,8 @@ class CMAES(Optimizer):
         self.sigma0 = sigma0
 
     def optimize(self, problem: Problem, budget: int, seed: int) -> Result:
+        if not isinstance(budget, int) or isinstance(budget, bool) or budget < 1:
+            raise ValueError("budget must be a positive integer")
         n = problem.dims
         rng = random.Random(seed)
         start = time.perf_counter()
@@ -53,7 +55,13 @@ class CMAES(Optimizer):
         xmean = problem.random_point(rng)
         sigma = max(1e-6, self.sigma0 * span)
 
-        lam = max(6, 4 + int(3 * math.log(max(n, 2))))
+        lam = min(max(6, 4 + int(3 * math.log(max(n, 2)))), budget)
+        if budget == 1:
+            best_f = problem.objective(xmean)
+            return Result(
+                self.name, problem.name, list(xmean), best_f, 1, [best_f],
+                time.perf_counter() - start,
+            )
         mu = lam // 2
         w_raw = [math.log(lam * 0.5 + 0.5) - math.log(i + 1) for i in range(mu)]
         w_sum = sum(w_raw)
@@ -99,6 +107,8 @@ class CMAES(Optimizer):
                 if evals >= budget:
                     break
 
+            if len(pop_x) < mu:
+                break
             order = sorted(range(len(pop_x)), key=lambda i: pop_f[i])
             xw = [sum(w[i] * pop_x[order[i]][d] for i in range(mu)) for d in range(n)]
             yw = [(xw[d] - xmean[d]) / sigma for d in range(n)]

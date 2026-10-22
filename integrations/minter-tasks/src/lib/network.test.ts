@@ -1,3 +1,4 @@
+import { vi } from "vitest";
 import { Address } from "ton";
 import {
   getClient,
@@ -9,6 +10,7 @@ import {
 import {
   formatAddress,
   getNetwork,
+  getToncenterBaseUrl,
   NETWORK_CONFIG,
   setSearchParam,
 } from "./network";
@@ -89,9 +91,12 @@ test("injects a Toncenter key only from the runtime config, never from the bundl
 test("routes Toncenter calls through the same-origin proxy when the host injects one", async () => {
   window.__TONCENTER_RUNTIME_CONFIG__ = { proxyUrl: "/api/toncenter" };
   try {
-    expect(getEndpoint("testnet")).toBe("/api/toncenter");
+    expect(getEndpoint("testnet")).toBe("/api/toncenter/testnet/v2/jsonRPC");
+    expect(getEndpoint("mainnet")).toBe("/api/toncenter/mainnet/v2/jsonRPC");
+    expect(getToncenterBaseUrl("testnet", "v3")).toBe("/api/toncenter/testnet/v3");
+    expect(getToncenterBaseUrl("mainnet", "v3")).toBe("/api/toncenter/mainnet/v3");
     expect(getToncenterClientParameters("testnet")).toEqual({
-      endpoint: "/api/toncenter",
+      endpoint: "/api/toncenter/testnet/v2/jsonRPC",
       timeout: 12_000,
     });
   } finally {
@@ -108,18 +113,18 @@ test("retries only transient Toncenter failures", () => {
 });
 
 test("makes one request plus two retries for transient Toncenter failures", async () => {
-  const operation = jest
+  const operation = vi
     .fn()
     .mockRejectedValueOnce({ response: { status: 503 } })
     .mockRejectedValueOnce({ code: "ETIMEDOUT" })
     .mockResolvedValue("ok");
-  const sleepFn = jest.fn(async () => undefined);
+  const sleepFn = vi.fn(async () => undefined);
 
   await expect(retryToncenterRequest(operation, sleepFn)).resolves.toBe("ok");
   expect(operation).toHaveBeenCalledTimes(3);
   expect(sleepFn).toHaveBeenCalledTimes(2);
 
-  const deterministicFailure = jest.fn(async () => {
+  const deterministicFailure = vi.fn(async () => {
     throw { response: { status: 403 } };
   });
   await expect(retryToncenterRequest(deterministicFailure, sleepFn)).rejects.toEqual({
@@ -129,11 +134,11 @@ test("makes one request plus two retries for transient Toncenter failures", asyn
 });
 
 test("respects Toncenter Retry-After for a rate-limited read", async () => {
-  const operation = jest
+  const operation = vi
     .fn()
     .mockRejectedValueOnce({ response: { status: 429, headers: { "retry-after": "2" } } })
     .mockResolvedValue("ok");
-  const sleepFn = jest.fn(async () => undefined);
+  const sleepFn = vi.fn(async () => undefined);
 
   await expect(retryToncenterRequest(operation, sleepFn)).resolves.toBe("ok");
   expect(sleepFn).toHaveBeenCalledWith(2_000);

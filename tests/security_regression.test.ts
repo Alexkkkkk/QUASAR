@@ -184,6 +184,9 @@ test('hardening source: pending QSR deposits can always be refunded', () => {
 test('F-03/F-16 source: the web UI deposits QSR first and reads live getters', () => {
     const web = readFileSync(join(__dirname, '..', 'website', 'tonconnect.js'), 'utf8');
     assert.ok(web.includes('export async function depositQsr'), 'UI must expose a QSR deposit path');
+    assert.ok(web.includes('export async function ensureQsrDeposit'), 'dependent actions must use an on-chain-confirmed QSR prerequisite');
+    assert.ok(web.includes('window.localStorage.setItem(key'), 'deposit intent must persist before wallet submission so retries cannot duplicate it');
+    assert.ok(web.includes('A failed or malformed getter is'), 'getter errors must never be treated as an empty deposit');
     assert.ok(web.includes('0x0f8a7ea5'), 'deposit must use the TEP-74 transfer opcode');
     assert.ok(web.includes('runGetMethod'), 'UI must read contract getters, not placeholders');
     assert.ok(web.includes('pendingQsrDeposit'), 'UI must check the pending deposit before dependent calls');
@@ -191,6 +194,7 @@ test('F-03/F-16 source: the web UI deposits QSR first and reads live getters', (
     assert.ok(!web.includes('TODO: implement contract getter calls'), 'the getter TODO must be gone');
     const html = readFileSync(join(__dirname, '..', 'website', 'index.html'), 'utf8');
     assert.ok(html.includes('ensureQsrDeposit'), 'UI handlers must gate on a deposit');
+    assert.ok(html.includes('runUiAction(() =>'), 'all UI contract actions must share the duplicate-submission lock');
     assert.ok(!html.includes('~150%'), 'the hardcoded farm APY placeholder must be gone');
 });
 
@@ -203,8 +207,13 @@ test('F3/T-06 source: wallet policy is shared, compiled and documented', () => {
     assert.ok(wallet.includes('msg.amount * QUASAR_WALLET_FEE_BPS / 10000'), 'wallet fee must use the shared fixed fee policy');
     assert.ok(wallet.includes('now() - self.lastTxTime >= QUASAR_TRANSFER_COOLDOWN'), 'wallet cooldown must use the shared policy');
     assert.ok(commonSrc.includes('self.balance + msg.amount <= QUASAR_MAX_WALLET_AMOUNT'), 'receiving wallets must enforce the shared cap');
+    assert.ok(commonSrc.includes('QUASAR_MINT_TRANSFER_MARKER'), 'master mints to user wallets must be distinguishable from protocol liquidity');
+    assert.ok(commonSrc.includes('msg.forwardPayload.preloadUint(32)'), 'wallet policy must preserve buyback and caller payload markers');
     assert.ok(wallet.includes('msg.amount <= QUASAR_MAX_TX_AMOUNT'), 'sending wallets must enforce the shared cap');
-    assert.ok(masterSrc.includes('ProposeWalletCode'), 'policy changes must use the timelocked wallet-code migration');
+    assert.ok(masterSrc.includes('self.maxSupply * self.maxTxBps / 10000'), 'the first mint must not bypass the configured max transaction');
+    assert.ok(masterSrc.includes('storeUint(QUASAR_MINT_TRANSFER_MARKER, 32)'), 'mint deliveries must carry the wallet-cap marker');
+    assert.ok(masterSrc.includes('Wallet code migration unsupported'), 'unsupported wallet-code changes must fail closed');
+    assert.ok(masterSrc.includes('jettonWalletCode: walletInit.code'), 'the master must advertise the compiled code used for wallet derivation');
     assert.ok(masterSrc.includes('msg.maxTxBps == QUASAR_MAX_TX_BPS && msg.maxWalletBps == QUASAR_MAX_WALLET_BPS'), 'master must reject unsupported policy values');
     const readme = readFileSync(join(__dirname, '..', 'README.md'), 'utf8');
     // The audited wording mirrors the contract: the 3% wallet ceiling IS enforced
@@ -515,6 +524,8 @@ test('F9 source: the buyback threshold uses the same unit as the buyback pool', 
 test('F13 source: farm rewards stay claimable after the farm is switched off', () => {
     const claim = section(defiSrc, 'receive(msg: ClaimFarmRewards)', 'receive(msg: SetFarmConfig)');
     assert.ok(!claim.includes('require(self.farmEnabled'), 'accrued rewards must not be frozen by the farm switch');
+    const toggle = section(defiSrc, 'receive(msg: SetFarmEnabled)', 'receive(msg: FundFarm)');
+    assert.ok(toggle.indexOf('self._updateFarm();') < toggle.indexOf('self.farmEnabled = msg.enabled;'), 'toggle must settle rewards before changing the accrual state');
 });
 
 test('F5 on-chain: a top-up extends the lock and blocks the early exit', async () => {
@@ -738,21 +749,21 @@ test('audit v3.0 on-chain: owner can clear an abandoned buyback callback after t
 
     const pending = await eco.master.getGetBuybackState();
     assert.ok(pending.buybackSwapPending > 0n, 'the unhandled callback must leave an observable pending swap');
-    assert.equal(pending.buybackSwapQueryId, 77n, 'the pending query ID must be available for reconciliation');
+    assert.ok(pending.buybackSwapQueryId > 77n, 'the pool callback must use an internal ID, not the caller query ID');
 
     const early = await eco.master.send(eco.owner.getSender(), { value: toNano('0.1') }, {
-        $$type: 'CancelBuybackSwap', queryId: 77n
+        $$type: 'CancelBuybackSwap', queryId: pending.buybackSwapQueryId
     });
     assert.ok(anyComputeFailed(early), 'the owner must not cancel during the callback window');
 
     eco.bc.now += 3600;
     const unauthorized = await eco.master.send(alice.getSender(), { value: toNano('0.1') }, {
-        $$type: 'CancelBuybackSwap', queryId: 77n
+        $$type: 'CancelBuybackSwap', queryId: pending.buybackSwapQueryId
     });
     assert.ok(anyComputeFailed(unauthorized), 'a non-owner must not clear a pending buyback');
 
     const cancelled = await eco.master.send(eco.owner.getSender(), { value: toNano('0.1') }, {
-        $$type: 'CancelBuybackSwap', queryId: 77n
+        $$type: 'CancelBuybackSwap', queryId: pending.buybackSwapQueryId
     });
     assert.ok(!anyComputeFailed(cancelled), 'the owner must be able to clear a stale pending swap after timeout');
     const after = await eco.master.getGetBuybackState();
