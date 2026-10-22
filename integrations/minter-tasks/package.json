@@ -35,7 +35,7 @@
   "scripts": {
     "start": "vite",
     "build": "tsc --noEmit && vite build && cp build/index.html build/404.html",
-    "test": "vitest run",
+    "test": "node scripts/vitest-compat.mjs",
     "deploy": "gh-pages -d build"
   },
   "devDependencies": {

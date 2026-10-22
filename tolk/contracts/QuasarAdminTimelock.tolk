@@ -35,10 +35,8 @@ struct (0xaff90f57) DeployOk {
     queryId: uint64
 }
 
-// This layout intentionally mirrors QuasarAdminTimelock in quasar_admin.tact.
-// `value` and `executeAt` are int257, while the explicitly sized fields retain
-// their uint32/uint64 widths. The pending-call dictionary is an int257-keyed
-// dictionary whose values are references to PendingAdminCall cells.
+// Versioned Tolk state, not a decoder for deployed Tact storage.
+// Pending calls use an int257-keyed dictionary of referenced cells.
 struct PendingAdminCall {
     target: address
     value: coins
@@ -57,6 +55,36 @@ struct QuasarAdminTimelockStorage {
     master: address
     defi: address
     pendingCalls: dict
+}
+
+fun QuasarAdminTimelockStorage.packToBuilder(self, mutate root: builder) {
+    // Four addresses plus scalar fields cannot fit in a single 1023-bit cell.
+    val targets = beginCell().storeAddress(self.master).storeAddress(self.defi)
+        .storeDict(self.pendingCalls).endCell();
+    root.storeAddress(self.admin);
+    root.storeAddress(self.pendingAdmin);
+    root.storeUint(self.adminTransferAt, 32);
+    root.storeUint(self.adminTransferDelay, 32);
+    root.storeUint(self.minDelay, 32);
+    root.storeUint(self.lastQueuedCallId, 64);
+    root.storeRef(targets);
+}
+
+fun QuasarAdminTimelockStorage.unpackFromSlice(mutate root: slice): QuasarAdminTimelockStorage {
+    val admin = root.loadAddress();
+    val pendingAdmin = root.loadAddress();
+    val adminTransferAt = root.loadUint(32) as uint32;
+    val adminTransferDelay = root.loadUint(32) as uint32;
+    val minDelay = root.loadUint(32) as uint32;
+    val lastQueuedCallId = root.loadUint(64) as uint64;
+    var targets = root.loadRef().beginParse();
+    val master = targets.loadAddress();
+    val defi = targets.loadAddress();
+    val pendingCalls = targets.loadDict();
+    targets.assertEnd();
+    root.assertEnd();
+    return { admin, pendingAdmin, adminTransferAt, adminTransferDelay, minDelay,
+             lastQueuedCallId, master, defi, pendingCalls };
 }
 
 fun QuasarAdminTimelockStorage.load(): QuasarAdminTimelockStorage {
@@ -141,7 +169,7 @@ fun onInternalMessage(in: InMessage) {
     val msg = lazy AllowedMessageToQuasarAdminTimelock.fromSlice(in.body);
     match (msg) {
         QueueAdminCall => {
-            var storage = lazy QuasarAdminTimelockStorage.load();
+            var storage = QuasarAdminTimelockStorage.load();
             requireAdmin(storage, in.senderAddress);
             requireManagedTarget(storage, msg.target);
             assert (msg.callId > storage.lastQueuedCallId) throw 36252;
@@ -161,7 +189,7 @@ fun onInternalMessage(in: InMessage) {
         }
 
         ExecuteAdminCall => {
-            var storage = lazy QuasarAdminTimelockStorage.load();
+            var storage = QuasarAdminTimelockStorage.load();
             val pending = lookupPendingCall(storage.pendingCalls, msg.callId);
             assert (pending != null) throw 45026;
             assert (blockchain.now() >= pending!!.executeAt) throw 28248;
@@ -182,7 +210,7 @@ fun onInternalMessage(in: InMessage) {
         }
 
         CancelAdminCall => {
-            var storage = lazy QuasarAdminTimelockStorage.load();
+            var storage = QuasarAdminTimelockStorage.load();
             requireAdmin(storage, in.senderAddress);
             assert (lookupPendingCall(storage.pendingCalls, msg.callId) != null) throw 45026;
             storage.pendingCalls.iDictDelete(PENDING_CALL_KEY_BITS, msg.callId);
@@ -190,7 +218,7 @@ fun onInternalMessage(in: InMessage) {
         }
 
         ProposeAdmin => {
-            var storage = lazy QuasarAdminTimelockStorage.load();
+            var storage = QuasarAdminTimelockStorage.load();
             requireAdmin(storage, in.senderAddress);
             assert (msg.newAdmin != zeroAddress()) throw 29685;
             storage.pendingAdmin = msg.newAdmin;
@@ -199,7 +227,7 @@ fun onInternalMessage(in: InMessage) {
         }
 
         CancelAdminTransfer => {
-            var storage = lazy QuasarAdminTimelockStorage.load();
+            var storage = QuasarAdminTimelockStorage.load();
             requireAdmin(storage, in.senderAddress);
             storage.pendingAdmin = zeroAddress();
             storage.adminTransferAt = 0;
@@ -207,7 +235,7 @@ fun onInternalMessage(in: InMessage) {
         }
 
         AcceptAdmin => {
-            var storage = lazy QuasarAdminTimelockStorage.load();
+            var storage = QuasarAdminTimelockStorage.load();
             assert (in.senderAddress == storage.pendingAdmin) throw 54840;
             assert (blockchain.now() >= storage.adminTransferAt) throw 51627;
             storage.admin = storage.pendingAdmin;

@@ -82,6 +82,76 @@ struct (0xca3de6d5) EventFarmReward { farmer: address; amount: int257 }
 struct (0x60d4a4da) EventFeeCollected { amount: int257 }
 struct (0xd6ee9362) EventBuybackBounceUnknown { queryId: uint64 }
 
+// The Tact reference packs fields that would exceed a cell into a tail ref
+// while keeping the ABI field order unchanged. Default Tolk struct packing is
+// flat, which overflows when these events are emitted.
+fun EventLiquidityAdded.packToBuilder(self, mutate root: builder) {
+    var tail = beginCell();
+    tail.storeInt(self.lpMinted, 257);
+    root.storeUint(0x1323cbef, 32);
+    root.storeAddress(self.provider);
+    root.storeInt(self.tonAmount, 257);
+    root.storeInt(self.qsrAmount, 257);
+    root.storeRef(tail.endCell());
+}
+fun EventLiquidityAdded.unpackFromSlice(mutate root: slice): EventLiquidityAdded {
+    assert (root.loadUint(32) == 0x1323cbef) throw 63;
+    val provider = root.loadAddress();
+    val tonAmount = root.loadInt(257) as int257;
+    val qsrAmount = root.loadInt(257) as int257;
+    var tail = root.loadRef().beginParse();
+    val lpMinted = tail.loadInt(257) as int257;
+    tail.assertEnd();
+    root.assertEnd();
+    return { provider, tonAmount, qsrAmount, lpMinted };
+}
+
+fun EventLiquidityRemoved.packToBuilder(self, mutate root: builder) {
+    var tail = beginCell();
+    tail.storeInt(self.lpBurned, 257);
+    root.storeUint(0x5b4f24a9, 32);
+    root.storeAddress(self.provider);
+    root.storeInt(self.tonOut, 257);
+    root.storeInt(self.qsrOut, 257);
+    root.storeRef(tail.endCell());
+}
+fun EventLiquidityRemoved.unpackFromSlice(mutate root: slice): EventLiquidityRemoved {
+    assert (root.loadUint(32) == 0x5b4f24a9) throw 63;
+    val provider = root.loadAddress();
+    val tonOut = root.loadInt(257) as int257;
+    val qsrOut = root.loadInt(257) as int257;
+    var tail = root.loadRef().beginParse();
+    val lpBurned = tail.loadInt(257) as int257;
+    tail.assertEnd();
+    root.assertEnd();
+    return { provider, tonOut, qsrOut, lpBurned };
+}
+
+fun EventSwap.packToBuilder(self, mutate root: builder) {
+    var tail = beginCell();
+    tail.storeInt(self.tonOut, 257);
+    tail.storeInt(self.qsrOut, 257);
+    tail.storeInt(self.fee, 257);
+    root.storeUint(0xc02a5493, 32);
+    root.storeAddress(self.trader);
+    root.storeInt(self.tonIn, 257);
+    root.storeInt(self.qsrIn, 257);
+    root.storeRef(tail.endCell());
+}
+fun EventSwap.unpackFromSlice(mutate root: slice): EventSwap {
+    assert (root.loadUint(32) == 0xc02a5493) throw 63;
+    val trader = root.loadAddress();
+    val tonIn = root.loadInt(257) as int257;
+    val qsrIn = root.loadInt(257) as int257;
+    var tail = root.loadRef().beginParse();
+    val tonOut = tail.loadInt(257) as int257;
+    val qsrOut = tail.loadInt(257) as int257;
+    val fee = tail.loadInt(257) as int257;
+    tail.assertEnd();
+    root.assertEnd();
+    return { trader, tonIn, qsrIn, tonOut, qsrOut, fee };
+}
+
 struct LPInfo {
     totalSupply: int257;
     tonReserve: int257;
@@ -437,7 +507,6 @@ contract QuasarDeFi {
     description: "QUASAR CPMM liquidity pool and yield farm"
     storage: QuasarDeFiStorage
     incomingMessages: AllowedMessageToQuasarDeFi
-    emittedEvents: EventLiquidityAdded | EventLiquidityRemoved | EventSwap | EventFarmReward | EventFeeCollected | EventBuybackBounceUnknown
 }
 
 const DEFI_SCALE: int257 = 1000000000;

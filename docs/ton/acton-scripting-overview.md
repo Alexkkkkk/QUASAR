@@ -1,0 +1,70 @@
+---
+title: "Scripting in Acton"
+sidebarTitle: "Overview"
+description: "Learn how to run Tolk files as standalone scripts for local experiments, contract deployment, and blockchain interactions"
+---
+
+Acton provides the ability to run individual Tolk files as standalone scripts through the `script` command. Such scripts can be used both for learning the Tolk language, local experiments, and for real tasks like contract deployment or sending messages to the real blockchain.
+
+Scripts can use all the functions that are used in tests, which means that within scripts it is possible to deploy a contract to a local blockchain, send messages, and call get methods. In the default emulation mode, state is not preserved between script runs. With `--net`, sent transactions affect the selected [virtual](/docs/environments/overview) or public network.
+
+The main difference between scripts and tests is that scripts define a `main()` function which becomes the entry point. The `main()` function can optionally accept arguments passed from the command line, and those arguments are parsed against the ABI for `main()`.
+
+Each script is a regular smart contract, so, for example, sending a message through `msg.send()` will update the `c5` register.
+
+When `main()` finishes, scripts terminate with an exit code equal to its `exit_code`. The maximum exit code is 255 due to the standard Unix/Linux operating system limitation, where exit codes are stored in an 8-bit unsigned integer. Any `exit_code` value larger than 255 will be wrapped using modulo 256 (`x % 256`).
+
+<AvailabilityBadge since="Acton 1.2" />
+
+Cancelling an interactive script prompt stops the script immediately, even inside `try`/`catch`. Ctrl+C exits with code `130`; Escape and terminal I/O errors exit with code `1`. Cancellation does not select the prompt's default value.
+
+The following script shows the simplest Hello World written in Tolk:
+
+```tolk title="scripts/hello.tolk"
+import "@acton/io"
+
+fun main() {
+    println("Hello World")
+}
+```
+
+To run it, execute the following command:
+
+```bash
+acton script scripts/hello.tolk
+
+# Hello World
+```
+
+And the following script calculates the storage fee for a library code of a given duration in seconds:
+
+```tolk title="scripts/storageFeeCalculator.tolk"
+import "@acton/io"
+import "@stdlib/gas-payments"
+
+fun main(libraryCode: cell, duration: int) {
+    val gasConsumedBeforeCalculation = getGasConsumedAtTheMoment();
+    val (libraryRefs, libraryBits, _) = libraryCode.calculateSizeStrict(2048);
+    val gasConsumedForCalculation = getGasConsumedAtTheMoment() - gasConsumedBeforeCalculation;
+
+    val toReserve = calculateGasFeeWithoutFlatPrice(MASTERCHAIN, gasConsumedForCalculation)
+                    + calculateStorageFee(MASTERCHAIN, duration, libraryBits, libraryRefs);
+    println("Storage fee: {:grams}", toReserve);
+}
+```
+
+To run it, pass the library code as a cell and the duration in seconds:
+
+```bash
+acton script scripts/storageFeeCalculator.tolk b5ee9c72010101010006000008000003e7 3600
+
+# Storage fee: 0.002169224 GRAM
+```
+
+## Next steps
+
+- Learn how to [pass arguments](/docs/scripting/passing-arguments) to Tolk scripts
+- Read the [script command reference](/docs/commands/script) for all available options
+- Learn how to [set up wallets](/docs/wallets) for real blockchain interactions
+- Explore [blockchain interaction](/docs/scripting/blockchain-interaction) to deploy contracts and send transactions
+- Check out the [test runner tutorials](/docs/tutorial/first-tests) to understand available functions

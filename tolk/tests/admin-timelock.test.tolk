@@ -27,11 +27,12 @@ fun setupTimelock(): (QuasarAdminTimelock, Treasury, Treasury, Treasury) {
         }
     );
 
-    val deployResult = timelock.sendDeploy(
-        admin.address,
-        0,
-        { bounce: false, value: grams("10") },
-    );
+    val deployResult = net.send(admin.address, createMessage({
+        bounce: BounceMode.NoBounce,
+        value: grams("10"),
+        dest: { workchain: timelock.address.getWorkchain(), stateInit: timelock.stateInit!! },
+        body: Deploy { queryId: 0 },
+    }));
     expect(deployResult).toHaveSuccessfulDeploy<Deploy>({
         from: admin.address,
         to: timelock.address,

@@ -28,12 +28,12 @@ src = "contracts/QuasarAdminTimelock.tolk"
 depends = []
 
 [build]
-out-dir = "build/artifacts"
-gen-dir = "build/gen"
-output-abi = "build/abi"
-output-boc = "build/boc"
-output-fift = "build/fift"
-output-sources = "build/sources"
+out-dir = "build/synchronized/artifacts"
+gen-dir = "build/synchronized/gen"
+output-abi = "build/synchronized/abi"
+output-boc = "build/synchronized/boc"
+output-fift = "build/synchronized/fift"
+output-sources = "build/synchronized/sources"
 
 [test]
 fail-fast = true
@@ -45,6 +45,6 @@ ignore = []
 [import-mappings]
 acton = ".acton"
 contracts = "contracts"
-gen = "build/gen"
+gen = "build/synchronized/gen"
 tests = "tests"
-wrappers = "build/wrappers"
+wrappers = "build/synchronized/wrappers"

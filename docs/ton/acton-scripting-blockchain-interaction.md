@@ -1,0 +1,407 @@
+---
+title: "Interacting with the real blockchain"
+description: "Learn how to use scripts to deploy contracts and send transactions on testnet and mainnet"
+---
+
+Acton scripts can interact with the real TON blockchain, enabling contract deployment, transaction sending, and state querying. By using `--net <network>`, Tolk scripts can execute real operations using configured wallets.
+
+<Callout type="tip" title="Available since: Acton 1.2">
+  Start with local emulator tests and actions, continue on a [simulator network](/docs/environments/simulator/overview), then validate on testnet before mainnet. [Acton Studio](/docs/studio) provides the same deployment and inspection tools throughout.
+</Callout>
+
+## Prerequisites
+
+Before interacting with the real blockchain, configure a wallet. Follow the [wallet management](/docs/wallets) guide to either set up a funded wallet or connect one through TON Connect via passing `--tonconnect` on the CLI:
+
+```acton-cli
+acton script <SCRIPT_PATH> --net testnet --tonconnect
+```
+
+## The `--net` Flag
+
+Scripts in Acton can run in two modes:
+
+1. **Local mode** (default): Uses a local blockchain emulator with test wallets
+2. **Broadcast mode** (`--net <network>`): Connects to the selected virtual or public network and uses configured wallets
+
+| Aspect            | Local Mode             | Broadcast Mode          |
+|-------------------|------------------------|-------------------------|
+| Blockchain        | Local emulator         | Selected virtual or public network |
+| Wallets           | Generated test wallets | Configured real wallets |
+| GRAM spent        | None (emulated)        | Selected network wallet balance |
+| Transaction speed | Instant                | Real network timing     |
+| State persistence | Lost after script ends | Permanent on blockchain |
+
+Always test scripts without `--net` first. The local emulator allows validating the logic before spending real GRAM on testnet or mainnet:
+
+```bash
+# Test locally without spending real GRAM
+acton script deploy.tolk
+
+# Exercise a simulator through its configured localnet entry
+acton script deploy.tolk --net localnet
+
+# Deploy to testnet using real testnet wallet
+acton script deploy.tolk --net testnet
+
+# Deploy to mainnet using real mainnet wallet
+acton script deploy.tolk --net mainnet
+```
+
+The `--net localnet` deployment above requires the `[networks.localnet]` to be configured in `Acton.toml` with the [selected simulator endpoints](/docs/environments/how-to/connect) prior.
+
+### Manually controlling broadcasting mode
+
+For advanced use cases, control the broadcasting flag using `net.enableBroadcast()` and `net.disableBroadcast()`:
+
+```tolk
+fun main() {
+    net.disableBroadcast();
+    // ...
+    // This send will be emulated and not sent to the real blockchain
+    val result = net.send(wallet.address, msg);
+    result.waitForFirstTransaction();
+
+    // Enable broadcasting mode again
+    net.enableBroadcast();
+    // ...
+}
+```
+
+These helpers only toggle the runtime broadcast flag. They do not load configured wallets after startup, so real sends still require launching the script with `--net`.
+
+## Deploying a contract
+
+Here's a complete example of deploying a counter contract to the blockchain:
+
+```tolk title="deploy.tolk"
+import "@acton/io"
+import "@acton/emulation/network"
+import "@acton/emulation/scripts"
+import "@acton/build"
+
+import "@contracts/types"
+import "@wrappers/Counter.gen"
+
+fun main() {
+    val deployer = scripts.wallet("deployer");
+    val counter = Counter.fromStorage({
+        id: 8,
+        owner: deployer.address,
+        counter: 0,
+    });
+
+    val result = counter.deploy(deployer.address, { value: grams("0.05") });
+    if (result.waitForFirstTransaction() == null) {
+        return;
+    }
+
+    println("Deployed counter to {}", counter.address);
+    println("On-chain counter is {}", counter.currentCounter());
+}
+```
+
+The `wrappers/Counter.gen.tolk` file provides a convenient wrapper around the counter contract:
+
+```tolk collapse={2-4, 11-18, 45-59} title="wrappers/Counter.gen.tolk"
+import "@acton/build"
+import "@acton/emulation/network"
+import "@acton/testing/assert"
+
+import "@contracts/types"
+
+struct Counter {
+    address: address
+    stateInit: ContractState? = null
+    toShard: AddressShardingOptions? = null
+}
+
+fun Counter.fromStorage(
+    storage: Storage,
+    toShard: AddressShardingOptions? = null,
+    workchain: int8 = BASECHAIN,
+): Counter {
+    val stateInit = ContractState {
+        code: build("Counter"),
+        data: storage.toCell(),
+    };
+    val address = AutoDeployAddress { workchain, stateInit, toShard }.calculateAddress();
+    return Counter { address, stateInit, toShard };
+}
+
+fun Counter.deploy(self, from: address, config: SendParams = {}): SendResultList {
+    if (self.stateInit == null) {
+        Assert.fail(
+            "Cannot deploy a contract created with 'fromAddress' because it lacks state init",
+        );
+    }
+    val msg = createMessage({
+        bounce: config.bounce,
+        value: config.value,
+        dest: {
+            workchain: self.address.getWorkchain(),
+            stateInit: self.stateInit,
+            toShard: self.toShard,
+        },
+    });
+    return net.send(from, msg);
+}
+
+fun Counter.sendIncreaseCounter(
+    self,
+    from: address,
+    increaseBy: uint32,
+    config: SendParams = {},
+): SendResultList {
+    val msg = createMessage({
+        bounce: config.bounce,
+        value: config.value,
+        dest: self.address,
+        body: IncreaseCounter { increaseBy },
+    });
+    return net.send(from, msg);
+}
+
+fun Counter.currentCounter(self): int {
+    return net.runGetMethod(self.address, "currentCounter");
+}
+```
+
+Notice that the wrapper uses the same patterns as in tests, making it easy to reuse testing code in scripts.
+
+<AvailabilityBadge since="Acton 1.2" />
+
+The optional `workchain` argument to `fromStorage()` defaults to `BASECHAIN`. Deployment preserves the selected workchain.
+
+Deploy to testnet:
+
+```bash
+acton script deploy.tolk --net testnet
+```
+
+Deploy to mainnet:
+
+```bash
+acton script deploy.tolk --net mainnet
+```
+
+In broadcast mode, post-deploy getter calls such as `counter.currentCounter()` automatically read from the selected broadcast network. An explicit `--fork-net` is not required for the common deploy-and-check flow.
+
+## Using wallets in scripts
+
+The `scripts.wallet()` function returns a wallet struct with an `address` field:
+
+```tolk
+import "@acton/io"
+import "@acton/emulation/scripts"
+
+fun main() {
+    val deployer = scripts.wallet("deployer");
+    println("Wallet address: {}", deployer.address);
+}
+```
+
+Behavior:
+
+- Without `--net`: Creates a local test wallet similar to `testing.treasury()`
+- With `--net`: Uses the real wallet configured in `wallets.toml` or global wallets
+
+This dual behavior allows testing scripts locally before running them on the real blockchain.
+
+## Sending messages
+
+Use `net.send()` to send messages from a wallet address:
+
+```tolk
+import "@acton/io"
+import "@acton/emulation/network"
+import "@acton/emulation/scripts"
+
+fun main() {
+    val deployer = scripts.wallet("deployer");
+
+    val msg = createMessage({
+        bounce: true,
+        value: grams("0.1"),
+        dest: someContractAddress,
+        body: SomeMessage { param: 42 },
+    });
+
+    net.send(deployer.address, msg);
+    println("Message sent!");
+}
+```
+
+<Callout type="warn">
+    Be extremely careful with `--net`. While local tests allow arbitrary big values, sending messages with large values to the real blockchain will spend real GRAM.
+
+    **Recommendation:** Use smaller values like `grams("0.05")` or `grams("0.1")` for most operations.
+</Callout>
+
+## Waiting for transactions
+
+The `SendResultList.waitForFirstTransaction()` polls until the first transaction from the result list is confirmed, while `SendResultList.waitForTrace()` waits for the complete descendant trace:
+
+```tolk
+import "@acton/io"
+import "@acton/emulation/network"
+import "@acton/emulation/scripts"
+import "@wrappers/Counter.gen"
+
+fun main() {
+    val deployer = scripts.wallet("deployer");
+
+    // Deploy counter
+    val counter = Counter.fromStorage({
+        id: 8,
+        owner: deployer.address,
+        counter: 0,
+    });
+    val deployResult = counter.deploy(deployer.address, { value: grams("0.05") });
+    deployResult.waitForFirstTransaction(); // Wait for deployment
+
+    println("Counter deployed at {}", counter.address);
+
+    // Send increase message
+    val increaseResult = counter.sendIncreaseCounter(deployer.address, 5, { value: grams("0.05") });
+    increaseResult.waitForTrace(); // Wait for the full message chain
+
+    println("Counter increased!");
+}
+```
+
+Check the waiting result:
+
+```tolk
+fun main() {
+    // ...
+    val result = net.send(deployer.address, msg);
+
+    val tx = result.waitForFirstTransaction();
+    if (tx != null) {
+        println("Transaction confirmed!");
+    } else {
+        println("Transaction not found after max attempts");
+    }
+}
+```
+
+### Behavior in different modes
+
+Both wait helpers automatically adapt to the execution mode:
+
+| Mode              | Behavior                                                             |
+|-------------------|----------------------------------------------------------------------|
+| Local (default)   | Returns the already processed local transaction or trace immediately |
+| `--net <network>` | Polls the network until the transaction or trace is found            |
+
+<Callout type="warn" title="Available since: Acton 1.2">
+  Do not use `ExternalSendResult.isAccepted()` after broadcasting an external-in message. The send API confirms submission, but it does not report whether the destination contract accepted the message. `isAccepted()` exits with an error in this case. Use `waitForFirstTransaction()` or `waitForTrace()` to look for the transaction on-chain.
+</Callout>
+
+Check the current mode using `net.isBroadcasting()`:
+
+```tolk
+if (net.isBroadcasting()) {
+    println("Running on real network");
+} else {
+    println("Running in emulation mode");
+}
+```
+
+## Querying blockchain state
+
+Scripts can read contract state using `net.runGetMethod()`:
+
+```tolk
+import "@acton/io"
+import "@acton/emulation/network"
+
+fun main() {
+    val counterAddress = address("EQDt7LL...");
+    val currentValue = net.runGetMethod<int>(counterAddress, "currentCounter");
+    println("Counter value: {}", currentValue);
+}
+```
+
+<AvailabilityBadge since="Acton 1.2" />
+
+Use `net.runGetMethodExt()` to inspect gas usage and the VM exit code. Call `unwrap()` to check success and decode the result:
+
+```tolk
+val execution = net.runGetMethodExt<int>(counterAddress, "currentCounter");
+val currentValue = execution.unwrap();
+println("Counter value: {}", currentValue);
+println("Gas used: {}", execution.meta.gasUsed);
+```
+
+`GetMethodResult<Ret>.meta` contains `gasUsed` and `exitCode` for the contract's get-method execution. `isSuccess()` returns `true` for VM exit codes `0` and `1`. Neither metadata access nor `isSuccess()` decodes the result as `Ret`.
+
+On VM failure, `unwrap()` reports the getter's error and stops execution. For a successful nullable getter, `unwrap()` can return `null`. If `Ret` does not match the saved stack, `unwrap()` reports a decoding error. Repeated calls to `unwrap()` decode the same saved stack.
+
+In tests, use `toHaveExitCode()` to check an expected failure with getter diagnostics:
+
+```tolk
+val execution = net.runGetMethodExt<int>(contractAddress, "restrictedGetter");
+expect(execution).toHaveExitCode(123);
+expect(execution.meta.gasUsed).toBeLess(1000);
+```
+
+`net.runGetMethod()` checks success and decodes the result before returning it. Both functions throw if the contract is not deployed, has no code, or the emulator cannot run.
+
+### Local vs remote state
+
+By default, `net.runGetMethod()` queries the **local emulator state** when the script runs without `--net`. To query **real deployed contracts** without broadcasting, use the `--fork-net` flag:
+
+```bash
+# Query a contract on testnet
+acton script query.tolk --fork-net testnet
+
+# Query a contract on mainnet
+acton script query.tolk --fork-net mainnet
+
+# With a TON Center API key to avoid rate limiting
+TONCENTER_TESTNET_API_KEY=YOUR_API_KEY acton script query.tolk --fork-net testnet
+```
+
+When `--fork-net` is enabled, Acton automatically fetches account state from the real blockchain and caches it locally for the script execution. This allows to:
+
+- Query real contract state
+- Test interactions with deployed contracts
+- Verify contract behavior against live data
+
+<AvailabilityBadge since="Acton 1.2" />
+
+Acton resolves one masterchain block for the script run. Account state and the
+network configuration come from that block. Use `--fork-block-number` to select
+an exact block and use its Unix time. If you omit it, Acton resolves the latest
+block once, pins it for the script run, and uses the current system Unix time.
+
+If the script also passes `--fork-block-number`, fetched account states are persisted under `build/cache/<network>/<seqno>/<workchain>_<address-hash>.json`. Later script runs with the same fork network, block number, and address reuse that file before calling the remote API. Fork runs without an explicit block also persist accounts under the resolved sequence number.
+
+Acton stores the matching network configuration and, for explicit historical forks, block time for 24 hours under `build/cache/masterchain-snapshots/<network>/<seqno>.json`. Use `--no-fork-cache` to force fresh account and library reads for a run. This option does not disable the masterchain snapshot cache. Use `--clear-cache` to remove the persisted entries with the rest of `build/cache`.
+
+When the script runs with `--net`, the selected network already becomes the default remote read network. This means deploy scripts can send a transaction, wait for it, and immediately call `net.runGetMethod()` or wrapper getters against the same chain without passing `--fork-net`.
+
+See the [fork testing](/docs/testing/fork-testing) guide for more.
+
+### Combining with `--net`
+
+`--fork-net` and `--net` can be combined, but in broadcast mode they must point to the same network.
+
+| Flags                                          | Blockchain State           | Wallets      | Use Case                                                        |
+|------------------------------------------------|----------------------------|--------------|-----------------------------------------------------------------|
+| None                                           | Local emulator             | Test wallets | Local development                                               |
+| `--fork-net testnet`                           | Real testnet state         | Test wallets | Query real contracts locally                                    |
+| `--net testnet`                                | Real testnet state         | Real wallets | Deploy and read back live state on testnet                      |
+| `--net mainnet`                                | Real mainnet state         | Real wallets | Mainnet deployment and post-deploy verification                 |
+| `--net testnet --fork-net testnet`             | Real testnet state         | Real wallets | Explicit same-network fork setup, optionally with block pinning |
+
+Passing different `--net` and `--fork-net` values in broadcast mode is rejected to avoid reading from one network while sending to another.
+
+## See also
+
+- [Wallet management guide](/docs/wallets)
+- [Deployment guide](/docs/deploy)
+- [`acton script` command reference](/docs/commands/script)
+- [`acton run` command reference](/docs/commands/run)

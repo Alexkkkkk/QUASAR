@@ -64,7 +64,7 @@ const HeaderExampleText = styled(Typography)(({ theme }) => ({
   marginLeft: theme.spacing(4),
 }));
 
-const HeaderExampleLink = styled(Typography)(() => ({
+const HeaderExampleLink = styled("span")(() => ({
   color: "black",
   display: "inline",
   fontWeight: 800,

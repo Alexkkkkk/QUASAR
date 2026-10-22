@@ -80,4 +80,8 @@ const jettonWalletAddress = contractAddress(BASECHAIN, jettonWalletStateInit);
 console.log(jettonWalletAddress.toString());
 ```
 
-Finally, you can use [API v3 endpoints](https://docs.ton.org/llms/api/v3/overview/content.md).
+Additionally, one can use [blockchain explorers](https://docs.ton.org/llms/onboarding/explorers/content.md) to call a contract's get methods without writing any code. For example, inspect the [Tether USD (USDT)](https://actonscan.com/address/EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixRv7Nw2Id_sDs?network=mainnet#get-methods) master (minter) contract page: calling `get_wallet_address()` with the owner's TON wallet address yields the USDT jetton wallet address for that owner.
+
+<Image src="/images/methods.png" darkSrc="/images/methods.png" alt="Tether USDT master contract get-methods list" />
+
+Finally, one can use [API v3 endpoints](https://docs.ton.org/llms/api/v3/overview/content.md).

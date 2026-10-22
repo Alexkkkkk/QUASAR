@@ -126,6 +126,131 @@ struct MasterCore {
     lastBuybackTime: int257; totalBuybacks: int257; totalQsrBurnedViaBuyback: coins; totalTonSpentOnBuyback: coins
     emergencyGuardian: address; defiAddress: address; defiFeeShareBps: uint16
 }
+
+// MasterCore contains more data than one TVM cell can hold. Keep its declared
+// field order, but make every reference boundary explicit instead of relying on
+// @overflow1023_policy("suppress"), which merely defers overflow to runtime.
+fun MasterCore.unpackFromSlice(mutate root: slice): MasterCore {
+    val totalSupply = root.loadCoins();
+    val maxSupply = root.loadCoins();
+    val mintable = root.loadBool();
+    val owner = root.loadAddress();
+
+    var ownerTail = root.loadRef().beginParse();
+    val pendingOwner = ownerTail.loadAddress();
+    val ownerTransferAt = ownerTail.loadInt(257) as int257;
+    val ownerTransferDelay = ownerTail.loadUint(32) as uint32;
+    val content = ownerTail.loadRef();
+    val walletCode = ownerTail.loadRef();
+
+    var reserveTail = ownerTail.loadRef().beginParse();
+    val reserveBalance = reserveTail.loadCoins();
+    val custodyBalance = reserveTail.loadCoins();
+    val custodyPayoutSeq = reserveTail.loadUint(64) as uint64;
+    val feeBps = reserveTail.loadUint(16) as uint16;
+    val feeBurnShare = reserveTail.loadUint(8) as uint8;
+    val treasury = reserveTail.loadAddress();
+    val totalBurned = reserveTail.loadCoins();
+    val totalFeesCollected = reserveTail.loadCoins();
+    val maxTxBps = reserveTail.loadUint(16) as uint16;
+    val maxWalletBps = reserveTail.loadUint(16) as uint16;
+    val cooldownSeconds = reserveTail.loadUint(16) as uint16;
+    val tradingEnabled = reserveTail.loadBool();
+
+    var buybackTail = reserveTail.loadRef().beginParse();
+    val buybackEnabled = buybackTail.loadBool();
+    val buybackPool = buybackTail.loadCoins();
+    val buybackThreshold = buybackTail.loadCoins();
+    val buybackCooldown = buybackTail.loadUint(32) as uint32;
+    val buybackBurnPercent = buybackTail.loadUint(8) as uint8;
+    val buybackSwapPending = buybackTail.loadCoins();
+    val buybackSwapQueryId = buybackTail.loadUint(64) as uint64;
+    val buybackSwapDefiAddress = buybackTail.loadAddress();
+    val buybackQueries = createMapFromLowLevelDict<int257, bool>(buybackTail.loadDict());
+
+    var statsTail = buybackTail.loadRef().beginParse();
+    val lastBuybackTime = statsTail.loadInt(257) as int257;
+    val totalBuybacks = statsTail.loadInt(257) as int257;
+    val totalQsrBurnedViaBuyback = statsTail.loadCoins();
+    val totalTonSpentOnBuyback = statsTail.loadCoins();
+
+    var endpointTail = statsTail.loadRef().beginParse();
+    val emergencyGuardian = endpointTail.loadAddress();
+    val defiAddress = endpointTail.loadAddress();
+    val defiFeeShareBps = endpointTail.loadUint(16) as uint16;
+    endpointTail.assertEnd();
+    statsTail.assertEnd();
+    buybackTail.assertEnd();
+    reserveTail.assertEnd();
+    ownerTail.assertEnd();
+    root.assertEnd();
+    return {
+        totalSupply, maxSupply, mintable, owner, pendingOwner, ownerTransferAt,
+        ownerTransferDelay, content, walletCode, reserveBalance, custodyBalance,
+        custodyPayoutSeq, feeBps, feeBurnShare, treasury, totalBurned,
+        totalFeesCollected, maxTxBps, maxWalletBps, cooldownSeconds, tradingEnabled,
+        buybackEnabled, buybackPool, buybackThreshold, buybackCooldown,
+        buybackBurnPercent, buybackSwapPending, buybackSwapQueryId,
+        buybackSwapDefiAddress, buybackQueries, lastBuybackTime, totalBuybacks,
+        totalQsrBurnedViaBuyback, totalTonSpentOnBuyback, emergencyGuardian,
+        defiAddress, defiFeeShareBps,
+    };
+}
+
+fun MasterCore.packToBuilder(self, mutate root: builder) {
+    var endpointTail = beginCell();
+    endpointTail.storeAddress(self.emergencyGuardian);
+    endpointTail.storeAddress(self.defiAddress);
+    endpointTail.storeUint(self.defiFeeShareBps, 16);
+
+    var statsTail = beginCell();
+    statsTail.storeInt(self.lastBuybackTime, 257);
+    statsTail.storeInt(self.totalBuybacks, 257);
+    statsTail.storeCoins(self.totalQsrBurnedViaBuyback);
+    statsTail.storeCoins(self.totalTonSpentOnBuyback);
+    statsTail.storeRef(endpointTail.endCell());
+
+    var buybackTail = beginCell();
+    buybackTail.storeBool(self.buybackEnabled);
+    buybackTail.storeCoins(self.buybackPool);
+    buybackTail.storeCoins(self.buybackThreshold);
+    buybackTail.storeUint(self.buybackCooldown, 32);
+    buybackTail.storeUint(self.buybackBurnPercent, 8);
+    buybackTail.storeCoins(self.buybackSwapPending);
+    buybackTail.storeUint(self.buybackSwapQueryId, 64);
+    buybackTail.storeAddress(self.buybackSwapDefiAddress);
+    buybackTail.storeDict(self.buybackQueries.toLowLevelDict());
+    buybackTail.storeRef(statsTail.endCell());
+
+    var reserveTail = beginCell();
+    reserveTail.storeCoins(self.reserveBalance);
+    reserveTail.storeCoins(self.custodyBalance);
+    reserveTail.storeUint(self.custodyPayoutSeq, 64);
+    reserveTail.storeUint(self.feeBps, 16);
+    reserveTail.storeUint(self.feeBurnShare, 8);
+    reserveTail.storeAddress(self.treasury);
+    reserveTail.storeCoins(self.totalBurned);
+    reserveTail.storeCoins(self.totalFeesCollected);
+    reserveTail.storeUint(self.maxTxBps, 16);
+    reserveTail.storeUint(self.maxWalletBps, 16);
+    reserveTail.storeUint(self.cooldownSeconds, 16);
+    reserveTail.storeBool(self.tradingEnabled);
+    reserveTail.storeRef(buybackTail.endCell());
+
+    var ownerTail = beginCell();
+    ownerTail.storeAddress(self.pendingOwner);
+    ownerTail.storeInt(self.ownerTransferAt, 257);
+    ownerTail.storeUint(self.ownerTransferDelay, 32);
+    ownerTail.storeRef(self.content);
+    ownerTail.storeRef(self.walletCode);
+    ownerTail.storeRef(reserveTail.endCell());
+
+    root.storeCoins(self.totalSupply);
+    root.storeCoins(self.maxSupply);
+    root.storeBool(self.mintable);
+    root.storeAddress(self.owner);
+    root.storeRef(ownerTail.endCell());
+}
 @overflow1023_policy("suppress")
 struct MasterAi {
     aiOracle: address; aiEnabled: bool; aiFullAutonomy: bool; lastRebalanceTime: int257; signalCount: int257; priceHistoryCount: int257
@@ -139,12 +264,218 @@ struct MasterAi {
     totalVetoStake: coins; vetoEscrows: map<int257, int257>; vetoActionStake: map<int257, int257>
     aiOraclePubKey: uint256; aiNonce: uint64; aiSignedDecisionCount: int257; aiActionIndex: int257
 }
+
+// Keep the AI ledgers in five bounded map cells. Each of the first five cells
+// contains no more than three dictionary references plus the next link.
+fun MasterAi.unpackFromSlice(mutate root: slice): MasterAi {
+    val aiOracle = root.loadAddress();
+    val aiEnabled = root.loadBool();
+    val aiFullAutonomy = root.loadBool();
+
+    var historyTail = root.loadRef().beginParse();
+    val lastRebalanceTime = historyTail.loadInt(257) as int257;
+    val signalCount = historyTail.loadInt(257) as int257;
+    val priceHistoryCount = historyTail.loadInt(257) as int257;
+    val priceHistory = createMapFromLowLevelDict<int257, int257>(historyTail.loadDict());
+    val anomalyLog = createMapFromLowLevelDict<int257, AIRecommendation>(historyTail.loadDict());
+
+    var counterTail = historyTail.loadRef().beginParse();
+    val anomalyIndex = counterTail.loadInt(257) as int257;
+    val priceHistoryDropped = counterTail.loadInt(257) as int257;
+    val anomalyDropped = counterTail.loadInt(257) as int257;
+    val minConfidence = counterTail.loadUint(8) as uint8;
+    val emergencyPause = counterTail.loadBool();
+    val aiActionCooldown = counterTail.loadUint(32) as uint32;
+
+    var heartbeatTail = counterTail.loadRef().beginParse();
+    val lastAiActionTime = heartbeatTail.loadInt(257) as int257;
+    val lastAiQueryId = heartbeatTail.loadUint(64) as uint64;
+    val heartbeatTimeout = heartbeatTail.loadUint(32) as uint32;
+    val lastHeartbeat = heartbeatTail.loadInt(257) as int257;
+    val ownerOverrideWindow = heartbeatTail.loadUint(32) as uint32;
+    val vetoThresholdBps = heartbeatTail.loadUint(16) as uint16;
+
+    var actionTail1 = heartbeatTail.loadRef().beginParse();
+    val aiActionLog = createMapFromLowLevelDict<int257, AIActionLog>(actionTail1.loadDict());
+    val aiActionKind = createMapFromLowLevelDict<int257, int257>(actionTail1.loadDict());
+    val pendingAiActions = createMapFromLowLevelDict<int257, int257>(actionTail1.loadDict());
+
+    var actionTail2 = actionTail1.loadRef().beginParse();
+    val aiActionOldAddress = createMapFromLowLevelDict<int257, address>(actionTail2.loadDict());
+    val aiActionOldFeeBps = createMapFromLowLevelDict<int257, int257>(actionTail2.loadDict());
+    val aiActionOldMintable = createMapFromLowLevelDict<int257, int257>(actionTail2.loadDict());
+
+    var actionTail3 = actionTail2.loadRef().beginParse();
+    val aiActionOldEmergencyPause = createMapFromLowLevelDict<int257, int257>(actionTail3.loadDict());
+    val aiActionOldTrading = createMapFromLowLevelDict<int257, int257>(actionTail3.loadDict());
+    val aiActionOldBurnShare = createMapFromLowLevelDict<int257, int257>(actionTail3.loadDict());
+
+    var actionTail4 = actionTail3.loadRef().beginParse();
+    val aiActionOldMaxTxBps = createMapFromLowLevelDict<int257, int257>(actionTail4.loadDict());
+    val aiActionOldMaxWalletBps = createMapFromLowLevelDict<int257, int257>(actionTail4.loadDict());
+    val aiActionOldCooldownSeconds = createMapFromLowLevelDict<int257, int257>(actionTail4.loadDict());
+
+    var actionTail5 = actionTail4.loadRef().beginParse();
+    val aiActionOldBuybackThreshold = createMapFromLowLevelDict<int257, int257>(actionTail5.loadDict());
+    val aiActionOldBuybackCooldown = createMapFromLowLevelDict<int257, int257>(actionTail5.loadDict());
+    val aiActionOldBuybackBurnPercent = createMapFromLowLevelDict<int257, int257>(actionTail5.loadDict());
+
+    var vetoTail = actionTail5.loadRef().beginParse();
+    val totalVetoStake = vetoTail.loadCoins();
+    val vetoEscrows = createMapFromLowLevelDict<int257, int257>(vetoTail.loadDict());
+    val vetoActionStake = createMapFromLowLevelDict<int257, int257>(vetoTail.loadDict());
+    val aiOraclePubKey = vetoTail.loadUint(256) as uint256;
+    val aiNonce = vetoTail.loadUint(64) as uint64;
+    val aiSignedDecisionCount = vetoTail.loadInt(257) as int257;
+    val aiActionIndex = vetoTail.loadInt(257) as int257;
+    vetoTail.assertEnd();
+    actionTail5.assertEnd();
+    actionTail4.assertEnd();
+    actionTail3.assertEnd();
+    actionTail2.assertEnd();
+    actionTail1.assertEnd();
+    heartbeatTail.assertEnd();
+    counterTail.assertEnd();
+    historyTail.assertEnd();
+    root.assertEnd();
+    return {
+        aiOracle, aiEnabled, aiFullAutonomy, lastRebalanceTime, signalCount,
+        priceHistoryCount, priceHistory, anomalyLog, anomalyIndex,
+        priceHistoryDropped, anomalyDropped, minConfidence, emergencyPause,
+        aiActionCooldown, lastAiActionTime, lastAiQueryId, heartbeatTimeout,
+        lastHeartbeat, ownerOverrideWindow, vetoThresholdBps, aiActionLog,
+        aiActionKind, pendingAiActions, aiActionOldAddress, aiActionOldFeeBps,
+        aiActionOldMintable, aiActionOldEmergencyPause, aiActionOldTrading,
+        aiActionOldBurnShare, aiActionOldMaxTxBps, aiActionOldMaxWalletBps,
+        aiActionOldCooldownSeconds, aiActionOldBuybackThreshold,
+        aiActionOldBuybackCooldown, aiActionOldBuybackBurnPercent,
+        totalVetoStake, vetoEscrows, vetoActionStake, aiOraclePubKey, aiNonce,
+        aiSignedDecisionCount, aiActionIndex,
+    };
+}
+
+fun MasterAi.packToBuilder(self, mutate root: builder) {
+    var vetoTail = beginCell();
+    vetoTail.storeCoins(self.totalVetoStake);
+    vetoTail.storeDict(self.vetoEscrows.toLowLevelDict());
+    vetoTail.storeDict(self.vetoActionStake.toLowLevelDict());
+    vetoTail.storeUint(self.aiOraclePubKey, 256);
+    vetoTail.storeUint(self.aiNonce, 64);
+    vetoTail.storeInt(self.aiSignedDecisionCount, 257);
+    vetoTail.storeInt(self.aiActionIndex, 257);
+
+    var actionTail5 = beginCell();
+    actionTail5.storeDict(self.aiActionOldBuybackThreshold.toLowLevelDict());
+    actionTail5.storeDict(self.aiActionOldBuybackCooldown.toLowLevelDict());
+    actionTail5.storeDict(self.aiActionOldBuybackBurnPercent.toLowLevelDict());
+    actionTail5.storeRef(vetoTail.endCell());
+
+    var actionTail4 = beginCell();
+    actionTail4.storeDict(self.aiActionOldMaxTxBps.toLowLevelDict());
+    actionTail4.storeDict(self.aiActionOldMaxWalletBps.toLowLevelDict());
+    actionTail4.storeDict(self.aiActionOldCooldownSeconds.toLowLevelDict());
+    actionTail4.storeRef(actionTail5.endCell());
+
+    var actionTail3 = beginCell();
+    actionTail3.storeDict(self.aiActionOldEmergencyPause.toLowLevelDict());
+    actionTail3.storeDict(self.aiActionOldTrading.toLowLevelDict());
+    actionTail3.storeDict(self.aiActionOldBurnShare.toLowLevelDict());
+    actionTail3.storeRef(actionTail4.endCell());
+
+    var actionTail2 = beginCell();
+    actionTail2.storeDict(self.aiActionOldAddress.toLowLevelDict());
+    actionTail2.storeDict(self.aiActionOldFeeBps.toLowLevelDict());
+    actionTail2.storeDict(self.aiActionOldMintable.toLowLevelDict());
+    actionTail2.storeRef(actionTail3.endCell());
+
+    var actionTail1 = beginCell();
+    actionTail1.storeDict(self.aiActionLog.toLowLevelDict());
+    actionTail1.storeDict(self.aiActionKind.toLowLevelDict());
+    actionTail1.storeDict(self.pendingAiActions.toLowLevelDict());
+    actionTail1.storeRef(actionTail2.endCell());
+
+    var heartbeatTail = beginCell();
+    heartbeatTail.storeInt(self.lastAiActionTime, 257);
+    heartbeatTail.storeUint(self.lastAiQueryId, 64);
+    heartbeatTail.storeUint(self.heartbeatTimeout, 32);
+    heartbeatTail.storeInt(self.lastHeartbeat, 257);
+    heartbeatTail.storeUint(self.ownerOverrideWindow, 32);
+    heartbeatTail.storeUint(self.vetoThresholdBps, 16);
+    heartbeatTail.storeRef(actionTail1.endCell());
+
+    var counterTail = beginCell();
+    counterTail.storeInt(self.anomalyIndex, 257);
+    counterTail.storeInt(self.priceHistoryDropped, 257);
+    counterTail.storeInt(self.anomalyDropped, 257);
+    counterTail.storeUint(self.minConfidence, 8);
+    counterTail.storeBool(self.emergencyPause);
+    counterTail.storeUint(self.aiActionCooldown, 32);
+    counterTail.storeRef(heartbeatTail.endCell());
+
+    var historyTail = beginCell();
+    historyTail.storeInt(self.lastRebalanceTime, 257);
+    historyTail.storeInt(self.signalCount, 257);
+    historyTail.storeInt(self.priceHistoryCount, 257);
+    historyTail.storeDict(self.priceHistory.toLowLevelDict());
+    historyTail.storeDict(self.anomalyLog.toLowLevelDict());
+    historyTail.storeRef(counterTail.endCell());
+
+    root.storeAddress(self.aiOracle);
+    root.storeBool(self.aiEnabled);
+    root.storeBool(self.aiFullAutonomy);
+    root.storeRef(historyTail.endCell());
+}
 @overflow1023_policy("suppress")
 struct MasterUser {
     stakingEnabled: bool; stakingApyBps: uint16; stakingMinStake: coins; stakingLockPeriod: uint32
     stakers: map<address, StakeInfo>; totalStaked: coins; stakingRewardsPool: coins; pendingQsrDeposits: map<address, int257>
     referralEnabled: bool; referralRewardBps: uint16; referrals: map<address, ReferralInfo>; pendingReferralRewards: map<address, int257>; pendingReferralTotal: coins
     vestingEnabled: bool; teamAllocation: coins; teamClaimed: coins; vestingSchedules: map<address, VestingInfo>
+}
+fun MasterUser.packToBuilder(self, mutate root: builder) {
+    val referrals = beginCell().storeBool(self.referralEnabled).storeUint(self.referralRewardBps, 16)
+        .storeDict(self.referrals.toLowLevelDict()).storeDict(self.pendingReferralRewards.toLowLevelDict())
+        .storeCoins(self.pendingReferralTotal).endCell();
+    val vesting = beginCell().storeBool(self.vestingEnabled).storeCoins(self.teamAllocation)
+        .storeCoins(self.teamClaimed).storeDict(self.vestingSchedules.toLowLevelDict()).endCell();
+    root.storeBool(self.stakingEnabled);
+    root.storeUint(self.stakingApyBps, 16);
+    root.storeCoins(self.stakingMinStake);
+    root.storeUint(self.stakingLockPeriod, 32);
+    root.storeDict(self.stakers.toLowLevelDict());
+    root.storeCoins(self.totalStaked);
+    root.storeCoins(self.stakingRewardsPool);
+    root.storeDict(self.pendingQsrDeposits.toLowLevelDict());
+    root.storeRef(referrals);
+    root.storeRef(vesting);
+}
+fun MasterUser.unpackFromSlice(mutate root: slice): MasterUser {
+    val stakingEnabled = root.loadBool();
+    val stakingApyBps = root.loadUint(16) as uint16;
+    val stakingMinStake = root.loadCoins();
+    val stakingLockPeriod = root.loadUint(32) as uint32;
+    val stakers = createMapFromLowLevelDict<address, StakeInfo>(root.loadDict());
+    val totalStaked = root.loadCoins();
+    val stakingRewardsPool = root.loadCoins();
+    val pendingQsrDeposits = createMapFromLowLevelDict<address, int257>(root.loadDict());
+    var referralsTail = root.loadRef().beginParse();
+    val referralEnabled = referralsTail.loadBool();
+    val referralRewardBps = referralsTail.loadUint(16) as uint16;
+    val referrals = createMapFromLowLevelDict<address, ReferralInfo>(referralsTail.loadDict());
+    val pendingReferralRewards = createMapFromLowLevelDict<address, int257>(referralsTail.loadDict());
+    val pendingReferralTotal = referralsTail.loadCoins();
+    var vestingTail = root.loadRef().beginParse();
+    val vestingEnabled = vestingTail.loadBool();
+    val teamAllocation = vestingTail.loadCoins();
+    val teamClaimed = vestingTail.loadCoins();
+    val vestingSchedules = createMapFromLowLevelDict<address, VestingInfo>(vestingTail.loadDict());
+    root.assertEnd();
+    referralsTail.assertEnd();
+    vestingTail.assertEnd();
+    return { stakingEnabled, stakingApyBps, stakingMinStake, stakingLockPeriod,
+        stakers, totalStaked, stakingRewardsPool, pendingQsrDeposits,
+        referralEnabled, referralRewardBps, referrals, pendingReferralRewards,
+        pendingReferralTotal, vestingEnabled, teamAllocation, teamClaimed, vestingSchedules };
 }
 @overflow1023_policy("suppress")
 struct MasterGov {
@@ -153,8 +484,84 @@ struct MasterGov {
     pendingWalletCode: cell?; walletCodeAt: int257; pendingContent: cell?; contentAt: int257
     pendingMasterPayouts: map<int257, PendingMasterPayout>; masterPayoutSeq: uint64; govProposalContentHash: map<int257, int257>
 }
+
+fun MasterGov.unpackFromSlice(mutate root: slice): MasterGov {
+    val govQuorumBps = root.loadUint(16) as uint16;
+    val govVotes = createMapFromLowLevelDict<int257, bool>(root.loadDict());
+    val govProposalStake = createMapFromLowLevelDict<int257, int257>(root.loadDict());
+    val govProposalCount = root.loadInt(257) as int257;
+    val govProposalExecuted = createMapFromLowLevelDict<int257, bool>(root.loadDict());
+
+    var feeTail = root.loadRef().beginParse();
+    val pendingFee = feeTail.loadUint(16) as uint16;
+    val pendingFeeBurnShare = feeTail.loadInt(257) as int257;
+    val pendingMaxTx = feeTail.loadUint(16) as uint16;
+    val pendingMaxWallet = feeTail.loadUint(16) as uint16;
+    val pendingCooldown = feeTail.loadUint(16) as uint16;
+    val pendingFeeConfigAt = feeTail.loadInt(257) as int257;
+    val pendingWalletCode = feeTail.loadMaybeRef();
+    val walletCodeAt = feeTail.loadInt(257) as int257;
+
+    var contentTail = feeTail.loadRef().beginParse();
+    val pendingContent = contentTail.loadMaybeRef();
+    val contentAt = contentTail.loadInt(257) as int257;
+    val pendingMasterPayouts = createMapFromLowLevelDict<int257, PendingMasterPayout>(contentTail.loadDict());
+    val masterPayoutSeq = contentTail.loadUint(64) as uint64;
+    val govProposalContentHash = createMapFromLowLevelDict<int257, int257>(contentTail.loadDict());
+    contentTail.assertEnd();
+    feeTail.assertEnd();
+    root.assertEnd();
+    return {
+        govQuorumBps, govVotes, govProposalStake, govProposalCount,
+        govProposalExecuted, pendingFee, pendingFeeBurnShare, pendingMaxTx,
+        pendingMaxWallet, pendingCooldown, pendingFeeConfigAt, pendingWalletCode,
+        walletCodeAt, pendingContent, contentAt, pendingMasterPayouts,
+        masterPayoutSeq, govProposalContentHash,
+    };
+}
+
+fun MasterGov.packToBuilder(self, mutate root: builder) {
+    var contentTail = beginCell();
+    contentTail.storeMaybeRef(self.pendingContent);
+    contentTail.storeInt(self.contentAt, 257);
+    contentTail.storeDict(self.pendingMasterPayouts.toLowLevelDict());
+    contentTail.storeUint(self.masterPayoutSeq, 64);
+    contentTail.storeDict(self.govProposalContentHash.toLowLevelDict());
+
+    var feeTail = beginCell();
+    feeTail.storeUint(self.pendingFee, 16);
+    feeTail.storeInt(self.pendingFeeBurnShare, 257);
+    feeTail.storeUint(self.pendingMaxTx, 16);
+    feeTail.storeUint(self.pendingMaxWallet, 16);
+    feeTail.storeUint(self.pendingCooldown, 16);
+    feeTail.storeInt(self.pendingFeeConfigAt, 257);
+    feeTail.storeMaybeRef(self.pendingWalletCode);
+    feeTail.storeInt(self.walletCodeAt, 257);
+    feeTail.storeRef(contentTail.endCell());
+
+    root.storeUint(self.govQuorumBps, 16);
+    root.storeDict(self.govVotes.toLowLevelDict());
+    root.storeDict(self.govProposalStake.toLowLevelDict());
+    root.storeInt(self.govProposalCount, 257);
+    root.storeDict(self.govProposalExecuted.toLowLevelDict());
+    root.storeRef(feeTail.endCell());
+}
 @overflow1023_policy("suppress")
 struct QuasarMasterStorage { core: MasterCore; ai: MasterAi; user: MasterUser; gov: MasterGov }
+fun QuasarMasterStorage.unpackFromSlice(mutate root: slice): QuasarMasterStorage {
+    val core = MasterCore.fromCell(root.loadRef());
+    val ai = MasterAi.fromCell(root.loadRef());
+    val user = MasterUser.fromCell(root.loadRef());
+    val gov = MasterGov.fromCell(root.loadRef());
+    root.assertEnd();
+    return { core, ai, user, gov };
+}
+fun QuasarMasterStorage.packToBuilder(self, mutate root: builder) {
+    root.storeRef(self.core.toCell());
+    root.storeRef(self.ai.toCell());
+    root.storeRef(self.user.toCell());
+    root.storeRef(self.gov.toCell());
+}
 fun QuasarMasterStorage.load(): QuasarMasterStorage { return QuasarMasterStorage.fromCell(contract.getData()); }
 fun QuasarMasterStorage.save(self) { contract.setData(self.toCell()); }
 
@@ -196,7 +603,7 @@ fun newQuasarMasterStorage(owner: address, content: cell, walletCode: cell): Qua
 }
 
 type AllowedMessageToQuasarMaster =
-    | Mint | BurnNotification | TokenNotification | TokenExcesses | FeeTransfer | PayoutFailed | PoolPayout | ProvideWalletAddress
+    | Mint | BurnNotification | TokenNotification | TokenExcesses | FeeTransfer | PayoutFailed | ProvideWalletAddress
     | AcceptOwner | AddVesting | AIAnomalyAlert | AIEmergencyPause | AIGovernanceProposal | AIGrantFullAutonomy | AIHeartbeat | AIPriceSignal | AIRebalance | AIRotateOracle | AISetAntiWhale | AISetBuybackDirect | AISetFee | AISetOracle | AISetTreasuryDirect | AISignedDecision | AIToggleMinting | BuybackTon | CancelBuybackSwap | CancelOwnerTransfer | ClaimReferralRewards | ClaimRewards | ClaimVested | ClearAiOracleKey | Deploy | GovernanceVote | GuardianPause | OwnerOverride | ProposeContent | ProposeOwner | ProposeWalletCode | RefundPendingDeposit | RegisterReferral | ReleaseVeto | SetAiOracleKey | SetBuybackConfig | SetDefiAddress | SetEmergencyGuardian | SetFeeConfig | SetReferralConfig | SetStakingConfig | SetTreasury | Stake | SweepTON | ToggleMinting | TriggerBuyback | Unstake | VetoAIAction;
 
 contract QuasarMaster {
@@ -259,7 +666,11 @@ fun sendInternal(to: address, amount: coins, queryId: uint64, from: address, for
         bounce: BounceMode.Only256BitsOfBody,
         dest: quasarWalletDeployment(to, contract.getAddress(), quasarWalletCompiledCode()),
         value: grams("0.02"),
-        body: InternalTransfer { queryId, amount, from, responseDestination: contract.getAddress(), forwardTonAmount, forwardPayload },
+        // This body is wider than the inline message envelope once both
+        // addresses and the forward slice are present. Passing a cell makes
+        // Acton encode the TL-B body as the message's body reference, matching
+        // TON's Either Cell convention and Tact's StateInit send path.
+        body: InternalTransfer { queryId, amount, from, responseDestination: contract.getAddress(), forwardTonAmount, forwardPayload }.toCell(),
     });
     msg.send(SEND_MODE_PAY_FEES_SEPARATELY);
 }
@@ -493,14 +904,14 @@ fun onInternalMessage(in: InMessage) {
             createMessage({ bounce: BounceMode.NoBounce, dest: in.senderAddress, value: 0, body: DeployOk { queryId: msg.queryId } }).send(SEND_MODE_CARRY_ALL_REMAINING_MESSAGE_VALUE | SEND_MODE_IGNORE_ERRORS);
         }
         Mint => {
-            var s = lazy QuasarMasterStorage.load();
+            var s = QuasarMasterStorage.load();
             requireNotPaused(s); requireTrading(s); requireOwner(s, in.senderAddress);
             assert (msg.amount > 0 && !isZeroAddress(msg.receiver)) throw 1100;
             assert (s.core.mintable && msg.amount <= s.core.maxSupply * s.core.maxTxBps / 10000 && s.core.totalSupply + msg.amount <= s.core.maxSupply) throw 1101;
             s.core.totalSupply += msg.amount; s.save(); sendMint(msg.receiver, msg.amount); emitMint(msg.amount, msg.receiver);
         }
         BurnNotification => {
-            var s = lazy QuasarMasterStorage.load();
+            var s = QuasarMasterStorage.load();
             assert (msg.amount > 0 && msg.amount <= s.core.totalSupply) throw 1102;
             val wallet = quasarWalletAddress(msg.sender, contract.getAddress(), quasarWalletCompiledCode());
             assert (in.senderAddress == wallet) throw 1103;
@@ -509,26 +920,26 @@ fun onInternalMessage(in: InMessage) {
             if (msg.responseDestination != null) { val response = msg.responseDestination!!; if (!isZeroAddress(response)) { createMessage({ bounce: BounceMode.NoBounce, dest: response, value: 0, body: TokenExcesses { queryId: msg.queryId } }).send(SEND_MODE_CARRY_ALL_REMAINING_MESSAGE_VALUE | SEND_MODE_IGNORE_ERRORS); } }
         }
         TokenNotification => {
-            var s = lazy QuasarMasterStorage.load();
+            var s = QuasarMasterStorage.load();
             assert (msg.amount > 0 && in.senderAddress == quasarWalletAddress(contract.getAddress(), contract.getAddress(), quasarWalletCompiledCode())) throw 1104;
             val previous = intOf(s.user.pendingQsrDeposits, msg.from);
             s.user.pendingQsrDeposits.set(msg.from, (previous == null ? (0 as int257) : previous!!) + msg.amount); s.core.custodyBalance += msg.amount; s.save();
         }
         TokenExcesses => { }
-        FeeTransfer => { var s = lazy QuasarMasterStorage.load(); onFeeTransfer(mutate s, in.senderAddress, msg); s.save(); }
+        FeeTransfer => { var s = QuasarMasterStorage.load(); onFeeTransfer(mutate s, in.senderAddress, msg); s.save(); }
         TriggerBuyback => {
-            var s = lazy QuasarMasterStorage.load(); requireOwner(s, in.senderAddress); requireNotPaused(s);
+            var s = QuasarMasterStorage.load(); requireOwner(s, in.senderAddress); requireNotPaused(s);
             assert (s.core.buybackEnabled && s.core.buybackPool >= s.core.buybackThreshold && blockchain.now() - s.core.lastBuybackTime >= s.core.buybackCooldown && s.core.buybackSwapPending == 0) throw 1105;
             assert (mapBoolOf(s.core.buybackQueries, msg.queryId as int257) == null) throw 1106;
             s.core.buybackQueries.set(msg.queryId as int257, true); executeBuyback(mutate s); s.save();
         }
         CancelBuybackSwap => {
-            var s = lazy QuasarMasterStorage.load(); requireOwner(s, in.senderAddress);
+            var s = QuasarMasterStorage.load(); requireOwner(s, in.senderAddress);
             assert (s.core.buybackSwapPending > 0 && msg.queryId == s.core.buybackSwapQueryId && blockchain.now() - s.core.lastBuybackTime >= BUYBACK_CALLBACK_TIMEOUT) throw 1107;
             val amount = s.core.buybackSwapPending; s.core.buybackSwapPending = 0; s.core.buybackSwapQueryId = 0; s.core.buybackSwapDefiAddress = ZERO_ADDRESS; s.save(); emitAdmin("CancelBuybackSwap", in.senderAddress, msg.queryId as int257, amount as int257);
         }
         Stake => {
-            var s = lazy QuasarMasterStorage.load(); requireNotPaused(s);
+            var s = QuasarMasterStorage.load(); requireNotPaused(s);
             assert (s.user.stakingEnabled && msg.amount > 0 && msg.amount >= s.user.stakingMinStake) throw 1110;
             val deposit = intOf(s.user.pendingQsrDeposits, in.senderAddress); assert (deposit != null && deposit!! >= msg.amount) throw 1111;
             val existing = stakeOf(s.user.stakers, in.senderAddress); val priorClaim: int257 = existing == null ? blockchain.now() : existing!!.lastClaim;
@@ -542,7 +953,7 @@ fun onInternalMessage(in: InMessage) {
             createExternalLogMessage({ dest: createAddressNone(), body: EventStake { staker: in.senderAddress, amount: msg.amount as int257 } }).send(SEND_MODE_IGNORE_ERRORS);
         }
         Unstake => {
-            var s = lazy QuasarMasterStorage.load(); assert (msg.amount > 0) throw 1120;
+            var s = QuasarMasterStorage.load(); assert (msg.amount > 0) throw 1120;
             val existing = stakeOf(s.user.stakers, in.senderAddress); assert (existing != null && existing!!.amount >= msg.amount && blockchain.now() >= existing!!.lockEnd) throw 1121;
             val st = existing!!; val reward = calculateRewards(s, in.senderAddress); assert (reward == 0 || s.user.stakingRewardsPool >= reward) throw 1122;
             if (reward > 0) { s.user.stakingRewardsPool -= reward; sendReservePayout(mutate s, in.senderAddress, reward, 3, st.lastClaim); }
@@ -552,76 +963,75 @@ fun onInternalMessage(in: InMessage) {
             createExternalLogMessage({ dest: createAddressNone(), body: EventUnstake { staker: in.senderAddress, amount: msg.amount as int257 } }).send(SEND_MODE_IGNORE_ERRORS);
         }
         ClaimRewards => {
-            var s = lazy QuasarMasterStorage.load(); requireNotPaused(s); val reward = calculateRewards(s, in.senderAddress); assert (reward > 0) throw 1130;
+            var s = QuasarMasterStorage.load(); requireNotPaused(s); val reward = calculateRewards(s, in.senderAddress); assert (reward > 0) throw 1130;
             val st = stakeOf(s.user.stakers, in.senderAddress); assert (st != null) throw 1131; s.user.stakingRewardsPool -= reward;
             val old = st!!; s.user.stakers.set(in.senderAddress, StakeInfo { amount: old.amount, startTime: old.startTime, lastClaim: blockchain.now(), lockEnd: old.lockEnd }); sendReservePayout(mutate s, in.senderAddress, reward, 3, old.lastClaim); s.save();
         }
         RegisterReferral => {
-            var s = lazy QuasarMasterStorage.load(); requireNotPaused(s);
+            var s = QuasarMasterStorage.load(); requireNotPaused(s);
             assert (s.user.referralEnabled && !isZeroAddress(msg.referrer) && msg.referrer != in.senderAddress && referralOf(s.user.referrals, in.senderAddress) == null) throw 1140;
             s.user.referrals.set(in.senderAddress, ReferralInfo { referrer: msg.referrer, totalEarned: 0, totalReferrals: 0 });
             val existing = referralOf(s.user.referrals, msg.referrer); if (existing != null) { val r = existing!!; s.user.referrals.set(msg.referrer, ReferralInfo { referrer: r.referrer, totalEarned: r.totalEarned, totalReferrals: r.totalReferrals + 1 }); }
             s.save(); createExternalLogMessage({ dest: createAddressNone(), body: EventReferralRegistered { user: in.senderAddress, referrer: msg.referrer } }).send(SEND_MODE_IGNORE_ERRORS);
         }
         ClaimReferralRewards => {
-            var s = lazy QuasarMasterStorage.load(); requireNotPaused(s); val reward = intOf(s.user.pendingReferralRewards, in.senderAddress);
+            var s = QuasarMasterStorage.load(); requireNotPaused(s); val reward = intOf(s.user.pendingReferralRewards, in.senderAddress);
             assert (reward != null && reward!! > 0 && s.core.reserveBalance - poolEncumbrance(s) >= reward!!) throw 1141;
             s.user.pendingReferralRewards.delete(in.senderAddress); s.user.pendingReferralTotal -= reward!!; sendReservePayout(mutate s, in.senderAddress, reward!! as coins, 4, 0); s.save();
         }
         AddVesting => {
-            var s = lazy QuasarMasterStorage.load(); requireOwner(s, in.senderAddress); requireNotPaused(s);
+            var s = QuasarMasterStorage.load(); requireOwner(s, in.senderAddress); requireNotPaused(s);
             assert (msg.totalAmount > 0 && msg.duration > 0 && msg.cliff <= msg.duration && vestingOf(s.user.vestingSchedules, msg.beneficiary) == null) throw 1150;
             val deposit = intOf(s.user.pendingQsrDeposits, in.senderAddress); assert (deposit != null && deposit!! >= msg.totalAmount) throw 1151;
             s.user.vestingSchedules.set(msg.beneficiary, VestingInfo { totalAmount: msg.totalAmount as int257, claimed: 0, startTime: blockchain.now(), cliff: msg.cliff as int257, duration: msg.duration as int257 }); s.user.teamAllocation += msg.totalAmount; s.user.pendingQsrDeposits.set(in.senderAddress, deposit!! - msg.totalAmount); s.save();
         }
         ClaimVested => {
-            var s = lazy QuasarMasterStorage.load(); assert (s.user.vestingEnabled) throw 1152; val existing = vestingOf(s.user.vestingSchedules, in.senderAddress);
+            var s = QuasarMasterStorage.load(); assert (s.user.vestingEnabled) throw 1152; val existing = vestingOf(s.user.vestingSchedules, in.senderAddress);
             assert (existing != null) throw 1153; val v = existing!!; assert (blockchain.now() >= v.startTime + v.cliff) throw 1154;
             var elapsed = blockchain.now() - v.startTime; if (elapsed > v.duration) { elapsed = v.duration; } val claim = v.totalAmount * elapsed / v.duration - v.claimed; assert (claim > 0) throw 1155;
             s.user.vestingSchedules.set(in.senderAddress, VestingInfo { totalAmount: v.totalAmount, claimed: v.claimed + claim, startTime: v.startTime, cliff: v.cliff, duration: v.duration }); s.user.teamClaimed += claim; sendCustodyPayout(mutate s, in.senderAddress, claim, 2, v.claimed, 0, 0); s.save(); createExternalLogMessage({ dest: createAddressNone(), body: EventVestingClaimed { beneficiary: in.senderAddress, amount: claim as int257 } }).send(SEND_MODE_IGNORE_ERRORS);
         }
-        SetStakingConfig => { var s = lazy QuasarMasterStorage.load(); requireOwner(s, in.senderAddress); assert (!s.ai.aiFullAutonomy && msg.apyBps <= 10000 && msg.minStake > 0 && msg.lockPeriod > 0) throw 1160; s.user.stakingEnabled = msg.enabled; s.user.stakingApyBps = msg.apyBps; s.user.stakingMinStake = msg.minStake; s.user.stakingLockPeriod = msg.lockPeriod; s.save(); }
-        SetReferralConfig => { var s = lazy QuasarMasterStorage.load(); requireOwner(s, in.senderAddress); assert (!s.ai.aiFullAutonomy && msg.rewardBps <= 10000) throw 1161; s.user.referralEnabled = msg.enabled; s.user.referralRewardBps = msg.rewardBps; s.save(); }
-        SetTreasury => { var s = lazy QuasarMasterStorage.load(); requireOwner(s, in.senderAddress); assert (!s.ai.aiFullAutonomy && !isZeroAddress(msg.treasury)) throw 1162; s.core.treasury = msg.treasury; s.save(); emitAdmin("SetTreasury", in.senderAddress, 0, 0); }
-        SetFeeConfig => { var s = lazy QuasarMasterStorage.load(); requireOwner(s, in.senderAddress); assert (!s.ai.aiFullAutonomy && msg.feeBps == QUASAR_WALLET_FEE_BPS && msg.burnShare <= 100 && msg.maxTxBps == QUASAR_MAX_TX_BPS && msg.maxWalletBps == QUASAR_MAX_WALLET_BPS && msg.cooldown == QUASAR_TRANSFER_COOLDOWN) throw 1163; s.gov.pendingFee = msg.feeBps; s.gov.pendingFeeBurnShare = msg.burnShare as int257; s.gov.pendingMaxTx = msg.maxTxBps; s.gov.pendingMaxWallet = msg.maxWalletBps; s.gov.pendingCooldown = msg.cooldown; s.gov.pendingFeeConfigAt = blockchain.now() + s.core.ownerTransferDelay; s.save(); emitAdmin("ProposeFeeConfig", in.senderAddress, msg.feeBps as int257, msg.burnShare as int257); }
-        ToggleMinting => { var s = lazy QuasarMasterStorage.load(); requireOwner(s, in.senderAddress); assert (!s.ai.aiFullAutonomy) throw 1164; s.core.tradingEnabled = msg.enabled; s.save(); emitAdmin("ToggleMinting", in.senderAddress, msg.enabled ? (1 as int257) : (0 as int257), 0); }
-        SetBuybackConfig => { var s = lazy QuasarMasterStorage.load(); requireOwner(s, in.senderAddress); assert (!s.ai.aiFullAutonomy && msg.threshold > 0 && msg.cooldown > 0 && msg.burnPercent > 0 && msg.burnPercent <= 100) throw 1165; s.core.buybackEnabled = msg.enabled; s.core.buybackThreshold = msg.threshold; s.core.buybackCooldown = msg.cooldown; s.core.buybackBurnPercent = msg.burnPercent; s.save(); emitAdmin("SetBuybackConfig", in.senderAddress, msg.threshold as int257, msg.burnPercent as int257); }
-        SetDefiAddress => { var s = lazy QuasarMasterStorage.load(); requireOwner(s, in.senderAddress); s.core.defiAddress = msg.defiAddress; s.save(); emitAdmin("SetDefiAddress", in.senderAddress, 0, 0); }
-        SetEmergencyGuardian => { var s = lazy QuasarMasterStorage.load(); requireOwner(s, in.senderAddress); assert (!isZeroAddress(msg.guardian)) throw 1166; s.core.emergencyGuardian = msg.guardian; s.save(); emitAdmin("SetEmergencyGuardian", in.senderAddress, 0, 0); }
-        GuardianPause => { var s = lazy QuasarMasterStorage.load(); assert (in.senderAddress == s.core.emergencyGuardian) throw 1167; s.ai.emergencyPause = true; s.core.tradingEnabled = false; s.save(); createExternalLogMessage({ dest: createAddressNone(), body: EventEmergencyPause { guardian: in.senderAddress, paused: true, reason: msg.reason } }).send(SEND_MODE_IGNORE_ERRORS); }
-        ProposeOwner => { var s = lazy QuasarMasterStorage.load(); requireOwner(s, in.senderAddress); assert (!isZeroAddress(msg.newOwner)) throw 1170; s.core.pendingOwner = msg.newOwner; s.core.ownerTransferAt = blockchain.now() + s.core.ownerTransferDelay; s.save(); emitAdmin("ProposeOwner", in.senderAddress, s.core.ownerTransferAt, 0); }
-        CancelOwnerTransfer => { var s = lazy QuasarMasterStorage.load(); requireOwner(s, in.senderAddress); s.core.pendingOwner = ZERO_ADDRESS; s.core.ownerTransferAt = 0; s.save(); emitAdmin("CancelOwnerTransfer", in.senderAddress, 0, 0); }
-        AcceptOwner => { var s = lazy QuasarMasterStorage.load(); assert (!isZeroAddress(s.core.pendingOwner) && in.senderAddress == s.core.pendingOwner && blockchain.now() >= s.core.ownerTransferAt) throw 1171; s.core.owner = s.core.pendingOwner; s.core.pendingOwner = ZERO_ADDRESS; s.core.ownerTransferAt = 0; s.save(); emitAdmin("AcceptOwner", in.senderAddress, 0, 0); }
-        ProposeWalletCode => { var s = lazy QuasarMasterStorage.load(); requireOwner(s, in.senderAddress); throw 1172; }
-        ProposeContent => { var s = lazy QuasarMasterStorage.load(); requireOwner(s, in.senderAddress); assert (!s.ai.aiFullAutonomy) throw 1173; var content = msg.newContent.beginParse(); assert (content.remainingBitsCount() >= 8) throw 1174; val prefix = content.loadUint(8); assert (prefix == 0 || prefix == 1) throw 1175; if (prefix == 1) { assert (content.remainingBitsCount() > 0 || content.remainingRefsCount() > 0) throw 1176; } s.gov.pendingContent = msg.newContent; s.gov.contentAt = blockchain.now() + s.core.ownerTransferDelay; s.save(); emitAdmin("ProposeContent", in.senderAddress, s.gov.contentAt, 0); }
-        SetAiOracleKey => { var s = lazy QuasarMasterStorage.load(); requireOwner(s, in.senderAddress); assert (!s.ai.aiFullAutonomy && msg.publicKey != 0) throw 1180; s.ai.aiOraclePubKey = msg.publicKey; s.save(); emitAdmin("SetAiOracleKey", in.senderAddress, 0, 0); }
-        ClearAiOracleKey => { var s = lazy QuasarMasterStorage.load(); requireOwner(s, in.senderAddress); s.ai.aiOraclePubKey = 0; s.save(); emitAdmin("ClearAiOracleKey", in.senderAddress, 0, 0); }
-        AIGrantFullAutonomy => { var s = lazy QuasarMasterStorage.load(); requireOwner(s, in.senderAddress); s.ai.aiFullAutonomy = msg.enabled; if (msg.enabled) { s.ai.aiEnabled = true; } s.save(); }
-        AISetOracle => { var s = lazy QuasarMasterStorage.load(); requireOwner(s, in.senderAddress); assert (!isZeroAddress(msg.oracleAddress)) throw 1181; if (msg.oracleAddress != s.ai.aiOracle) { s.ai.lastAiQueryId = 0; } s.ai.aiOracle = msg.oracleAddress; s.ai.aiEnabled = true; s.save(); }
-        AIHeartbeat => { var s = lazy QuasarMasterStorage.load(); assert (in.senderAddress == s.ai.aiOracle) throw 1182; freshAiQuery(mutate s, msg.queryId); s.ai.lastHeartbeat = blockchain.now(); s.save(); }
-        AISetFee => { var s = lazy QuasarMasterStorage.load(); requireAi(s, in.senderAddress); assert (msg.feeBps == QUASAR_WALLET_FEE_BPS) throw 1183; s.save(); emitAi(0, "SetFee", s.core.feeBps as int257, msg.feeBps as int257); }
-        AISetAntiWhale => { var s = lazy QuasarMasterStorage.load(); requireAi(s, in.senderAddress); assert (msg.maxTxBps == QUASAR_MAX_TX_BPS && msg.maxWalletBps == QUASAR_MAX_WALLET_BPS && msg.cooldown == QUASAR_TRANSFER_COOLDOWN) throw 1184; s.save(); emitAi(0, "SetAntiWhale", s.core.maxTxBps as int257, msg.maxTxBps as int257); }
-        AISetTreasuryDirect => { var s = lazy QuasarMasterStorage.load(); requireAi(s, in.senderAddress); requireAiCooldown(s); freshAiQuery(mutate s, msg.queryId); assert (!isZeroAddress(msg.treasury)) throw 1185; val old = s.core.treasury; s.core.treasury = msg.treasury; val id = logAiAction(mutate s, 4, "SetTreasury", 0, 1, msg.reason, true); s.ai.aiActionOldAddress.set(id, old); s.save(); emitAi(id, "SetTreasury", 0, 1); }
-        AISetBuybackDirect => { var s = lazy QuasarMasterStorage.load(); requireAi(s, in.senderAddress); requireAiCooldown(s); freshAiQuery(mutate s, msg.queryId); assert (msg.threshold > 0 && msg.cooldown > 0 && msg.burnPercent > 0 && msg.burnPercent <= 100) throw 1186; val oldEnabled = s.core.buybackEnabled; val oldT = s.core.buybackThreshold; val oldC = s.core.buybackCooldown; val oldB = s.core.buybackBurnPercent; s.core.buybackEnabled = msg.enabled; s.core.buybackThreshold = msg.threshold; s.core.buybackCooldown = msg.cooldown; s.core.buybackBurnPercent = msg.burnPercent; val id = logAiAction(mutate s, 6, "SetBuyback", oldEnabled ? (1 as int257) : (0 as int257), msg.enabled ? (1 as int257) : (0 as int257), msg.reason, true); s.ai.aiActionOldBuybackThreshold.set(id, oldT as int257); s.ai.aiActionOldBuybackCooldown.set(id, oldC as int257); s.ai.aiActionOldBuybackBurnPercent.set(id, oldB as int257); s.save(); emitAi(id, "SetBuyback", oldEnabled ? (1 as int257) : (0 as int257), msg.enabled ? (1 as int257) : (0 as int257)); }
-        AIToggleMinting => { var s = lazy QuasarMasterStorage.load(); requireAi(s, in.senderAddress); requireAiCooldown(s); freshAiQuery(mutate s, msg.queryId); val old = s.core.tradingEnabled; s.core.tradingEnabled = msg.enabled; val id = logAiAction(mutate s, 2, "ToggleMinting", old ? (1 as int257) : (0 as int257), msg.enabled ? (1 as int257) : (0 as int257), msg.reason, true); s.save(); emitAi(id, "ToggleMinting", old ? (1 as int257) : (0 as int257), msg.enabled ? (1 as int257) : (0 as int257)); }
-        AIRotateOracle => { var s = lazy QuasarMasterStorage.load(); requireAi(s, in.senderAddress); requireAiCooldown(s); freshAiQuery(mutate s, msg.queryId); assert (s.ai.aiFullAutonomy && !isZeroAddress(msg.newOracle)) throw 1187; val old = s.ai.aiOracle; if (old != msg.newOracle) { s.ai.lastAiQueryId = 0; } s.ai.aiOracle = msg.newOracle; val id = logAiAction(mutate s, 5, "RotateOracle", 0, 1, msg.reason, true); s.ai.aiActionOldAddress.set(id, old); s.save(); emitAi(id, "RotateOracle", 0, 1); }
-        AIRebalance => { var s = lazy QuasarMasterStorage.load(); requireAi(s, in.senderAddress); requireAiCooldown(s); freshAiQuery(mutate s, msg.queryId); requireNotPaused(s); assert (msg.targetFeeBps == QUASAR_WALLET_FEE_BPS && msg.targetBurnShare <= 100) throw 1188; val oldB = s.core.feeBurnShare; val oldF = s.core.feeBps; s.core.feeBps = msg.targetFeeBps; s.core.feeBurnShare = msg.targetBurnShare; s.ai.lastRebalanceTime = blockchain.now(); s.ai.signalCount += 1; logAnomaly(mutate s, msg.recommendation, 100, true); val id = logAiAction(mutate s, 7, "Rebalance", oldB as int257, msg.targetBurnShare as int257, msg.recommendation, true); s.ai.aiActionOldFeeBps.set(id, oldF as int257); s.save(); emitAi(id, "Rebalance", oldB as int257, msg.targetBurnShare as int257); }
-        AIPriceSignal => { var s = lazy QuasarMasterStorage.load(); requireAi(s, in.senderAddress); freshAiQuery(mutate s, msg.queryId); val oldB = s.core.feeBurnShare; val oldF = s.core.feeBps; val oldP = s.ai.emergencyPause; val oldT = s.core.tradingEnabled; s.ai.signalCount += 1; if (s.ai.priceHistoryCount < QUASAR_AI_PRICE_HISTORY_CAP) { s.ai.priceHistory.set(blockchain.now(), msg.priceTon as int257); s.ai.priceHistoryCount += 1; } else { s.ai.priceHistoryDropped += 1; } if (msg.action == 2 && msg.volatility > 5000) { s.core.feeBurnShare = 70; } if (msg.action == 3 && msg.sentiment > 80) { s.core.feeBurnShare = 40; } if (msg.action == 1 && msg.sentiment < -50) { s.core.feeBurnShare = 80; } if (s.core.feeBurnShare != oldB) { val id = logAiAction(mutate s, 11, "PriceSignal", oldB as int257, s.core.feeBurnShare as int257, "price-signal", false); s.ai.aiActionOldFeeBps.set(id, oldF as int257); s.ai.aiActionOldEmergencyPause.set(id, oldP ? (1 as int257) : (0 as int257)); s.ai.aiActionOldTrading.set(id, oldT ? (1 as int257) : (0 as int257)); } s.save(); }
-        AIAnomalyAlert => { var s = lazy QuasarMasterStorage.load(); requireAi(s, in.senderAddress); freshAiQuery(mutate s, msg.queryId); val oldB = s.core.feeBurnShare; val oldF = s.core.feeBps; val oldP = s.ai.emergencyPause; val oldT = s.core.tradingEnabled; logAnomaly(mutate s, msg.recommendedAction, 100, false); if (msg.severity == 3) { s.ai.emergencyPause = true; s.core.tradingEnabled = false; s.core.feeBps = 100; s.core.feeBurnShare = 90; } else if (msg.severity == 2) { s.core.feeBurnShare = 60; } if (s.core.feeBurnShare != oldB || s.core.feeBps != oldF || s.ai.emergencyPause != oldP || s.core.tradingEnabled != oldT) { val id = logAiAction(mutate s, 12, "AnomalyAlert", oldB as int257, s.core.feeBurnShare as int257, "anomaly-alert", false); s.ai.aiActionOldFeeBps.set(id, oldF as int257); s.ai.aiActionOldEmergencyPause.set(id, oldP ? (1 as int257) : (0 as int257)); s.ai.aiActionOldTrading.set(id, oldT ? (1 as int257) : (0 as int257)); } s.save(); }
-        AIEmergencyPause => { var s = lazy QuasarMasterStorage.load(); requireAi(s, in.senderAddress); freshAiQuery(mutate s, msg.queryId); val oldT = s.core.tradingEnabled; val oldP = s.ai.emergencyPause; val oldF = s.core.feeBps; val oldB = s.core.feeBurnShare; if (msg.pause) { s.ai.emergencyPause = true; s.core.tradingEnabled = false; if (msg.severity == 3) { s.core.feeBps = 100; s.core.feeBurnShare = 90; } } else { assert (s.ai.aiFullAutonomy) throw 1189; s.ai.emergencyPause = false; s.core.tradingEnabled = true; } val id = logAiAction(mutate s, 3, "EmergencyPause", oldT ? (1 as int257) : (0 as int257), msg.pause ? (1 as int257) : (0 as int257), msg.reason, true); s.ai.aiActionOldFeeBps.set(id, oldF as int257); s.ai.aiActionOldBurnShare.set(id, oldB as int257); s.ai.aiActionOldEmergencyPause.set(id, oldP ? (1 as int257) : (0 as int257)); s.ai.aiActionOldTrading.set(id, oldT ? (1 as int257) : (0 as int257)); s.save(); emitAi(id, "EmergencyPause", oldT ? (1 as int257) : (0 as int257), msg.pause ? (1 as int257) : (0 as int257)); }
-        AIGovernanceProposal => { var s = lazy QuasarMasterStorage.load(); requireAi(s, in.senderAddress); requireAiCooldown(s); freshAiQuery(mutate s, msg.queryId); assert (msg.confidence >= s.ai.minConfidence) throw 1190; s.ai.signalCount += 1; var old: int257 = 0; var kind = ""; if (msg.proposalType == 1) { assert (msg.newValue == QUASAR_WALLET_FEE_BPS) throw 1191; old = s.core.feeBps as int257; s.core.feeBps = msg.newValue as uint16; kind = "GovernanceFee"; } else if (msg.proposalType == 2) { assert (msg.newValue >= 0 && msg.newValue <= 100) throw 1192; old = s.core.feeBurnShare as int257; s.core.feeBurnShare = msg.newValue as uint8; kind = "GovernanceBurn"; } else if (msg.proposalType == 4) { assert (msg.newValue > 0) throw 1193; old = s.core.buybackThreshold as int257; s.core.buybackThreshold = msg.newValue as coins; kind = "GovernanceBuybackThreshold"; } else { throw 1194; } val id = logAiAction(mutate s, (msg.proposalType == 1 ? 1 : (msg.proposalType == 2 ? 8 : 13)), kind, old, msg.newValue, msg.description, true); if (msg.proposalType == 1) { s.ai.aiActionOldFeeBps.set(id, old as int257); } if (msg.proposalType == 4) { s.ai.aiActionOldBuybackThreshold.set(id, old as int257); } logAnomaly(mutate s, msg.description, msg.confidence as int257, true); s.save(); emitAi(id, kind, old, msg.newValue); }
-        OwnerOverride => { var s = lazy QuasarMasterStorage.load(); requireOwner(s, in.senderAddress); val action = actionOf(s.ai.aiActionLog, msg.actionId as int257); assert (action != null && overrideOpen(s, msg.actionId) && !action!!.overridden && !action!!.vetoed) throw 1200; val act = action!!; restoreAiAction(mutate s, msg.actionId as int257, act); markActionClosed(mutate s, msg.actionId as int257, act, false, true); s.save(); }
-        VetoAIAction => { var s = lazy QuasarMasterStorage.load(); val action = actionOf(s.ai.aiActionLog, msg.actionId as int257); assert (action != null && !action!!.vetoed && !action!!.overridden && overrideOpen(s, msg.actionId) && msg.amount > 0) throw 1201; val stake = stakeOf(s.user.stakers, in.senderAddress); val deposit = intOf(s.user.pendingQsrDeposits, in.senderAddress); assert (stake != null && stake!!.amount > 0 && deposit != null && deposit!! >= msg.amount) throw 1202; val key = voteKey(in.senderAddress, msg.actionId); assert (mapIntOf(s.ai.vetoEscrows, key) == null) throw 1203; s.user.pendingQsrDeposits.set(in.senderAddress, deposit!! - msg.amount); s.ai.vetoEscrows.set(key, msg.amount as int257); val prior = mapIntOf(s.ai.vetoActionStake, msg.actionId as int257); val total = (prior == null ? (0 as int257) : prior!!) + msg.amount; s.ai.vetoActionStake.set(msg.actionId as int257, total); s.ai.totalVetoStake += msg.amount; var vetoed = false; if (s.user.totalStaked > 0 && total * 10000 >= s.user.totalStaked * s.ai.vetoThresholdBps) { val act = action!!; restoreAiAction(mutate s, msg.actionId as int257, act); markActionClosed(mutate s, msg.actionId as int257, act, true, false); s.ai.pendingAiActions.delete(msg.actionId as int257); vetoed = true; } s.save(); createExternalLogMessage({ dest: createAddressNone(), body: EventAiVeto { actionId: msg.actionId as int257, voter: in.senderAddress, amount: msg.amount as int257, actionStake: total, vetoed } }).send(SEND_MODE_IGNORE_ERRORS); }
-        ReleaseVeto => { var s = lazy QuasarMasterStorage.load(); val action = actionOf(s.ai.aiActionLog, msg.actionId as int257); assert (action != null && (action!!.vetoed || !overrideOpen(s, msg.actionId))) throw 1204; val key = voteKey(in.senderAddress, msg.actionId); val escrow = mapIntOf(s.ai.vetoEscrows, key); val total = mapIntOf(s.ai.vetoActionStake, msg.actionId as int257); assert (escrow != null && escrow!! > 0 && total != null && total!! >= escrow!!) throw 1205; s.ai.vetoEscrows.delete(key); s.ai.vetoActionStake.set(msg.actionId as int257, total!! - escrow!!); s.ai.totalVetoStake -= escrow!!; sendCustodyPayout(mutate s, in.senderAddress, escrow!! as coins, 5, key, msg.actionId as int257, 0); s.save(); createExternalLogMessage({ dest: createAddressNone(), body: EventAiVetoReleased { actionId: msg.actionId as int257, voter: in.senderAddress, amount: escrow!! } }).send(SEND_MODE_IGNORE_ERRORS); }
-        RefundPendingDeposit => { var s = lazy QuasarMasterStorage.load(); val deposit = intOf(s.user.pendingQsrDeposits, in.senderAddress); assert (deposit != null && deposit!! > 0) throw 1206; s.user.pendingQsrDeposits.delete(in.senderAddress); sendCustodyPayout(mutate s, in.senderAddress, deposit!! as coins, 6, 0, 0, 0); s.save(); }
-        GovernanceVote => { var s = lazy QuasarMasterStorage.load(); requireOwner(s, in.senderAddress); requireNotPaused(s); assert (blockchain.now() <= msg.deadline && mapBoolOf(s.gov.govProposalExecuted, msg.proposalId as int257) == null) throw 1210; val payloadHash = beginCell().storeUint(msg.proposalId, 64).storeUint(msg.kind, 8).storeBool(msg.flag).storeUint(msg.feeBps, 32).endCell().hash(); val bound = mapIntOf(s.gov.govProposalContentHash, msg.proposalId as int257); assert (bound == null || bound!! == payloadHash) throw 1211; val key = voteKey(in.senderAddress, msg.proposalId); assert (mapBoolOf(s.gov.govVotes, key) == null) throw 1212; val stake = stakeOf(s.user.stakers, in.senderAddress); assert (stake != null && stake!!.amount > 0) throw 1213; s.gov.govProposalContentHash.set(msg.proposalId as int257, payloadHash as int257); s.gov.govVotes.set(key, true); val previous = mapIntOf(s.gov.govProposalStake, msg.proposalId as int257); if (previous == null) { s.gov.govProposalCount += 1; } val total = (previous == null ? (0 as int257) : previous!!) + stake!!.amount; s.gov.govProposalStake.set(msg.proposalId as int257, total); var actionId: int257 = 0; if (total * 10000 >= s.user.totalStaked * s.gov.govQuorumBps) { if (msg.kind == 1) { assert (msg.feeBps == QUASAR_WALLET_FEE_BPS) throw 1214; val old = s.core.feeBps as int257; s.core.feeBps = msg.feeBps; actionId = logAiAction(mutate s, 1, "SetFee", old as int257, msg.feeBps as int257, msg.reason, false); } else if (msg.kind == 2) { val old = s.core.tradingEnabled; s.core.tradingEnabled = msg.flag; actionId = logAiAction(mutate s, 2, "ToggleMinting", old ? (1 as int257) : (0 as int257), msg.flag ? (1 as int257) : (0 as int257), msg.reason, false); } else if (msg.kind == 3) { val oldP = s.ai.emergencyPause; val oldT = s.core.tradingEnabled; val oldF = s.core.feeBps; s.ai.emergencyPause = msg.flag; s.core.tradingEnabled = !msg.flag; actionId = logAiAction(mutate s, 3, "EmergencyPause", oldP ? (1 as int257) : (0 as int257), msg.flag ? (1 as int257) : (0 as int257), msg.reason, false); s.ai.aiActionOldEmergencyPause.set(actionId, oldP ? (1 as int257) : (0 as int257)); s.ai.aiActionOldTrading.set(actionId, oldT ? (1 as int257) : (0 as int257)); s.ai.aiActionOldFeeBps.set(actionId, oldF as int257); } else { throw 1215; } s.gov.govProposalStake.set(msg.proposalId as int257, 0); s.gov.govProposalExecuted.set(msg.proposalId as int257, true); } s.save(); createExternalLogMessage({ dest: createAddressNone(), body: EventGovernanceVote { voter: in.senderAddress, proposalId: msg.proposalId as int257, weight: stake!!.amount } }).send(SEND_MODE_IGNORE_ERRORS); if (actionId != 0) { createExternalLogMessage({ dest: createAddressNone(), body: EventGovernanceExecuted { proposalId: msg.proposalId as int257, actionId } }).send(SEND_MODE_IGNORE_ERRORS); } }
-        BuybackTon => { var s = lazy QuasarMasterStorage.load(); assert (!isZeroAddress(s.core.buybackSwapDefiAddress) && in.senderAddress == s.core.buybackSwapDefiAddress && msg.tonAmount > 0 && in.valueCoins >= msg.tonAmount - grams("0.02") && s.core.buybackSwapPending > 0 && msg.queryId == s.core.buybackSwapQueryId && msg.qsrSwapped == s.core.buybackSwapPending) throw 1220; s.core.buybackSwapPending = 0; s.core.buybackSwapQueryId = 0; s.core.buybackSwapDefiAddress = ZERO_ADDRESS; s.core.totalTonSpentOnBuyback += msg.tonAmount; s.save(); if (!isZeroAddress(s.core.treasury)) { createMessage({ bounce: BounceMode.NoBounce, dest: s.core.treasury, value: msg.tonAmount }).send(SEND_MODE_PAY_FEES_SEPARATELY); } createExternalLogMessage({ dest: createAddressNone(), body: EventBuybackSwapped { queryId: msg.queryId, qsrIn: msg.qsrSwapped as int257, tonOut: msg.tonAmount as int257 } }).send(SEND_MODE_IGNORE_ERRORS); }
-        PoolPayout => { throw 1225; }
-        PayoutFailed => { var s = lazy QuasarMasterStorage.load(); assert (in.senderAddress == quasarWalletAddress(contract.getAddress(), contract.getAddress(), quasarWalletCompiledCode()) && msg.amount > 0) throw 1221; if (restorePayout(mutate s, msg.queryId)) { s.core.custodyBalance += msg.amount; } s.save(); }
-        ProvideWalletAddress => { var s = lazy QuasarMasterStorage.load(); assert (in.valueCoins >= grams("0.0061")) throw 1222; assert (msg.ownerAddress.isInternal()) throw 1224; val ownerAddress = msg.ownerAddress.castToInternal(); val wallet = quasarWalletAddress(ownerAddress, contract.getAddress(), quasarWalletCompiledCode()); val ownerRef: Cell<any_address>? = msg.includeAddress ? msg.ownerAddress.toCell() : null; val ownerAny = msg.ownerAddress; val walletAny = wallet as any_address; val (ownerWc, _) = ownerAny.getWorkchainAndHash(); val (walletWc, _) = walletAny.getWorkchainAndHash(); if (ownerWc == walletWc) { createMessage({ bounce: BounceMode.NoBounce, dest: in.senderAddress, value: 0, body: TakeWalletAddress { queryId: msg.queryId, walletAddress: walletAny, ownerAddress: ownerRef } }).send(SEND_MODE_CARRY_ALL_REMAINING_MESSAGE_VALUE); } else { val body = TakeWalletAddress { queryId: msg.queryId, walletAddress: createAddressNone(), ownerAddress: ownerRef }; createMessage({ bounce: BounceMode.NoBounce, dest: in.senderAddress, value: 0, body }).send(SEND_MODE_CARRY_ALL_REMAINING_MESSAGE_VALUE); } }
-        SweepTON => { var s = lazy QuasarMasterStorage.load(); requireOwner(s, in.senderAddress); assert (msg.amount > 0 && msg.amount <= contract.getOriginalBalance() + in.valueCoins - QUASAR_STORAGE_RESERVE) throw 1223; s.save(); createMessage({ bounce: BounceMode.NoBounce, dest: s.core.owner, value: msg.amount }).send(SEND_MODE_PAY_FEES_SEPARATELY); }
-        AISignedDecision => { var s = lazy QuasarMasterStorage.load(); assert (s.ai.aiOraclePubKey != 0 && msg.validUntil >= blockchain.now() && msg.nonce > s.ai.aiNonce) throw 1230; val signed = beginCell().storeUint(AI_DECISION_DOMAIN, 32).storeUint(msg.queryId, 64).storeUint(msg.nonce, 64).storeUint(msg.validUntil, 32).storeUint(msg.action, 8).storeUint(msg.value, 16).storeUint(msg.payloadHash, 256).endCell(); assert (isSignatureValid(signed.hash() as uint256, msg.signature as slice, s.ai.aiOraclePubKey)) throw 1231; s.ai.aiNonce = msg.nonce; s.ai.aiSignedDecisionCount += 1; if (msg.action == 0) { s.ai.lastHeartbeat = blockchain.now(); } else if (msg.action == 1) { requireAiCooldown(s); assert (msg.value <= 100) throw 1232; val old = s.core.feeBurnShare as int257; s.core.feeBurnShare = msg.value as uint8; val id = logAiAction(mutate s, 9, "SignedBurnShare", old as int257, msg.value as int257, "signed-decision", true); s.ai.aiActionOldBurnShare.set(id, old); } else if (msg.action == 2) { val oldP = s.ai.emergencyPause; val oldT = s.core.tradingEnabled; val oldF = s.core.feeBps; val oldB = s.core.feeBurnShare; if (msg.value != 0) { s.ai.emergencyPause = true; s.core.tradingEnabled = false; } else { assert (s.ai.aiFullAutonomy) throw 1233; s.ai.emergencyPause = false; s.core.tradingEnabled = true; } val id = logAiAction(mutate s, 10, "SignedPause", oldP ? (1 as int257) : (0 as int257), msg.value != 0 ? (1 as int257) : (0 as int257), "signed-decision", true); s.ai.aiActionOldEmergencyPause.set(id, oldP ? (1 as int257) : (0 as int257)); s.ai.aiActionOldTrading.set(id, oldT ? (1 as int257) : (0 as int257)); s.ai.aiActionOldFeeBps.set(id, oldF as int257); s.ai.aiActionOldBurnShare.set(id, oldB as int257); } else { throw 1234; } s.save(); createExternalLogMessage({ dest: createAddressNone(), body: EventAiSignedDecision { queryId: msg.queryId as int257, nonce: msg.nonce as int257, action: msg.action as int257, value: msg.value as int257 } }).send(SEND_MODE_IGNORE_ERRORS); }
-        else => { var s = lazy QuasarMasterStorage.load(); if (!applyTextMessage(mutate s, in.senderAddress, in.body)) { throw 130; } s.save(); }
+        SetStakingConfig => { var s = QuasarMasterStorage.load(); requireOwner(s, in.senderAddress); assert (!s.ai.aiFullAutonomy && msg.apyBps <= 10000 && msg.minStake > 0 && msg.lockPeriod > 0) throw 1160; s.user.stakingEnabled = msg.enabled; s.user.stakingApyBps = msg.apyBps; s.user.stakingMinStake = msg.minStake; s.user.stakingLockPeriod = msg.lockPeriod; s.save(); }
+        SetReferralConfig => { var s = QuasarMasterStorage.load(); requireOwner(s, in.senderAddress); assert (!s.ai.aiFullAutonomy && msg.rewardBps <= 10000) throw 1161; s.user.referralEnabled = msg.enabled; s.user.referralRewardBps = msg.rewardBps; s.save(); }
+        SetTreasury => { var s = QuasarMasterStorage.load(); requireOwner(s, in.senderAddress); assert (!s.ai.aiFullAutonomy && !isZeroAddress(msg.treasury)) throw 1162; s.core.treasury = msg.treasury; s.save(); emitAdmin("SetTreasury", in.senderAddress, 0, 0); }
+        SetFeeConfig => { var s = QuasarMasterStorage.load(); requireOwner(s, in.senderAddress); assert (!s.ai.aiFullAutonomy && msg.feeBps == QUASAR_WALLET_FEE_BPS && msg.burnShare <= 100 && msg.maxTxBps == QUASAR_MAX_TX_BPS && msg.maxWalletBps == QUASAR_MAX_WALLET_BPS && msg.cooldown == QUASAR_TRANSFER_COOLDOWN) throw 1163; s.gov.pendingFee = msg.feeBps; s.gov.pendingFeeBurnShare = msg.burnShare as int257; s.gov.pendingMaxTx = msg.maxTxBps; s.gov.pendingMaxWallet = msg.maxWalletBps; s.gov.pendingCooldown = msg.cooldown; s.gov.pendingFeeConfigAt = blockchain.now() + s.core.ownerTransferDelay; s.save(); emitAdmin("ProposeFeeConfig", in.senderAddress, msg.feeBps as int257, msg.burnShare as int257); }
+        ToggleMinting => { var s = QuasarMasterStorage.load(); requireOwner(s, in.senderAddress); assert (!s.ai.aiFullAutonomy) throw 1164; s.core.tradingEnabled = msg.enabled; s.save(); emitAdmin("ToggleMinting", in.senderAddress, msg.enabled ? (1 as int257) : (0 as int257), 0); }
+        SetBuybackConfig => { var s = QuasarMasterStorage.load(); requireOwner(s, in.senderAddress); assert (!s.ai.aiFullAutonomy && msg.threshold > 0 && msg.cooldown > 0 && msg.burnPercent > 0 && msg.burnPercent <= 100) throw 1165; s.core.buybackEnabled = msg.enabled; s.core.buybackThreshold = msg.threshold; s.core.buybackCooldown = msg.cooldown; s.core.buybackBurnPercent = msg.burnPercent; s.save(); emitAdmin("SetBuybackConfig", in.senderAddress, msg.threshold as int257, msg.burnPercent as int257); }
+        SetDefiAddress => { var s = QuasarMasterStorage.load(); requireOwner(s, in.senderAddress); s.core.defiAddress = msg.defiAddress; s.save(); emitAdmin("SetDefiAddress", in.senderAddress, 0, 0); }
+        SetEmergencyGuardian => { var s = QuasarMasterStorage.load(); requireOwner(s, in.senderAddress); assert (!isZeroAddress(msg.guardian)) throw 1166; s.core.emergencyGuardian = msg.guardian; s.save(); emitAdmin("SetEmergencyGuardian", in.senderAddress, 0, 0); }
+        GuardianPause => { var s = QuasarMasterStorage.load(); assert (in.senderAddress == s.core.emergencyGuardian) throw 1167; s.ai.emergencyPause = true; s.core.tradingEnabled = false; s.save(); createExternalLogMessage({ dest: createAddressNone(), body: EventEmergencyPause { guardian: in.senderAddress, paused: true, reason: msg.reason } }).send(SEND_MODE_IGNORE_ERRORS); }
+        ProposeOwner => { var s = QuasarMasterStorage.load(); requireOwner(s, in.senderAddress); assert (!isZeroAddress(msg.newOwner)) throw 1170; s.core.pendingOwner = msg.newOwner; s.core.ownerTransferAt = blockchain.now() + s.core.ownerTransferDelay; s.save(); emitAdmin("ProposeOwner", in.senderAddress, s.core.ownerTransferAt, 0); }
+        CancelOwnerTransfer => { var s = QuasarMasterStorage.load(); requireOwner(s, in.senderAddress); s.core.pendingOwner = ZERO_ADDRESS; s.core.ownerTransferAt = 0; s.save(); emitAdmin("CancelOwnerTransfer", in.senderAddress, 0, 0); }
+        AcceptOwner => { var s = QuasarMasterStorage.load(); assert (!isZeroAddress(s.core.pendingOwner) && in.senderAddress == s.core.pendingOwner && blockchain.now() >= s.core.ownerTransferAt) throw 1171; s.core.owner = s.core.pendingOwner; s.core.pendingOwner = ZERO_ADDRESS; s.core.ownerTransferAt = 0; s.save(); emitAdmin("AcceptOwner", in.senderAddress, 0, 0); }
+        ProposeWalletCode => { var s = QuasarMasterStorage.load(); requireOwner(s, in.senderAddress); throw 1172; }
+        ProposeContent => { var s = QuasarMasterStorage.load(); requireOwner(s, in.senderAddress); assert (!s.ai.aiFullAutonomy) throw 1173; var content = msg.newContent.beginParse(); assert (content.remainingBitsCount() >= 8) throw 1174; val prefix = content.loadUint(8); assert (prefix == 0 || prefix == 1) throw 1175; if (prefix == 1) { assert (content.remainingBitsCount() > 0 || content.remainingRefsCount() > 0) throw 1176; } s.gov.pendingContent = msg.newContent; s.gov.contentAt = blockchain.now() + s.core.ownerTransferDelay; s.save(); emitAdmin("ProposeContent", in.senderAddress, s.gov.contentAt, 0); }
+        SetAiOracleKey => { var s = QuasarMasterStorage.load(); requireOwner(s, in.senderAddress); assert (!s.ai.aiFullAutonomy && msg.publicKey != 0) throw 1180; s.ai.aiOraclePubKey = msg.publicKey; s.save(); emitAdmin("SetAiOracleKey", in.senderAddress, 0, 0); }
+        ClearAiOracleKey => { var s = QuasarMasterStorage.load(); requireOwner(s, in.senderAddress); s.ai.aiOraclePubKey = 0; s.save(); emitAdmin("ClearAiOracleKey", in.senderAddress, 0, 0); }
+        AIGrantFullAutonomy => { var s = QuasarMasterStorage.load(); requireOwner(s, in.senderAddress); s.ai.aiFullAutonomy = msg.enabled; if (msg.enabled) { s.ai.aiEnabled = true; } s.save(); }
+        AISetOracle => { var s = QuasarMasterStorage.load(); requireOwner(s, in.senderAddress); assert (!isZeroAddress(msg.oracleAddress)) throw 1181; if (msg.oracleAddress != s.ai.aiOracle) { s.ai.lastAiQueryId = 0; } s.ai.aiOracle = msg.oracleAddress; s.ai.aiEnabled = true; s.save(); }
+        AIHeartbeat => { var s = QuasarMasterStorage.load(); assert (in.senderAddress == s.ai.aiOracle) throw 1182; freshAiQuery(mutate s, msg.queryId); s.ai.lastHeartbeat = blockchain.now(); s.save(); }
+        AISetFee => { var s = QuasarMasterStorage.load(); requireAi(s, in.senderAddress); assert (msg.feeBps == QUASAR_WALLET_FEE_BPS) throw 1183; s.save(); emitAi(0, "SetFee", s.core.feeBps as int257, msg.feeBps as int257); }
+        AISetAntiWhale => { var s = QuasarMasterStorage.load(); requireAi(s, in.senderAddress); assert (msg.maxTxBps == QUASAR_MAX_TX_BPS && msg.maxWalletBps == QUASAR_MAX_WALLET_BPS && msg.cooldown == QUASAR_TRANSFER_COOLDOWN) throw 1184; s.save(); emitAi(0, "SetAntiWhale", s.core.maxTxBps as int257, msg.maxTxBps as int257); }
+        AISetTreasuryDirect => { var s = QuasarMasterStorage.load(); requireAi(s, in.senderAddress); requireAiCooldown(s); freshAiQuery(mutate s, msg.queryId); assert (!isZeroAddress(msg.treasury)) throw 1185; val old = s.core.treasury; s.core.treasury = msg.treasury; val id = logAiAction(mutate s, 4, "SetTreasury", 0, 1, msg.reason, true); s.ai.aiActionOldAddress.set(id, old); s.save(); emitAi(id, "SetTreasury", 0, 1); }
+        AISetBuybackDirect => { var s = QuasarMasterStorage.load(); requireAi(s, in.senderAddress); requireAiCooldown(s); freshAiQuery(mutate s, msg.queryId); assert (msg.threshold > 0 && msg.cooldown > 0 && msg.burnPercent > 0 && msg.burnPercent <= 100) throw 1186; val oldEnabled = s.core.buybackEnabled; val oldT = s.core.buybackThreshold; val oldC = s.core.buybackCooldown; val oldB = s.core.buybackBurnPercent; s.core.buybackEnabled = msg.enabled; s.core.buybackThreshold = msg.threshold; s.core.buybackCooldown = msg.cooldown; s.core.buybackBurnPercent = msg.burnPercent; val id = logAiAction(mutate s, 6, "SetBuyback", oldEnabled ? (1 as int257) : (0 as int257), msg.enabled ? (1 as int257) : (0 as int257), msg.reason, true); s.ai.aiActionOldBuybackThreshold.set(id, oldT as int257); s.ai.aiActionOldBuybackCooldown.set(id, oldC as int257); s.ai.aiActionOldBuybackBurnPercent.set(id, oldB as int257); s.save(); emitAi(id, "SetBuyback", oldEnabled ? (1 as int257) : (0 as int257), msg.enabled ? (1 as int257) : (0 as int257)); }
+        AIToggleMinting => { var s = QuasarMasterStorage.load(); requireAi(s, in.senderAddress); requireAiCooldown(s); freshAiQuery(mutate s, msg.queryId); val old = s.core.tradingEnabled; s.core.tradingEnabled = msg.enabled; val id = logAiAction(mutate s, 2, "ToggleMinting", old ? (1 as int257) : (0 as int257), msg.enabled ? (1 as int257) : (0 as int257), msg.reason, true); s.save(); emitAi(id, "ToggleMinting", old ? (1 as int257) : (0 as int257), msg.enabled ? (1 as int257) : (0 as int257)); }
+        AIRotateOracle => { var s = QuasarMasterStorage.load(); requireAi(s, in.senderAddress); requireAiCooldown(s); freshAiQuery(mutate s, msg.queryId); assert (s.ai.aiFullAutonomy && !isZeroAddress(msg.newOracle)) throw 1187; val old = s.ai.aiOracle; if (old != msg.newOracle) { s.ai.lastAiQueryId = 0; } s.ai.aiOracle = msg.newOracle; val id = logAiAction(mutate s, 5, "RotateOracle", 0, 1, msg.reason, true); s.ai.aiActionOldAddress.set(id, old); s.save(); emitAi(id, "RotateOracle", 0, 1); }
+        AIRebalance => { var s = QuasarMasterStorage.load(); requireAi(s, in.senderAddress); requireAiCooldown(s); freshAiQuery(mutate s, msg.queryId); requireNotPaused(s); assert (msg.targetFeeBps == QUASAR_WALLET_FEE_BPS && msg.targetBurnShare <= 100) throw 1188; val oldB = s.core.feeBurnShare; val oldF = s.core.feeBps; s.core.feeBps = msg.targetFeeBps; s.core.feeBurnShare = msg.targetBurnShare; s.ai.lastRebalanceTime = blockchain.now(); s.ai.signalCount += 1; logAnomaly(mutate s, msg.recommendation, 100, true); val id = logAiAction(mutate s, 7, "Rebalance", oldB as int257, msg.targetBurnShare as int257, msg.recommendation, true); s.ai.aiActionOldFeeBps.set(id, oldF as int257); s.save(); emitAi(id, "Rebalance", oldB as int257, msg.targetBurnShare as int257); }
+        AIPriceSignal => { var s = QuasarMasterStorage.load(); requireAi(s, in.senderAddress); freshAiQuery(mutate s, msg.queryId); val oldB = s.core.feeBurnShare; val oldF = s.core.feeBps; val oldP = s.ai.emergencyPause; val oldT = s.core.tradingEnabled; s.ai.signalCount += 1; if (s.ai.priceHistoryCount < QUASAR_AI_PRICE_HISTORY_CAP) { s.ai.priceHistory.set(blockchain.now(), msg.priceTon as int257); s.ai.priceHistoryCount += 1; } else { s.ai.priceHistoryDropped += 1; } if (msg.action == 2 && msg.volatility > 5000) { s.core.feeBurnShare = 70; } if (msg.action == 3 && msg.sentiment > 80) { s.core.feeBurnShare = 40; } if (msg.action == 1 && msg.sentiment < -50) { s.core.feeBurnShare = 80; } if (s.core.feeBurnShare != oldB) { val id = logAiAction(mutate s, 11, "PriceSignal", oldB as int257, s.core.feeBurnShare as int257, "price-signal", false); s.ai.aiActionOldFeeBps.set(id, oldF as int257); s.ai.aiActionOldEmergencyPause.set(id, oldP ? (1 as int257) : (0 as int257)); s.ai.aiActionOldTrading.set(id, oldT ? (1 as int257) : (0 as int257)); } s.save(); }
+        AIAnomalyAlert => { var s = QuasarMasterStorage.load(); requireAi(s, in.senderAddress); freshAiQuery(mutate s, msg.queryId); val oldB = s.core.feeBurnShare; val oldF = s.core.feeBps; val oldP = s.ai.emergencyPause; val oldT = s.core.tradingEnabled; logAnomaly(mutate s, msg.recommendedAction, 100, false); if (msg.severity == 3) { s.ai.emergencyPause = true; s.core.tradingEnabled = false; s.core.feeBps = 100; s.core.feeBurnShare = 90; } else if (msg.severity == 2) { s.core.feeBurnShare = 60; } if (s.core.feeBurnShare != oldB || s.core.feeBps != oldF || s.ai.emergencyPause != oldP || s.core.tradingEnabled != oldT) { val id = logAiAction(mutate s, 12, "AnomalyAlert", oldB as int257, s.core.feeBurnShare as int257, "anomaly-alert", false); s.ai.aiActionOldFeeBps.set(id, oldF as int257); s.ai.aiActionOldEmergencyPause.set(id, oldP ? (1 as int257) : (0 as int257)); s.ai.aiActionOldTrading.set(id, oldT ? (1 as int257) : (0 as int257)); } s.save(); }
+        AIEmergencyPause => { var s = QuasarMasterStorage.load(); requireAi(s, in.senderAddress); freshAiQuery(mutate s, msg.queryId); val oldT = s.core.tradingEnabled; val oldP = s.ai.emergencyPause; val oldF = s.core.feeBps; val oldB = s.core.feeBurnShare; if (msg.pause) { s.ai.emergencyPause = true; s.core.tradingEnabled = false; if (msg.severity == 3) { s.core.feeBps = 100; s.core.feeBurnShare = 90; } } else { assert (s.ai.aiFullAutonomy) throw 1189; s.ai.emergencyPause = false; s.core.tradingEnabled = true; } val id = logAiAction(mutate s, 3, "EmergencyPause", oldT ? (1 as int257) : (0 as int257), msg.pause ? (1 as int257) : (0 as int257), msg.reason, true); s.ai.aiActionOldFeeBps.set(id, oldF as int257); s.ai.aiActionOldBurnShare.set(id, oldB as int257); s.ai.aiActionOldEmergencyPause.set(id, oldP ? (1 as int257) : (0 as int257)); s.ai.aiActionOldTrading.set(id, oldT ? (1 as int257) : (0 as int257)); s.save(); emitAi(id, "EmergencyPause", oldT ? (1 as int257) : (0 as int257), msg.pause ? (1 as int257) : (0 as int257)); }
+        AIGovernanceProposal => { var s = QuasarMasterStorage.load(); requireAi(s, in.senderAddress); requireAiCooldown(s); freshAiQuery(mutate s, msg.queryId); assert (msg.confidence >= s.ai.minConfidence) throw 1190; s.ai.signalCount += 1; var old: int257 = 0; var kind = ""; if (msg.proposalType == 1) { assert (msg.newValue == QUASAR_WALLET_FEE_BPS) throw 1191; old = s.core.feeBps as int257; s.core.feeBps = msg.newValue as uint16; kind = "GovernanceFee"; } else if (msg.proposalType == 2) { assert (msg.newValue >= 0 && msg.newValue <= 100) throw 1192; old = s.core.feeBurnShare as int257; s.core.feeBurnShare = msg.newValue as uint8; kind = "GovernanceBurn"; } else if (msg.proposalType == 4) { assert (msg.newValue > 0) throw 1193; old = s.core.buybackThreshold as int257; s.core.buybackThreshold = msg.newValue as coins; kind = "GovernanceBuybackThreshold"; } else { throw 1194; } val id = logAiAction(mutate s, (msg.proposalType == 1 ? 1 : (msg.proposalType == 2 ? 8 : 13)), kind, old, msg.newValue, msg.description, true); if (msg.proposalType == 1) { s.ai.aiActionOldFeeBps.set(id, old as int257); } if (msg.proposalType == 4) { s.ai.aiActionOldBuybackThreshold.set(id, old as int257); } logAnomaly(mutate s, msg.description, msg.confidence as int257, true); s.save(); emitAi(id, kind, old, msg.newValue); }
+        OwnerOverride => { var s = QuasarMasterStorage.load(); requireOwner(s, in.senderAddress); val action = actionOf(s.ai.aiActionLog, msg.actionId as int257); assert (action != null && overrideOpen(s, msg.actionId) && !action!!.overridden && !action!!.vetoed) throw 1200; val act = action!!; restoreAiAction(mutate s, msg.actionId as int257, act); markActionClosed(mutate s, msg.actionId as int257, act, false, true); s.save(); }
+        VetoAIAction => { var s = QuasarMasterStorage.load(); val action = actionOf(s.ai.aiActionLog, msg.actionId as int257); assert (action != null && !action!!.vetoed && !action!!.overridden && overrideOpen(s, msg.actionId) && msg.amount > 0) throw 1201; val stake = stakeOf(s.user.stakers, in.senderAddress); val deposit = intOf(s.user.pendingQsrDeposits, in.senderAddress); assert (stake != null && stake!!.amount > 0 && deposit != null && deposit!! >= msg.amount) throw 1202; val key = voteKey(in.senderAddress, msg.actionId); assert (mapIntOf(s.ai.vetoEscrows, key) == null) throw 1203; s.user.pendingQsrDeposits.set(in.senderAddress, deposit!! - msg.amount); s.ai.vetoEscrows.set(key, msg.amount as int257); val prior = mapIntOf(s.ai.vetoActionStake, msg.actionId as int257); val total = (prior == null ? (0 as int257) : prior!!) + msg.amount; s.ai.vetoActionStake.set(msg.actionId as int257, total); s.ai.totalVetoStake += msg.amount; var vetoed = false; if (s.user.totalStaked > 0 && total * 10000 >= s.user.totalStaked * s.ai.vetoThresholdBps) { val act = action!!; restoreAiAction(mutate s, msg.actionId as int257, act); markActionClosed(mutate s, msg.actionId as int257, act, true, false); s.ai.pendingAiActions.delete(msg.actionId as int257); vetoed = true; } s.save(); createExternalLogMessage({ dest: createAddressNone(), body: EventAiVeto { actionId: msg.actionId as int257, voter: in.senderAddress, amount: msg.amount as int257, actionStake: total, vetoed } }).send(SEND_MODE_IGNORE_ERRORS); }
+        ReleaseVeto => { var s = QuasarMasterStorage.load(); val action = actionOf(s.ai.aiActionLog, msg.actionId as int257); assert (action != null && (action!!.vetoed || !overrideOpen(s, msg.actionId))) throw 1204; val key = voteKey(in.senderAddress, msg.actionId); val escrow = mapIntOf(s.ai.vetoEscrows, key); val total = mapIntOf(s.ai.vetoActionStake, msg.actionId as int257); assert (escrow != null && escrow!! > 0 && total != null && total!! >= escrow!!) throw 1205; s.ai.vetoEscrows.delete(key); s.ai.vetoActionStake.set(msg.actionId as int257, total!! - escrow!!); s.ai.totalVetoStake -= escrow!!; sendCustodyPayout(mutate s, in.senderAddress, escrow!! as coins, 5, key, msg.actionId as int257, 0); s.save(); createExternalLogMessage({ dest: createAddressNone(), body: EventAiVetoReleased { actionId: msg.actionId as int257, voter: in.senderAddress, amount: escrow!! } }).send(SEND_MODE_IGNORE_ERRORS); }
+        RefundPendingDeposit => { var s = QuasarMasterStorage.load(); val deposit = intOf(s.user.pendingQsrDeposits, in.senderAddress); assert (deposit != null && deposit!! > 0) throw 1206; s.user.pendingQsrDeposits.delete(in.senderAddress); sendCustodyPayout(mutate s, in.senderAddress, deposit!! as coins, 6, 0, 0, 0); s.save(); }
+        GovernanceVote => { var s = QuasarMasterStorage.load(); requireOwner(s, in.senderAddress); requireNotPaused(s); assert (blockchain.now() <= msg.deadline && mapBoolOf(s.gov.govProposalExecuted, msg.proposalId as int257) == null) throw 1210; val payloadHash = beginCell().storeUint(msg.proposalId, 64).storeUint(msg.kind, 8).storeBool(msg.flag).storeUint(msg.feeBps, 32).endCell().hash(); val bound = mapIntOf(s.gov.govProposalContentHash, msg.proposalId as int257); assert (bound == null || bound!! == payloadHash) throw 1211; val key = voteKey(in.senderAddress, msg.proposalId); assert (mapBoolOf(s.gov.govVotes, key) == null) throw 1212; val stake = stakeOf(s.user.stakers, in.senderAddress); assert (stake != null && stake!!.amount > 0) throw 1213; s.gov.govProposalContentHash.set(msg.proposalId as int257, payloadHash as int257); s.gov.govVotes.set(key, true); val previous = mapIntOf(s.gov.govProposalStake, msg.proposalId as int257); if (previous == null) { s.gov.govProposalCount += 1; } val total = (previous == null ? (0 as int257) : previous!!) + stake!!.amount; s.gov.govProposalStake.set(msg.proposalId as int257, total); var actionId: int257 = 0; if (total * 10000 >= s.user.totalStaked * s.gov.govQuorumBps) { if (msg.kind == 1) { assert (msg.feeBps == QUASAR_WALLET_FEE_BPS) throw 1214; val old = s.core.feeBps as int257; s.core.feeBps = msg.feeBps; actionId = logAiAction(mutate s, 1, "SetFee", old as int257, msg.feeBps as int257, msg.reason, false); } else if (msg.kind == 2) { val old = s.core.tradingEnabled; s.core.tradingEnabled = msg.flag; actionId = logAiAction(mutate s, 2, "ToggleMinting", old ? (1 as int257) : (0 as int257), msg.flag ? (1 as int257) : (0 as int257), msg.reason, false); } else if (msg.kind == 3) { val oldP = s.ai.emergencyPause; val oldT = s.core.tradingEnabled; val oldF = s.core.feeBps; s.ai.emergencyPause = msg.flag; s.core.tradingEnabled = !msg.flag; actionId = logAiAction(mutate s, 3, "EmergencyPause", oldP ? (1 as int257) : (0 as int257), msg.flag ? (1 as int257) : (0 as int257), msg.reason, false); s.ai.aiActionOldEmergencyPause.set(actionId, oldP ? (1 as int257) : (0 as int257)); s.ai.aiActionOldTrading.set(actionId, oldT ? (1 as int257) : (0 as int257)); s.ai.aiActionOldFeeBps.set(actionId, oldF as int257); } else { throw 1215; } s.gov.govProposalStake.set(msg.proposalId as int257, 0); s.gov.govProposalExecuted.set(msg.proposalId as int257, true); } s.save(); createExternalLogMessage({ dest: createAddressNone(), body: EventGovernanceVote { voter: in.senderAddress, proposalId: msg.proposalId as int257, weight: stake!!.amount } }).send(SEND_MODE_IGNORE_ERRORS); if (actionId != 0) { createExternalLogMessage({ dest: createAddressNone(), body: EventGovernanceExecuted { proposalId: msg.proposalId as int257, actionId } }).send(SEND_MODE_IGNORE_ERRORS); } }
+        BuybackTon => { var s = QuasarMasterStorage.load(); assert (!isZeroAddress(s.core.buybackSwapDefiAddress) && in.senderAddress == s.core.buybackSwapDefiAddress && msg.tonAmount > 0 && in.valueCoins >= msg.tonAmount - grams("0.02") && s.core.buybackSwapPending > 0 && msg.queryId == s.core.buybackSwapQueryId && msg.qsrSwapped == s.core.buybackSwapPending) throw 1220; s.core.buybackSwapPending = 0; s.core.buybackSwapQueryId = 0; s.core.buybackSwapDefiAddress = ZERO_ADDRESS; s.core.totalTonSpentOnBuyback += msg.tonAmount; s.save(); if (!isZeroAddress(s.core.treasury)) { createMessage({ bounce: BounceMode.NoBounce, dest: s.core.treasury, value: msg.tonAmount }).send(SEND_MODE_PAY_FEES_SEPARATELY); } createExternalLogMessage({ dest: createAddressNone(), body: EventBuybackSwapped { queryId: msg.queryId, qsrIn: msg.qsrSwapped as int257, tonOut: msg.tonAmount as int257 } }).send(SEND_MODE_IGNORE_ERRORS); }
+        PayoutFailed => { var s = QuasarMasterStorage.load(); assert (in.senderAddress == quasarWalletAddress(contract.getAddress(), contract.getAddress(), quasarWalletCompiledCode()) && msg.amount > 0) throw 1221; if (restorePayout(mutate s, msg.queryId)) { s.core.custodyBalance += msg.amount; } s.save(); }
+        ProvideWalletAddress => { var s = QuasarMasterStorage.load(); assert (in.valueCoins >= grams("0.0061")) throw 1222; assert (msg.ownerAddress.isInternal()) throw 1224; val ownerAddress = msg.ownerAddress.castToInternal(); val wallet = quasarWalletAddress(ownerAddress, contract.getAddress(), quasarWalletCompiledCode()); val ownerRef: Cell<any_address>? = msg.includeAddress ? msg.ownerAddress.toCell() : null; val ownerAny = msg.ownerAddress; val walletAny = wallet as any_address; val (ownerWc, _) = ownerAny.getWorkchainAndHash(); val (walletWc, _) = walletAny.getWorkchainAndHash(); if (ownerWc == walletWc) { createMessage({ bounce: BounceMode.NoBounce, dest: in.senderAddress, value: 0, body: TakeWalletAddress { queryId: msg.queryId, walletAddress: walletAny, ownerAddress: ownerRef } }).send(SEND_MODE_CARRY_ALL_REMAINING_MESSAGE_VALUE); } else { val body = TakeWalletAddress { queryId: msg.queryId, walletAddress: createAddressNone(), ownerAddress: ownerRef }; createMessage({ bounce: BounceMode.NoBounce, dest: in.senderAddress, value: 0, body }).send(SEND_MODE_CARRY_ALL_REMAINING_MESSAGE_VALUE); } }
+        SweepTON => { var s = QuasarMasterStorage.load(); requireOwner(s, in.senderAddress); assert (msg.amount > 0 && msg.amount <= contract.getOriginalBalance() + in.valueCoins - QUASAR_STORAGE_RESERVE) throw 1223; s.save(); createMessage({ bounce: BounceMode.NoBounce, dest: s.core.owner, value: msg.amount }).send(SEND_MODE_PAY_FEES_SEPARATELY); }
+        AISignedDecision => { var s = QuasarMasterStorage.load(); assert (s.ai.aiOraclePubKey != 0 && msg.validUntil >= blockchain.now() && msg.nonce > s.ai.aiNonce) throw 1230; val signed = beginCell().storeUint(AI_DECISION_DOMAIN, 32).storeUint(msg.queryId, 64).storeUint(msg.nonce, 64).storeUint(msg.validUntil, 32).storeUint(msg.action, 8).storeUint(msg.value, 16).storeUint(msg.payloadHash, 256).endCell(); assert (isSignatureValid(signed.hash() as uint256, msg.signature as slice, s.ai.aiOraclePubKey)) throw 1231; s.ai.aiNonce = msg.nonce; s.ai.aiSignedDecisionCount += 1; if (msg.action == 0) { s.ai.lastHeartbeat = blockchain.now(); } else if (msg.action == 1) { requireAiCooldown(s); assert (msg.value <= 100) throw 1232; val old = s.core.feeBurnShare as int257; s.core.feeBurnShare = msg.value as uint8; val id = logAiAction(mutate s, 9, "SignedBurnShare", old as int257, msg.value as int257, "signed-decision", true); s.ai.aiActionOldBurnShare.set(id, old); } else if (msg.action == 2) { val oldP = s.ai.emergencyPause; val oldT = s.core.tradingEnabled; val oldF = s.core.feeBps; val oldB = s.core.feeBurnShare; if (msg.value != 0) { s.ai.emergencyPause = true; s.core.tradingEnabled = false; } else { assert (s.ai.aiFullAutonomy) throw 1233; s.ai.emergencyPause = false; s.core.tradingEnabled = true; } val id = logAiAction(mutate s, 10, "SignedPause", oldP ? (1 as int257) : (0 as int257), msg.value != 0 ? (1 as int257) : (0 as int257), "signed-decision", true); s.ai.aiActionOldEmergencyPause.set(id, oldP ? (1 as int257) : (0 as int257)); s.ai.aiActionOldTrading.set(id, oldT ? (1 as int257) : (0 as int257)); s.ai.aiActionOldFeeBps.set(id, oldF as int257); s.ai.aiActionOldBurnShare.set(id, oldB as int257); } else { throw 1234; } s.save(); createExternalLogMessage({ dest: createAddressNone(), body: EventAiSignedDecision { queryId: msg.queryId as int257, nonce: msg.nonce as int257, action: msg.action as int257, value: msg.value as int257 } }).send(SEND_MODE_IGNORE_ERRORS); }
+        else => { var s = QuasarMasterStorage.load(); if (!applyTextMessage(mutate s, in.senderAddress, in.body)) { throw 130; } s.save(); }
     }
 }
 
@@ -632,7 +1042,7 @@ fun onBouncedMessage(in: InMessageBounced) {
     body.skipBouncedPrefix();
     if (body.remainingBitsCount() < 32) { throw 130; }
     val opcode = body.loadUint(32);
-    var s = lazy QuasarMasterStorage.load();
+    var s = QuasarMasterStorage.load();
     if (opcode == 0x178d4519) {
         val queryId = body.loadUint(64) as uint64;
         val amount = body.loadCoins();

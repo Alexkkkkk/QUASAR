@@ -23,13 +23,13 @@
       "id": "jetton-find-wallet",
       "path": "jetton-find-wallet.md",
       "url": "https://docs.ton.org/llms/contracts/standard/tokens/jettons/find/content.md",
-      "sha256": "a8664e9dd596172cce228ba2bc19733e744d93925c6953fdfe8e180971b1442b"
+      "sha256": "f37af64f68d5ea46a152c50a6221abd43ae0fcfc54c0179782bb2ef8744236c8"
     },
     {
       "id": "token-metadata",
       "path": "token-metadata.md",
       "url": "https://docs.ton.org/llms/contracts/standard/tokens/metadata/content.md",
-      "sha256": "1185ed8b58726be76ed30e6f1527e3ae6d9a69811a5bf196aa68153d71659235"
+      "sha256": "8fea8c3896126d3f27bfe4acfef2066af97fe068bc42119b8622311b33a9a04d"
     },
     {
       "id": "security-best-practices",
@@ -42,6 +42,24 @@
       "path": "tolk-language.md",
       "url": "https://docs.ton.org/llms/tolk/overview/content.md",
       "sha256": "7316e7b1838477af795adf983acb33388202429c5d4862de93a389694997704d"
+    },
+    {
+      "id": "acton-scripting-overview",
+      "path": "acton-scripting-overview.md",
+      "url": "https://raw.githubusercontent.com/ton-blockchain/acton/master/docs/content/docs/scripting/overview.mdx",
+      "sha256": "724a4f69a10e633b92c00558520feaafe5de14881c9967bdf1f327c01bcbe2e3"
+    },
+    {
+      "id": "acton-scripting-passing-arguments",
+      "path": "acton-scripting-passing-arguments.md",
+      "url": "https://raw.githubusercontent.com/ton-blockchain/acton/master/docs/content/docs/scripting/passing-arguments.mdx",
+      "sha256": "16796b02ecbb5c01d04ef8c2a183abbff1cc42469f66ecdcdaa8bebce0a96ddb"
+    },
+    {
+      "id": "acton-scripting-blockchain-interaction",
+      "path": "acton-scripting-blockchain-interaction.md",
+      "url": "https://raw.githubusercontent.com/ton-blockchain/acton/master/docs/content/docs/scripting/blockchain-interaction.mdx",
+      "sha256": "68d7cf182af400377b40382701ababfb10e4d557929dfcb6f5b65c5e19c8d417"
     }
   ]
 }

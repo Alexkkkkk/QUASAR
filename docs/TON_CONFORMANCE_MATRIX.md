@@ -105,3 +105,10 @@ TON Docs distinguishes running blockchain nodes/LiteServers from application-fac
 - Wallet-code migration is fail-closed in this contract version. The public getter reports the compiled wallet code actually used in wallet derivation; changing code is unsupported until Master, DeFi, and wallet-address derivations can be migrated as one coordinated release. This source change does not upgrade already deployed contracts or wallets.
 
 These are source and sandbox-test results only. Contract code hashes and addresses change when rebuilt; no deployment, address publication, or mainnet state claim is made.
+
+
+## Acton/Tolk compatibility gate, PR #280 (2026-10-22)
+
+Параллельный `tolk/` фиксирует Acton 1.2.1. `scripts/acton_abi.py` сверяет incoming message names/opcodes/field order/wire types, getter IDs/arguments/return types и поля named getter structs с Tact ABI. `scripts/check_acton_wrappers.ts` сравнивает сериализацию всех публичных сообщений двумя независимыми сгенерированными wrappers на одинаковых nullable/payload/string fixtures. Совместимость входного message ABI не подменяет проверку полного поведения и storage.
+
+`tolk/scripts/local-smoke.tolk` реализует самостоятельный `main()` по [официальной модели Acton scripting](https://ton-blockchain.github.io/acton/docs/scripting/overview): эмулированный wallet, local deploy/mint, проверка null из wait helpers и чтение getters. Broadcast отклоняется до открытия wallet. `scripts/sync_acton.py` публикует полный проверенный набор артефактов атомарно и выявляет drift offline. Tolk storage — отдельный ref-chain layout, не in-place upgrade Tact; bytecode/code hashes и адреса меняются. В этом increment не выполнялись реальные deployment, отправка транзакций или публикация адресов.

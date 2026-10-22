@@ -124,7 +124,7 @@ get fun `test wallet TEP-74: owner and excesses authorization are enforced`() {
 
     val forgedExcess = net.send(outsider.address, createMessage({
         bounce: BounceMode.NoBounce,
-        value: 0,
+        value: grams("0.02"),
         dest: wallet.address,
         body: TokenExcesses { queryId: 12 },
     }));
@@ -195,7 +195,7 @@ get fun `test wallet TEP-74: burn sends notification and master excesses clear p
 
     val masterExcess = net.send(wallet.master.address, createMessage({
         bounce: BounceMode.NoBounce,
-        value: 0,
+        value: grams("0.02"),
         dest: wallet.address,
         body: TokenExcesses { queryId: 20 },
     }));
@@ -220,12 +220,12 @@ get fun `test wallet policy: tx cap, holder cap and cooldown match Tact constant
 
     val first = net.send(
         wallet.owner.address,
-        transferMessage(wallet, 31, 1, recipient.address, response.address),
+        transferMessage(wallet, 31, 1000, recipient.address, response.address),
     );
     expect(first).toHaveSuccessfulTx<TokenTransfer>({ to: wallet.address });
     val cooldown = net.send(
         wallet.owner.address,
-        transferMessage(wallet, 32, 1, recipient.address, response.address),
+        transferMessage(wallet, 32, 1000, recipient.address, response.address),
     );
     expect(cooldown).toHaveFailedTx<TokenTransfer>({ to: wallet.address, exitCode: 110 });
 
@@ -234,7 +234,7 @@ get fun `test wallet policy: tx cap, holder cap and cooldown match Tact constant
     val sourceWallet = quasarWalletAddress(sourceOwner.address, target.master.address, build("QuasarWallet"));
     val holderCap = net.send(sourceWallet, createMessage({
         bounce: BounceMode.NoBounce,
-        value: 0,
+        value: grams("0.02"),
         dest: target.address,
         body: InternalTransfer {
             queryId: 33,
