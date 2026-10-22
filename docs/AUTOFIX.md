@@ -42,7 +42,7 @@
 | `QUASAR Dependabot remediation` | каждые 6 часов, push в lock-файлы, вручную | Сбор алертов, severity-отчёт, неразрушающие обновления, draft PR |
 | `QUASAR issue triage` | новое/изменённое issue | Метки по области и приоритету, маршрутизация, инструкция автору |
 | `Dependabot auto-merge` | Dependabot PR | Включает auto-merge только когда все обязательные checks уже зелёные |
-| `Auto-update pull requests` | расписание, push в `main` | Rebase отставших PR на `main` и merge только зелёных |
+| `Auto-update pull requests` | расписание, push в `main` | Rebase всех открытых PR, включая drafts, на актуальный `main`; merge выполняет только green-check automerge workflow |
 | `AI PR review` | PR открыт/обновлён | Read-only разбор diff (Gemini), публикует комментарий |
 | `AI issue discussion` | метка `ai-discuss` | Read-only ответ по issue |
 | `Automation hub audit` | расписание, push в `.github/**` | Проверяет пины, права и состав автоматизации |

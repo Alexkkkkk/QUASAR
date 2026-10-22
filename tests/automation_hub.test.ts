@@ -252,15 +252,16 @@ test("hub: the pin lock matches the declared tag map", () => {
   }
 });
 
-test("hub: the pull-request updater rebases onto main and queues only green PRs without approvals", () => {
+test("hub: the pull-request updater syncs every open branch by exact base SHA and never merges", () => {
   const body = readFileSync(join(WORKFLOWS, "auto-update-prs.yml"), "utf8");
   assert.match(body, /^permissions:/m, "the updater must declare top-level permissions");
   assert.match(body, /gh pr update-branch/, "expected an automatic rebase onto main");
   assert.match(body, /--rebase/, "the rebase must preserve linear history");
-  assert.match(body, /gh pr merge/, "expected an automatic merge of green pull requests");
-  assert.match(body, /required_checks_green/, "required checks must gate auto-merge");
-  assert.match(body, /state.*!=.*SUCCESS/, "only SUCCESS is green");
-  assert.match(body, /do-not-merge/, "the do-not-merge label must be respected");
+  assert.match(body, /baseRefOid/, "the updater must compare the exact base commit, not mergeStateStatus");
+  assert.match(body, /git\/ref\/heads\/main/, "the updater must read the current main SHA");
+  assert.doesNotMatch(body, /select\(\.isDraft\s*==\s*false\)/, "draft branches must also be kept current");
+  assert.doesNotMatch(body, /gh pr merge/, "only the green-check automerge workflow may queue merges");
+  assert.match(body, /automerge\.yml/, "the updater must delegate merge policy to the green-check workflow");
   assert.ok(!/actions\/checkout@/.test(body), "the updater must not check out pull-request code");
 });
 
