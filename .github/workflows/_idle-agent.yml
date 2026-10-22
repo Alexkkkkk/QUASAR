@@ -104,7 +104,7 @@ jobs:
             printf '%s\n' "$TARGET"
             printf 'Files:\n'
             cat "$files"
-            echo 'GEMINI_PROMPT_EOF'
+            printf '\n%s\n' 'GEMINI_PROMPT_EOF'
           } >> "$GITHUB_OUTPUT"
 
       - name: Study the target module (read-only)
@@ -162,7 +162,7 @@ jobs:
             cat "$RUNNER_TEMP/findings.json"
             printf '\nSource excerpts:\n'
             cat "$RUNNER_TEMP/study-files.txt"
-            echo 'GEMINI_PROMPT_EOF'
+            printf '\n%s\n' 'GEMINI_PROMPT_EOF'
           } >> "$GITHUB_OUTPUT"
 
       - name: Generate and preflight a scoped fix without model tools
