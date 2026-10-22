@@ -282,6 +282,11 @@ function checkLocalSurface(): void {
   if (/repos\/\$REPO\/pages|build_type=workflow/.test(setupScript)) {
     fail("setup-repo.sh must not enable or configure GitHub Pages deployment");
   } else ok("setup-repo.sh does not enable GitHub Pages");
+  if (setupScript.includes("branches/main/protection/required_pull_request_reviews") &&
+      /required_approving_review_count[^,}]*0/.test(setupScript) &&
+      setupScript.includes("bypass_pull_request_allowances")) {
+    ok("setup-repo.sh clears classic branch-protection approvals and review bypasses");
+  } else fail("setup-repo.sh must clear classic branch-protection approval requirements");
   if (/code-scanning\/default-setup/.test(setupScript)) known.add("CodeQL");
   const testWorkflow = readFileSync(join(WORKFLOW_DIR, "tests.yml"), "utf8");
   const testPackages = /package:\s*\[([^\]]+)\]/.exec(testWorkflow)?.[1]
@@ -503,6 +508,35 @@ async function checkLiveSettings(): Promise<void> {
         notes.push(`required checks: ${contexts.join(", ") || "none"}`);
       }
     }
+  }
+
+  try {
+    const response = await fetch(`https://api.github.com/repos/${repo}/branches/main/protection/required_pull_request_reviews`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: "application/vnd.github+json",
+        "X-GitHub-Api-Version": "2022-11-28",
+        "User-Agent": "quasar-hub-audit",
+      },
+    });
+    if (response.status === 404) {
+      ok("classic branch protection has no required-review rule");
+    } else if (!response.ok) {
+      fail(`classic branch-protection review gate could not be verified: HTTP ${response.status}`);
+    } else {
+      const classic = await response.json() as Record<string, any>;
+      const bypass = classic.bypass_pull_request_allowances ?? {};
+      const noBypass = ["users", "teams", "apps"].every((key) => (bypass[key] ?? []).length === 0);
+      if (classic.required_approving_review_count === 0 &&
+          classic.require_code_owner_reviews !== true &&
+          classic.require_last_push_approval !== true && noBypass) {
+        ok("classic branch protection: no approving reviews or review bypasses");
+      } else {
+        fail("classic branch protection still requires approval or allows review bypass");
+      }
+    }
+  } catch (error) {
+    fail(`classic branch-protection review gate audit failed: ${(error as Error).message}`);
   }
 
   const actions = (await api(token, repo, "/actions/permissions")) as Record<string, any> | null;

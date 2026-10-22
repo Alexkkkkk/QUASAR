@@ -179,6 +179,25 @@ apply_ruleset() {
 apply_ruleset "QUASAR main protection" "$(ruleset_payload branch)"
 apply_ruleset "QUASAR release tags" "$(ruleset_payload tag)"
 
+# ── 5a. Legacy classic branch-protection review gate ─────────────────────
+echo
+echo "== 5a. classic branch-protection review gate"
+review_endpoint="repos/$REPO/branches/main/protection/required_pull_request_reviews"
+if [[ "$DRY_RUN" == "1" ]]; then
+  echo "  [dry-run] set classic required approving reviews to zero; preserve other branch protections"
+else
+  if current_review=$(gh api "$review_endpoint" 2>&1); then
+    review_payload='{"dismiss_stale_reviews":false,"require_code_owner_reviews":false,"required_approving_review_count":0,"require_last_push_approval":false,"bypass_pull_request_allowances":{"users":[],"teams":[],"apps":[]}}'
+    printf '%s' "$review_payload" | gh api --method PUT "$review_endpoint" --input - >/dev/null
+    echo "  ok classic approving reviews set to zero; review bypass allowances cleared"
+  elif [[ "$current_review" == *"HTTP 404"* ]]; then
+    echo "  ok no classic review rule exists; ruleset remains authoritative"
+  else
+    printf '%s\n' "$current_review" >&2
+    exit 1
+  fi
+fi
+
 # ── 6. Code scanning default setup ───────────────────────────────────────
 echo
 echo "== 6. code scanning default setup"
@@ -219,6 +238,13 @@ gh api "repos/$REPO" --jq '{allow_auto_merge, allow_squash_merge, allow_merge_co
 gh api "repos/$REPO/actions/permissions" --jq '{sha_pinning_required, allowed_actions}'
 gh api "repos/$REPO/actions/permissions/workflow" --jq '.'
 gh api "repos/$REPO/rulesets" --jq '.[] | {name, target, enforcement}'
+classic_review_count=$(gh api "repos/$REPO/branches/main/protection/required_pull_request_reviews" --jq .required_approving_review_count 2>/dev/null || echo absent)
+if [[ "$classic_review_count" == "0" || "$classic_review_count" == "absent" ]]; then
+  echo "  ok no classic human approval requirement"
+else
+  echo "error: classic branch protection still requires $classic_review_count approving review(s)." >&2
+  exit 1
+fi
 if [[ "$(gh api "repos/$REPO/actions/permissions" --jq .sha_pinning_required)" != "true" ]]; then
   echo "error: GitHub does not require actions to be pinned to a full-length commit SHA." >&2
   exit 1
@@ -227,8 +253,8 @@ fi
 echo
 echo "== done."
 echo "Remaining setup steps (no API exists for them):"
-echo "  1. Settings -> Branches: confirm the ruleset is the source of truth and that"
-echo "     no conflicting classic branch protection rule is left behind."
+echo "  1. Settings -> Branches: confirm no classic branch-protection review rule"
+echo "     reintroduces approvals; setup sets any classic review count to zero."
 echo "  2. Settings -> Secrets and variables -> Actions: add GROQ_API_KEY if the"
 echo "     Groq agent is used (the Ollama agent needs no model key)."
 echo "  3. Settings -> Code security: confirm 'CodeQL analysis: default setup'."

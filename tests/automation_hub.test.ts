@@ -200,6 +200,9 @@ test("hub: main ruleset permanently disables human approvals and bypass", () => 
   const setup = readFileSync(join(ROOT, "setup-repo.sh"), "utf8");
   assert.match(setup, /docs\/ai\/ruleset-l3\.json/);
   assert.doesNotMatch(setup, /bypass_actors.*actor_id/);
+  assert.match(setup, /branches\/main\/protection\/required_pull_request_reviews/);
+  assert.match(setup, /required_approving_review_count[^,}]*0/);
+  assert.match(setup, /bypass_pull_request_allowances/);
   assert.doesNotMatch(setup, /repos\/\$REPO\/pages|build_type=workflow/);
 });
 
