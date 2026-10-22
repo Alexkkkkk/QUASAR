@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Box,
   Button,
@@ -53,9 +53,18 @@ export const TasksPage = () => {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [jettonMaster, setJettonMaster] = useState(jettonFromQuery);
+  const previousJettonFromQuery = useRef(jettonFromQuery);
   const [bindWallet, setBindWallet] = useState(false);
   const [filter, setFilter] = useState<Filter>("all");
   const [scopedOnly, setScopedOnly] = useState(false);
+
+  useEffect(() => {
+    const previousJetton = previousJettonFromQuery.current;
+    setJettonMaster((currentJettonMaster) =>
+      currentJettonMaster === previousJetton ? jettonFromQuery : currentJettonMaster,
+    );
+    previousJettonFromQuery.current = jettonFromQuery;
+  }, [jettonFromQuery]);
 
   const hasContext = Boolean(jettonFromQuery) || Boolean(walletAddress);
 

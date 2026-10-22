@@ -211,6 +211,7 @@
          remote host change wallet-connecting code at will (supply-chain risk). -->
     <script src="https://unpkg.com/@tonconnect/ui@3.0.2/dist/tonconnect-ui.min.js"></script>
     <script src="config.js"></script>
+    <script src="amounts.js"></script>
     <script type="module" src="tonconnect.js"></script>
     <script>
         // Generate starfield
@@ -231,7 +232,10 @@
         // Initialize TON Connect when DOM ready
         function configureLaunchState() {
             const config = window.QUASAR_CONFIG || {};
-            const hasAddresses = Boolean(config.addresses?.master && config.addresses?.defi);
+            const configuredAddressStrings = Boolean(config.addresses?.master && config.addresses?.defi);
+            const addressesAreTestnet = typeof window.isQuasarTestnetConfigReady === 'function'
+                && window.isQuasarTestnetConfigReady(config);
+            const hasAddresses = configuredAddressStrings && addressesAreTestnet;
             const isTestnet = config.network === 'testnet';
             const ready = hasAddresses && isTestnet;
             const message = document.getElementById('launch-status-message');
@@ -242,8 +246,8 @@
             if (message) {
                 if (ready) {
                     message.textContent = 'Testnet deployment configuration detected. This prototype is unaudited; verify the addresses and use a disposable testnet wallet only. Never use real funds.';
-                } else if (hasAddresses) {
-                    message.textContent = 'Contract actions are disabled: this preview enables wallet controls only for an explicit TON testnet deployment. Mainnet is not enabled.';
+                } else if (configuredAddressStrings) {
+                    message.textContent = 'Contract actions are disabled: use explicit, valid TON testnet addresses and a testnet deployment. Mainnet is not enabled.';
                 } else {
                     message.textContent = 'No testnet contract addresses are published. Wallet connection and contract actions are disabled. A testnet smoke run and independent audit remain open release gates.';
                 }
@@ -274,27 +278,55 @@
         // require a pending QSR deposit first. If the wallet has no pending
         // deposit covering the amount, the deposit transfer is sent first and
         // the dependent call is queued until it lands. Nothing silently fails.
+        function readPositiveNanoAmount(inputId) {
+            const parser = window.QUASARAmounts?.parsePositiveNanoAmount;
+            if (typeof parser !== 'function') {
+                showToast('Exact amount parser is unavailable', 'error');
+                return null;
+            }
+            try {
+                return parser(document.getElementById(inputId).value);
+            } catch (e) {
+                showToast(e.message || 'Enter a valid amount with at most 9 decimal places', 'error');
+                return null;
+            }
+        }
+
+        function readSlippageBps() {
+            const parser = window.QUASARAmounts?.parseSlippageBps;
+            if (typeof parser !== 'function') {
+                showToast('Exact slippage parser is unavailable', 'error');
+                return null;
+            }
+            const value = document.getElementById('swap-slippage').value;
+            try {
+                return value === '' ? 100n : parser(value);
+            } catch (e) {
+                showToast(e.message || 'Slippage must be between 0% and 100%', 'error');
+                return null;
+            }
+        }
+
+        function formatNanoForDisplay(amount) {
+            const formatter = window.QUASARAmounts?.formatNanoAmount;
+            return typeof formatter === 'function' ? formatter(amount) : amount.toString();
+        }
+
         async function ensureQsrDeposit(target, amountNano) {
             if (!window.depositQsr || !window.pendingDeposit) return false;
             const pending = await window.pendingDeposit(target, window.__qsrOwner);
             if (pending >= amountNano) return true;
             const shortfall = amountNano - pending;
-            showToast(`Depositing ${(Number(shortfall) / 1e9).toFixed(4)} QSR first...`, 'success');
+            showToast(`Depositing ${formatNanoForDisplay(shortfall)} QSR first...`, 'success');
             await window.depositQsr(target, shortfall);
             return false;
         }
 
         async function executeSwap() {
-            const amount = parseFloat(document.getElementById('swap-amount').value);
+            const amountNano = readPositiveNanoAmount('swap-amount');
             const direction = document.getElementById('swap-direction').value;
-            const slippage = parseFloat(document.getElementById('swap-slippage').value) || 1;
-            if (!amount || amount <= 0) { showToast('Enter valid amount', 'error'); return; }
-            const amountNano = BigInt(Math.floor(amount * 1e9));
-            const slippageBps = Math.round(slippage * 100);
-            if (!Number.isFinite(slippageBps) || slippageBps < 0 || slippageBps >= 10000) {
-                showToast('Slippage must be between 0% and 100%', 'error');
-                return;
-            }
+            const slippageBps = readSlippageBps();
+            if (amountNano === null || slippageBps === null) return;
             if (!window.quoteSwap) {
                 showToast('Swap quote is unavailable', 'error');
                 return;
@@ -310,54 +342,52 @@
                 showToast('Pool has insufficient liquidity', 'error');
                 return;
             }
-            const minOut = quotedOut * BigInt(10000 - slippageBps) / 10000n;
-            showToast(`Swap guardrails: min out ${(Number(minOut) / 1e9).toFixed(4)} ${direction === 'to-ton' ? 'TON' : 'QSR'} · deadline 5 min`, 'success');
+            const minOut = quotedOut * (10000n - slippageBps) / 10000n;
+            showToast(`Swap guardrails: min out ${formatNanoForDisplay(minOut)} ${direction === 'to-ton' ? 'TON' : 'QSR'} · deadline 5 min`, 'success');
             if (direction === 'to-ton') {
                 if (!(await ensureQsrDeposit('defi', amountNano))) return;
-                window.swapToTon(amountNano, minOut);
+                await window.swapToTon(amountNano, minOut);
             } else {
-                window.swapToQsr(amountNano, minOut);
+                await window.swapToQsr(amountNano, minOut);
             }
         }
         
         async function addLiquidityFromUI() {
-            const ton = parseFloat(document.getElementById('lp-ton').value);
-            const qsr = parseFloat(document.getElementById('lp-qsr').value);
-            if (!ton || !qsr || ton <= 0 || qsr <= 0) { showToast('Enter valid amounts', 'error'); return; }
-            const qsrNano = BigInt(Math.floor(qsr * 1e9));
+            const tonNano = readPositiveNanoAmount('lp-ton');
+            const qsrNano = readPositiveNanoAmount('lp-qsr');
+            if (tonNano === null || qsrNano === null) return;
             showToast('Liquidity guardrails: min LP 1 · deadline 5 min', 'success');
             if (!(await ensureQsrDeposit('defi', qsrNano))) return;
-            window.addLiquidity(BigInt(Math.floor(ton * 1e9)), qsrNano);
+            await window.addLiquidity(tonNano, qsrNano);
         }
         
-        function removeLiquidityFromUI() {
-            const lp = parseFloat(document.getElementById('lp-remove').value);
-            if (!lp || lp <= 0) { showToast('Enter valid LP amount', 'error'); return; }
+        async function removeLiquidityFromUI() {
+            const lpNano = readPositiveNanoAmount('lp-remove');
+            if (lpNano === null) return;
             showToast('Liquidity guardrails: min TON/QSR outputs default to 1 nanotoken · deadline 5 min', 'success');
-            window.removeLiquidity(BigInt(Math.floor(lp * 1e9)));
+            await window.removeLiquidity(lpNano);
         }
         
         async function stakeFromUI() {
-            const amount = parseFloat(document.getElementById('stake-amount').value);
-            if (!amount || amount <= 0) { showToast('Enter valid amount', 'error'); return; }
-            const amountNano = BigInt(Math.floor(amount * 1e9));
+            const amountNano = readPositiveNanoAmount('stake-amount');
+            if (amountNano === null) return;
             if (!(await ensureQsrDeposit('master', amountNano))) return;
-            window.stakeQsr(amountNano);
+            await window.stakeQsr(amountNano);
         }
         
-        function unstakeFromUI() {
-            const amount = parseFloat(document.getElementById('stake-amount').value);
-            if (!amount || amount <= 0) { showToast('Enter valid amount', 'error'); return; }
-            window.unstakeQsr(BigInt(Math.floor(amount * 1e9)));
+        async function unstakeFromUI() {
+            const amountNano = readPositiveNanoAmount('stake-amount');
+            if (amountNano === null) return;
+            await window.unstakeQsr(amountNano);
         }
         
-        function claimFarmRewardsFromUI() {
-            window.claimFarmRewards();
+        async function claimFarmRewardsFromUI() {
+            await window.claimFarmRewards();
         }
 
-        function refundPendingQsrFromUI() {
+        async function refundPendingQsrFromUI() {
             if (typeof window.refundPendingQsr === 'function') {
-                window.refundPendingQsr();
+                await window.refundPendingQsr();
             }
         }
         
