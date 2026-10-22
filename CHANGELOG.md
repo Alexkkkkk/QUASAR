@@ -7,7 +7,7 @@
 - QSR deposit отвергается при смене account во время getter-запроса; штатный формат адресов deployment artifacts поддерживается.
 - Tasks обновляет default Jetton master при смене URL, не затирая ручной ввод. Добавлены поведенческие регрессионные тесты website и Tasks.
 - Согласована документация аудита с текущим кодом. Полные ограничения и результаты проверки: `docs/COMPLETION_2026-10-22.md`.
-- Изменения опубликованы в draft PR #272 из `ai/107-completion-hardening`; merge и deployment не выполнялись. На head `176c318` GitHub CI прошёл (12 успешных проверок, 11 пропущено), корневой `npm audit` чист. `npm audit` вложенного приложения остаётся красным: 50 high и 7 moderate advisories. Контракты не менялись. В diff ветки также есть правки двух reusable workflow и корневого lock-файла; эти защищённые пути требуют отдельного внимания при review по `AGENTS.md`.
+- Изменения опубликованы в draft PR #272 из `ai/107-completion-hardening`; на head `bdb8703` GitHub CI завершился успешно (15 успешных проверок, 10 пропущено). Merge и deployment не выполнялись. Корневой `npm audit` чист; `npm audit` вложенного приложения остаётся красным: 50 high и 7 moderate advisories. Контракты не менялись. В diff ветки также есть правки двух reusable workflow и корневого lock-файла; эти защищённые пути требуют отдельного внимания при review по `AGENTS.md`.
 
 ## 2026-10-09 — ci(automation): единый контур QUASAR — оркестратор и reusable-модули (эпик #145)
 
