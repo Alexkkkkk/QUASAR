@@ -22,7 +22,9 @@ struct (0x0f8a7ea5) TokenTransfer {
     queryId: uint64
     amount: coins
     destination: address
-    responseDestination: address
+    // TEP-74 declares this as MsgAddress. `address?` encodes an internal
+    // address or addr_none without accepting an external destination.
+    responseDestination: address?
     customPayload: cell?
     forwardTonAmount: coins
     forwardPayload: RemainingBitsAndRefs
@@ -38,7 +40,7 @@ struct (0x7362d09c) TokenNotification {
 struct (0x595f07bc) TokenBurn {
     queryId: uint64
     amount: coins
-    responseDestination: address
+    responseDestination: address?
     customPayload: cell?
 }
 
@@ -50,7 +52,7 @@ struct (0x7bdd97de) BurnNotification {
     queryId: uint64
     amount: coins
     sender: address
-    responseDestination: address
+    responseDestination: address?
 }
 
 // These opcodes are explicit because the Tact ABI is the wire-level source of
@@ -74,7 +76,7 @@ struct (0x178d4519) InternalTransfer {
     queryId: uint64
     amount: coins
     from: address
-    responseDestination: address
+    responseDestination: address?
     forwardTonAmount: coins
     forwardPayload: RemainingBitsAndRefs
 }
@@ -86,7 +88,7 @@ struct (0x51a5c3d1) PoolPayout {
     queryId: uint64
     amount: coins
     destination: address
-    responseDestination: address
+    responseDestination: address?
 }
 
 struct (0x2945917f) PayoutFailed {
@@ -95,18 +97,19 @@ struct (0x2945917f) PayoutFailed {
     destination: address
 }
 
-// TEP-89 discovery. TakeWalletAddress.ownerAddress is a Maybe reference to an
-// address, not an inline address? field. This is Cell<address>? by design.
+// TEP-89 discovery uses the full MsgAddress union. `any_address` is necessary
+// for the standard addr_none result when no wallet can be derived. The optional
+// owner is a Maybe reference to MsgAddress, not an inline address? field.
 struct (0x2c76b973) ProvideWalletAddress {
     queryId: uint64
-    ownerAddress: address
+    ownerAddress: any_address
     includeAddress: bool
 }
 
 struct (0xd1735400) TakeWalletAddress {
     queryId: uint64
-    walletAddress: address
-    ownerAddress: Cell<address>?
+    walletAddress: any_address
+    ownerAddress: Cell<any_address>?
 }
 
 // Shared Master/DeFi messages which are useful to later migration modules.
@@ -130,10 +133,10 @@ struct QuasarWalletStorage {
     owner: address
     master: address
     lastTxTime: int257
-    pendingResponses: map<int257, address>
+    pendingResponses: map<int257, address?>
     pendingResponseFees: map<int257, int257>
     pendingResponseReceivers: map<int257, address>
-    pendingBurnResponses: map<int257, address>
+    pendingBurnResponses: map<int257, address?>
     pendingPoolPayouts: map<int257, int257>
     pendingPoolPayoutReceivers: map<int257, address>
 }
@@ -178,12 +181,12 @@ fun QuasarWalletStorage.load(): QuasarWalletStorage {
     val owner = root.loadAddress();
     val master = root.loadAddress();
     val lastTxTime = root.loadInt(257);
-    val pendingResponses = createMapFromLowLevelDict<int257, address>(root.loadDict());
+    val pendingResponses = createMapFromLowLevelDict<int257, address?>(root.loadDict());
 
     var tail = root.loadRef().beginParse();
     val pendingResponseFees = createMapFromLowLevelDict<int257, int257>(tail.loadDict());
     val pendingResponseReceivers = createMapFromLowLevelDict<int257, address>(tail.loadDict());
-    val pendingBurnResponses = createMapFromLowLevelDict<int257, address>(tail.loadDict());
+    val pendingBurnResponses = createMapFromLowLevelDict<int257, address?>(tail.loadDict());
 
     var payoutTail = tail.loadRef().beginParse();
     val pendingPoolPayouts = createMapFromLowLevelDict<int257, int257>(payoutTail.loadDict());
@@ -249,6 +252,13 @@ fun quasarWalletAddress(owner: address, master: address, walletCode: cell): addr
 fun isZeroAddress(value: address): bool {
     val (workchain, hash) = value.getWorkchainAndHash();
     return workchain == BASECHAIN && hash == 0;
+}
+
+// QUASAR's Tact reference used the all-zero basechain address as a legacy
+// no-response sentinel. Preserve that compatibility while also accepting the
+// standard TEP-74 addr_none encoding represented by a nullable address.
+fun isNoResponseAddress(value: address?): bool {
+    return value == null || isZeroAddress(value!!);
 }
 
 fun isMintMarkedPayload(payload: slice): bool {

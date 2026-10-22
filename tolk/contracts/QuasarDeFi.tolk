@@ -1,38 +1,38 @@
-import "QuasarCommon"
-import "@gen/QuasarWallet.code"
+import "QuasarCommon";
+import "@gen/QuasarWallet.code";
 
 // QUASAR DeFi message ABI. Prefixes and field widths are pinned to the Tact
 // reference ABI; do not replace these with compiler-generated name hashes.
 struct (0xb857497a) AddLiquidity {
-    tonAmount: coins
-    qsrAmount: coins
-    minLpOut: coins
-    deadline: uint32
+    tonAmount: coins;
+    qsrAmount: coins;
+    minLpOut: coins;
+    deadline: uint32;
 }
 struct (0x509b0d6a) RemoveLiquidity {
-    lpAmount: coins
-    minTonOut: coins
-    minQsrOut: coins
-    deadline: uint32
+    lpAmount: coins;
+    minTonOut: coins;
+    minQsrOut: coins;
+    deadline: uint32;
 }
 struct (0x94e82670) SwapToTON {
-    qsrAmount: coins
-    minTonOut: coins
-    deadline: uint32
+    qsrAmount: coins;
+    minTonOut: coins;
+    deadline: uint32;
 }
 struct (0x6cf24972) SwapToQSR {
-    tonAmount: coins
-    minQsrOut: coins
-    deadline: uint32
+    tonAmount: coins;
+    minQsrOut: coins;
+    deadline: uint32;
 }
 struct (0x511327f0) ClaimFarmRewards {}
 struct (0x66866ad9) EmergencyWithdrawFarm {}
 struct (0x6482e5b4) SetFarmEnabled { enabled: bool }
 struct (0x27895d7c) FundFarm { amount: coins }
 struct (0xe7ceed7e) SetFarmConfig {
-    rewardPerSecond: coins
-    startTime: uint32
-    endTime: uint32
+    rewardPerSecond: coins;
+    startTime: uint32;
+    endTime: uint32;
 }
 struct (0x17000fb2) SetFeeBps { feeBps: uint16 }
 struct (0x096819ff) SetPaused { paused: bool }
@@ -46,150 +46,332 @@ struct (0x946a98b6) Deploy { queryId: uint64 }
 struct (0xaff90f57) DeployOk { queryId: uint64 }
 
 struct (0x746f6e70) TonPayout {
-    queryId: uint64
-    amount: coins
+    queryId: uint64;
+    amount: coins;
 }
 struct (0x2c7e91a4) BuybackTon {
-    queryId: uint64
-    tonAmount: coins
-    qsrSwapped: coins
+    queryId: uint64;
+    tonAmount: coins;
+    qsrSwapped: coins;
 }
 
+@overflow1023_policy("suppress")
 struct (0x1323cbef) EventLiquidityAdded {
-    provider: address
-    tonAmount: int257
-    qsrAmount: int257
-    lpMinted: int257
+    provider: address;
+    tonAmount: int257;
+    qsrAmount: int257;
+    lpMinted: int257;
 }
+@overflow1023_policy("suppress")
 struct (0x5b4f24a9) EventLiquidityRemoved {
-    provider: address
-    tonOut: int257
-    qsrOut: int257
-    lpBurned: int257
+    provider: address;
+    tonOut: int257;
+    qsrOut: int257;
+    lpBurned: int257;
 }
+@overflow1023_policy("suppress")
 struct (0xc02a5493) EventSwap {
-    trader: address
-    tonIn: int257
-    qsrIn: int257
-    tonOut: int257
-    qsrOut: int257
-    fee: int257
+    trader: address;
+    tonIn: int257;
+    qsrIn: int257;
+    tonOut: int257;
+    qsrOut: int257;
+    fee: int257;
 }
 struct (0xca3de6d5) EventFarmReward { farmer: address; amount: int257 }
 struct (0x60d4a4da) EventFeeCollected { amount: int257 }
 struct (0xd6ee9362) EventBuybackBounceUnknown { queryId: uint64 }
 
 struct LPInfo {
-    totalSupply: int257
-    tonReserve: int257
-    qsrReserve: int257
+    totalSupply: int257;
+    tonReserve: int257;
+    qsrReserve: int257;
 }
 struct DeFiReserveSnapshot {
-    lpTotalSupply: int257
-    tonReserve: int257
-    qsrReserve: int257
-    feeAccumulatedTon: int257
-    feeAccumulatedQsr: int257
-    farmRewardReserve: int257
-    farmTotalStaked: int257
+    lpTotalSupply: int257;
+    tonReserve: int257;
+    qsrReserve: int257;
+    feeAccumulatedTon: int257;
+    feeAccumulatedQsr: int257;
+    farmRewardReserve: int257;
+    farmTotalStaked: int257;
 }
 struct FarmInfo {
-    staked: int257
-    rewardPerSecond: int257
-    lastUpdate: int257
-    accRewardPerShare: int257
-    startTime: int257
-    endTime: int257
+    staked: int257;
+    rewardPerSecond: int257;
+    lastUpdate: int257;
+    accRewardPerShare: int257;
+    startTime: int257;
+    endTime: int257;
 }
 struct UserFarmInfo {
-    staked: int257
-    debt: int257
-    pending: int257
+    staked: int257;
+    debt: int257;
+    pending: int257;
 }
 struct PendingPayout {
-    amount: int257
-    kind: int257
-    beneficiary: address
+    amount: int257;
+    kind: int257;
+    beneficiary: address;
 }
 struct PendingTonPayout {
-    kind: int257
-    beneficiary: address
-    tonOut: int257
-    qsrAmount: int257
-    lpAmount: int257
-    qsrSettled: bool
+    kind: int257;
+    beneficiary: address;
+    tonOut: int257;
+    qsrAmount: int257;
+    lpAmount: int257;
+    qsrSettled: bool;
+}
+// The Tact source expresses map values as ^PendingTonPayout. Its five int257
+// fields plus an address do not fit in a single cell, so the migration keeps
+// their widths and stores the final three fields in an explicit tail ref.
+struct PendingTonPayoutTail {
+    qsrAmount: int257;
+    lpAmount: int257;
+    qsrSettled: bool;
+}
+struct PendingTonPayoutWire {
+    kind: int257;
+    beneficiary: address;
+    tonOut: int257;
+    tail: Cell<PendingTonPayoutTail>;
 }
 struct SwapQuote {
-    tonIn: int257
-    qsrIn: int257
-    tonOut: int257
-    qsrOut: int257
-    fee: int257
-    priceImpactBps: int257
+    tonIn: int257;
+    qsrIn: int257;
+    tonOut: int257;
+    qsrOut: int257;
+    fee: int257;
+    priceImpactBps: int257;
 }
 
-// Field order and widths match QuasarDeFi's persistent Tact storage. Map values
-// use int257 because Tact's Int dictionary values are signed 257-bit integers.
+// Field order, widths, and the four-cell ref chain below are copied from the
+// isolated Tact compiler output for contracts/quasar_defi.tact. In particular,
+// Tact's struct-valued maps are dictionary values behind a reference.
+@overflow1023_policy("suppress")
 struct QuasarDeFiStorage {
-    owner: address
-    qsrMaster: address
-    lpTotalSupply: coins
-    tonReserve: coins
-    qsrReserve: coins
-    lpBalances: map<address, int257>
-    pendingQsrDeposits: map<address, int257>
-    pendingQsrDepositsAt: map<address, int257>
-    feeBps: uint16
-    feeAccumulatedTon: coins
-    feeAccumulatedQsr: coins
-    farmEnabled: bool
-    farmRewardPerSecond: coins
-    farmStartTime: uint32
-    farmEndTime: uint32
-    farmLastUpdate: int257
-    farmAccRewardPerShare: int257
-    farmTotalStaked: coins
-    farmRewardReserve: coins
-    farmStakes: map<address, UserFarmInfo>
-    locked: bool
-    paused: bool
-    maxTradeBps: uint16
-    minimumLiquidity: coins
-    priceCumulativeQsrPerTon: int257
-    priceCumulativeTonPerQsr: int257
-    lastPriceObservation: uint32
-    pendingFeeBps: uint16
-    pendingFeeAt: uint32
-    pendingMaxTradeBps: uint16
-    pendingMaxTradeAt: uint32
-    pendingOwner: address
-    ownerTransferAt: uint32
-    ownerTransferDelay: uint32
-    payoutSeq: uint64
-    pendingPayouts: map<int257, PendingPayout>
-    pendingTonPayouts: map<int257, PendingTonPayout>
-    tonPayoutSeq: uint64
-    pendingBuybackActive: bool
-    pendingBuybackQueryId: uint64
-    pendingBuybackTonOut: coins
-    pendingBuybackFee: coins
-    prevBuybackActive: bool
-    prevBuybackQueryId: uint64
-    prevBuybackTonOut: coins
-    prevBuybackFee: coins
+    owner: address;
+    qsrMaster: address;
+    lpTotalSupply: coins;
+    tonReserve: coins;
+    qsrReserve: coins;
+    lpBalances: map<address, int257>;
+    pendingQsrDeposits: map<address, int257>;
+    pendingQsrDepositsAt: map<address, int257>;
+    feeBps: uint16;
+    feeAccumulatedTon: coins;
+    feeAccumulatedQsr: coins;
+    farmEnabled: bool;
+    farmRewardPerSecond: coins;
+    farmStartTime: uint32;
+    farmEndTime: uint32;
+    farmLastUpdate: int257;
+    farmAccRewardPerShare: int257;
+    farmTotalStaked: coins;
+    farmRewardReserve: coins;
+    farmStakes: map<address, Cell<UserFarmInfo>>;
+    locked: bool;
+    paused: bool;
+    maxTradeBps: uint16;
+    minimumLiquidity: coins;
+    priceCumulativeQsrPerTon: int257;
+    priceCumulativeTonPerQsr: int257;
+    lastPriceObservation: uint32;
+    pendingFeeBps: uint16;
+    pendingFeeAt: uint32;
+    pendingMaxTradeBps: uint16;
+    pendingMaxTradeAt: uint32;
+    pendingOwner: address;
+    ownerTransferAt: uint32;
+    ownerTransferDelay: uint32;
+    payoutSeq: uint64;
+    pendingPayouts: map<int257, Cell<PendingPayout>>;
+    pendingTonPayouts: map<int257, Cell<PendingTonPayoutWire>>;
+    tonPayoutSeq: uint64;
+    pendingBuybackActive: bool;
+    pendingBuybackQueryId: uint64;
+    pendingBuybackTonOut: coins;
+    pendingBuybackFee: coins;
+    prevBuybackActive: bool;
+    prevBuybackQueryId: uint64;
+    prevBuybackTonOut: coins;
+    prevBuybackFee: coins;
+}
+
+fun PendingTonPayout.toWireCell(self): Cell<PendingTonPayoutWire> {
+    val tail = PendingTonPayoutTail {
+        qsrAmount: self.qsrAmount,
+        lpAmount: self.lpAmount,
+        qsrSettled: self.qsrSettled,
+    }.toCell();
+    return PendingTonPayoutWire {
+        kind: self.kind,
+        beneficiary: self.beneficiary,
+        tonOut: self.tonOut,
+        tail,
+    }.toCell();
+}
+
+fun PendingTonPayoutWire.toPendingTonPayout(self): PendingTonPayout {
+    val tail = self.tail.load();
+    return PendingTonPayout {
+        kind: self.kind,
+        beneficiary: self.beneficiary,
+        tonOut: self.tonOut,
+        qsrAmount: tail.qsrAmount,
+        lpAmount: tail.lpAmount,
+        qsrSettled: tail.qsrSettled,
+    };
+}
+
+fun QuasarDeFiStorage.unpackFromSlice(mutate root: slice): QuasarDeFiStorage {
+    val owner = root.loadAddress();
+    val qsrMaster = root.loadAddress();
+    val lpTotalSupply = root.loadCoins();
+    val tonReserve = root.loadCoins();
+    val qsrReserve = root.loadCoins();
+    val lpBalances = createMapFromLowLevelDict<address, int257>(root.loadDict());
+
+    var cell1 = root.loadRef().beginParse();
+    val pendingQsrDeposits = createMapFromLowLevelDict<address, int257>(cell1.loadDict());
+    val pendingQsrDepositsAt = createMapFromLowLevelDict<address, int257>(cell1.loadDict());
+    val feeBps = cell1.loadUint(16) as uint16;
+    val feeAccumulatedTon = cell1.loadCoins();
+    val feeAccumulatedQsr = cell1.loadCoins();
+    val farmEnabled = cell1.loadBool();
+    val farmRewardPerSecond = cell1.loadCoins();
+    val farmStartTime = cell1.loadUint(32) as uint32;
+    val farmEndTime = cell1.loadUint(32) as uint32;
+    val farmLastUpdate = cell1.loadInt(257) as int257;
+    val farmAccRewardPerShare = cell1.loadInt(257) as int257;
+
+    var cell2 = cell1.loadRef().beginParse();
+    val farmTotalStaked = cell2.loadCoins();
+    val farmRewardReserve = cell2.loadCoins();
+    val farmStakes = createMapFromLowLevelDict<address, Cell<UserFarmInfo>>(cell2.loadDict());
+    val locked = cell2.loadBool();
+    val paused = cell2.loadBool();
+    val maxTradeBps = cell2.loadUint(16) as uint16;
+    val minimumLiquidity = cell2.loadCoins();
+    val priceCumulativeQsrPerTon = cell2.loadInt(257) as int257;
+    val priceCumulativeTonPerQsr = cell2.loadInt(257) as int257;
+    val lastPriceObservation = cell2.loadUint(32) as uint32;
+    val pendingFeeBps = cell2.loadUint(16) as uint16;
+    val pendingFeeAt = cell2.loadUint(32) as uint32;
+    val pendingMaxTradeBps = cell2.loadUint(16) as uint16;
+
+    var cell3 = cell2.loadRef().beginParse();
+    val pendingMaxTradeAt = cell3.loadUint(32) as uint32;
+    val pendingOwner = cell3.loadAddress();
+    val ownerTransferAt = cell3.loadUint(32) as uint32;
+    val ownerTransferDelay = cell3.loadUint(32) as uint32;
+    val payoutSeq = cell3.loadUint(64) as uint64;
+    val pendingPayouts = createMapFromLowLevelDict<int257, Cell<PendingPayout>>(cell3.loadDict());
+    val pendingTonPayouts = createMapFromLowLevelDict<int257, Cell<PendingTonPayoutWire>>(cell3.loadDict());
+    val tonPayoutSeq = cell3.loadUint(64) as uint64;
+    val pendingBuybackActive = cell3.loadBool();
+    val pendingBuybackQueryId = cell3.loadUint(64) as uint64;
+    val pendingBuybackTonOut = cell3.loadCoins();
+    val pendingBuybackFee = cell3.loadCoins();
+    val prevBuybackActive = cell3.loadBool();
+    val prevBuybackQueryId = cell3.loadUint(64) as uint64;
+    val prevBuybackTonOut = cell3.loadCoins();
+
+    var cell4 = cell3.loadRef().beginParse();
+    val prevBuybackFee = cell4.loadCoins();
+    cell4.assertEnd();
+    cell3.assertEnd();
+    cell2.assertEnd();
+    cell1.assertEnd();
+    root.assertEnd();
+    return {
+        owner, qsrMaster, lpTotalSupply, tonReserve, qsrReserve, lpBalances,
+        pendingQsrDeposits, pendingQsrDepositsAt, feeBps, feeAccumulatedTon,
+        feeAccumulatedQsr, farmEnabled, farmRewardPerSecond, farmStartTime,
+        farmEndTime, farmLastUpdate, farmAccRewardPerShare, farmTotalStaked,
+        farmRewardReserve, farmStakes, locked, paused, maxTradeBps,
+        minimumLiquidity, priceCumulativeQsrPerTon, priceCumulativeTonPerQsr,
+        lastPriceObservation, pendingFeeBps, pendingFeeAt, pendingMaxTradeBps,
+        pendingMaxTradeAt, pendingOwner, ownerTransferAt, ownerTransferDelay,
+        payoutSeq, pendingPayouts, pendingTonPayouts, tonPayoutSeq,
+        pendingBuybackActive, pendingBuybackQueryId, pendingBuybackTonOut,
+        pendingBuybackFee, prevBuybackActive, prevBuybackQueryId,
+        prevBuybackTonOut, prevBuybackFee,
+    };
+}
+
+fun QuasarDeFiStorage.packToBuilder(self, mutate root: builder) {
+    var cell4 = beginCell();
+    cell4.storeCoins(self.prevBuybackFee);
+
+    var cell3 = beginCell();
+    cell3.storeUint(self.pendingMaxTradeAt, 32);
+    cell3.storeAddress(self.pendingOwner);
+    cell3.storeUint(self.ownerTransferAt, 32);
+    cell3.storeUint(self.ownerTransferDelay, 32);
+    cell3.storeUint(self.payoutSeq, 64);
+    cell3.storeDict(self.pendingPayouts.toLowLevelDict());
+    cell3.storeDict(self.pendingTonPayouts.toLowLevelDict());
+    cell3.storeUint(self.tonPayoutSeq, 64);
+    cell3.storeBool(self.pendingBuybackActive);
+    cell3.storeUint(self.pendingBuybackQueryId, 64);
+    cell3.storeCoins(self.pendingBuybackTonOut);
+    cell3.storeCoins(self.pendingBuybackFee);
+    cell3.storeBool(self.prevBuybackActive);
+    cell3.storeUint(self.prevBuybackQueryId, 64);
+    cell3.storeCoins(self.prevBuybackTonOut);
+    cell3.storeRef(cell4.endCell());
+
+    var cell2 = beginCell();
+    cell2.storeCoins(self.farmTotalStaked);
+    cell2.storeCoins(self.farmRewardReserve);
+    cell2.storeDict(self.farmStakes.toLowLevelDict());
+    cell2.storeBool(self.locked);
+    cell2.storeBool(self.paused);
+    cell2.storeUint(self.maxTradeBps, 16);
+    cell2.storeCoins(self.minimumLiquidity);
+    cell2.storeInt(self.priceCumulativeQsrPerTon, 257);
+    cell2.storeInt(self.priceCumulativeTonPerQsr, 257);
+    cell2.storeUint(self.lastPriceObservation, 32);
+    cell2.storeUint(self.pendingFeeBps, 16);
+    cell2.storeUint(self.pendingFeeAt, 32);
+    cell2.storeUint(self.pendingMaxTradeBps, 16);
+    cell2.storeRef(cell3.endCell());
+
+    var cell1 = beginCell();
+    cell1.storeDict(self.pendingQsrDeposits.toLowLevelDict());
+    cell1.storeDict(self.pendingQsrDepositsAt.toLowLevelDict());
+    cell1.storeUint(self.feeBps, 16);
+    cell1.storeCoins(self.feeAccumulatedTon);
+    cell1.storeCoins(self.feeAccumulatedQsr);
+    cell1.storeBool(self.farmEnabled);
+    cell1.storeCoins(self.farmRewardPerSecond);
+    cell1.storeUint(self.farmStartTime, 32);
+    cell1.storeUint(self.farmEndTime, 32);
+    cell1.storeInt(self.farmLastUpdate, 257);
+    cell1.storeInt(self.farmAccRewardPerShare, 257);
+    cell1.storeRef(cell2.endCell());
+
+    root.storeAddress(self.owner);
+    root.storeAddress(self.qsrMaster);
+    root.storeCoins(self.lpTotalSupply);
+    root.storeCoins(self.tonReserve);
+    root.storeCoins(self.qsrReserve);
+    root.storeDict(self.lpBalances.toLowLevelDict());
+    root.storeRef(cell1.endCell());
 }
 
 fun QuasarDeFiStorage.load(): QuasarDeFiStorage {
-    return QuasarDeFiStorage.fromCell(contract.getData())
+    return QuasarDeFiStorage.fromCell(contract.getData());
 }
 fun QuasarDeFiStorage.save(self) {
-    contract.setData(self.toCell())
+    contract.setData(self.toCell());
 }
 
 // Constructor-equivalent defaults. The deployment wrapper must serialize this
 // value using the owner and QSR master supplied to the Tact init(owner, master).
 fun newQuasarDeFiStorage(owner: address, qsrMaster: address): QuasarDeFiStorage {
-    val now = blockchain.now()
+    val now = blockchain.now();
     return {
         owner,
         qsrMaster,
@@ -258,150 +440,150 @@ contract QuasarDeFi {
     emittedEvents: EventLiquidityAdded | EventLiquidityRemoved | EventSwap | EventFarmReward | EventFeeCollected | EventBuybackBounceUnknown
 }
 
-const DEFI_SCALE: int257 = 1000000000
-const QSR_BUYBACK_MARKER = 0x5f4a3b21
-const ZERO_ADDRESS: address = address("0:0000000000000000000000000000000000000000000000000000000000000000")
-const DAY_YEAR = 31536000
+const DEFI_SCALE: int257 = 1000000000;
+const QSR_BUYBACK_MARKER = 0x5f4a3b21;
+const ZERO_ADDRESS: address = address("0:0000000000000000000000000000000000000000000000000000000000000000");
+const DAY_YEAR = 31536000;
 
 fun minimum(a: int257, b: int257): int257 {
-    return a < b ? a : b
+    return a < b ? a : b;
 }
 
 fun integerSqrt(value: int257): int257 {
     if (value <= 0) {
-        return 0
+        return 0;
     }
-    var x = value
-    var y = (x + 1) / 2
+    var x = value;
+    var y = (x + 1) / 2;
     while (y < x) {
-        x = y
-        y = (x + value / x) / 2
+        x = y;
+        y = (x + value / x) / 2;
     }
-    return x
+    return x;
 }
 
 fun pendingInt(m: map<address, int257>, user: address): int257? {
-    val result = m.get(user)
+    val result = m.get(user);
     if (!result.isFound) {
-        return null
+        return null;
     }
-    return result.loadValue()
+    return result.loadValue();
 }
 fun lpBalanceOf(m: map<address, int257>, user: address): int257 {
-    val result = m.get(user)
-    return result.isFound ? result.loadValue() : 0
+    val result = m.get(user);
+    return result.isFound ? result.loadValue() : 0;
 }
-fun farmInfoOf(m: map<address, UserFarmInfo>, user: address): UserFarmInfo? {
-    val result = m.get(user)
+fun farmInfoOf(m: map<address, Cell<UserFarmInfo>>, user: address): UserFarmInfo? {
+    val result = m.get(user);
     if (!result.isFound) {
-        return null
+        return null;
     }
-    return result.loadValue()
+    return result.loadValue().load();
 }
-fun payoutOf(m: map<int257, PendingPayout>, id: int257): PendingPayout? {
-    val result = m.get(id)
+fun payoutOf(m: map<int257, Cell<PendingPayout>>, id: int257): PendingPayout? {
+    val result = m.get(id);
     if (!result.isFound) {
-        return null
+        return null;
     }
-    return result.loadValue()
+    return result.loadValue().load();
 }
-fun tonPayoutOf(m: map<int257, PendingTonPayout>, id: int257): PendingTonPayout? {
-    val result = m.get(id)
+fun tonPayoutOf(m: map<int257, Cell<PendingTonPayoutWire>>, id: int257): PendingTonPayout? {
+    val result = m.get(id);
     if (!result.isFound) {
-        return null
+        return null;
     }
-    return result.loadValue()
+    return result.loadValue().load().toPendingTonPayout();
 }
 
 fun lock(mutate s: QuasarDeFiStorage) {
-    assert (!s.locked) throw 1001
-    s.locked = true
+    assert (!s.locked) throw 1001;
+    s.locked = true;
 }
 fun unlock(mutate s: QuasarDeFiStorage) {
-    s.locked = false
+    s.locked = false;
 }
 fun requireActive(s: QuasarDeFiStorage) {
-    assert (!s.paused) throw 1002
+    assert (!s.paused) throw 1002;
 }
 fun requireDeadline(deadline: uint32) {
-    assert (deadline > blockchain.now()) throw 1003
+    assert (deadline > blockchain.now()) throw 1003;
 }
 fun nextPayoutId(mutate s: QuasarDeFiStorage): uint64 {
-    s.payoutSeq = (s.payoutSeq + 1) as uint64
-    return s.payoutSeq
+    s.payoutSeq = (s.payoutSeq + 1) as uint64;
+    return s.payoutSeq;
 }
 fun nextTonPayoutId(mutate s: QuasarDeFiStorage): uint64 {
-    s.tonPayoutSeq = (s.tonPayoutSeq + 1) as uint64
-    return s.tonPayoutSeq
+    s.tonPayoutSeq = (s.tonPayoutSeq + 1) as uint64;
+    return s.tonPayoutSeq;
 }
 
 fun recordPriceObservation(mutate s: QuasarDeFiStorage) {
-    val now = blockchain.now()
+    val now = blockchain.now();
     if (s.lastPriceObservation == 0 || s.tonReserve == 0 || s.qsrReserve == 0) {
-        s.lastPriceObservation = now as uint32
-        return
+        s.lastPriceObservation = now as uint32;
+        return;
     }
-    val elapsed = now - s.lastPriceObservation
+    val elapsed = now - s.lastPriceObservation;
     if (elapsed > 0) {
-        s.priceCumulativeQsrPerTon += (s.qsrReserve * elapsed) / s.tonReserve
-        s.priceCumulativeTonPerQsr += (s.tonReserve * elapsed) / s.qsrReserve
-        s.lastPriceObservation = now as uint32
+        s.priceCumulativeQsrPerTon += (s.qsrReserve * elapsed) / s.tonReserve;
+        s.priceCumulativeTonPerQsr += (s.tonReserve * elapsed) / s.qsrReserve;
+        s.lastPriceObservation = now as uint32;
     }
 }
 
 fun updateFarm(mutate s: QuasarDeFiStorage) {
-    val now = blockchain.now()
+    val now = blockchain.now();
     if (now <= s.farmLastUpdate) {
-        return
+        return;
     }
-    val end = minimum(now, s.farmEndTime)
+    val end = minimum(now, s.farmEndTime as int257);
     if (end <= s.farmLastUpdate) {
-        return
+        return;
     }
     if (s.farmTotalStaked == 0 || !s.farmEnabled) {
-        s.farmLastUpdate = end
-        return
+        s.farmLastUpdate = end;
+        return;
     }
-    var reward = (end - s.farmLastUpdate) * s.farmRewardPerSecond
+    var reward = (end - s.farmLastUpdate) * s.farmRewardPerSecond;
     if (reward > s.farmRewardReserve) {
-        reward = s.farmRewardReserve
+        reward = s.farmRewardReserve;
     }
     if (reward > 0) {
-        s.farmRewardReserve -= reward
-        s.farmAccRewardPerShare += (reward * DEFI_SCALE) / s.farmTotalStaked
+        s.farmRewardReserve -= reward;
+        s.farmAccRewardPerShare += (reward * DEFI_SCALE) / s.farmTotalStaked;
     }
-    s.farmLastUpdate = end
+    s.farmLastUpdate = end;
 }
 
 fun stakeLp(mutate s: QuasarDeFiStorage, user: address, amount: int257) {
-    val old = farmInfoOf(s.farmStakes, user)
+    val old = farmInfoOf(s.farmStakes, user);
     if (old == null) {
         s.farmStakes.set(user, UserFarmInfo {
             staked: amount,
             debt: s.farmAccRewardPerShare,
             pending: 0,
-        })
+        }.toCell());
     } else {
-        val accrued = (old!!.staked * (s.farmAccRewardPerShare - old!!.debt)) / DEFI_SCALE
+        val accrued = (old!!.staked * (s.farmAccRewardPerShare - old!!.debt)) / DEFI_SCALE;
         s.farmStakes.set(user, UserFarmInfo {
             staked: old!!.staked + amount,
             debt: s.farmAccRewardPerShare,
             pending: old!!.pending + accrued,
-        })
+        }.toCell());
     }
-    s.farmTotalStaked += amount
+    s.farmTotalStaked += amount;
 }
 
 fun unstakeLp(mutate s: QuasarDeFiStorage, user: address, amount: int257) {
-    val old = farmInfoOf(s.farmStakes, user)
-    assert (old != null && old!!.staked >= amount) throw 1004
-    val accrued = (old!!.staked * (s.farmAccRewardPerShare - old!!.debt)) / DEFI_SCALE
+    val old = farmInfoOf(s.farmStakes, user);
+    assert (old != null && old!!.staked >= amount) throw 1004;
+    val accrued = (old!!.staked * (s.farmAccRewardPerShare - old!!.debt)) / DEFI_SCALE;
     s.farmStakes.set(user, UserFarmInfo {
         staked: old!!.staked - amount,
         debt: s.farmAccRewardPerShare,
         pending: old!!.pending + accrued,
-    })
-    s.farmTotalStaked -= amount
+    }.toCell());
+    s.farmTotalStaked -= amount;
 }
 
 fun sendTonPayout(to: address, amount: coins, id: uint64) {
@@ -410,8 +592,8 @@ fun sendTonPayout(to: address, amount: coins, id: uint64) {
         dest: to,
         value: amount,
         body: TonPayout { queryId: id, amount },
-    })
-    message.send(SEND_MODE_PAY_FEES_SEPARATELY)
+    });
+    message.send(SEND_MODE_PAY_FEES_SEPARATELY);
 }
 
 fun sendQsrPayout(
@@ -421,10 +603,10 @@ fun sendQsrPayout(
     kind: int257,
     id: uint64,
 ) {
-    assert (amount > 0) throw 1005
-    s.pendingPayouts.set(id as int257, PendingPayout { amount, kind, beneficiary: to })
-    s.save()
-    val wallet = quasarWalletDeployment(contract.getAddress(), s.qsrMaster, quasarWalletCompiledCode())
+    assert (amount > 0) throw 1005;
+    s.pendingPayouts.set(id as int257, PendingPayout { amount: amount as int257, kind, beneficiary: to }.toCell());
+    s.save();
+    val wallet = quasarWalletDeployment(contract.getAddress(), s.qsrMaster, quasarWalletCompiledCode());
     val message = createMessage({
         bounce: BounceMode.Only256BitsOfBody,
         dest: wallet,
@@ -435,117 +617,122 @@ fun sendQsrPayout(
             destination: to,
             responseDestination: contract.getAddress(),
         },
-    })
-    message.send(SEND_MODE_PAY_FEES_SEPARATELY)
+    });
+    message.send(SEND_MODE_PAY_FEES_SEPARATELY);
 }
 
 fun emitLiquidityAdded(provider: address, tonAmount: int257, qsrAmount: int257, lpMinted: int257) {
     val event = createExternalLogMessage({
         dest: createAddressNone(),
         body: EventLiquidityAdded { provider, tonAmount, qsrAmount, lpMinted },
-    })
-    event.send(SEND_MODE_IGNORE_ERRORS)
+    });
+    event.send(SEND_MODE_IGNORE_ERRORS);
 }
 fun emitLiquidityRemoved(provider: address, tonOut: int257, qsrOut: int257, lpBurned: int257) {
     val event = createExternalLogMessage({
         dest: createAddressNone(),
         body: EventLiquidityRemoved { provider, tonOut, qsrOut, lpBurned },
-    })
-    event.send(SEND_MODE_IGNORE_ERRORS)
+    });
+    event.send(SEND_MODE_IGNORE_ERRORS);
 }
 fun emitSwap(trader: address, tonIn: int257, qsrIn: int257, tonOut: int257, qsrOut: int257, fee: int257) {
     val event = createExternalLogMessage({
         dest: createAddressNone(),
         body: EventSwap { trader, tonIn, qsrIn, tonOut, qsrOut, fee },
-    })
-    event.send(SEND_MODE_IGNORE_ERRORS)
+    });
+    event.send(SEND_MODE_IGNORE_ERRORS);
 }
 fun emitFarmReward(farmer: address, amount: int257) {
     val event = createExternalLogMessage({
         dest: createAddressNone(),
         body: EventFarmReward { farmer, amount },
-    })
-    event.send(SEND_MODE_IGNORE_ERRORS)
+    });
+    event.send(SEND_MODE_IGNORE_ERRORS);
 }
 fun emitUnknownBuybackBounce(queryId: uint64) {
     val event = createExternalLogMessage({
         dest: createAddressNone(),
         body: EventBuybackBounceUnknown { queryId },
-    })
-    event.send(SEND_MODE_IGNORE_ERRORS)
+    });
+    event.send(SEND_MODE_IGNORE_ERRORS);
 }
 
 fun executeBuybackSwap(mutate s: QuasarDeFiStorage, qsrIn: coins, queryId: uint64) {
-    assert (qsrIn > 0) throw 1010
-    assert (s.tonReserve > 0) throw 1011
-    val qsrBefore = s.qsrReserve - qsrIn
-    assert (qsrBefore > 0) throw 1012
-    assert (qsrIn * 10000 <= qsrBefore * s.maxTradeBps) throw 1013
-    val grossTonOut = (qsrIn * s.tonReserve) / s.qsrReserve
-    val fee = (grossTonOut * s.feeBps) / 10000
-    val tonOut = grossTonOut - fee
-    assert (tonOut > 0 && tonOut < s.tonReserve) throw 1014
-    s.tonReserve -= tonOut
-    s.feeAccumulatedTon += fee
+    assert (qsrIn > 0) throw 1010;
+    assert (s.tonReserve > 0) throw 1011;
+    val qsrBefore = s.qsrReserve - qsrIn;
+    assert (qsrBefore > 0) throw 1012;
+    assert (qsrIn * 10000 <= qsrBefore * s.maxTradeBps) throw 1013;
+    val grossTonOut = (qsrIn * s.tonReserve) / s.qsrReserve;
+    val fee = (grossTonOut * s.feeBps) / 10000;
+    val tonOut = grossTonOut - fee;
+    assert (tonOut > 0 && tonOut < s.tonReserve) throw 1014;
+    s.tonReserve -= tonOut;
+    s.feeAccumulatedTon += fee;
 
     // Keep the prior tombstone: the Master callback has no success response,
     // and a late bounce of the previous BuybackTon must still be recoverable.
-    s.prevBuybackActive = s.pendingBuybackActive
-    s.prevBuybackQueryId = s.pendingBuybackQueryId
-    s.prevBuybackTonOut = s.pendingBuybackTonOut
-    s.prevBuybackFee = s.pendingBuybackFee
-    s.pendingBuybackActive = true
-    s.pendingBuybackQueryId = queryId
-    s.pendingBuybackTonOut = tonOut
-    s.pendingBuybackFee = fee
-    s.save()
+    s.prevBuybackActive = s.pendingBuybackActive;
+    s.prevBuybackQueryId = s.pendingBuybackQueryId;
+    s.prevBuybackTonOut = s.pendingBuybackTonOut;
+    s.prevBuybackFee = s.pendingBuybackFee;
+    s.pendingBuybackActive = true;
+    s.pendingBuybackQueryId = queryId;
+    s.pendingBuybackTonOut = tonOut;
+    s.pendingBuybackFee = fee;
+    s.save();
 
     val message = createMessage({
         bounce: BounceMode.Only256BitsOfBody,
         dest: s.qsrMaster,
         value: tonOut,
         body: BuybackTon { queryId, tonAmount: tonOut, qsrSwapped: qsrIn },
-    })
-    message.send(SEND_MODE_PAY_FEES_SEPARATELY)
+    });
+    message.send(SEND_MODE_PAY_FEES_SEPARATELY);
 }
 
 fun onInternalMessage(in: InMessage) {
-    val msg = lazy AllowedMessageToQuasarDeFi.fromSlice(in.body)
+    val msg = lazy AllowedMessageToQuasarDeFi.fromSlice(in.body);
     match (msg) {
         TokenNotification => {
-            var s = lazy QuasarDeFiStorage.load()
-            assert (in.senderAddress == quasarWalletAddress(contract.getAddress(), s.qsrMaster, quasarWalletCompiledCode())) throw 1100
-            assert (msg.amount > 0) throw 1101
-            assert (!isZeroAddress(msg.from)) throw 1102
+            var s = QuasarDeFiStorage.load();
+            assert (in.senderAddress == quasarWalletAddress(contract.getAddress(), s.qsrMaster, quasarWalletCompiledCode())) throw 1100;
+            assert (msg.amount > 0) throw 1101;
+            assert (!isZeroAddress(msg.from)) throw 1102;
             if (msg.from == s.qsrMaster) {
-                s.qsrReserve += msg.amount
+                s.qsrReserve += msg.amount;
                 if (msg.forwardPayload.remainingBitsCount() >= 32 && msg.forwardPayload.preloadUint(32) == QSR_BUYBACK_MARKER) {
-                    executeBuybackSwap(mutate s, msg.amount, msg.queryId)
+                    executeBuybackSwap(mutate s, msg.amount, msg.queryId);
                 } else {
-                    s.save()
+                    s.save();
                 }
             } else {
-                val current = pendingInt(s.pendingQsrDeposits, msg.from)
-                s.pendingQsrDeposits.set(msg.from, (current == null ? 0 : current!!) + msg.amount)
-                s.pendingQsrDepositsAt.set(msg.from, blockchain.now())
-                s.save()
+                val current = pendingInt(s.pendingQsrDeposits, msg.from);
+                var credited: int257 = msg.amount as int257;
+                if (current != null) {
+                    credited += current!!;
+                }
+                s.pendingQsrDeposits.set(msg.from, credited);
+                s.pendingQsrDepositsAt.set(msg.from, blockchain.now());
+                s.save();
             }
         }
 
         TokenExcesses => {
-            var s = lazy QuasarDeFiStorage.load()
-            val id = msg.queryId >= QUASAR_POOL_PAYOUT_MARKER
-                ? msg.queryId - QUASAR_POOL_PAYOUT_MARKER
-                : msg.queryId
-            val payout = payoutOf(s.pendingPayouts, id as int257)
+            var s = QuasarDeFiStorage.load();
+            val payoutMarker: uint64 = QUASAR_POOL_PAYOUT_MARKER as uint64;
+            val id: uint64 = msg.queryId >= payoutMarker
+                ? msg.queryId - payoutMarker
+                : msg.queryId;
+            val payout = payoutOf(s.pendingPayouts, id as int257);
             if (payout == null) {
-                return
+                return;
             }
-            assert (in.senderAddress == quasarWalletAddress(payout!!.beneficiary, s.qsrMaster, quasarWalletCompiledCode())) throw 1103
-            s.pendingPayouts.delete(id as int257)
+            assert (in.senderAddress == quasarWalletAddress(payout!!.beneficiary, s.qsrMaster, quasarWalletCompiledCode())) throw 1103;
+            s.pendingPayouts.delete(id as int257);
             if (payout!!.kind == 1) {
-                val remove = tonPayoutOf(s.pendingTonPayouts, id as int257)
-                assert (remove != null && remove!!.kind == 1 && !remove!!.qsrSettled) throw 1104
+                val remove = tonPayoutOf(s.pendingTonPayouts, id as int257);
+                assert (remove != null && remove!!.kind == 1 && !remove!!.qsrSettled) throw 1104;
                 if (remove!!.tonOut > 0) {
                     s.pendingTonPayouts.set(id as int257, PendingTonPayout {
                         kind: remove!!.kind,
@@ -554,359 +741,363 @@ fun onInternalMessage(in: InMessage) {
                         qsrAmount: remove!!.qsrAmount,
                         lpAmount: remove!!.lpAmount,
                         qsrSettled: true,
-                    })
-                    s.save()
-                    sendTonPayout(remove!!.beneficiary, remove!!.tonOut, id as uint64)
+                    }.toWireCell());
+                    s.save();
+                    sendTonPayout(remove!!.beneficiary, remove!!.tonOut as coins, id);
                 } else {
-                    s.pendingTonPayouts.delete(id as int257)
-                    s.save()
+                    s.pendingTonPayouts.delete(id as int257);
+                    s.save();
                 }
             } else {
-                s.save()
+                s.save();
             }
         }
 
         PayoutFailed => {
-            var s = lazy QuasarDeFiStorage.load()
-            assert (in.senderAddress == quasarWalletAddress(contract.getAddress(), s.qsrMaster, quasarWalletCompiledCode())) throw 1105
-            val payout = payoutOf(s.pendingPayouts, msg.queryId as int257)
-            assert (payout != null && payout!!.amount == msg.amount) throw 1106
-            s.pendingPayouts.delete(msg.queryId as int257)
+            var s = QuasarDeFiStorage.load();
+            assert (in.senderAddress == quasarWalletAddress(contract.getAddress(), s.qsrMaster, quasarWalletCompiledCode())) throw 1105;
+            val payout = payoutOf(s.pendingPayouts, msg.queryId as int257);
+            assert (payout != null && payout!!.amount == msg.amount) throw 1106;
+            s.pendingPayouts.delete(msg.queryId as int257);
             if (payout!!.kind == 1 || payout!!.kind == 4) {
-                s.qsrReserve += msg.amount
+                s.qsrReserve += msg.amount;
                 if (payout!!.kind == 1) {
-                    val removal = tonPayoutOf(s.pendingTonPayouts, msg.queryId as int257)
+                    val removal = tonPayoutOf(s.pendingTonPayouts, msg.queryId as int257);
                     if (removal != null && removal!!.kind == 1) {
-                        assert (!removal!!.qsrSettled) throw 1107
-                        s.tonReserve += removal!!.tonOut
+                        assert (!removal!!.qsrSettled) throw 1107;
+                        s.tonReserve += removal!!.tonOut;
                         s.lpBalances.set(removal!!.beneficiary,
-                            lpBalanceOf(s.lpBalances, removal!!.beneficiary) + removal!!.lpAmount)
-                        s.lpTotalSupply += removal!!.lpAmount
-                        s.pendingTonPayouts.delete(msg.queryId as int257)
+                            lpBalanceOf(s.lpBalances, removal!!.beneficiary) + removal!!.lpAmount);
+                        s.lpTotalSupply += removal!!.lpAmount;
+                        s.pendingTonPayouts.delete(msg.queryId as int257);
                     }
                 }
             } else if (payout!!.kind == 2) {
-                s.farmRewardReserve += msg.amount
-                val farmer = farmInfoOf(s.farmStakes, payout!!.beneficiary)
+                s.farmRewardReserve += msg.amount;
+                val farmer = farmInfoOf(s.farmStakes, payout!!.beneficiary);
                 if (farmer != null) {
-                    s.farmStakes.set(payout!!.beneficiary, UserFarmInfo {
-                        staked: farmer!!.staked,
-                        debt: farmer!!.debt,
-                        pending: farmer!!.pending + msg.amount,
-                    })
+                s.farmStakes.set(payout!!.beneficiary, UserFarmInfo {
+                    staked: farmer!!.staked,
+                    debt: farmer!!.debt,
+                    pending: farmer!!.pending + msg.amount,
+                }.toCell());
                 }
             } else if (payout!!.kind == 3) {
-                val old = pendingInt(s.pendingQsrDeposits, payout!!.beneficiary)
-                s.pendingQsrDeposits.set(payout!!.beneficiary, (old == null ? 0 : old!!) + msg.amount)
-                s.pendingQsrDepositsAt.set(payout!!.beneficiary, blockchain.now())
+                val old = pendingInt(s.pendingQsrDeposits, payout!!.beneficiary);
+                var refunded: int257 = msg.amount as int257;
+                if (old != null) {
+                    refunded += old!!;
+                }
+                s.pendingQsrDeposits.set(payout!!.beneficiary, refunded);
+                s.pendingQsrDepositsAt.set(payout!!.beneficiary, blockchain.now());
             } else {
-                assert (false) throw 1108
+                assert (false) throw 1108;
             }
-            s.save()
+            s.save();
         }
 
         RefundPendingQsr => {
-            var s = lazy QuasarDeFiStorage.load()
-            val pending = pendingInt(s.pendingQsrDeposits, in.senderAddress)
-            assert (pending != null && pending!! > 0) throw 1110
-            lock(mutate s)
-            s.pendingQsrDeposits.set(in.senderAddress, 0)
-            s.pendingQsrDepositsAt.set(in.senderAddress, 0)
-            val id = nextPayoutId(mutate s)
-            unlock(mutate s)
-            sendQsrPayout(mutate s, in.senderAddress, pending!!, 3, id)
+            var s = QuasarDeFiStorage.load();
+            val pending = pendingInt(s.pendingQsrDeposits, in.senderAddress);
+            assert (pending != null && pending!! > 0) throw 1110;
+            lock(mutate s);
+            s.pendingQsrDeposits.set(in.senderAddress, 0);
+            s.pendingQsrDepositsAt.set(in.senderAddress, 0);
+            val id = nextPayoutId(mutate s);
+            unlock(mutate s);
+            sendQsrPayout(mutate s, in.senderAddress, pending!! as coins, 3, id);
         }
 
         AddLiquidity => {
-            var s = lazy QuasarDeFiStorage.load()
-            requireActive(s)
-            lock(mutate s)
-            requireDeadline(msg.deadline)
-            assert (msg.tonAmount > 0 && msg.qsrAmount > 0) throw 1120
-            assert (in.valueCoins >= msg.tonAmount) throw 1121
-            val deposit = pendingInt(s.pendingQsrDeposits, in.senderAddress)
-            assert (deposit != null && deposit!! >= msg.qsrAmount) throw 1122
+            var s = QuasarDeFiStorage.load();
+            requireActive(s);
+            lock(mutate s);
+            requireDeadline(msg.deadline);
+            assert (msg.tonAmount > 0 && msg.qsrAmount > 0) throw 1120;
+            assert (in.valueCoins >= msg.tonAmount) throw 1121;
+            val deposit = pendingInt(s.pendingQsrDeposits, in.senderAddress);
+            assert (deposit != null && deposit!! >= msg.qsrAmount) throw 1122;
             if (s.lpTotalSupply > 0) {
-                assert (msg.tonAmount * 10000 <= s.tonReserve * s.maxTradeBps) throw 1123
-                assert (msg.qsrAmount * 10000 <= s.qsrReserve * s.maxTradeBps) throw 1124
+                assert (msg.tonAmount * 10000 <= s.tonReserve * s.maxTradeBps) throw 1123;
+                assert (msg.qsrAmount * 10000 <= s.qsrReserve * s.maxTradeBps) throw 1124;
             }
-            var lpMinted: int257 = 0
-            var tonUsed: int257 = msg.tonAmount
-            var qsrUsed: int257 = msg.qsrAmount
+            var lpMinted: int257 = 0;
+            var tonUsed: coins = msg.tonAmount;
+            var qsrUsed: coins = msg.qsrAmount;
             if (s.lpTotalSupply == 0) {
-                val root = integerSqrt(msg.tonAmount * msg.qsrAmount)
-                assert (root > s.minimumLiquidity) throw 1125
-                lpMinted = root - s.minimumLiquidity
+                val root = integerSqrt(msg.tonAmount * msg.qsrAmount);
+                assert (root > s.minimumLiquidity) throw 1125;
+                lpMinted = root - s.minimumLiquidity;
             } else {
                 lpMinted = minimum((msg.tonAmount * s.lpTotalSupply) / s.tonReserve,
-                    (msg.qsrAmount * s.lpTotalSupply) / s.qsrReserve)
-                tonUsed = (lpMinted * s.tonReserve) / s.lpTotalSupply
-                qsrUsed = (lpMinted * s.qsrReserve) / s.lpTotalSupply
+                    (msg.qsrAmount * s.lpTotalSupply) / s.qsrReserve);
+                tonUsed = (lpMinted * s.tonReserve) / s.lpTotalSupply;
+                qsrUsed = (lpMinted * s.qsrReserve) / s.lpTotalSupply;
             }
-            assert (lpMinted > 0) throw 1126
-            assert (lpMinted >= msg.minLpOut) throw 1127
-            recordPriceObservation(mutate s)
-            s.tonReserve += tonUsed
-            s.qsrReserve += qsrUsed
+            assert (lpMinted > 0) throw 1126;
+            assert (lpMinted >= msg.minLpOut) throw 1127;
+            recordPriceObservation(mutate s);
+            s.tonReserve += tonUsed;
+            s.qsrReserve += qsrUsed;
             if (s.lpTotalSupply == 0) {
-                s.lpTotalSupply = s.minimumLiquidity
+                s.lpTotalSupply = s.minimumLiquidity;
             }
-            s.lpTotalSupply += lpMinted
-            s.pendingQsrDeposits.set(in.senderAddress, deposit!! - qsrUsed)
-            s.lpBalances.set(in.senderAddress, lpBalanceOf(s.lpBalances, in.senderAddress) + lpMinted)
-            updateFarm(mutate s)
+            s.lpTotalSupply += lpMinted;
+            s.pendingQsrDeposits.set(in.senderAddress, deposit!! - qsrUsed);
+            s.lpBalances.set(in.senderAddress, lpBalanceOf(s.lpBalances, in.senderAddress) + lpMinted);
+            updateFarm(mutate s);
             if (s.farmEnabled) {
-                stakeLp(mutate s, in.senderAddress, lpMinted)
+                stakeLp(mutate s, in.senderAddress, lpMinted);
             }
-            unlock(mutate s)
-            val refund = in.valueCoins - tonUsed
-            s.save()
+            unlock(mutate s);
+            val refund = in.valueCoins - tonUsed;
+            s.save();
             if (refund > 0) {
                 val refundMessage = createMessage({
                     bounce: BounceMode.NoBounce,
                     dest: in.senderAddress,
                     value: refund,
-                })
-                refundMessage.send(SEND_MODE_PAY_FEES_SEPARATELY)
+                });
+                refundMessage.send(SEND_MODE_PAY_FEES_SEPARATELY);
             }
-            emitLiquidityAdded(in.senderAddress, tonUsed, qsrUsed, lpMinted)
+            emitLiquidityAdded(in.senderAddress, tonUsed as int257, qsrUsed as int257, lpMinted);
         }
 
         RemoveLiquidity => {
-            var s = lazy QuasarDeFiStorage.load()
-            lock(mutate s)
-            requireDeadline(msg.deadline)
-            val current = lpBalanceOf(s.lpBalances, in.senderAddress)
-            assert (msg.lpAmount > 0 && current >= msg.lpAmount) throw 1130
-            val tonOut = (msg.lpAmount * s.tonReserve) / s.lpTotalSupply
-            val qsrOut = (msg.lpAmount * s.qsrReserve) / s.lpTotalSupply
-            assert (tonOut > 0 || qsrOut > 0) throw 1131
-            assert (tonOut >= msg.minTonOut && qsrOut >= msg.minQsrOut) throw 1132
-            updateFarm(mutate s)
-            val farmStake = farmInfoOf(s.farmStakes, in.senderAddress)
+            var s = QuasarDeFiStorage.load();
+            lock(mutate s);
+            requireDeadline(msg.deadline);
+            val current = lpBalanceOf(s.lpBalances, in.senderAddress);
+            assert (msg.lpAmount > 0 && current >= msg.lpAmount) throw 1130;
+            val tonOut = (msg.lpAmount * s.tonReserve) / s.lpTotalSupply;
+            val qsrOut = (msg.lpAmount * s.qsrReserve) / s.lpTotalSupply;
+            assert (tonOut > 0 || qsrOut > 0) throw 1131;
+            assert (tonOut >= msg.minTonOut && qsrOut >= msg.minQsrOut) throw 1132;
+            updateFarm(mutate s);
+            val farmStake = farmInfoOf(s.farmStakes, in.senderAddress);
             if (farmStake != null && farmStake!!.staked > 0) {
-                val farmAmount = minimum(msg.lpAmount, farmStake!!.staked)
+                val farmAmount = minimum(msg.lpAmount as int257, farmStake!!.staked);
                 if (farmAmount > 0) {
-                    unstakeLp(mutate s, in.senderAddress, farmAmount)
+                    unstakeLp(mutate s, in.senderAddress, farmAmount);
                 }
             }
-            recordPriceObservation(mutate s)
-            s.lpBalances.set(in.senderAddress, current - msg.lpAmount)
-            s.lpTotalSupply -= msg.lpAmount
-            s.tonReserve -= tonOut
-            s.qsrReserve -= qsrOut
-            val id = nextPayoutId(mutate s)
+            recordPriceObservation(mutate s);
+            s.lpBalances.set(in.senderAddress, current - msg.lpAmount);
+            s.lpTotalSupply -= msg.lpAmount;
+            s.tonReserve -= tonOut;
+            s.qsrReserve -= qsrOut;
+            val id = nextPayoutId(mutate s);
             s.pendingTonPayouts.set(id as int257, PendingTonPayout {
                 kind: 1,
                 beneficiary: in.senderAddress,
                 tonOut,
                 qsrAmount: qsrOut,
-                lpAmount: msg.lpAmount,
+                lpAmount: msg.lpAmount as int257,
                 qsrSettled: false,
-            })
-            unlock(mutate s)
-            s.save()
+            }.toWireCell());
+            unlock(mutate s);
+            s.save();
             if (qsrOut > 0) {
-                sendQsrPayout(mutate s, in.senderAddress, qsrOut, 1, id)
+                sendQsrPayout(mutate s, in.senderAddress, qsrOut, 1, id);
             } else if (tonOut > 0) {
-                sendTonPayout(in.senderAddress, tonOut, id)
+                sendTonPayout(in.senderAddress, tonOut, id);
             }
-            emitLiquidityRemoved(in.senderAddress, tonOut, qsrOut, msg.lpAmount)
+            emitLiquidityRemoved(in.senderAddress, tonOut, qsrOut, msg.lpAmount as int257);
         }
 
         SwapToTON => {
-            var s = lazy QuasarDeFiStorage.load()
-            requireActive(s)
-            lock(mutate s)
-            requireDeadline(msg.deadline)
-            assert (msg.qsrAmount > 0 && s.qsrReserve > 0) throw 1140
-            assert (msg.qsrAmount * 10000 <= s.qsrReserve * s.maxTradeBps) throw 1141
-            val deposit = pendingInt(s.pendingQsrDeposits, in.senderAddress)
-            assert (deposit != null && deposit!! >= msg.qsrAmount) throw 1142
-            val grossTonOut = (msg.qsrAmount * s.tonReserve) / (s.qsrReserve + msg.qsrAmount)
-            val fee = (grossTonOut * s.feeBps) / 10000
-            val tonOut = grossTonOut - fee
-            assert (tonOut >= msg.minTonOut) throw 1143
-            assert (tonOut > 0 && tonOut < s.tonReserve) throw 1144
-            recordPriceObservation(mutate s)
-            s.qsrReserve += msg.qsrAmount
-            s.tonReserve -= tonOut
-            s.feeAccumulatedTon += fee
-            s.pendingQsrDeposits.set(in.senderAddress, deposit!! - msg.qsrAmount)
-            val id = nextPayoutId(mutate s)
+            var s = QuasarDeFiStorage.load();
+            requireActive(s);
+            lock(mutate s);
+            requireDeadline(msg.deadline);
+            assert (msg.qsrAmount > 0 && s.qsrReserve > 0) throw 1140;
+            assert (msg.qsrAmount * 10000 <= s.qsrReserve * s.maxTradeBps) throw 1141;
+            val deposit = pendingInt(s.pendingQsrDeposits, in.senderAddress);
+            assert (deposit != null && deposit!! >= msg.qsrAmount) throw 1142;
+            val grossTonOut = (msg.qsrAmount * s.tonReserve) / (s.qsrReserve + msg.qsrAmount);
+            val fee = (grossTonOut * s.feeBps) / 10000;
+            val tonOut = grossTonOut - fee;
+            assert (tonOut >= msg.minTonOut) throw 1143;
+            assert (tonOut > 0 && tonOut < s.tonReserve) throw 1144;
+            recordPriceObservation(mutate s);
+            s.qsrReserve += msg.qsrAmount;
+            s.tonReserve -= tonOut;
+            s.feeAccumulatedTon += fee;
+            s.pendingQsrDeposits.set(in.senderAddress, deposit!! - msg.qsrAmount);
+            val id = nextPayoutId(mutate s);
             s.pendingTonPayouts.set(id as int257, PendingTonPayout {
                 kind: 2,
                 beneficiary: in.senderAddress,
                 tonOut,
-                qsrAmount: msg.qsrAmount,
+                qsrAmount: msg.qsrAmount as int257,
                 lpAmount: 0,
                 qsrSettled: false,
-            })
-            unlock(mutate s)
-            s.save()
-            sendTonPayout(in.senderAddress, tonOut, id)
-            emitSwap(in.senderAddress, 0, msg.qsrAmount, tonOut, 0, fee)
+            }.toWireCell());
+            unlock(mutate s);
+            s.save();
+            sendTonPayout(in.senderAddress, tonOut, id);
+            emitSwap(in.senderAddress, 0, msg.qsrAmount as int257, tonOut as int257, 0, fee as int257);
         }
 
         SwapToQSR => {
-            var s = lazy QuasarDeFiStorage.load()
-            requireActive(s)
-            lock(mutate s)
-            requireDeadline(msg.deadline)
-            assert (msg.tonAmount > 0 && s.tonReserve > 0) throw 1150
-            assert (in.valueCoins >= msg.tonAmount) throw 1151
-            assert (msg.tonAmount * 10000 <= s.tonReserve * s.maxTradeBps) throw 1152
-            val grossQsrOut = (msg.tonAmount * s.qsrReserve) / (s.tonReserve + msg.tonAmount)
-            val fee = (grossQsrOut * s.feeBps) / 10000
-            val qsrOut = grossQsrOut - fee
-            assert (qsrOut >= msg.minQsrOut) throw 1153
-            assert (qsrOut > 0 && qsrOut < s.qsrReserve) throw 1154
-            recordPriceObservation(mutate s)
-            s.tonReserve += msg.tonAmount
-            s.qsrReserve -= qsrOut
-            s.feeAccumulatedQsr += fee
-            val id = nextPayoutId(mutate s)
-            unlock(mutate s)
-            val excess = in.valueCoins - msg.tonAmount
-            s.save()
+            var s = QuasarDeFiStorage.load();
+            requireActive(s);
+            lock(mutate s);
+            requireDeadline(msg.deadline);
+            assert (msg.tonAmount > 0 && s.tonReserve > 0) throw 1150;
+            assert (in.valueCoins >= msg.tonAmount) throw 1151;
+            assert (msg.tonAmount * 10000 <= s.tonReserve * s.maxTradeBps) throw 1152;
+            val grossQsrOut = (msg.tonAmount * s.qsrReserve) / (s.tonReserve + msg.tonAmount);
+            val fee = (grossQsrOut * s.feeBps) / 10000;
+            val qsrOut = grossQsrOut - fee;
+            assert (qsrOut >= msg.minQsrOut) throw 1153;
+            assert (qsrOut > 0 && qsrOut < s.qsrReserve) throw 1154;
+            recordPriceObservation(mutate s);
+            s.tonReserve += msg.tonAmount;
+            s.qsrReserve -= qsrOut;
+            s.feeAccumulatedQsr += fee;
+            val id = nextPayoutId(mutate s);
+            unlock(mutate s);
+            val excess = in.valueCoins - msg.tonAmount;
+            s.save();
             if (excess > 0) {
                 val refund = createMessage({
                     bounce: BounceMode.NoBounce,
                     dest: in.senderAddress,
                     value: excess,
-                })
-                refund.send(SEND_MODE_PAY_FEES_SEPARATELY)
+                });
+                refund.send(SEND_MODE_PAY_FEES_SEPARATELY);
             }
-            sendQsrPayout(mutate s, in.senderAddress, qsrOut, 4, id)
-            emitSwap(in.senderAddress, msg.tonAmount, 0, 0, qsrOut, fee)
+            sendQsrPayout(mutate s, in.senderAddress, qsrOut, 4, id);
+            emitSwap(in.senderAddress, msg.tonAmount as int257, 0, 0, qsrOut as int257, fee as int257);
         }
 
         ClaimFarmRewards => {
-            var s = lazy QuasarDeFiStorage.load()
-            updateFarm(mutate s)
-            val existing = farmInfoOf(s.farmStakes, in.senderAddress)
-            assert (existing != null) throw 1160
-            val accrued = (existing!!.staked * (s.farmAccRewardPerShare - existing!!.debt)) / DEFI_SCALE
-            val reward = existing!!.pending + accrued
-            assert (reward > 0) throw 1161
+            var s = QuasarDeFiStorage.load();
+            updateFarm(mutate s);
+            val existing = farmInfoOf(s.farmStakes, in.senderAddress);
+            assert (existing != null) throw 1160;
+            val accrued = (existing!!.staked * (s.farmAccRewardPerShare - existing!!.debt)) / DEFI_SCALE;
+            val reward = existing!!.pending + accrued;
+            assert (reward > 0) throw 1161;
             s.farmStakes.set(in.senderAddress, UserFarmInfo {
                 staked: existing!!.staked,
                 debt: s.farmAccRewardPerShare,
                 pending: 0,
-            })
-            val id = nextPayoutId(mutate s)
-            s.save()
-            sendQsrPayout(mutate s, in.senderAddress, reward, 2, id)
-            emitFarmReward(in.senderAddress, reward)
+            }.toCell());
+            val id = nextPayoutId(mutate s);
+            s.save();
+            sendQsrPayout(mutate s, in.senderAddress, reward, 2, id);
+            emitFarmReward(in.senderAddress, reward);
         }
 
         EmergencyWithdrawFarm => {
-            var s = lazy QuasarDeFiStorage.load()
-            lock(mutate s)
-            val existing = farmInfoOf(s.farmStakes, in.senderAddress)
-            assert (existing != null && existing!!.staked > 0) throw 1170
-            updateFarm(mutate s)
-            val amount = existing!!.staked
+            var s = QuasarDeFiStorage.load();
+            lock(mutate s);
+            val existing = farmInfoOf(s.farmStakes, in.senderAddress);
+            assert (existing != null && existing!!.staked > 0) throw 1170;
+            updateFarm(mutate s);
+            val amount = existing!!.staked;
             s.farmStakes.set(in.senderAddress, UserFarmInfo {
                 staked: 0,
                 debt: s.farmAccRewardPerShare,
                 pending: 0,
-            })
-            s.farmTotalStaked -= amount
-            unlock(mutate s)
-            s.save()
+            }.toCell());
+            s.farmTotalStaked -= amount;
+            unlock(mutate s);
+            s.save();
         }
 
         ProposePoolOwner => {
-            var s = lazy QuasarDeFiStorage.load()
-            assert (in.senderAddress == s.owner) throw 1180
-            assert (!isZeroAddress(msg.newOwner)) throw 1181
-            s.pendingOwner = msg.newOwner
-            s.ownerTransferAt = (blockchain.now() + s.ownerTransferDelay) as uint32
-            s.save()
+            var s = QuasarDeFiStorage.load();
+            assert (in.senderAddress == s.owner) throw 1180;
+            assert (!isZeroAddress(msg.newOwner)) throw 1181;
+            s.pendingOwner = msg.newOwner;
+            s.ownerTransferAt = (blockchain.now() + s.ownerTransferDelay) as uint32;
+            s.save();
         }
         CancelPoolOwner => {
-            var s = lazy QuasarDeFiStorage.load()
-            assert (in.senderAddress == s.owner) throw 1182
-            s.pendingOwner = ZERO_ADDRESS
-            s.ownerTransferAt = 0
-            s.save()
+            var s = QuasarDeFiStorage.load();
+            assert (in.senderAddress == s.owner) throw 1182;
+            s.pendingOwner = ZERO_ADDRESS;
+            s.ownerTransferAt = 0;
+            s.save();
         }
         AcceptPoolOwner => {
-            var s = lazy QuasarDeFiStorage.load()
-            assert (s.pendingOwner != ZERO_ADDRESS && in.senderAddress == s.pendingOwner) throw 1183
-            assert (blockchain.now() >= s.ownerTransferAt) throw 1184
-            s.owner = s.pendingOwner
-            s.pendingOwner = ZERO_ADDRESS
-            s.ownerTransferAt = 0
-            s.save()
+            var s = QuasarDeFiStorage.load();
+            assert (s.pendingOwner != ZERO_ADDRESS && in.senderAddress == s.pendingOwner) throw 1183;
+            assert (blockchain.now() >= s.ownerTransferAt) throw 1184;
+            s.owner = s.pendingOwner;
+            s.pendingOwner = ZERO_ADDRESS;
+            s.ownerTransferAt = 0;
+            s.save();
         }
         SetFarmConfig => {
-            var s = lazy QuasarDeFiStorage.load()
-            assert (in.senderAddress == s.owner) throw 1190
-            assert (msg.rewardPerSecond > 0 && msg.endTime > msg.startTime && msg.endTime >= blockchain.now()) throw 1191
-            updateFarm(mutate s)
-            s.farmRewardPerSecond = msg.rewardPerSecond
-            s.farmStartTime = msg.startTime
-            s.farmEndTime = msg.endTime
+            var s = QuasarDeFiStorage.load();
+            assert (in.senderAddress == s.owner) throw 1190;
+            assert (msg.rewardPerSecond > 0 && msg.endTime > msg.startTime && msg.endTime >= blockchain.now()) throw 1191;
+            updateFarm(mutate s);
+            s.farmRewardPerSecond = msg.rewardPerSecond;
+            s.farmStartTime = msg.startTime;
+            s.farmEndTime = msg.endTime;
             if (s.farmLastUpdate < msg.startTime) {
-                s.farmLastUpdate = msg.startTime
+                s.farmLastUpdate = msg.startTime as int257;
             }
-            s.save()
+            s.save();
         }
         SetFarmEnabled => {
-            var s = lazy QuasarDeFiStorage.load()
-            assert (in.senderAddress == s.owner) throw 1192
-            updateFarm(mutate s)
+            var s = QuasarDeFiStorage.load();
+            assert (in.senderAddress == s.owner) throw 1192;
+            updateFarm(mutate s);
             if (msg.enabled) {
-                assert (s.farmRewardReserve > 0) throw 1193
+                assert (s.farmRewardReserve > 0) throw 1193;
             }
-            s.farmEnabled = msg.enabled
-            s.save()
+            s.farmEnabled = msg.enabled;
+            s.save();
         }
         FundFarm => {
-            var s = lazy QuasarDeFiStorage.load()
-            assert (in.senderAddress == s.owner) throw 1194
-            assert (msg.amount > 0) throw 1195
-            val pending = pendingInt(s.pendingQsrDeposits, in.senderAddress)
-            assert (pending != null && pending!! >= msg.amount) throw 1196
-            s.pendingQsrDeposits.set(in.senderAddress, pending!! - msg.amount)
-            s.farmRewardReserve += msg.amount
-            s.save()
+            var s = QuasarDeFiStorage.load();
+            assert (in.senderAddress == s.owner) throw 1194;
+            assert (msg.amount > 0) throw 1195;
+            val pending = pendingInt(s.pendingQsrDeposits, in.senderAddress);
+            assert (pending != null && pending!! >= msg.amount) throw 1196;
+            s.pendingQsrDeposits.set(in.senderAddress, pending!! - msg.amount);
+            s.farmRewardReserve += msg.amount;
+            s.save();
         }
         SetFeeBps => {
-            var s = lazy QuasarDeFiStorage.load()
-            assert (in.senderAddress == s.owner) throw 1200
-            assert (msg.feeBps > 0 && msg.feeBps <= 30) throw 1201
-            s.pendingFeeBps = msg.feeBps
-            s.pendingFeeAt = (blockchain.now() + s.ownerTransferDelay) as uint32
-            s.save()
+            var s = QuasarDeFiStorage.load();
+            assert (in.senderAddress == s.owner) throw 1200;
+            assert (msg.feeBps > 0 && msg.feeBps <= 30) throw 1201;
+            s.pendingFeeBps = msg.feeBps;
+            s.pendingFeeAt = (blockchain.now() + s.ownerTransferDelay) as uint32;
+            s.save();
         }
         SetPaused => {
-            var s = lazy QuasarDeFiStorage.load()
-            assert (in.senderAddress == s.owner) throw 1202
-            s.paused = msg.paused
-            s.save()
+            var s = QuasarDeFiStorage.load();
+            assert (in.senderAddress == s.owner) throw 1202;
+            s.paused = msg.paused;
+            s.save();
         }
         SetMaxTradeBps => {
-            var s = lazy QuasarDeFiStorage.load()
-            assert (in.senderAddress == s.owner) throw 1203
-            assert (msg.maxTradeBps >= 100 && msg.maxTradeBps <= 5000) throw 1204
-            s.pendingMaxTradeBps = msg.maxTradeBps
-            s.pendingMaxTradeAt = (blockchain.now() + s.ownerTransferDelay) as uint32
-            s.save()
+            var s = QuasarDeFiStorage.load();
+            assert (in.senderAddress == s.owner) throw 1203;
+            assert (msg.maxTradeBps >= 100 && msg.maxTradeBps <= 5000) throw 1204;
+            s.pendingMaxTradeBps = msg.maxTradeBps;
+            s.pendingMaxTradeAt = (blockchain.now() + s.ownerTransferDelay) as uint32;
+            s.save();
         }
         SweepTON => {
-            var s = lazy QuasarDeFiStorage.load()
-            assert (in.senderAddress == s.owner) throw 1210
-            assert (msg.amount > 0) throw 1211
-            assert (contract.getOriginalBalance() + in.valueCoins >= s.tonReserve + msg.amount + QUASAR_STORAGE_RESERVE) throw 1212
+            var s = QuasarDeFiStorage.load();
+            assert (in.senderAddress == s.owner) throw 1210;
+            assert (msg.amount > 0) throw 1211;
+            assert (contract.getOriginalBalance() + in.valueCoins >= s.tonReserve + msg.amount + QUASAR_STORAGE_RESERVE) throw 1212;
             val sweep = createMessage({
                 bounce: BounceMode.NoBounce,
                 dest: s.owner,
                 value: msg.amount,
-            })
-            sweep.send(SEND_MODE_PAY_FEES_SEPARATELY)
+            });
+            sweep.send(SEND_MODE_PAY_FEES_SEPARATELY);
         }
         Deploy => {
             val response = createMessage({
@@ -914,37 +1105,37 @@ fun onInternalMessage(in: InMessage) {
                 dest: in.senderAddress,
                 value: 0,
                 body: DeployOk { queryId: msg.queryId },
-            })
-            response.send(SEND_MODE_CARRY_ALL_REMAINING_MESSAGE_VALUE | SEND_MODE_IGNORE_ERRORS)
+            });
+            response.send(SEND_MODE_CARRY_ALL_REMAINING_MESSAGE_VALUE | SEND_MODE_IGNORE_ERRORS);
         }
         else => {
             // The two legacy Tact text receivers remain supported. Tact text
             // bodies have a zero 32-bit prefix followed by the exact ASCII bytes.
-            var body = in.body
+            var body = in.body;
             if (body.remainingBitsCount() >= 32 && body.preloadUint(32) == 0) {
-                body.loadUint(32)
+                body.loadUint(32);
                 if (body.remainingBitsCount() == 104 && body.loadUint(104) == 0x4170706c792046656520427073) {
-                    var s = lazy QuasarDeFiStorage.load()
-                    assert (in.senderAddress == s.owner) throw 1220
-                    assert (s.pendingFeeBps > 0 && blockchain.now() >= s.pendingFeeAt) throw 1221
-                    s.feeBps = s.pendingFeeBps
-                    s.pendingFeeBps = 0
-                    s.pendingFeeAt = 0
-                    s.save()
-                    return
+                    var s = QuasarDeFiStorage.load();
+                    assert (in.senderAddress == s.owner) throw 1220;
+                    assert (s.pendingFeeBps > 0 && blockchain.now() >= s.pendingFeeAt) throw 1221;
+                    s.feeBps = s.pendingFeeBps;
+                    s.pendingFeeBps = 0;
+                    s.pendingFeeAt = 0;
+                    s.save();
+                    return;
                 }
                 if (body.remainingBitsCount() == 152 && body.loadUint(152) == 0x4170706c79204d617820547261646520427073) {
-                    var s = lazy QuasarDeFiStorage.load()
-                    assert (in.senderAddress == s.owner) throw 1222
-                    assert (s.pendingMaxTradeBps > 0 && blockchain.now() >= s.pendingMaxTradeAt) throw 1223
-                    s.maxTradeBps = s.pendingMaxTradeBps
-                    s.pendingMaxTradeBps = 0
-                    s.pendingMaxTradeAt = 0
-                    s.save()
-                    return
+                    var s = QuasarDeFiStorage.load();
+                    assert (in.senderAddress == s.owner) throw 1222;
+                    assert (s.pendingMaxTradeBps > 0 && blockchain.now() >= s.pendingMaxTradeAt) throw 1223;
+                    s.maxTradeBps = s.pendingMaxTradeBps;
+                    s.pendingMaxTradeBps = 0;
+                    s.pendingMaxTradeAt = 0;
+                    s.save();
+                    return;
                 }
             }
-            throw 130
+            throw 130;
         }
     }
 }
@@ -953,147 +1144,155 @@ fun onBouncedMessage(in: InMessageBounced) {
     // Only the first 224 body bits after the bounce prefix are relied on. The
     // callback parser intentionally reads opcode, query ID and one coin field;
     // it never reads BuybackTon.qsrSwapped or any trailing address.
-    var body = in.bouncedBody
-    body.skipBouncedPrefix()
-    val opcode = body.loadUint(32)
-    var s = lazy QuasarDeFiStorage.load()
+    var body = in.bouncedBody;
+    body.skipBouncedPrefix();
+    val opcode = body.loadUint(32);
+    var s = QuasarDeFiStorage.load();
     if (opcode == 0x746f6e70) {
-        val queryId = body.loadUint(64) as uint64
-        val amount = body.loadCoins()
-        val p = tonPayoutOf(s.pendingTonPayouts, queryId as int257)
-        assert (p != null && in.senderAddress == p!!.beneficiary && amount == p!!.tonOut) throw 1230
-        s.pendingTonPayouts.delete(queryId as int257)
-        s.tonReserve += p!!.tonOut
+        val queryId = body.loadUint(64) as uint64;
+        val amount = body.loadCoins();
+        val p = tonPayoutOf(s.pendingTonPayouts, queryId as int257);
+        assert (p != null && in.senderAddress == p!!.beneficiary && amount == p!!.tonOut) throw 1230;
+        s.pendingTonPayouts.delete(queryId as int257);
+        s.tonReserve += p!!.tonOut;
         if (p!!.kind == 1) {
             if (p!!.qsrAmount == 0) {
-                s.lpBalances.set(p!!.beneficiary, lpBalanceOf(s.lpBalances, p!!.beneficiary) + p!!.lpAmount)
-                s.lpTotalSupply += p!!.lpAmount
+                s.lpBalances.set(p!!.beneficiary, lpBalanceOf(s.lpBalances, p!!.beneficiary) + p!!.lpAmount);
+                s.lpTotalSupply += p!!.lpAmount;
             } else {
-                assert (p!!.qsrSettled) throw 1231
+                assert (p!!.qsrSettled) throw 1231;
                 // QSR already settled. Only the TON reserve is restored.
             }
         } else if (p!!.kind == 2) {
-            s.qsrReserve -= p!!.qsrAmount
-            val deposit = pendingInt(s.pendingQsrDeposits, p!!.beneficiary)
-            s.pendingQsrDeposits.set(p!!.beneficiary, (deposit == null ? 0 : deposit!!) + p!!.qsrAmount)
-            s.pendingQsrDepositsAt.set(p!!.beneficiary, blockchain.now())
+            s.qsrReserve -= p!!.qsrAmount;
+            val deposit = pendingInt(s.pendingQsrDeposits, p!!.beneficiary);
+            var restoredDeposit: int257 = p!!.qsrAmount;
+            if (deposit != null) {
+                restoredDeposit += deposit!!;
+            }
+            s.pendingQsrDeposits.set(p!!.beneficiary, restoredDeposit);
+            s.pendingQsrDepositsAt.set(p!!.beneficiary, blockchain.now());
         } else {
-            assert (false) throw 1232
+            assert (false) throw 1232;
         }
-        s.save()
-        return
+        s.save();
+        return;
     }
     if (opcode == 0x2c7e91a4) {
-        assert (in.senderAddress == s.qsrMaster) throw 1233
-        val queryId = body.loadUint(64) as uint64
-        val tonAmount = body.loadCoins()
+        assert (in.senderAddress == s.qsrMaster) throw 1233;
+        val queryId = body.loadUint(64) as uint64;
+        val tonAmount = body.loadCoins();
         if (queryId == s.pendingBuybackQueryId && s.pendingBuybackActive && tonAmount == s.pendingBuybackTonOut) {
-            s.tonReserve += tonAmount
-            s.feeAccumulatedTon -= s.pendingBuybackFee
-            s.pendingBuybackActive = false
-            s.pendingBuybackQueryId = 0
-            s.pendingBuybackTonOut = 0
-            s.pendingBuybackFee = 0
-            s.save()
+            s.tonReserve += tonAmount;
+            s.feeAccumulatedTon -= s.pendingBuybackFee;
+            s.pendingBuybackActive = false;
+            s.pendingBuybackQueryId = 0;
+            s.pendingBuybackTonOut = 0;
+            s.pendingBuybackFee = 0;
+            s.save();
         } else if (queryId == s.prevBuybackQueryId && s.prevBuybackActive && tonAmount == s.prevBuybackTonOut) {
-            s.tonReserve += tonAmount
-            s.feeAccumulatedTon -= s.prevBuybackFee
-            s.prevBuybackActive = false
-            s.prevBuybackQueryId = 0
-            s.prevBuybackTonOut = 0
-            s.prevBuybackFee = 0
-            s.save()
+            s.tonReserve += tonAmount;
+            s.feeAccumulatedTon -= s.prevBuybackFee;
+            s.prevBuybackActive = false;
+            s.prevBuybackQueryId = 0;
+            s.prevBuybackTonOut = 0;
+            s.prevBuybackFee = 0;
+            s.save();
         } else {
-            emitUnknownBuybackBounce(queryId)
+            emitUnknownBuybackBounce(queryId);
         }
-        return
+        return;
     }
-    throw 1234
+    throw 1234;
 }
 
 get fun lpBalance(user: address): int {
-    return lpBalanceOf(QuasarDeFiStorage.load().lpBalances, user)
+    return lpBalanceOf(QuasarDeFiStorage.load().lpBalances, user);
 }
 get fun pendingQsrDeposit(user: address): int {
-    val found = pendingInt(QuasarDeFiStorage.load().pendingQsrDeposits, user)
-    return found == null ? 0 : found!!
+    val found = pendingInt(QuasarDeFiStorage.load().pendingQsrDeposits, user);
+    return found == null ? 0 : found!!;
 }
 get fun pendingQsrDepositAt(user: address): int {
-    val found = pendingInt(QuasarDeFiStorage.load().pendingQsrDepositsAt, user)
-    return found == null ? 0 : found!!
+    val found = pendingInt(QuasarDeFiStorage.load().pendingQsrDepositsAt, user);
+    return found == null ? 0 : found!!;
 }
 get fun poolInfo(): LPInfo {
-    val s = QuasarDeFiStorage.load()
-    return LPInfo { totalSupply: s.lpTotalSupply, tonReserve: s.tonReserve, qsrReserve: s.qsrReserve }
+    val s = QuasarDeFiStorage.load();
+    return LPInfo {
+        totalSupply: s.lpTotalSupply as int257,
+        tonReserve: s.tonReserve as int257,
+        qsrReserve: s.qsrReserve as int257,
+    }
 }
 get fun get_reserve_snapshot(): DeFiReserveSnapshot {
-    val s = QuasarDeFiStorage.load()
+    val s = QuasarDeFiStorage.load();
     return DeFiReserveSnapshot {
-        lpTotalSupply: s.lpTotalSupply,
-        tonReserve: s.tonReserve,
-        qsrReserve: s.qsrReserve,
-        feeAccumulatedTon: s.feeAccumulatedTon,
-        feeAccumulatedQsr: s.feeAccumulatedQsr,
-        farmRewardReserve: s.farmRewardReserve,
-        farmTotalStaked: s.farmTotalStaked,
+        lpTotalSupply: s.lpTotalSupply as int257,
+        tonReserve: s.tonReserve as int257,
+        qsrReserve: s.qsrReserve as int257,
+        feeAccumulatedTon: s.feeAccumulatedTon as int257,
+        feeAccumulatedQsr: s.feeAccumulatedQsr as int257,
+        farmRewardReserve: s.farmRewardReserve as int257,
+        farmTotalStaked: s.farmTotalStaked as int257,
     }
 }
 get fun farmInfo(): FarmInfo {
-    val s = QuasarDeFiStorage.load()
+    val s = QuasarDeFiStorage.load();
     return FarmInfo {
-        staked: s.farmTotalStaked,
-        rewardPerSecond: s.farmRewardPerSecond,
+        staked: s.farmTotalStaked as int257,
+        rewardPerSecond: s.farmRewardPerSecond as int257,
         lastUpdate: s.farmLastUpdate,
         accRewardPerShare: s.farmAccRewardPerShare,
-        startTime: s.farmStartTime,
-        endTime: s.farmEndTime,
+        startTime: s.farmStartTime as int257,
+        endTime: s.farmEndTime as int257,
     }
 }
 get fun userFarm(user: address): UserFarmInfo {
-    val info = farmInfoOf(QuasarDeFiStorage.load().farmStakes, user)
-    return info == null ? UserFarmInfo { staked: 0, debt: 0, pending: 0 } : info!!
+    val info = farmInfoOf(QuasarDeFiStorage.load().farmStakes, user);
+    return info == null ? UserFarmInfo { staked: 0, debt: 0, pending: 0 } : info!!;
 }
 get fun estimateSwapToTon(qsrAmount: int): SwapQuote {
-    val s = QuasarDeFiStorage.load()
+    val s = QuasarDeFiStorage.load();
     if (s.qsrReserve == 0 || qsrAmount == 0) {
         return SwapQuote { tonIn: 0, qsrIn: qsrAmount, tonOut: 0, qsrOut: 0, fee: 0, priceImpactBps: 0 }
     }
-    val gross = (qsrAmount * s.tonReserve) / (s.qsrReserve + qsrAmount)
-    val fee = (gross * s.feeBps) / 10000
-    val impact = minimum((qsrAmount * 10000) / s.qsrReserve, 10000)
+    val gross = (qsrAmount * s.tonReserve) / (s.qsrReserve + qsrAmount);
+    val fee = (gross * s.feeBps) / 10000;
+    val impact = minimum((qsrAmount * 10000) / s.qsrReserve, 10000);
     return SwapQuote { tonIn: 0, qsrIn: qsrAmount, tonOut: gross - fee, qsrOut: 0, fee, priceImpactBps: impact }
 }
 get fun estimateSwapToQsr(tonAmount: int): SwapQuote {
-    val s = QuasarDeFiStorage.load()
+    val s = QuasarDeFiStorage.load();
     if (s.tonReserve == 0 || tonAmount == 0) {
         return SwapQuote { tonIn: tonAmount, qsrIn: 0, tonOut: 0, qsrOut: 0, fee: 0, priceImpactBps: 0 }
     }
-    val gross = (tonAmount * s.qsrReserve) / (s.tonReserve + tonAmount)
-    val fee = (gross * s.feeBps) / 10000
-    val impact = minimum((tonAmount * 10000) / s.tonReserve, 10000)
+    val gross = (tonAmount * s.qsrReserve) / (s.tonReserve + tonAmount);
+    val fee = (gross * s.feeBps) / 10000;
+    val impact = minimum((tonAmount * 10000) / s.tonReserve, 10000);
     return SwapQuote { tonIn: tonAmount, qsrIn: 0, tonOut: 0, qsrOut: gross - fee, fee, priceImpactBps: impact }
 }
 get fun estimateLpOut(tonAmount: int, qsrAmount: int): int {
-    val s = QuasarDeFiStorage.load()
+    val s = QuasarDeFiStorage.load();
     if (s.lpTotalSupply == 0) {
-        val root = integerSqrt(tonAmount * qsrAmount)
-        return root <= s.minimumLiquidity ? 0 : root - s.minimumLiquidity
+        val root = integerSqrt(tonAmount * qsrAmount);
+        return root <= s.minimumLiquidity ? 0 : root - s.minimumLiquidity;
     }
     if (s.tonReserve == 0 || s.qsrReserve == 0) {
-        return 0
+        return 0;
     }
     return minimum((tonAmount * s.lpTotalSupply) / s.tonReserve,
-        (qsrAmount * s.lpTotalSupply) / s.qsrReserve)
+        (qsrAmount * s.lpTotalSupply) / s.qsrReserve);
 }
 get fun estimateRemoveLiquidity(lpAmount: int): LPInfo {
-    val s = QuasarDeFiStorage.load()
+    val s = QuasarDeFiStorage.load();
     if (s.lpTotalSupply == 0 || lpAmount == 0) {
         return LPInfo { totalSupply: 0, tonReserve: 0, qsrReserve: 0 }
     }
     return LPInfo {
-        totalSupply: s.lpTotalSupply,
-        tonReserve: (lpAmount * s.tonReserve) / s.lpTotalSupply,
-        qsrReserve: (lpAmount * s.qsrReserve) / s.lpTotalSupply,
+        totalSupply: s.lpTotalSupply as int257,
+        tonReserve: ((lpAmount * s.tonReserve) / s.lpTotalSupply) as int257,
+        qsrReserve: ((lpAmount * s.qsrReserve) / s.lpTotalSupply) as int257,
     }
 }
 get fun feeConfig(): int { return QuasarDeFiStorage.load().feeBps }

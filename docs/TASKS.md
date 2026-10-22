@@ -189,6 +189,14 @@
   - Файл: `docs/TOLK_MIGRATION_DECISION.md`.
   - Tact остаётся pinned compiler path до доказательства ABI/TL-B/storage/code
     hash/gas/bounce эквивалентности; адреса и mainnet claims не меняются.
+- [~] **T-15a Acton toolchain для миграции Tolk.**
+  - Файл: `tolk/README.md`, `tolk/Acton.toml`.
+  - Установка для разработчика выполняется официальным инсталлятором:
+    `curl -LsSf https://github.com/ton-blockchain/acton/releases/latest/download/acton-installer.sh | sh`.
+    Проект дополнительно фиксирует Acton `1.2.1` для воспроизводимой проверки.
+  - Acton используется для build/test/ABI/wrapper; deployment и on-chain
+    операции в рамках этой миграции запрещены. Пункт остаётся открытым до
+    прохождения полной Tolk-сборки и regression suite.
 - [x] **T-16 Стабильный getter для резервов DeFi и удаление legacy wire-типа.**
   - Файл: `contracts/quasar_defi.tact`.
   - `get_reserve_snapshot` возвращает LP supply, TON/QSR reserves, fee

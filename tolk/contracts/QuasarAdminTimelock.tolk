@@ -41,11 +41,12 @@ struct (0xaff90f57) DeployOk {
 // dictionary whose values are references to PendingAdminCall cells.
 struct PendingAdminCall {
     target: address
-    value: int
+    value: coins
     body: cell
-    executeAt: int
+    executeAt: uint32
 }
 
+@overflow1023_policy("suppress")
 struct QuasarAdminTimelockStorage {
     admin: address
     pendingAdmin: address
@@ -96,35 +97,35 @@ fun requireManagedTarget(storage: QuasarAdminTimelockStorage, target: address) {
 }
 
 fun lookupPendingCall(pendingCalls: dict, callId: int): PendingAdminCall? {
-    val pendingCell = pendingCalls.iDictGetRefOrNull(PENDING_CALL_KEY_BITS, callId)
+    val pendingCell = pendingCalls.iDictGetRefOrNull(PENDING_CALL_KEY_BITS, callId);
     if (pendingCell == null) {
         return null
     }
     return PendingAdminCall.fromCell(pendingCell!!)
 }
 
-fun sendDeployOk(in: InMessage, queryId: uint64) {
-    val body = DeployOk { queryId }
-    val balanceBeforeMessage = contract.getOriginalBalance() - in.valueCoins
+fun sendDeployOk(senderAddress: address, valueCoins: coins, queryId: uint64) {
+    val body = DeployOk { queryId };
+    val balanceBeforeMessage = contract.getOriginalBalance() - valueCoins;
     if (balanceBeforeMessage < QUASAR_STORAGE_RESERVE) {
         // Keep the 0.05 TON rent reserve before carrying the remaining balance.
-        reserveGramsOnBalance(QUASAR_STORAGE_RESERVE, RESERVE_MODE_EXACT_AMOUNT)
+        reserveGramsOnBalance(QUASAR_STORAGE_RESERVE, RESERVE_MODE_EXACT_AMOUNT);
         val reply = createMessage({
             bounce: BounceMode.NoBounce,
-            dest: in.senderAddress,
+            dest: senderAddress,
             value: 0,
             body,
-        })
-        reply.send(SEND_MODE_CARRY_ALL_BALANCE | SEND_MODE_IGNORE_ERRORS)
+        });
+        reply.send(SEND_MODE_CARRY_ALL_BALANCE | SEND_MODE_IGNORE_ERRORS);
         return
     }
 
     val reply = createMessage({
         bounce: BounceMode.NoBounce,
-        dest: in.senderAddress,
+        dest: senderAddress,
         value: 0,
         body,
-    })
+    });
     reply.send(SEND_MODE_CARRY_ALL_REMAINING_MESSAGE_VALUE | SEND_MODE_IGNORE_ERRORS)
 }
 
@@ -137,15 +138,15 @@ contract QuasarAdminTimelock {
 }
 
 fun onInternalMessage(in: InMessage) {
-    val msg = lazy AllowedMessageToQuasarAdminTimelock.fromSlice(in.body)
+    val msg = lazy AllowedMessageToQuasarAdminTimelock.fromSlice(in.body);
     match (msg) {
         QueueAdminCall => {
-            var storage = lazy QuasarAdminTimelockStorage.load()
-            requireAdmin(storage, in.senderAddress)
-            requireManagedTarget(storage, msg.target)
-            assert (msg.callId > storage.lastQueuedCallId) throw 36252
+            var storage = lazy QuasarAdminTimelockStorage.load();
+            requireAdmin(storage, in.senderAddress);
+            requireManagedTarget(storage, msg.target);
+            assert (msg.callId > storage.lastQueuedCallId) throw 36252;
 
-            storage.lastQueuedCallId = msg.callId
+            storage.lastQueuedCallId = msg.callId;
             storage.pendingCalls.iDictSetRef(
                 PENDING_CALL_KEY_BITS,
                 msg.callId,
@@ -155,68 +156,68 @@ fun onInternalMessage(in: InMessage) {
                     body: msg.body,
                     executeAt: blockchain.now() + storage.minDelay,
                 }.toCell(),
-            )
+            );
             storage.save()
         }
 
         ExecuteAdminCall => {
-            var storage = lazy QuasarAdminTimelockStorage.load()
-            val pending = lookupPendingCall(storage.pendingCalls, msg.callId)
-            assert (pending != null) throw 45026
-            assert (blockchain.now() >= pending!!.executeAt) throw 28248
+            var storage = lazy QuasarAdminTimelockStorage.load();
+            val pending = lookupPendingCall(storage.pendingCalls, msg.callId);
+            assert (pending != null) throw 45026;
+            assert (blockchain.now() >= pending!!.executeAt) throw 28248;
 
             // Delete and persist before creating the outbound action. A bounce or
             // re-entrant path therefore cannot execute the same call twice.
-            storage.pendingCalls.iDictDelete(PENDING_CALL_KEY_BITS, msg.callId)
-            storage.save()
+            storage.pendingCalls.iDictDelete(PENDING_CALL_KEY_BITS, msg.callId);
+            storage.save();
 
-            val call = pending!!
+            val call = pending!!;
             val outbound = createMessage({
-                to: call.target,
+                dest: call.target,
                 value: call.value,
                 bounce: BounceMode.Only256BitsOfBody,
                 body: call.body,
-            })
+            });
             outbound.send(SEND_MODE_PAY_FEES_SEPARATELY)
         }
 
         CancelAdminCall => {
-            var storage = lazy QuasarAdminTimelockStorage.load()
-            requireAdmin(storage, in.senderAddress)
-            assert (lookupPendingCall(storage.pendingCalls, msg.callId) != null) throw 45026
-            storage.pendingCalls.iDictDelete(PENDING_CALL_KEY_BITS, msg.callId)
+            var storage = lazy QuasarAdminTimelockStorage.load();
+            requireAdmin(storage, in.senderAddress);
+            assert (lookupPendingCall(storage.pendingCalls, msg.callId) != null) throw 45026;
+            storage.pendingCalls.iDictDelete(PENDING_CALL_KEY_BITS, msg.callId);
             storage.save()
         }
 
         ProposeAdmin => {
-            var storage = lazy QuasarAdminTimelockStorage.load()
-            requireAdmin(storage, in.senderAddress)
-            assert (msg.newAdmin != zeroAddress()) throw 29685
-            storage.pendingAdmin = msg.newAdmin
-            storage.adminTransferAt = (blockchain.now() + storage.adminTransferDelay) as uint32
+            var storage = lazy QuasarAdminTimelockStorage.load();
+            requireAdmin(storage, in.senderAddress);
+            assert (msg.newAdmin != zeroAddress()) throw 29685;
+            storage.pendingAdmin = msg.newAdmin;
+            storage.adminTransferAt = (blockchain.now() + storage.adminTransferDelay) as uint32;
             storage.save()
         }
 
         CancelAdminTransfer => {
-            var storage = lazy QuasarAdminTimelockStorage.load()
-            requireAdmin(storage, in.senderAddress)
-            storage.pendingAdmin = zeroAddress()
-            storage.adminTransferAt = 0
+            var storage = lazy QuasarAdminTimelockStorage.load();
+            requireAdmin(storage, in.senderAddress);
+            storage.pendingAdmin = zeroAddress();
+            storage.adminTransferAt = 0;
             storage.save()
         }
 
         AcceptAdmin => {
-            var storage = lazy QuasarAdminTimelockStorage.load()
-            assert (in.senderAddress == storage.pendingAdmin) throw 54840
-            assert (blockchain.now() >= storage.adminTransferAt) throw 51627
-            storage.admin = storage.pendingAdmin
-            storage.pendingAdmin = zeroAddress()
-            storage.adminTransferAt = 0
+            var storage = lazy QuasarAdminTimelockStorage.load();
+            assert (in.senderAddress == storage.pendingAdmin) throw 54840;
+            assert (blockchain.now() >= storage.adminTransferAt) throw 51627;
+            storage.admin = storage.pendingAdmin;
+            storage.pendingAdmin = zeroAddress();
+            storage.adminTransferAt = 0;
             storage.save()
         }
 
         Deploy => {
-            sendDeployOk(in, msg.queryId)
+            sendDeployOk(in.senderAddress, in.valueCoins, msg.queryId)
         }
 
         else => throw 130

@@ -50,7 +50,7 @@ fun sendInternalTransfer(
     queryId: uint64,
     amount: coins,
     from: address,
-    responseDestination: address,
+    responseDestination: address?,
     forwardTonAmount: coins,
     forwardPayload: slice,
     value: coins,
@@ -131,7 +131,7 @@ fun onBouncedMessage(in: InMessageBounced) {
             storage.save();
 
             if (
-                response != null && !isZeroAddress(response!!) &&
+                !isNoResponseAddress(response) &&
                 response!! != contract.getAddress()
             ) {
                 sendTokenExcesses(
@@ -163,7 +163,7 @@ fun onBouncedMessage(in: InMessageBounced) {
             storage.save();
 
             if (
-                response != null && !isZeroAddress(response!!) &&
+                !isNoResponseAddress(response) &&
                 response!! != contract.getAddress()
             ) {
                 sendTokenExcesses(
@@ -212,9 +212,9 @@ fun onInternalMessage(in: InMessage) {
                 );
             }
 
-            if (!isZeroAddress(message.responseDestination)) {
+            if (!isNoResponseAddress(message.responseDestination)) {
                 sendTokenExcesses(
-                    message.responseDestination,
+                    message.responseDestination!!,
                     message.queryId,
                     0,
                     SEND_MODE_CARRY_ALL_REMAINING_MESSAGE_VALUE | SEND_MODE_IGNORE_ERRORS,
@@ -286,9 +286,9 @@ fun onInternalMessage(in: InMessage) {
                 val burnResponse = burnLookup.loadValue();
                 storage.pendingBurnResponses.delete(queryKey);
                 storage.save();
-                if (!isZeroAddress(burnResponse) && burnResponse != contract.getAddress()) {
+                if (!isNoResponseAddress(burnResponse) && burnResponse!! != contract.getAddress()) {
                     sendTokenExcesses(
-                        burnResponse,
+                        burnResponse!!,
                         message.queryId,
                         0,
                         SEND_MODE_CARRY_ALL_REMAINING_MESSAGE_VALUE | SEND_MODE_IGNORE_ERRORS,
@@ -353,12 +353,12 @@ fun onInternalMessage(in: InMessage) {
             );
 
             val residual = in.valueCoins - 70000000 - 20000000;
-            // addr_none is represented by QUASAR's zero internal address; it is
-            // not a real destination and must retain the residual in this wallet.
-            if (residual > 0 && !isZeroAddress(message.responseDestination)) {
+            // Keep residual TON in this wallet for both TEP-74 addr_none and
+            // QUASAR's legacy all-zero internal no-response sentinel.
+            if (residual > 0 && !isNoResponseAddress(message.responseDestination)) {
                 val excess = createMessage({
                     bounce: BounceMode.NoBounce,
-                    dest: message.responseDestination,
+                    dest: message.responseDestination!!,
                     value: residual,
                     body: TokenExcesses { queryId: message.queryId },
                 });
@@ -421,14 +421,16 @@ fun onInternalMessage(in: InMessage) {
         ProvideWalletAddress => {
             var storage = QuasarWalletStorage.load();
             assert (in.valueCoins >= 6100000) throw 116;
-            val ownerRef: Cell<address>? = message.includeAddress ? storage.owner.toCell() : null;
+            val ownerRef: Cell<any_address>? = message.includeAddress
+                ? (storage.owner as any_address).toCell()
+                : null;
             val response = createMessage({
                 bounce: BounceMode.NoBounce,
                 dest: in.senderAddress,
                 value: 0,
                 body: TakeWalletAddress {
                     queryId: message.queryId,
-                    walletAddress: contract.getAddress(),
+                    walletAddress: contract.getAddress() as any_address,
                     ownerAddress: ownerRef,
                 },
             });

@@ -45,6 +45,6 @@ ignore = []
 [import-mappings]
 acton = ".acton"
 contracts = "contracts"
-gen = "gen"
+gen = "build/gen"
 tests = "tests"
-wrappers = "wrappers"
+wrappers = "build/wrappers"
