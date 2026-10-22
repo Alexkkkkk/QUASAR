@@ -188,7 +188,7 @@ if [[ "$DRY_RUN" == "1" ]]; then
 else
   if current_review=$(gh api "$review_endpoint" 2>&1); then
     review_payload='{"dismiss_stale_reviews":false,"require_code_owner_reviews":false,"required_approving_review_count":0,"require_last_push_approval":false,"bypass_pull_request_allowances":{"users":[],"teams":[],"apps":[]}}'
-    printf '%s' "$review_payload" | gh api --method PUT "$review_endpoint" --input - >/dev/null
+    printf '%s' "$review_payload" | gh api --method PATCH "$review_endpoint" --input - >/dev/null
     echo "  ok classic approving reviews set to zero; review bypass allowances cleared"
   elif [[ "$current_review" == *"HTTP 404"* ]]; then
     echo "  ok no classic review rule exists; ruleset remains authoritative"
