@@ -18,6 +18,7 @@
 
 set -euo pipefail
 
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO="${1:-Alexkkkkk/QUASAR}"
 DRY_RUN=0
 [[ "${2:-}" == "--dry-run" || "${1:-}" == "--dry-run" ]] && DRY_RUN=1
@@ -132,58 +133,19 @@ ensure_label "triaged"       "ededed" "Triaged by a maintainer"
 ensure_label "stale"         "ffffff" "No activity; see the Stale workflow"
 ensure_label "automerge"     "0e8a16" "Green checks may be merged automatically"
 ensure_label "do-not-merge"  "b60205" "Never merged automatically"
-ensure_label "ai-merge-ok"   "0e8a16" "Owner command: merge the approved AI pull request"
-ensure_label "needs-human"   "b60205" "Automation stopped; a human must intervene"
+ensure_label "ai-merge-ok"   "0e8a16" "Optional fast-path trigger; not an approval"
+ensure_label "needs-human"   "b60205" "Automation stopped; follow-up required"
 
 # ── 5. Rulesets ──────────────────────────────────────────────────────────
 echo
 echo "== 5. rulesets"
 ruleset_payload() {
-  python3 - "$1" <<'PY'
+  python3 - "$1" "$ROOT/docs/ai/ruleset-l3.json" <<'PY'
 import json, sys
-kind = sys.argv[1]
+kind, branch_config = sys.argv[1:]
 if kind == "branch":
-    payload = {
-        "name": "QUASAR main protection",
-        "target": "branch",
-        "enforcement": "active",
-        "conditions": {"ref_name": {"include": ["~DEFAULT_BRANCH"], "exclude": []}},
-        "bypass_actors": [
-            {"actor_id": 102665324, "actor_type": "User", "bypass_mode": "pull_request"}
-        ],
-        "rules": [
-            {"type": "deletion"},
-            {"type": "non_fast_forward"},
-            {"type": "required_linear_history"},
-            {"type": "required_signatures"},
-            {"type": "creation"},
-            {"type": "update"},
-            {
-                "type": "pull_request",
-                "parameters": {
-                    "required_approving_review_count": 0,
-                    "dismiss_stale_reviews_on_push": False,
-                    "required_reviewers": [],
-                    "require_code_owner_review": False,
-                    "require_last_push_approval": False,
-                    "required_review_thread_resolution": False,
-                    "allowed_merge_methods": ["squash", "rebase"],
-                },
-            },
-            {
-                "type": "required_status_checks",
-                "parameters": {
-                    "strict_required_status_checks_policy": True,
-                    "do_not_enforce_on_create": False,
-                    "required_status_checks": [
-                        {"context": "validate"},
-                        {"context": "Analyze (javascript-typescript)"},
-                        {"context": "Analyze (python)"},
-                    ],
-                },
-            },
-        ],
-    }
+    with open(branch_config, encoding="utf-8") as source:
+        payload = json.load(source)
 else:
     payload = {
         "name": "QUASAR release tags",
@@ -217,6 +179,28 @@ apply_ruleset() {
 apply_ruleset "QUASAR main protection" "$(ruleset_payload branch)"
 apply_ruleset "QUASAR release tags" "$(ruleset_payload tag)"
 
+# ── 5a. Legacy classic branch-protection review gate ─────────────────────
+echo
+echo "== 5a. classic branch-protection review gate"
+review_endpoint="repos/$REPO/branches/main/protection/required_pull_request_reviews"
+if [[ "$DRY_RUN" == "1" ]]; then
+  echo "  [dry-run] set classic approving reviews to zero; preserve other branch protections"
+else
+  if current_review=$(gh api "$review_endpoint" 2>&1); then
+    gh api --method PATCH "$review_endpoint" \
+      -F dismiss_stale_reviews=false \
+      -F require_code_owner_reviews=false \
+      -F required_approving_review_count=0 \
+      -F require_last_push_approval=false >/dev/null
+    echo "  ok classic approving reviews set to zero"
+  elif [[ "$current_review" == *"HTTP 404"* ]]; then
+    echo "  ok no classic review rule exists; ruleset remains authoritative"
+  else
+    printf '%s\n' "$current_review" >&2
+    exit 1
+  fi
+fi
+
 # ── 6. Code scanning default setup ───────────────────────────────────────
 echo
 echo "== 6. code scanning default setup"
@@ -236,16 +220,14 @@ else
   fi
 fi
 
-# ── 7. Pages ─────────────────────────────────────────────────────────────
+# ── 7. GitHub Pages ───────────────────────────────────────────────────────
 echo
-echo "== 7. GitHub Pages"
-if [[ "$DRY_RUN" == "1" ]]; then
-  echo "  [dry-run] ensure Pages build_type=workflow, https enforced"
+echo "== 7. GitHub Pages (deployment disabled)"
+if [[ -e "$ROOT/.github/workflows/pages.yml" ]]; then
+  echo "error: pages.yml would re-enable automatic deployment; remove it." >&2
+  exit 1
 else
-  gh api --method PUT "repos/$REPO/pages" -F build_type=workflow >/dev/null 2>&1 \
-    && echo "  ok Pages build_type=workflow" \
-    || echo "  note: set Pages source to 'GitHub Actions' in Settings -> Pages"
-  gh api --method PUT "repos/$REPO/pages" -F https_enforced=true >/dev/null 2>&1 || true
+  echo "  ok no Pages deployment workflow is present"
 fi
 
 # ── 8. Verification ──────────────────────────────────────────────────────
@@ -259,6 +241,13 @@ gh api "repos/$REPO" --jq '{allow_auto_merge, allow_squash_merge, allow_merge_co
 gh api "repos/$REPO/actions/permissions" --jq '{sha_pinning_required, allowed_actions}'
 gh api "repos/$REPO/actions/permissions/workflow" --jq '.'
 gh api "repos/$REPO/rulesets" --jq '.[] | {name, target, enforcement}'
+classic_review_count=$(gh api "repos/$REPO/branches/main/protection/required_pull_request_reviews" --jq .required_approving_review_count 2>/dev/null || echo absent)
+if [[ "$classic_review_count" == "0" || "$classic_review_count" == "absent" ]]; then
+  echo "  ok no classic human approval requirement"
+else
+  echo "error: classic branch protection still requires $classic_review_count approving review(s)." >&2
+  exit 1
+fi
 if [[ "$(gh api "repos/$REPO/actions/permissions" --jq .sha_pinning_required)" != "true" ]]; then
   echo "error: GitHub does not require actions to be pinned to a full-length commit SHA." >&2
   exit 1
@@ -266,12 +255,11 @@ fi
 
 echo
 echo "== done."
-echo "Remaining manual steps (no API exists for them):"
-echo "  1. Settings -> Branches: confirm the ruleset is the source of truth and that"
-echo "     no conflicting classic branch protection rule is left behind."
+echo "Remaining setup steps (no API exists for them):"
+echo "  1. Settings -> Branches: confirm no classic branch-protection review rule"
+echo "     reintroduces approvals; setup sets any classic review count to zero."
 echo "  2. Settings -> Secrets and variables -> Actions: add GROQ_API_KEY if the"
 echo "     Groq agent is used (the Ollama agent needs no model key)."
-echo "  3. Settings -> Pages: source must be 'GitHub Actions'."
-echo "  4. Settings -> Code security: confirm 'CodeQL analysis: default setup'."
-echo "  5. Add the label ai-fix to an issue to trigger the agent; add ai-merge-ok to an approved"
-echo "     agent pull request to merge it through the router (quasar.yml)."
+echo "  3. Settings -> Code security: confirm 'CodeQL analysis: default setup'."
+echo "  4. Add the label ai-fix to an issue to trigger the agent. Green required checks"
+echo "     enable automatic PR readiness/merge; no approving review is required."

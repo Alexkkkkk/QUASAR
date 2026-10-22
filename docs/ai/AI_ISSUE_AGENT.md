@@ -11,9 +11,9 @@
 5. Отдельный job на чистом checkout применяет патч и запускает те же проверки, что и CI, на версии Node из `.nvmrc`: `npm run lint`, `npm test`, `npm run abi:verify`, `npm run abi:dapp`, `npm run deployment:check`, `npm run hashes:build`, `npx tsc --noEmit`, `npm audit --audit-level=high`. В этом job нет ключа модели и write-доступа.
 6. Только после успешной проверки отдельный job получает write-права на contents и pull requests и создаёт или обновляет draft PR в `ai/<issue>-agent`.
 
-Событие метки теперь маршрутизируется оркестратором `.github/workflows/quasar.yml` (эпик #145): чистый роутер `scripts/router.mjs` решает, какой reusable-модуль запускать, а сами модули (`_ai-fix`, `_ai-review`, `_close-issues`, `_ai-merge`, `_pr-polish`, `_hub-audit`, `_stale`, `_dms`) объявляют только `workflow_call`. Merge по метке `ai-merge-ok` возможен только для агентских веток при зелёных проверках и уже имеющемся человеческом approval.
+Событие метки маршрутизируется оркестратором `.github/workflows/quasar.yml` (эпик #145): чистый роутер `scripts/router.mjs` решает, какой reusable-модуль запускать, а сами модули (`_ai-fix`, `_ai-review`, `_close-issues`, `_ai-merge`, `_pr-polish`, `_hub-audit`, `_stale`, `_dms`) объявляют только `workflow_call`. Merge возможен без approving review только после `SUCCESS` всех шести обязательных status contexts; `ai-merge-ok` — необязательный fast-path, а не approval.
 
-Workflow не делает auto-merge без human approval, deploy, wallet-операций или on-chain действий. Человек проверяет каждый diff и сам принимает решение о merge. Синхронизация документации также создаёт только draft PR; автоматически обновлённые страницы не попадают в `main` без review.
+Workflow сам не делает merge: draft PR проверяет GitHub CI, после чего отдельная automerge automation автоматически переводит его в ready/очередь только при зелёных обязательных checks. Approving review не требуется. Deploy, wallet-операции и on-chain действия запрещены. Синхронизация документации также создаёт draft PR и проходит тот же CI gate.
 
 ## Настройка
 
@@ -28,4 +28,4 @@ Workflow не делает auto-merge без human approval, deploy, wallet-оп
 
 Синхронизируются только выбранные первичные страницы TON Docs из `docs/ton/index.json`, а не весь сайт. Это retrieval-augmented generation (RAG), не fine-tuning/обучение модели. TON Docs рекомендует Tolk; текущие контракты QUASAR написаны на Tact. Агент не переводит их на другой язык без прямого требования и отдельного человеческого решения.
 
-Автоматические проверки не являются независимым аудитом и не подтверждают готовность контрактов к testnet/mainnet. Контрактные изменения требуют отдельного человеческого review по правилам из `GROQ.md`.
+Автоматические проверки не являются независимым аудитом и не подтверждают готовность контрактов к testnet/mainnet. Контрактные изменения допускаются только по прямому запросу владельца и после обязательных контрактных checks; approving review не является gate. Независимый аудит по-прежнему обязателен до заявлений о безопасности или готовности к mainnet.

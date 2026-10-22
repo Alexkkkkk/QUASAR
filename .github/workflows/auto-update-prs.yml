@@ -13,9 +13,9 @@ name: Auto-update pull requests
 # does not start a new workflow run, which would leave the required checks
 # stale. Without the secret the job degrades to `secrets.GITHUB_TOKEN`.
 #
-# Merge policy: only Dependabot-authored PRs may get auto-merge enabled here.
-# Owner-authored and `automerge`-labelled PRs are never auto-merged by this workflow.
-# GitHub enforces the active required checks; `do-not-merge` is always respected.
+# Merge policy: only Dependabot-authored PRs may get auto-merge enabled here,
+# and only after every required status context has succeeded on the current head.
+# `do-not-merge` is always respected.
 
 on:
   schedule:
@@ -51,6 +51,31 @@ jobs:
           DO_MERGE: ${{ github.event.inputs.merge || 'true' }}
         run: |
           set -euo pipefail
+
+          required_checks=(
+            "validate / verify"
+            "CodeQL"
+            "Tests (contracts)"
+            "Tests (dapp)"
+            "Tests (python)"
+            "review"
+          )
+
+          required_checks_green() {
+            local number="$1" data rollup context state
+            data=$(gh pr view "$number" --repo "$REPO" --json isDraft,labels,statusCheckRollup)
+            [[ "$(jq -r '.isDraft' <<< "$data")" == "false" ]] || return 1
+            jq -e '.labels[].name | select(. == "do-not-merge")' <<< "$data" >/dev/null && return 1
+            rollup=$(jq -c '[.statusCheckRollup[]? | {name:(.name // .context), state:(.conclusion // .state // "PENDING")}]' <<< "$data")
+            for context in "${required_checks[@]}"; do
+              state=$(jq -r --arg context "$context" '[.[] | select(.name == $context) | .state] | if length == 0 then "MISSING" else .[-1] end' <<< "$rollup")
+              if [[ "$state" != "SUCCESS" ]]; then
+                echo "wait: required check '$context' is $state"
+                return 1
+              fi
+            done
+            return 0
+          }
 
           prs=$(gh pr list --repo "$REPO" --state open --limit 100 \
             --json number,isDraft,author,labels,mergeStateStatus,baseRefName \
@@ -93,10 +118,15 @@ jobs:
               continue
             fi
 
-            # Delegate the merge gate to GitHub: active ruleset checks must all pass.
-            # Optional checks such as the AI reviewer do not override required CI.
+            # Do not even queue auto-merge until the exact required contexts are green.
+            # The active strict ruleset remains the final, server-side merge gate.
+            if ! required_checks_green "$number"; then
+              echo "skip: required checks are not all green; no auto-merge queued"
+              echo "::endgroup::"
+              continue
+            fi
             if gh pr merge "$number" --repo "$REPO" --auto --squash; then
-              echo "ok: enabled auto-merge; GitHub will wait for required ruleset checks"
+              echo "ok: all required checks green; auto-merge queued"
             else
               echo "::warning title=Auto-merge could not be enabled::PR #${number} remains open."
             fi

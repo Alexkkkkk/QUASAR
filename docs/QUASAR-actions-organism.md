@@ -1,9 +1,16 @@
 # QUASAR: от 15 отдельных workflow к единому автономному организму
 
 Цель: GitHub Actions в QUASAR (Alexkkkkk/QUASAR) перестают быть «островами» и
-собираются в один управляемый контур — с сохранением текущих guardrails:
-read-only по умолчанию, protected paths, draft PR вместо merge, никаких
-on-chain действий.
+собираются в один управляемый контур — с сохранением guardrails: read-only по
+умолчанию, protected paths, draft PR до CI, CI-only auto-merge после зелёных
+checks, никаких deploy и on-chain действий.
+
+> **Обновлено 2026-10-22:** все более старые требования ниже о human approving
+> review superseded. Действующий main ruleset требует 0 approvals, 0 bypass
+> actors и ровно шесть обязательных status contexts; auto-merge ставится в
+> очередь только после их `SUCCESS`. GitHub Pages deployment выключен. Деплой
+> контрактов и on-chain действия остаются запрещены. Каноническая политика:
+> [`docs/ai/RULESET_L3.md`](ai/RULESET_L3.md).
 
 ======================================================================
 ЧАСТЬ 1. Диагноз текущего состояния
@@ -21,8 +28,8 @@ on-chain действий.
   3. Модули не общаются между собой (нет состояния, нет шины).
   4. Права размазаны: сложно аудировать поверхность автоматизации
      (hub-audit проверяет 15 файлов вместо одного).
-  5. Установлен потолок автономности: ai-fix-agent создаёт только draft PR,
-     merge/deploy — только человек.
+  5. На момент написания был установлен потолок автономности: ai-fix-agent
+     создавал только draft PR, merge/deploy — только человек.
 
 Целевой принцип: ОДИН оркестратор (события -> router -> reusable-модули),
 общение через needs/outputs/artifacts/labels, hub-audit как иммунная система.
@@ -655,16 +662,17 @@ jobs:
 ======================================================================
 
   L1 Ассист      AI комментирует, человек всё делает.        [готово: ai-review]
-  L2 Предложение AI делает draft PR, человек мёржит.          [готово: ai-fix]
-  L3 Слияние     merge после зелёного _checks + правил.       [только dependabot]
+  L2 Предложение AI делает draft PR, GitHub мёржит после CI.  [готово: ai-fix]
+  L3 Слияние     auto-merge после всех обязательных checks.   [без approvals]
   L4 Выкатка     deploy через Environment с approve.          [закрыто намеренно]
 
 Следующий шаг — L3 для AI-веток:
 
-  а) Branch protection на main:
-     - Require status check: checks (из _checks.yml);
-     - Require 1 approving review;
-     - Require conversation resolution.
+  а) Branch protection на main (текущая настройка в RULESET_L3.md):
+     - Require zero approving reviews and zero bypass actors;
+     - Require strict status checks: validate / verify, CodeQL,
+       Tests (contracts), Tests (dapp), Tests (python), review;
+     - No human approval, conversation-resolution or Pages-deploy gate.
 
   б) Новый label-команда «ai-merge-ok» (только владелец) + workflow:
 
@@ -782,8 +790,9 @@ sandbox). Свой код остаётся только в маршрутиза�
      событию pull_request (opened) включаются checks + ai-review.
   3. PR -> качество: read-only Gemini _ai-review.yml как второе мнение
      (как и сейчас) + платформенный CodeQL/secret scanning.
-  4. Merge: branch protection (checks из _checks.yml + 1 human review).
-     Агент физически не может мёржить — гарантировано платформой.
+  4. Merge: branch ruleset (six strict CI contexts, zero approvals, no bypass).
+     Agent jobs do not merge; the separate GitHub auto-merge job queues only
+     after every required check is SUCCESS. Deploy/on-chain remain disabled.
   5. Кампании: Dependabot/CodeQL алерты -> назначить Copilot -> draft PR'ы
      пачкой (заменяет dependabot-auto-merge + ai-fix-agent целиком).
   6. Оркестратор quasar.yml: теперь маршрутизирует между платформенными

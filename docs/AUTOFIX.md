@@ -3,7 +3,8 @@
 Документ описывает автоматическую систему обнаружения и устранения ошибок
 репозитория QUASAR. Все исправления выполняются **только на GitHub**: каждое
 изменение проходит через ветку, проверку в CI и **draft PR**. `main` никогда не
-изменяется автоматикой.
+изменяется напрямую; GitHub auto-merge ставит draft в очередь только после
+успеха всех обязательных status checks. Approving review не требуется.
 
 ---
 
@@ -20,12 +21,14 @@
 | Проверка | CI на этой ветке | `QUASAR CI`, `QUASAR dApp CI` |
 | Публикация | **draft PR** в GitHub | `peter-evans/create-pull-request` |
 | Отчёт | Комментарий в issue | `gh issue comment` |
-| Merge / deploy / on-chain | Только вручную человеком | Владелец репозитория |
+| Merge | GitHub auto-merge | Только после успеха обязательных checks; zero approving reviews |
+| Deploy / on-chain | Запрещено | Workflow не публикует Pages и не выполняет транзакции |
 
 Это правило зафиксировано в `AGENTS.md`, `GEMINI.md` и
 `.github/copilot-instructions.md` и проверяется тестом
-`tests/automation_hub.test.ts`. Автоматика физически не имеет прав на merge,
-deploy и on-chain действия: соответствующие секреты ей не передаются.
+`tests/automation_hub.test.ts`. Merge automation не имеет bypass и принимает
+решение только по обязательным checks; deploy и on-chain секреты ей не
+передаются, а Pages workflow отключён.
 
 ---
 
@@ -34,11 +37,11 @@ deploy и on-chain действия: соответствующие секрет
 | Workflow | Триггер | Что делает |
 | --- | --- | --- |
 | `QUASAR CI` | push/PR в `main`, вручную | Полная проверка корневого проекта: контракты, тесты, ABI, хеши, пины, hub-audit, audit зависимостей |
-| `QUASAR dApp CI` | push/PR, затрагивающий `integrations/**` | Чистый `npm ci`, типы, тесты, production build и `npm audit` для вложенного TON Minter |
+| `QUASAR dApp CI` | push/PR, затрагивающий `integrations/**` | Чистый `npm ci`, типы, тесты, production build и audit вложенного TON Minter |
 | `QUASAR autofix` | падение CI, метка `autofix`/`ai-fix`, расписание, вручную | Диагностика отказа → детерминированные фиксеры → полная проверка → draft PR → отчёт в issue |
 | `QUASAR Dependabot remediation` | каждые 6 часов, push в lock-файлы, вручную | Сбор алертов, severity-отчёт, неразрушающие обновления, draft PR |
 | `QUASAR issue triage` | новое/изменённое issue | Метки по области и приоритету, маршрутизация, инструкция автору |
-| `Dependabot auto-merge` | Dependabot PR | Включает auto-merge; решают обязательные проверки |
+| `Dependabot auto-merge` | Dependabot PR | Включает auto-merge только когда все обязательные checks уже зелёные |
 | `Auto-update pull requests` | расписание, push в `main` | Rebase отставших PR на `main` и merge только зелёных |
 | `AI PR review` | PR открыт/обновлён | Read-only разбор diff (Gemini), публикует комментарий |
 | `AI issue discussion` | метка `ai-discuss` | Read-only ответ по issue |
@@ -103,7 +106,9 @@ npm audit --audit-level=high
 
 Только этот job получает `contents: write` и `pull-requests: write`. Он
 создаёт или обновляет **draft PR** в ветке `autofix/<issue|run_id>` и
-публикует отчёт в issue. Merge не выполняется никогда.
+публикует отчёт в issue. Сам job не делает merge; общий automerge workflow
+переводит PR в ready и ставит auto-merge в очередь только после `SUCCESS` всех
+обязательных checks на текущем head. Review approval не является gate.
 
 ---
 

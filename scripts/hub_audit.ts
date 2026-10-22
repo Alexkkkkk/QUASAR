@@ -37,7 +37,6 @@ const REQUIRED_FILES = [
   ".github/workflows/dependabot-auto-merge.yml",
   ".github/workflows/auto-update-prs.yml",
   ".github/workflows/pin-refresh.yml",
-  ".github/workflows/pages.yml",
   ".github/workflows/dapp-ci.yml",
   ".github/workflows/autofix.yml",
   ".github/workflows/dependabot-remediation.yml",
@@ -56,6 +55,7 @@ const REQUIRED_FILES = [
   "scripts/action_pins.json",
   "scripts/sync_action_pins.ts",
   "scripts/hub_audit.ts",
+  "docs/ai/ruleset-l3.json",
   "scripts/autofix/classify_failure.py",
   "scripts/autofix/apply_fixes.sh",
   "scripts/learn_loop.py",
@@ -229,6 +229,25 @@ function checkLocalSurface(): void {
     }
   }
 
+  console.log("\n[4a] Website deployment and on-chain workflows remain disabled");
+  if (existsSync(join(WORKFLOW_DIR, "pages.yml"))) {
+    fail("pages.yml exists: automatic GitHub Pages deployment is forbidden");
+  } else ok("pages.yml absent: website is not automatically published");
+  for (const path of workflowFiles()) {
+    const rel = path.slice(ROOT.length + 1);
+    const raw = readFileSync(path, "utf8");
+    const body = stripBlockScalars(raw);
+    if (/actions\/deploy-pages@|^\s*pages:\s*write\s*$|^\s*name:\s*github-pages\s*$/m.test(body)) {
+      fail(`${rel}: contains a GitHub Pages deployment capability`);
+    }
+    if (/\$\{\{\s*secrets\.(?:WALLET_MNEMONIC|ORACLE_SIGNING_KEY|TONCENTER_API_KEY)\s*\}\}/i.test(raw)) {
+      fail(`${rel}: on-chain wallet/API secrets are forbidden in workflows`);
+    }
+    if (/\b(?:npm\s+run\s+deploy(?::defi)?|npx\s+tsx\s+scripts\/deploy_(?:all|defi)\.ts)\b/i.test(raw)) {
+      fail(`${rel}: contract deployment commands are forbidden in workflows`);
+    }
+  }
+
   for (const file of ["_ai-fix.yml", "ai-ollama-agent.yml"]) {
     const path = join(WORKFLOW_DIR, file);
     if (!existsSync(path)) {
@@ -251,11 +270,59 @@ function checkLocalSurface(): void {
   for (const path of workflowFiles()) {
     for (const name of jobNames(readFileSync(path, "utf8"))) known.add(name);
   }
-  // Code scanning default setup publishes these two check names dynamically.
-  known.add("Analyze (javascript-typescript)");
-  known.add("Analyze (python)");
-  if (!known.has("validate")) fail("ci.yml must keep a job named `validate`: it is a required check");
-  else ok("required check `validate` is produced by ci.yml");
+  const ciWorkflow = readFileSync(join(WORKFLOW_DIR, "ci.yml"), "utf8");
+  const checksWorkflow = readFileSync(join(WORKFLOW_DIR, "_checks.yml"), "utf8");
+  if (/validate:\s*\n\s+uses:\s+\.\/\.github\/workflows\/_checks\.yml/.test(ciWorkflow) &&
+      /verify:\s*\n/.test(checksWorkflow)) {
+    known.add("validate / verify");
+  }
+  const setupScript = readFileSync(join(ROOT, "setup-repo.sh"), "utf8");
+  if (setupScript.includes("docs/ai/ruleset-l3.json")) ok("setup-repo.sh applies the canonical main ruleset JSON");
+  else fail("setup-repo.sh must apply docs/ai/ruleset-l3.json");
+  if (/repos\/\$REPO\/pages|build_type=workflow/.test(setupScript)) {
+    fail("setup-repo.sh must not enable or configure GitHub Pages deployment");
+  } else ok("setup-repo.sh does not enable GitHub Pages");
+  if (setupScript.includes("branches/main/protection/required_pull_request_reviews") &&
+      /gh api --method PATCH "\$review_endpoint"/.test(setupScript) &&
+      /required_approving_review_count=0/.test(setupScript)) {
+    ok("setup-repo.sh sets classic branch-protection approvals to zero");
+  } else fail("setup-repo.sh must set classic branch-protection approvals to zero");
+  if (/code-scanning\/default-setup/.test(setupScript)) known.add("CodeQL");
+  const testWorkflow = readFileSync(join(WORKFLOW_DIR, "tests.yml"), "utf8");
+  const testPackages = /package:\s*\[([^\]]+)\]/.exec(testWorkflow)?.[1]
+    .split(",").map((item) => item.trim()) ?? [];
+  if (/name:\s*Tests \(\$\{\{ matrix\.package \}\}\)/.test(testWorkflow)) {
+    for (const packageName of testPackages) known.add(`Tests (${packageName})`);
+  }
+  const reviewWorkflow = readFileSync(join(WORKFLOW_DIR, "dependency-review.yml"), "utf8");
+  if (jobNames(reviewWorkflow).includes("review")) known.add("review");
+  const requiredContexts = ["validate / verify", "CodeQL", "Tests (contracts)", "Tests (dapp)", "Tests (python)", "review"];
+  for (const context of requiredContexts) {
+    if (known.has(context)) ok(`required check '${context}' has a workflow source`);
+    else fail(`required check '${context}' is not produced by a workflow`);
+  }
+  const desiredRuleset = JSON.parse(readFileSync(join(ROOT, "docs/ai/ruleset-l3.json"), "utf8")) as Record<string, any>;
+  if (!(desiredRuleset.rules ?? []).some((rule: { type: string }) => rule.type === "update")) {
+    ok("desired main ruleset does not lock out CI auto-merge updates");
+  } else fail("desired main ruleset must not restrict updates when bypass_actors is empty");
+  const desiredPullRule = desiredRuleset.rules?.find((rule: { type: string }) => rule.type === "pull_request");
+  const desiredChecksRule = desiredRuleset.rules?.find((rule: { type: string }) => rule.type === "required_status_checks");
+  const desiredContexts: string[] = (desiredChecksRule?.parameters?.required_status_checks ?? [])
+    .map((entry: { context: string }) => entry.context).sort();
+  if (desiredRuleset.bypass_actors?.length === 0) ok("desired main ruleset has no bypass actors");
+  else fail("desired main ruleset must have an empty bypass_actors list");
+  if (desiredPullRule?.parameters?.required_approving_review_count === 0 &&
+      desiredPullRule?.parameters?.required_reviewers?.length === 0 &&
+      desiredPullRule?.parameters?.require_code_owner_review !== true &&
+      desiredPullRule?.parameters?.require_last_push_approval !== true &&
+      desiredPullRule?.parameters?.required_review_thread_resolution !== true &&
+      desiredPullRule?.parameters?.require_extra_approval_for_unattributed_changes !== true) {
+    ok("desired main ruleset requires zero approving reviews");
+  } else fail("desired main ruleset must not require approving reviews");
+  if (desiredChecksRule?.parameters?.strict_required_status_checks_policy === true &&
+      JSON.stringify(desiredContexts) === JSON.stringify([...requiredContexts].sort())) {
+    ok("desired main ruleset requires exactly the six strict CI contexts");
+  } else fail(`desired main ruleset check contexts or strict policy mismatch: ${desiredContexts.join(", ")}`);
   notes.push(`jobs discovered: ${[...known].sort().join(", ")}`);
 
   console.log("\n[7] Workflow-level permissions stay read-only (write belongs to jobs)");
@@ -280,7 +347,6 @@ function checkLocalSurface(): void {
     "dependabot-auto-merge.yml",
     "dependency-review.yml",
     "labeler.yml",
-    "pages.yml",
     "pin-refresh.yml",
     "release.yml",
   ]);
@@ -414,25 +480,68 @@ async function checkLiveSettings(): Promise<void> {
       ok(`ruleset "${detail.name}" (${detail.target}, ${detail.enforcement})`);
       notes.push(`ruleset "${detail.name}": ${types.join(", ") || "no rules"}`);
       if (detail.target === "branch") {
+        if (detail.enforcement !== "active") fail(`ruleset "${detail.name}": branch protection is not active`);
+        if ((detail.bypass_actors ?? []).length > 0) fail(`ruleset "${detail.name}": bypass actors are forbidden`);
+        else ok(`ruleset "${detail.name}": no bypass actors`);
+        if (!types.includes("update")) ok(`ruleset "${detail.name}": no update restriction blocking PR auto-merge`);
+        else fail(`ruleset "${detail.name}": update restriction blocks ref updates with no bypass actors`);
         if (!types.includes("required_linear_history")) warn(`ruleset "${detail.name}": linear history not required`);
         if (!types.includes("required_signatures")) warn(`ruleset "${detail.name}": commit signatures not required`);
         const pr = (detail.rules ?? []).find((rule: { type: string }) => rule.type === "pull_request");
         const approvals = pr?.parameters?.required_approving_review_count;
-        if (typeof approvals === "number" && approvals > 0) {
-          warn(`ruleset "${detail.name}": ${approvals} approving review(s) required - this repository merges on green checks alone`);
-        } else if (typeof approvals === "number") {
-          ok(`ruleset "${detail.name}": no approving review required (${approvals})`);
-        }
+        if (approvals === 0 && pr?.parameters?.required_reviewers?.length === 0 &&
+            pr?.parameters?.require_code_owner_review !== true &&
+            pr?.parameters?.require_last_push_approval !== true &&
+            pr?.parameters?.required_review_thread_resolution !== true &&
+            pr?.parameters?.require_extra_approval_for_unattributed_changes !== true) {
+          ok(`ruleset "${detail.name}": approving reviews disabled`);
+        } else fail(`ruleset "${detail.name}": human approving review gate is enabled or unspecified`);
         const checks = (detail.rules ?? []).find(
           (rule: { type: string }) => rule.type === "required_status_checks",
         );
         const contexts: string[] = (checks?.parameters?.required_status_checks ?? []).map(
           (entry: { context: string }) => entry.context,
         );
-        if (contexts.length === 0) warn(`ruleset "${detail.name}": no required status checks`);
-        else notes.push(`required checks: ${contexts.join(", ")}`);
+        const expectedRuleset = JSON.parse(readFileSync(join(ROOT, "docs/ai/ruleset-l3.json"), "utf8")) as Record<string, any>;
+        const expectedChecks = expectedRuleset.rules?.find((rule: { type: string }) => rule.type === "required_status_checks");
+        const expectedContexts: string[] = (expectedChecks?.parameters?.required_status_checks ?? [])
+          .map((entry: { context: string }) => entry.context).sort();
+        if (contexts.length > 0 && JSON.stringify([...contexts].sort()) === JSON.stringify(expectedContexts) &&
+            checks?.parameters?.strict_required_status_checks_policy === true) {
+          ok(`ruleset "${detail.name}": exact required checks are strict`);
+        } else fail(`ruleset "${detail.name}": required checks are missing, mismatched, or not strict`);
+        notes.push(`required checks: ${contexts.join(", ") || "none"}`);
       }
     }
+  }
+
+  try {
+    const response = await fetch(`https://api.github.com/repos/${repo}/branches/main/protection/required_pull_request_reviews`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: "application/vnd.github+json",
+        "X-GitHub-Api-Version": "2022-11-28",
+        "User-Agent": "quasar-hub-audit",
+      },
+    });
+    if (response.status === 404) {
+      ok("classic branch protection has no required-review rule");
+    } else if (!response.ok) {
+      fail(`classic branch-protection review gate could not be verified: HTTP ${response.status}`);
+    } else {
+      const classic = await response.json() as Record<string, any>;
+      const bypass = classic.bypass_pull_request_allowances ?? {};
+      const noBypass = ["users", "teams", "apps"].every((key) => (bypass[key] ?? []).length === 0);
+      if (classic.required_approving_review_count === 0 &&
+          classic.require_code_owner_reviews !== true &&
+          classic.require_last_push_approval !== true && noBypass) {
+        ok("classic branch protection: no approving reviews or review bypasses");
+      } else {
+        fail("classic branch protection still requires approval or allows review bypass");
+      }
+    }
+  } catch (error) {
+    fail(`classic branch-protection review gate audit failed: ${(error as Error).message}`);
   }
 
   const actions = (await api(token, repo, "/actions/permissions")) as Record<string, any> | null;

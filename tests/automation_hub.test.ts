@@ -43,6 +43,7 @@ const REQUIRED = [
   ".github/labeler.yml",
   ".yamllint.yml",
   "setup-repo.sh",
+  "docs/ai/ruleset-l3.json",
   "scripts/action_pins.json",
   "scripts/sync_action_pins.ts",
   "scripts/hub_audit.ts",
@@ -180,6 +181,61 @@ test("hub: repository setup uses an action allowlist and verifies SHA pinning", 
   assert.doesNotMatch(body, /allowed_actions=all/);
 });
 
+test("hub: main ruleset permanently disables human approvals and bypass", () => {
+  const ruleset = JSON.parse(readFileSync(join(ROOT, "docs/ai/ruleset-l3.json"), "utf8"));
+  const pullRequest = ruleset.rules.find((rule: { type: string }) => rule.type === "pull_request");
+  const checks = ruleset.rules.find((rule: { type: string }) => rule.type === "required_status_checks");
+  assert.deepEqual(ruleset.bypass_actors, [], "no user or app may bypass the ruleset");
+  assert.ok(!ruleset.rules.some((rule: { type: string }) => rule.type === "update"),
+    "Restrict updates with no bypass actors would block CI-only auto-merge");
+  assert.equal(pullRequest.parameters.required_approving_review_count, 0);
+  assert.deepEqual(pullRequest.parameters.required_reviewers, []);
+  assert.equal(pullRequest.parameters.require_code_owner_review, false);
+  assert.equal(pullRequest.parameters.require_last_push_approval, false);
+  assert.equal(pullRequest.parameters.required_review_thread_resolution, false);
+  assert.equal(pullRequest.parameters.require_extra_approval_for_unattributed_changes, false);
+  assert.equal(checks.parameters.strict_required_status_checks_policy, true);
+  assert.deepEqual(
+    checks.parameters.required_status_checks.map((entry: { context: string }) => entry.context).sort(),
+    ["CodeQL", "Tests (contracts)", "Tests (dapp)", "Tests (python)", "review", "validate / verify"].sort(),
+  );
+  const setup = readFileSync(join(ROOT, "setup-repo.sh"), "utf8");
+  assert.match(setup, /docs\/ai\/ruleset-l3\.json/);
+  assert.doesNotMatch(setup, /bypass_actors.*actor_id/);
+  assert.match(setup, /branches\/main\/protection\/required_pull_request_reviews/);
+  assert.match(setup, /gh api --method PATCH "\$review_endpoint"/);
+  assert.match(setup, /required_approving_review_count=0/);
+  assert.match(setup, /require_code_owner_reviews=false/);
+  assert.match(setup, /require_last_push_approval=false/);
+  assert.doesNotMatch(setup, /repos\/\$REPO\/pages|build_type=workflow/);
+});
+
+test("hub: PRs are promoted/queued only after every required context succeeds", () => {
+  const body = readFileSync(join(WORKFLOWS, "automerge.yml"), "utf8");
+  const required = ["validate / verify", "CodeQL", "Tests (contracts)", "Tests (dapp)", "Tests (python)", "review"];
+  for (const context of required) assert.ok(body.includes(context), `missing required context ${context}`);
+  assert.doesNotMatch(body, /^  pull_request:/m, "the secret-bearing workflow must not run on PR-controlled YAML");
+  assert.match(body, /if \[ "\$result" != "SUCCESS" \]/, "only SUCCESS is green");
+  assert.match(body, /gh pr ready/, "green drafts are automatically promoted");
+  assert.match(body, /gh pr merge .*--auto/, "merge is queued through GitHub auto-merge");
+  assert.ok(body.indexOf('if [ "$checks_green" != "true" ]') < body.indexOf("gh pr ready"), "checks gate readiness");
+  assert.match(body, /do-not-merge/, "the explicit stop label is honored");
+  const mergeCommands = body.split("\n").filter((line) => /gh pr merge/.test(line));
+  assert.ok(mergeCommands.length > 0 && mergeCommands.every((line) => /--auto/.test(line)), "direct merge is forbidden");
+});
+
+test("hub: Pages deployment and on-chain operations stay disabled", () => {
+  assert.equal(existsSync(join(WORKFLOWS, "pages.yml")), false, "Pages deploy workflow must remain absent");
+  const setup = readFileSync(join(ROOT, "setup-repo.sh"), "utf8");
+  assert.match(setup, /pages\.yml would re-enable automatic deployment/);
+  for (const file of workflowFiles()) {
+    const body = readFileSync(join(WORKFLOWS, file), "utf8");
+    assert.doesNotMatch(body, /actions\/deploy-pages@|^\s*pages:\s*write\s*$|^\s*name:\s*github-pages\s*$/m, `${file} may not deploy Pages`);
+    assert.doesNotMatch(body, /\$\{\{\s*secrets\.(?:WALLET_MNEMONIC|ORACLE_SIGNING_KEY|TONCENTER_API_KEY)\s*\}\}/i, `${file} may not access on-chain secrets`);
+    assert.doesNotMatch(body, /\b(?:npm\s+run\s+deploy(?::defi)?|npx\s+tsx\s+scripts\/deploy_(?:all|defi)\.ts)\b/i, `${file} may not deploy contracts`);
+  }
+});
+
 test("hub: the pin lock matches the declared tag map", () => {
   const pins = JSON.parse(readFileSync(join(ROOT, "scripts", "action_pins.json"), "utf8")) as {
     actions: Record<string, string>;
@@ -196,14 +252,32 @@ test("hub: the pin lock matches the declared tag map", () => {
   }
 });
 
-test("hub: the pull-request updater rebases onto main and merges without approvals", () => {
+test("hub: the pull-request updater rebases onto main and queues only green PRs without approvals", () => {
   const body = readFileSync(join(WORKFLOWS, "auto-update-prs.yml"), "utf8");
   assert.match(body, /^permissions:/m, "the updater must declare top-level permissions");
   assert.match(body, /gh pr update-branch/, "expected an automatic rebase onto main");
   assert.match(body, /--rebase/, "the rebase must preserve linear history");
   assert.match(body, /gh pr merge/, "expected an automatic merge of green pull requests");
+  assert.match(body, /required_checks_green/, "required checks must gate auto-merge");
+  assert.match(body, /state.*!=.*SUCCESS/, "only SUCCESS is green");
   assert.match(body, /do-not-merge/, "the do-not-merge label must be respected");
   assert.ok(!/actions\/checkout@/.test(body), "the updater must not check out pull-request code");
+});
+
+test("hub: Dependabot and AI merge paths require all exact required checks", () => {
+  const dependabot = readFileSync(join(WORKFLOWS, "dependabot-auto-merge.yml"), "utf8");
+  const aiMerge = readFileSync(join(WORKFLOWS, "_ai-merge.yml"), "utf8");
+  const required = ["validate / verify", "CodeQL", "Tests (contracts)", "Tests (dapp)", "Tests (python)", "review"];
+  for (const context of required) {
+    assert.ok(dependabot.includes(context), `Dependabot gate missing ${context}`);
+    assert.ok(aiMerge.includes(context), `AI merge gate missing ${context}`);
+  }
+  assert.match(dependabot, /state.*!=.*SUCCESS/, "Dependabot must reject missing/skipped/non-green checks");
+  assert.match(aiMerge, /state.*!=.*SUCCESS/, "AI merge must reject missing/skipped/non-green checks");
+  assert.match(dependabot, /gh pr merge --auto/, "Dependabot queues GitHub auto-merge only");
+  assert.match(aiMerge, /gh pr merge .*--auto/, "AI merge queues GitHub auto-merge only");
+  assert.match(dependabot, /do-not-merge/, "Dependabot respects the stop label");
+  assert.match(aiMerge, /do-not-merge/, "AI merge respects the stop label");
 });
 
 test("hub: the orchestrator routes events into the reusable modules only", () => {
@@ -249,13 +323,14 @@ test("hub: ai-review idempotency scans the review feed, not only issue comments 
   assert.match(body, /issues\/\$\{PR\}\/comments/, "the guard must still scan issue comments");
 });
 
-test("hub: ai-merge readies drafts and queues auto-merge without bypassing protection (issue #155)", () => {
+test("hub: ai-merge checks all required CI before readying and auto-merge (issue #155)", () => {
   const body = readFileSync(join(WORKFLOWS, "_ai-merge.yml"), "utf8");
   assert.match(body, /gh pr ready "\$TARGET" --repo "\$GITHUB_REPOSITORY"/, "a draft agent PR must be marked ready before merge");
   const draftBlock = /if \[\[ "\$\(jq -r '\.isDraft' <<< "\$pr"\)" == "true" \]\]; then([\s\S]*?)\n\s+fi/.exec(body);
   assert.ok(draftBlock, "the draft handling block must be present");
-  assert.match(draftBlock[1], /continuing with the merge checks/, "after readying a draft the same run proceeds to the merge checks");
-  assert.doesNotMatch(draftBlock[1], /exit 0/, "readying a draft must not stop the run: every later guard still applies to this head commit");
+  assert.match(body, /state.*!=.*SUCCESS/, "only SUCCESS checks may advance a PR");
+  assert.ok(body.indexOf('state" != "SUCCESS"') < body.indexOf("gh pr ready"), "all checks precede readying a draft");
+  assert.match(draftBlock[1], /current_head/, "the PR head is rechecked after promotion");
   assert.match(body, /gh pr merge "\$TARGET" --repo "\$GITHUB_REPOSITORY" --squash --auto --delete-branch/, "the merge must queue with --auto");
   assert.match(body, /Auto-merge enabled for agent pull request/, "the notice must not claim that an asynchronous auto-merge has completed");
   assert.doesNotMatch(body, /::notice::Merged agent pull request/, "the merge notice must not report success before GitHub completes the merge");
