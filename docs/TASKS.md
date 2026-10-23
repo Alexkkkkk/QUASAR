@@ -194,6 +194,21 @@ testnet rehearsal остаются открытыми; deployment и реаль�
 
 ## P1 — TON Docs conformance matrix
 
+- [~] **T-25 TEP-74 funding и Acton mutation testing.**
+  - Tolk wallet резервирует `forward_ton_amount` сверх execution allowance и
+    отклоняет burn без минимального TON-бюджета; добавлена regression-проверка
+    доставки notification при `forward_ton_amount > 0.02 TON`.
+  - Добавлены `npm run mutation:changed` и `npm run mutation:contracts` по
+    официальной Acton mutation-testing модели с critical/major уровнями и
+    минимумом 80%. Полный mutation-прогон остаётся CI/release gate.
+  - Treasury payout Master теперь дебетируется до отправки и связывается с
+    pending payout для bounce recovery; изменение контрактов меняет code hash
+    и адреса нового поколения.
+  - Добавлены `npm run coverage:tolk`/`coverage:text` для LCOV и line/branch
+    отчётов Acton, а `npm run coverage:wallet` требует 75% blended score для
+    TEP-74 wallet suite. Полный baseline 45.5% оставлен открытым backlog для
+    расширения Master/DeFi branch tests.
+
 - [x] **T-13 Матрица TEP/TL-B и границы on-chain/off-chain.**
   - Файл: docs/TON_CONFORMANCE_MATRIX.md.
   - Зафиксированы opcode, сериализация, sender check, bounce/excess behaviour, getter ABI и тест для TEP-74, TEP-64 и TEP-89.

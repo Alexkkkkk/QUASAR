@@ -22,7 +22,11 @@ requireSource(common, 'struct (0x178d4519) InternalTransfer', 'TEP-74 internal t
 requireSource(common, 'struct (0x2c76b973) ProvideWalletAddress', 'TEP-89 wallet discovery opcode');
 requireSource(wallet, 'storage.balance + message.amount <= QUASAR_MAX_WALLET_AMOUNT', 'wallet holder cap');
 requireSource(wallet, 'message.amount <= QUASAR_MAX_TX_AMOUNT', 'wallet transaction cap');
-requireSource(wallet, 'contract.getOriginalBalance() >= 75000000', 'wallet fee reserve guard');
+requireSource(
+    wallet,
+    'QUASAR_TRANSFER_EXECUTION_VALUE + message.forwardTonAmount',
+    'wallet fee reserve guard includes forward TON',
+);
 requireSource(wallet, 'queryKey >= QUASAR_POOL_PAYOUT_MARKER', 'pool payout bounce namespace');
 requireSource(master, 's.core.totalSupply + msg.amount <= s.core.maxSupply', 'hard maximum supply');
 requireSource(master, 's.core.totalSupply -= msg.amount', 'burn debits total supply');

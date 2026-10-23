@@ -39,6 +39,15 @@ output-sources = "build/synchronized/sources"
 [test]
 fail-fast = true
 
+[test.mutation]
+mutation-levels = ["critical", "major"]
+minimum-percent = 80
+disable-rules = []
+
+[test.coverage]
+format = "lcov"
+file = "build/reports/lcov.info"
+
 [lint]
 max-warnings = 0
 exclude = ["build/synchronized/wrappers/*.tolk", "build/generations/**/wrappers/*.tolk"]

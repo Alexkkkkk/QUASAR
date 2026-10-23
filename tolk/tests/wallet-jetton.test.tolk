@@ -128,6 +128,47 @@ get fun `test wallet TEP-74: transfer delivers amount and charges 30bps addition
     );
 }
 
+get fun `test wallet TEP-74: forwards requested TON above the execution allowance`() {
+    testing.setNow(100);
+    val wallet = setupWallet(1000000);
+    val recipient = testing.treasury("wallet-forward-ton-recipient");
+    val response = testing.treasury("wallet-forward-ton-response");
+    val recipientWallet = quasarWalletAddress(
+        recipient.address,
+        wallet.master.address,
+        build("QuasarWallet"),
+    );
+
+    // This is deliberately higher than the legacy fixed 0.02 TON value attached
+    // to InternalTransfer. The recipient must receive both this requested value
+    // and a separate execution allowance to emit TokenNotification.
+    val forwardTonAmount = grams("0.03");
+    val txs = net.send(
+        wallet.owner.address,
+        transferMessage(
+            wallet,
+            14,
+            1000,
+            recipient.address,
+            response.address,
+            forwardTonAmount,
+        ),
+    );
+
+    expect(txs).toHaveSuccessfulTx<TokenTransfer>({ to: wallet.address });
+    expect(txs).toHaveSuccessfulTx<InternalTransfer>({
+        from: wallet.address,
+        to: recipientWallet,
+    });
+    expect(txs).toHaveSuccessfulTx<TokenNotification>({
+        from: recipientWallet,
+        to: recipient.address,
+    });
+    expect(
+        net.runGetMethod<JettonWalletData>(recipientWallet, "get_wallet_data").balance,
+    ).toEqual(1000);
+}
+
 get fun `test wallet TEP-74: owner and excesses authorization are enforced`() {
     testing.setNow(100);
     val wallet = setupWallet(1000000);

@@ -130,6 +130,25 @@ These are source and sandbox-test results only. Contract code hashes and address
 
 ## Canonical Acton/Tolk interface gate (2026-10-23)
 
+### TEP-74 funding regression and mutation gate
+
+The wallet now reserves `forward_ton_amount` in addition to the execution
+allowance before committing a transfer. A native Acton regression covers a
+forward amount above the former fixed `0.02 TON` attachment, and burn requests
+must carry the minimum execution budget before wallet state is changed. Acton
+mutation commands are exposed through `npm run mutation:changed` and
+`npm run mutation:contracts`, using the official critical/major mutation levels
+with an 80% minimum score. Contract changes alter the new-generation code hash
+and deterministic addresses; no deployment or on-chain action is performed.
+
+Code coverage is exposed through `npm run coverage:tolk` (full-suite LCOV) and
+`npm run coverage:text` for a reviewable line and branch artifact. The focused
+`npm run coverage:wallet` gate requires 75% blended score for the TEP-74 wallet
+suite; the current full-suite baseline is 45.5% and remains an explicit
+follow-up for Master/DeFi branch expansion. Coverage is a reachability signal
+paired with mutation testing and security/conformance tests, not an audit or
+proof of economic correctness.
+
 `tolk/` фиксирует Acton 1.2.1. `scripts/acton_abi.py` создаёт и проверяет compiler-derived snapshots incoming message names/opcodes/field order/wire types и getter IDs/arguments/return types. `scripts/check_acton_wrappers.ts` проверяет, что TypeScript wrappers содержат serializer каждого публичного сообщения с утверждённым opcode. Этот interface gate не подменяет проверку полного поведения и storage.
 
 `tolk/scripts/local-smoke.tolk` реализует самостоятельный `main()` по [официальной модели Acton scripting](https://ton-blockchain.github.io/acton/docs/scripting/overview): эмулированный wallet, local deploy/mint, проверка null из wait helpers и чтение getters. Broadcast отклоняется до открытия wallet. `scripts/sync_acton.py` публикует полный проверенный набор артефактов атомарно и выявляет drift offline. Tolk storage — отдельный ref-chain layout, не in-place upgrade Tact; bytecode/code hashes и адреса меняются. В этом increment не выполнялись реальные deployment, отправка транзакций или публикация адресов.

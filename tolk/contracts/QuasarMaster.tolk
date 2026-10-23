@@ -1706,6 +1706,9 @@ fun restorePayout(mutate s: QuasarMasterStorage, queryId: uint64): bool {
             .user
             .pendingQsrDeposits
             .set(p.beneficiary, (previous == null ? (0 as int257) : previous) + p.amount);
+    } else if (p.kind == 7) {
+        // Treasury payouts already debited reserveBalance before dispatch.
+        // The bounce handler restores that reserve after this record is removed.
     } else {
         throw 1014;
     }
@@ -1878,7 +1881,16 @@ fun onFeeTransfer(mutate s: QuasarMasterStorage, senderAddress: address, msg: Fe
     }
     if (!s.ai.emergencyPause && treasuryAmount > 0 && !isZeroAddress(s.core.treasury)) {
         assert (s.core.reserveBalance - poolEncumbrance(s) >= treasuryAmount) throw 1023;
-        val tid = nextPayoutId(mutate s);
+        val tid = registerPayout(
+            mutate s,
+            7,
+            s.core.treasury,
+            treasuryAmount,
+            0,
+            0,
+            0,
+        );
+        s.core.reserveBalance -= treasuryAmount;
         sendInternal(
             s.core.treasury,
             treasuryAmount,

@@ -17,6 +17,9 @@ type AllowedMessageToWallet =
 
 type BounceOpToHandle = InternalTransfer | FeeTransfer | BurnNotification
 
+const QUASAR_TRANSFER_EXECUTION_VALUE: coins = 70000000
+const QUASAR_INTERNAL_TRANSFER_VALUE: coins = 20000000
+
 fun sendTokenExcesses(to: address, queryId: uint64, value: coins, mode: int) {
     val excessesMessage = createMessage({
         bounce: BounceMode.NoBounce,
@@ -59,7 +62,7 @@ fun sendInternalTransfer(
     val internalTransferMessage = createMessage({
         bounce: BounceMode.Only256BitsOfBody,
         dest: deployment,
-        value,
+        value: value + forwardTonAmount,
         body: InternalTransfer {
             queryId,
             amount,
@@ -314,8 +317,13 @@ fun onInternalMessage(in: InMessage) {
             assert (storage.balance >= totalDebit) throw 109;
             // Tact's myBalance() includes the current account balance after the
             // storage phase; BALANCE FIRST is the corresponding safe primitive.
-            assert (contract.getOriginalBalance() >= 75000000) throw 114;
-            assert (in.valueCoins >= 70000000) throw 115;
+            assert (
+                contract.getOriginalBalance() >=
+                QUASAR_TRANSFER_EXECUTION_VALUE + message.forwardTonAmount
+            ) throw 114;
+            assert (
+                in.valueCoins >= QUASAR_TRANSFER_EXECUTION_VALUE + message.forwardTonAmount
+            ) throw 115;
 
             storage.lastTxTime = currentTime;
             storage.balance -= totalDebit;
@@ -350,13 +358,15 @@ fun onInternalMessage(in: InMessage) {
                 message.responseDestination,
                 message.forwardTonAmount,
                 message.forwardPayload,
-                20000000,
+                QUASAR_INTERNAL_TRANSFER_VALUE,
                 SEND_MODE_PAY_FEES_SEPARATELY,
             );
 
-            val residual = in.valueCoins - 70000000 - 20000000;
+            val residual = in.valueCoins - QUASAR_TRANSFER_EXECUTION_VALUE -
+                (QUASAR_INTERNAL_TRANSFER_VALUE + message.forwardTonAmount);
             // Keep residual TON in this wallet for both TEP-74 addr_none and
-            // QUASAR's legacy all-zero internal no-response sentinel.
+            // QUASAR's legacy all-zero internal no-response sentinel. The
+            // requested forward amount is reserved before this calculation.
             if (residual > 0 && !isNoResponseAddress(message.responseDestination)) {
                 val excess = createMessage({
                     bounce: BounceMode.NoBounce,
@@ -405,6 +415,7 @@ fun onInternalMessage(in: InMessage) {
             assert (message.amount > 0) throw 101;
             assert (storage.balance >= message.amount) throw 109;
             assert (!storage.pendingBurnResponses.exists(message.queryId as int257)) throw 112;
+            assert (in.valueCoins >= QUASAR_TRANSFER_EXECUTION_VALUE) throw 115;
 
             storage.balance -= message.amount;
             storage
