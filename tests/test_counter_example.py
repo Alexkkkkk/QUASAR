@@ -12,6 +12,7 @@ COUNTER_PROJECT = REPOSITORY_ROOT / "examples" / "counter"
 
 
 class CounterExamplePipelineTests(unittest.TestCase):
+    @unittest.skipUnless(shutil.which("acton"), "Acton CLI is installed only in the contract CI job")
     def test_pinned_acton_pipeline(self) -> None:
         acton = shutil.which("acton")
         self.assertIsNotNone(acton, "Acton CLI must be installed to run repository tests")
