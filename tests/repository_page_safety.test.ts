@@ -11,10 +11,11 @@ const read = (path: string) => readFileSync(join(root, path), 'utf8');
 test('README exposes live automation and pre-launch risk status', () => {
     const readme = read('README.md');
     assert.ok(readme.includes('actions/workflows/ci.yml'));
-    assert.match(readme, /Pre-launch and not independently audited/i);
-    assert.match(readme, /fresh Tolk generation/i);
-    assert.match(readme, /not compatible with a legacy\s+Tact deployment/i);
-    assert.match(readme, /no APY is guaranteed/i);
+    assert.match(readme, /предзапусковой прототип/i);
+    assert.match(readme, /не прошёл независимый аудит/i);
+    assert.match(readme, /новое поколение.*Tact-контрактов/i);
+    assert.match(readme, /нельзя считать совместимыми с новыми контрактами/i);
+    assert.match(readme, /APY или другие показатели как обещание доходности/i);
 });
 
 test('public website does not promise live yield or autonomous fund movement', () => {
