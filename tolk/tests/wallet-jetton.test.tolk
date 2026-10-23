@@ -351,3 +351,59 @@ get fun `test wallet TEP-74: burn bounce restores balance and returns excesses`(
     expect(bounceTrace).toHaveSuccessfulTx<TokenExcesses>({ to: response.address });
     expect(wallet.walletData().balance).toEqual(initial);
 }
+
+get fun `test wallet pool payout: rejected recipient bounces amount back and signals owner`() {
+    testing.setNow(100);
+    val wallet = setupWallet(1000);
+    val recipient = testing.treasury("wallet-pool-payout-rejected-recipient");
+    val recipientDeployment = walletDeployment(
+        recipient.address,
+        wallet.master.address,
+    );
+
+    // The destination is already at the holder cap. A 2-unit pool payout must
+    // fail in the recipient wallet, bounce through the 256-bit TON prefix, and
+    // restore the source wallet's amount exactly once.
+    val fundRecipient = net.send(
+        wallet.master.address,
+        createMessage({
+            bounce: BounceMode.NoBounce,
+            value: grams("1"),
+            dest: recipientDeployment,
+            body: InternalTransfer {
+                queryId: 50,
+                amount: QUASAR_MAX_WALLET_AMOUNT - 1,
+                from: recipient.address,
+                responseDestination: null,
+                forwardTonAmount: 0,
+                forwardPayload: createEmptySlice(),
+            },
+        }),
+    );
+    expect(fundRecipient).toHaveSuccessfulTx<InternalTransfer>({
+        from: wallet.master.address,
+        to: recipientDeployment.calculateAddress(),
+    });
+
+    val before = wallet.walletData().balance;
+    val payout = net.send(
+        wallet.owner.address,
+        createMessage({
+            bounce: BounceMode.NoBounce,
+            value: grams("0.2"),
+            dest: wallet.address,
+            body: PoolPayout {
+                queryId: 50,
+                amount: 2,
+                destination: recipient.address,
+                responseDestination: wallet.owner.address,
+            },
+        }),
+    );
+    expect(payout).toHaveSuccessfulTx<PoolPayout>({ to: wallet.address });
+    expect(payout).toHaveSuccessfulTx<PayoutFailed>({
+        from: wallet.address,
+        to: wallet.owner.address,
+    });
+    expect(wallet.walletData().balance).toEqual(before);
+}
