@@ -21,6 +21,15 @@ def fixture():
 
 
 class AbiTests(unittest.TestCase):
+    def test_normalizes_acton_acronym_spelling(self):
+        for tact, acton in (
+            ("AIAnomalyAlert", "AiAnomalyAlert"),
+            ("SwapToQSR", "SwapToQsr"),
+            ("LPInfo", "LpInfo"),
+            ("SweepTON", "SweepTon"),
+        ):
+            self.assertEqual(acton_abi.normalize_type_name(tact), acton)
+
     def test_matching_wire_and_stack(self):
         r, a = fixture()
         self.assertEqual(acton_abi.compare_abi(r, a), [])
