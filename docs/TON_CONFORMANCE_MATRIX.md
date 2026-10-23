@@ -131,19 +131,33 @@ These are source and sandbox-test results only. Contract code hashes and address
 ## Активные Tolk findings и targeted fixes — 2026-10-23, issue #300
 
 В рабочей ветке исправлены master mintability toggle, wallet bounce accounting,
-возврат TEP-74 TON excesses, TEP-89 derivation/echo и overlap между 64-bit user
-query IDs и pool-payout IDs. Новый wallet regression проверяет точный
-сериализованный `TakeWalletAddress`; collision tests покрывают оба порядка
-создания in-flight операций. `npm run test:tolk` прошёл **39/39 тестов в 8 файлах**.
+возврат TEP-74 TON excesses, TEP-89 derivation/echo, overlap между 64-bit user
+query IDs и pool-payout IDs, а также QSR swap failure accounting. DeFi сохраняет
+pending swap до settlement, позволяет exact-output QSR retry или TON refund,
+обособляет bounced TON claims от `SweepTon`; исходный bounce `PoolPayout` до
+wallet transfer проходит отдельную регрессию. `npm test` завершился: Acton
+**44/44** в 8 файлах, Node **131/131**, Python **71/71**; security invariants
+прошли. Wallet exact-response и high-bit collision tests проверяют сериализацию
+`TakeWalletAddress` и обе последовательности in-flight операций.
 
-Это именно targeted Acton emulator result: AI-signed toggle, широкий suite
-`npm test`, форматтер/lint, ABI/wrapper/hash regeneration и все release gates ещё
-ожидают проверки. T-28/T-29 DeFi bounce recovery остаются открытыми, а полный
-coverage официальной документации — в
+Дополнительно прошли `npm run lint`, `npx tsc --noEmit`, `npm audit --audit-level=high`
+(0 vulnerabilities), compiler-derived ABI verification, migration-parity и DApp ABI checks,
+action-pin check, `hub:audit` (0 failures;
+18 existing informational warnings, live GitHub checks skipped), `ton:docs:check`
+(10 snapshots current), а также build-hash regeneration. `deployment:check`
+подтвердил отсутствие deployment artifact; никаких адресов/транзакций не
+публиковалось.
+
+Это локальные build/emulator results, а не deployment proof. Независимый audit
+нашёл открытые cross-protocol риски: master buyback notification может прийти
+при `pendingQsrSwap` и остаться неучтённым после отказа DeFi; legacy in-flight
+`PendingTonPayout` callbacks не совместимы автоматически с новыми attempt IDs.
+Они зафиксированы как release-blocking T-34; T-28/T-29 остаются частично
+закрытыми до repeated-bounce, replay и migration/cutover тестов. Полный coverage
+официальной документации и незакрытые классификации перечислены в
 [`docs/TASKS.md`](TASKS.md), [`Acton URL inventory`](ACTON_DOCS_COVERAGE_2026-10-23.md)
-и [`TON Docs URL inventory`](TON_DOCS_COVERAGE_2026-10-23.md); каждой странице
-ещё требуется evidence-based classification. Ни один результат не является
-независимым security audit, upgrade или deployment.
+и [`TON Docs URL inventory`](TON_DOCS_COVERAGE_2026-10-23.md). Ни один результат
+не является независимым security audit, upgrade или deployment.
 
 ## Canonical Acton/Tolk interface gate (2026-10-23)
 

@@ -33,6 +33,33 @@ class TolkMigrationParityTests(unittest.TestCase):
         new = json.loads((checker.CURRENT / checker.PAIRS["Wallet"][1]).read_text())
         return checker, old, new
 
+    def checker_and_defi_abis(self):
+        spec = importlib.util.spec_from_file_location("parity_gate", ROOT / "scripts/check_migration_parity.py")
+        assert spec is not None and spec.loader is not None
+        checker = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(checker)
+        old = json.loads((checker.BASELINE / checker.PAIRS["DeFi"][0]).read_text())
+        new = json.loads((checker.CURRENT / checker.PAIRS["DeFi"][1]).read_text())
+        return checker, old, new
+
+    def test_recovery_abi_additions_are_exactly_pinned(self):
+        checker, old, new = self.checker_and_defi_abis()
+        self.assertEqual(checker.check_contract("DeFi", old, new), [])
+
+        changed_opcode = copy.deepcopy(new)
+        message = next(item for item in changed_opcode["messages"] if item["name"] == "RetrySwapQsr")
+        message["opcode"] = "0xdeadbeef"
+        self.assertTrue(any("approved additive opcode changed" in error for error in checker.check_contract("DeFi", old, changed_opcode)))
+
+        changed_getter = copy.deepcopy(new)
+        getter = next(item for item in changed_getter["getters"] if item["name"] == "tonPayoutClaim")
+        getter["methodId"] += 1
+        self.assertTrue(any("approved additive getter method ID changed" in error for error in checker.check_contract("DeFi", old, changed_getter)))
+
+        unexpected = copy.deepcopy(new)
+        unexpected["messages"].append({"name": "UnreviewedControl", "opcode": "0xdeadbeef", "fields": []})
+        self.assertTrue(any("unexpected typed Tolk receiver UnreviewedControl" in error for error in checker.check_contract("DeFi", old, unexpected)))
+
     def test_schema3_any_address_widening_is_specific_to_tep89_query(self):
         checker, old, new = self.checker_and_wallet_abis()
         self.assertEqual(checker.check_contract("Wallet", old, new), [])

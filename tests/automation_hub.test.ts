@@ -34,6 +34,7 @@ const REQUIRED = [
   ".github/workflows/dapp-ci.yml",
   ".github/workflows/autofix.yml",
   ".github/workflows/dependabot-remediation.yml",
+  ".github/workflows/ton-docs-sync.yml",
   ".github/workflows/issue-triage.yml",
   ".github/workflows/_learn.yml",
   ".github/workflows/_idle-agent.yml",
@@ -115,6 +116,25 @@ test("hub: every workflow declares explicit top-level permissions", () => {
     const body = readFileSync(join(WORKFLOWS, file), "utf8");
     assert.match(body, /^permissions:/m, `${file}: no top-level permissions block`);
   }
+});
+
+test("hub: TON docs sync is scheduled, serialized, and draft-only", () => {
+  const body = readFileSync(join(WORKFLOWS, "ton-docs-sync.yml"), "utf8");
+  assert.match(body, /schedule:\s*\n\s+- cron: "23 4 \* \* \*"/);
+  assert.match(body, /concurrency:\s*\n\s+group: ton-docs-sync\s*\n\s+cancel-in-progress: false/);
+  assert.match(body, /python3 scripts\/sync_ton_docs\.py/);
+  assert.match(body, /python3 -m unittest discover -s tests -p 'test_sync_ton_docs\.py'/);
+  assert.match(body, /branch: automation\/ton-docs-sync/);
+  assert.match(body, /draft: true/);
+  assert.match(body, /id: auth/);
+  assert.match(body, /steps\.auth\.outputs\.token/);
+  assert.match(body, /QUASAR_APP_ID/);
+  assert.match(body, /AUTO_MERGE_TOKEN/);
+  assert.match(body, /add-paths: docs\/ton\/\*\*/);
+  assert.match(body, /create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1/);
+  assert.match(body, /persist-credentials: false/);
+  assert.doesNotMatch(body, /secrets\.GITHUB_TOKEN/);
+  assert.doesNotMatch(body, /scripts\/deploy|WALLET_MNEMONIC|ORACLE_SIGNING_KEY|TONCENTER_API_KEY|pages:\s*write/);
 });
 
 test("hub: pull_request_target is confined to the guarded Dependabot job", () => {

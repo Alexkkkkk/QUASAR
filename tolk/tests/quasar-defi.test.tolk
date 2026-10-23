@@ -97,6 +97,51 @@ fun addInitialLiquidity(fixture: DeFiFixture, provider: Treasury): void {
     expect(fixture.defi.pendingQsrDeposit(provider.address)).toEqual(0);
 }
 
+fun defiPoolWalletAddress(fixture: DeFiFixture): address {
+    val poolWallet = quasarWalletDeployment(
+        fixture.defi.address,
+        fixture.qsrMaster.address,
+        quasarWalletCompiledCode(),
+    );
+    return poolWallet.calculateAddress();
+}
+
+fun depositQsrToDeFi(
+    fixture: DeFiFixture,
+    beneficiary: Treasury,
+    amount: coins,
+    queryId: uint64,
+): void {
+    val poolWallet = quasarWalletDeployment(
+        fixture.defi.address,
+        fixture.qsrMaster.address,
+        quasarWalletCompiledCode(),
+    );
+    val walletAddress = poolWallet.calculateAddress();
+    val deposit = net.send(
+        fixture.qsrMaster.address,
+        createMessage({
+            bounce: BounceMode.NoBounce,
+            value: grams("1"),
+            dest: poolWallet,
+            body: InternalTransfer {
+                queryId,
+                amount,
+                from: beneficiary.address,
+                responseDestination: null,
+                forwardTonAmount: grams("0.01"),
+                forwardPayload: createEmptySlice(),
+            },
+        }),
+    );
+    expect(deposit).toHaveSuccessfulTx<InternalTransfer>({ to: walletAddress });
+    expect(deposit).toHaveSuccessfulTx<TokenNotification>({
+        from: walletAddress,
+        to: fixture.defi.address,
+    });
+    expect(fixture.defi.pendingQsrDeposit(beneficiary.address)).toEqual(amount);
+}
+
 get fun `test quasar defi: initialization retains owner, QSR master, and pool defaults`() {
     val fixture = setupDeFi();
     val pool = fixture.defi.poolInfo();
@@ -191,4 +236,366 @@ get fun `test quasar defi: expired and insufficient-minimum swap requests preser
     });
     expect(fixture.defi.poolInfo().tonReserve).toEqual(before.tonReserve);
     expect(fixture.defi.poolInfo().qsrReserve).toEqual(before.qsrReserve);
+}
+
+get fun `test quasar defi: rejected removal QSR payout restores LP and farm stake`() {
+    val fixture = setupDeFi();
+    val provider = testing.treasury("quasar-defi-removal-bounce-provider");
+    val farmFunding = grams("10");
+    depositQsrToDeFi(fixture, fixture.owner, farmFunding, 700);
+    val funded = fixture
+        .defi
+        .sendFundFarm(fixture.owner.address, farmFunding, { bounce: false, value: grams("0.1") });
+    expect(funded).toHaveSuccessfulTx<FundFarm>({ to: fixture.defi.address });
+    val enabled = fixture
+        .defi
+        .sendSetFarmEnabled(fixture.owner.address, true, { bounce: false, value: grams("0.1") });
+    expect(enabled).toHaveSuccessfulTx<SetFarmEnabled>({ to: fixture.defi.address });
+    addInitialLiquidity(fixture, provider);
+
+    val beforePool = fixture.defi.poolInfo();
+    val beforeLp = fixture.defi.lpBalance(provider.address);
+    val beforeFarm = fixture.defi.userFarm(provider.address).staked;
+    val removeLp = (beforeLp / 2) as coins;
+    val quote = fixture.defi.estimateRemoveLiquidity(removeLp as int);
+    val cursor = testing.createTraceIterationCursor(
+        provider.address,
+        createMessage({
+            bounce: BounceMode.NoBounce,
+            value: grams("0.1"),
+            dest: fixture.defi.address,
+            body: RemoveLiquidity {
+                lpAmount: removeLp,
+                minTonOut: 0,
+                minQsrOut: 0,
+                deadline: (testing.getNow() + 3600) as uint32,
+            },
+        }),
+    );
+    val root = cursor.executeN(1);
+    expect(root).toHaveSuccessfulTx<RemoveLiquidity>({ to: fixture.defi.address });
+    cursor.close();
+    expect(fixture.defi.lpBalance(provider.address)).toEqual(beforeLp - removeLp);
+    expect(fixture.defi.userFarm(provider.address).staked).toEqual(beforeFarm - removeLp);
+
+    val payoutFailure = net.send(
+        defiPoolWalletAddress(fixture),
+        createMessage({
+            bounce: BounceMode.NoBounce,
+            value: grams("0.1"),
+            dest: fixture.defi.address,
+            body: PayoutFailed {
+                queryId: 1,
+                amount: quote.qsrReserve as coins,
+                destination: provider.address,
+            },
+        }),
+    );
+    expect(payoutFailure).toHaveSuccessfulTx<PayoutFailed>({
+        from: defiPoolWalletAddress(fixture),
+        to: fixture.defi.address,
+    });
+    expect(fixture.defi.poolInfo().tonReserve).toEqual(beforePool.tonReserve);
+    expect(fixture.defi.poolInfo().qsrReserve).toEqual(beforePool.qsrReserve);
+    expect(fixture.defi.poolInfo().totalSupply).toEqual(beforePool.totalSupply);
+    expect(fixture.defi.lpBalance(provider.address)).toEqual(beforeLp);
+    expect(fixture.defi.userFarm(provider.address).staked).toEqual(beforeFarm);
+    expect(fixture.defi.farmInfo().staked).toEqual(beforeFarm);
+}
+
+get fun `test quasar defi: failed QSR swap can be refunded in TON and unlock the pool`() {
+    val fixture = setupDeFi();
+    val provider = testing.treasury("quasar-defi-qsr-refund-provider");
+    addInitialLiquidity(fixture, provider);
+    val before = fixture.defi.poolInfo();
+    val tonIn = grams("0.1");
+    val quote = fixture.defi.estimateSwapToQsr(tonIn as int);
+    val cursor = testing.createTraceIterationCursor(
+        provider.address,
+        createMessage({
+            bounce: BounceMode.NoBounce,
+            value: tonIn,
+            dest: fixture.defi.address,
+            body: SwapToQsr {
+                tonAmount: tonIn,
+                minQsrOut: 0,
+                deadline: (testing.getNow() + 3600) as uint32,
+            },
+        }),
+    );
+    val root = cursor.executeN(1);
+    expect(root).toHaveSuccessfulTx<SwapToQsr>({ to: fixture.defi.address });
+    cursor.close();
+
+    val payoutFailure = net.send(
+        defiPoolWalletAddress(fixture),
+        createMessage({
+            bounce: BounceMode.NoBounce,
+            value: grams("0.1"),
+            dest: fixture.defi.address,
+            body: PayoutFailed {
+                queryId: 1,
+                amount: quote.qsrOut as coins,
+                destination: provider.address,
+            },
+        }),
+    );
+    expect(payoutFailure).toHaveSuccessfulTx<PayoutFailed>({ to: fixture.defi.address });
+    expect(fixture.defi.poolInfo().tonReserve).toEqual(before.tonReserve + tonIn);
+    expect(fixture.defi.poolInfo().qsrReserve).toEqual(before.qsrReserve);
+    expect(fixture.defi.feeAccumulatedQsr()).toEqual(0);
+
+    val blocked = fixture
+        .defi
+        .sendSwapToQsr(
+            provider.address,
+            tonIn,
+            0,
+            (testing.getNow() + 3600) as uint32,
+            { bounce: false, value: tonIn },
+        );
+    expect(blocked).toHaveFailedTx<SwapToQsr>({ to: fixture.defi.address, exitCode: 1243 });
+
+    val refund = net.send(
+        provider.address,
+        createMessage({
+            bounce: BounceMode.NoBounce,
+            value: grams("0.1"),
+            dest: fixture.defi.address,
+            body: ClaimSwapTonRefund { swapId: 1 },
+        }),
+    );
+    expect(refund).toHaveSuccessfulTx<ClaimSwapTonRefund>({ to: fixture.defi.address });
+    expect(refund).toHaveSuccessfulTx<TonPayout>({ from: fixture
+            .defi
+            .address, to: provider.address });
+    expect(fixture.defi.poolInfo().tonReserve).toEqual(before.tonReserve);
+    expect(fixture.defi.poolInfo().qsrReserve).toEqual(before.qsrReserve);
+    expect(fixture.defi.tonClaimsHeld()).toEqual(0);
+}
+
+get fun `test quasar defi: bounced PoolPayout restores swap and unlocks TON refund`() {
+    val fixture = setupDeFi();
+    val provider = testing.treasury("quasar-defi-pool-payout-bounce-provider");
+    addInitialLiquidity(fixture, provider);
+    val before = fixture.defi.poolInfo();
+    val tonIn = grams("0.1");
+    val quote = fixture.defi.estimateSwapToQsr(tonIn as int);
+    val cursor = testing.createTraceIterationCursor(
+        provider.address,
+        createMessage({
+            bounce: BounceMode.NoBounce,
+            value: tonIn,
+            dest: fixture.defi.address,
+            body: SwapToQsr {
+                tonAmount: tonIn,
+                minQsrOut: 0,
+                deadline: (testing.getNow() + 3600) as uint32,
+            },
+        }),
+    );
+    val root = cursor.executeN(1);
+    expect(root).toHaveSuccessfulTx<SwapToQsr>({ to: fixture.defi.address });
+    cursor.close();
+
+    val bouncedBody = beginCell()
+        .storeUint(0xffffffff, 32)
+        .storeSlice(
+            PoolPayout {
+                queryId: 1,
+                amount: quote.qsrOut as coins,
+                destination: provider.address,
+                responseDestination: fixture.defi.address,
+            }
+            .toCell()
+            .beginParse(),
+        )
+        .endCell();
+    val bounced = createMessage({
+        bounce: BounceMode.NoBounce,
+        value: grams("0.1"),
+        dest: fixture.defi.address,
+        body: bouncedBody,
+    }).bounced();
+    val bounceTrace = net.send(defiPoolWalletAddress(fixture), bounced);
+    expect(bounceTrace).toHaveSuccessfulTx({ to: fixture.defi.address, bounced: true });
+    expect(fixture.defi.poolInfo().tonReserve).toEqual(before.tonReserve + tonIn);
+    expect(fixture.defi.poolInfo().qsrReserve).toEqual(before.qsrReserve);
+
+    val refund = net.send(
+        provider.address,
+        createMessage({
+            bounce: BounceMode.NoBounce,
+            value: grams("0.1"),
+            dest: fixture.defi.address,
+            body: ClaimSwapTonRefund { swapId: 1 },
+        }),
+    );
+    expect(refund).toHaveSuccessfulTx<ClaimSwapTonRefund>({ to: fixture.defi.address });
+    expect(refund).toHaveSuccessfulTx<TonPayout>({ to: provider.address });
+    expect(fixture.defi.poolInfo().tonReserve).toEqual(before.tonReserve);
+    expect(fixture.defi.poolInfo().qsrReserve).toEqual(before.qsrReserve);
+}
+
+get fun `test quasar defi: failed QSR payout can be retried and settles before trading resumes`() {
+    val fixture = setupDeFi();
+    val provider = testing.treasury("quasar-defi-qsr-retry-provider");
+    addInitialLiquidity(fixture, provider);
+    val tonIn = grams("0.1");
+    val quote = fixture.defi.estimateSwapToQsr(tonIn as int);
+    val cursor = testing.createTraceIterationCursor(
+        provider.address,
+        createMessage({
+            bounce: BounceMode.NoBounce,
+            value: tonIn,
+            dest: fixture.defi.address,
+            body: SwapToQsr {
+                tonAmount: tonIn,
+                minQsrOut: 0,
+                deadline: (testing.getNow() + 3600) as uint32,
+            },
+        }),
+    );
+    val root = cursor.executeN(1);
+    expect(root).toHaveSuccessfulTx<SwapToQsr>({ to: fixture.defi.address });
+    cursor.close();
+
+    val payoutFailure = net.send(
+        defiPoolWalletAddress(fixture),
+        createMessage({
+            bounce: BounceMode.NoBounce,
+            value: grams("0.1"),
+            dest: fixture.defi.address,
+            body: PayoutFailed {
+                queryId: 1,
+                amount: quote.qsrOut as coins,
+                destination: provider.address,
+            },
+        }),
+    );
+    expect(payoutFailure).toHaveSuccessfulTx<PayoutFailed>({ to: fixture.defi.address });
+
+    val retried = net.send(
+        provider.address,
+        createMessage({
+            bounce: BounceMode.NoBounce,
+            value: grams("0.2"),
+            dest: fixture.defi.address,
+            body: RetrySwapQsr {
+                swapId: 1,
+                destination: provider.address,
+            },
+        }),
+    );
+    expect(retried).toHaveSuccessfulTx<RetrySwapQsr>({ to: fixture.defi.address });
+    val providerWallet = quasarWalletAddress(
+        provider.address,
+        fixture.qsrMaster.address,
+        quasarWalletCompiledCode(),
+    );
+    expect(retried).toHaveSuccessfulTx<TokenExcesses>({
+        from: providerWallet,
+        to: fixture.defi.address,
+    });
+    expect(net.runGetMethod<JettonWalletData>(providerWallet, "get_wallet_data").balance).toEqual(
+        quote.qsrOut,
+    );
+
+    val nextSwap = fixture
+        .defi
+        .sendSwapToQsr(
+            provider.address,
+            tonIn,
+            0,
+            (testing.getNow() + 3600) as uint32,
+            { bounce: false, value: tonIn },
+        );
+    expect(nextSwap).toHaveSuccessfulTx<SwapToQsr>({ to: fixture.defi.address });
+}
+
+get fun `test quasar defi: bounced TON payout is claimable and retry destination is user controlled`() {
+    val fixture = setupDeFi();
+    val provider = testing.treasury("quasar-defi-ton-claim-provider");
+    val destination = testing.treasury("quasar-defi-ton-claim-destination");
+    addInitialLiquidity(fixture, provider);
+    val qsrIn = grams("1");
+    depositQsrToDeFi(fixture, provider, qsrIn, 701);
+    val quote = fixture.defi.estimateSwapToTon(qsrIn as int);
+    val cursor = testing.createTraceIterationCursor(
+        provider.address,
+        createMessage({
+            bounce: BounceMode.NoBounce,
+            value: grams("0.1"),
+            dest: fixture.defi.address,
+            body: SwapToTon {
+                qsrAmount: qsrIn,
+                minTonOut: 0,
+                deadline: (testing.getNow() + 3600) as uint32,
+            },
+        }),
+    );
+    val root = cursor.executeN(1);
+    expect(root).toHaveSuccessfulTx<SwapToTon>({ to: fixture.defi.address });
+    cursor.close();
+
+    val bouncedBody = beginCell()
+        .storeUint(0xffffffff, 32)
+        .storeSlice(
+            TonPayout {
+                queryId: 1,
+                amount: quote.tonOut as coins,
+            }
+            .toCell()
+            .beginParse(),
+        )
+        .endCell();
+    val bounced = createMessage({
+        bounce: BounceMode.NoBounce,
+        value: quote.tonOut as coins,
+        dest: fixture.defi.address,
+        body: bouncedBody,
+    }).bounced();
+    val bounceTrace = net.send(provider.address, bounced);
+    expect(bounceTrace).toHaveSuccessfulTx({ to: fixture.defi.address, bounced: true });
+
+    val claim = fixture.defi.tonPayoutClaim(1);
+    expect(claim.beneficiary).toEqual(provider.address);
+    expect(claim.status).toEqual(1);
+    expect(claim.amount > 0).toEqual(true);
+    expect(fixture.defi.tonClaimsHeld()).toEqual(claim.amount);
+
+    val unauthorized = net.send(
+        fixture.owner.address,
+        createMessage({
+            bounce: BounceMode.NoBounce,
+            value: grams("0.1"),
+            dest: fixture.defi.address,
+            body: ClaimTonPayout {
+                claimId: 1,
+                destination: fixture.owner.address,
+            },
+        }),
+    );
+    expect(unauthorized).toHaveFailedTx<ClaimTonPayout>({ to: fixture
+            .defi
+            .address, exitCode: 1251 });
+
+    val retry = net.send(
+        provider.address,
+        createMessage({
+            bounce: BounceMode.NoBounce,
+            value: grams("0.1"),
+            dest: fixture.defi.address,
+            body: ClaimTonPayout {
+                claimId: 1,
+                destination: destination.address,
+            },
+        }),
+    );
+    expect(retry).toHaveSuccessfulTx<ClaimTonPayout>({ to: fixture.defi.address });
+    expect(retry).toHaveSuccessfulTx<TonPayout>({ from: fixture
+            .defi
+            .address, to: destination.address });
+    expect(fixture.defi.tonPayoutClaim(1).status).toEqual(2);
+    expect(fixture.defi.tonClaimsHeld()).toEqual(0);
 }

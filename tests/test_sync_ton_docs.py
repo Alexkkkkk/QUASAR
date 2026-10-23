@@ -13,6 +13,7 @@ from contextlib import redirect_stdout
 from pathlib import Path
 from unittest import mock
 from urllib.error import HTTPError
+from urllib.request import Request
 
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
@@ -112,7 +113,7 @@ class SyncTonDocsTest(unittest.TestCase):
         unavailable = HTTPError(url, 503, "service unavailable", FakeHeaders(), None)
         response = FakeResponse(b"---\ntitle: Offline\n---\n\nActon content\n", final_url=url)
         with (
-            mock.patch.object(sync_ton_docs, "urlopen", side_effect=[unavailable, response]) as opener,
+            mock.patch.object(sync_ton_docs.DOCS_OPENER, "open", side_effect=[unavailable, response]) as opener,
             mock.patch.object(sync_ton_docs.time, "sleep") as sleep,
         ):
             actual = sync_ton_docs.fetch_page(source_id, url)
@@ -125,7 +126,7 @@ class SyncTonDocsTest(unittest.TestCase):
         url = dict(sync_ton_docs.SOURCES)["acton-scripting-overview"]
         missing = HTTPError(url, 404, "missing", FakeHeaders(), None)
         with (
-            mock.patch.object(sync_ton_docs, "urlopen", side_effect=missing) as opener,
+            mock.patch.object(sync_ton_docs.DOCS_OPENER, "open", side_effect=missing) as opener,
             mock.patch.object(sync_ton_docs.time, "sleep") as sleep,
         ):
             with self.assertRaises(sync_ton_docs.DocsSyncError):
@@ -133,6 +134,19 @@ class SyncTonDocsTest(unittest.TestCase):
 
         self.assertEqual(opener.call_count, 1)
         sleep.assert_not_called()
+
+    def test_redirect_handler_rejects_destination_before_following_it(self) -> None:
+        source_url = dict(sync_ton_docs.SOURCES)["jetton-overview"]
+        handler = sync_ton_docs.RejectRedirectHandler()
+        with self.assertRaisesRegex(sync_ton_docs.DocsSyncError, "refusing HTTP redirects"):
+            handler.redirect_request(
+                Request(source_url),
+                None,
+                302,
+                "Found",
+                {},
+                "https://attacker.invalid/collect",
+            )
 
     def test_build_snapshot_generates_index_with_hashes_for_every_page(self) -> None:
         def offline_fetch(source_id: str, unused_url: str) -> str:

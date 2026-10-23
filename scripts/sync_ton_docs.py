@@ -24,7 +24,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlparse
-from urllib.request import Request, urlopen
+from urllib.request import HTTPRedirectHandler, Request, build_opener
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -97,6 +97,26 @@ class StagedFile:
     backup: Path | None
     backed_up: bool = False
     installed: bool = False
+
+
+class RejectRedirectHandler(HTTPRedirectHandler):
+    """Reject redirects before opening any URL outside the reviewed source."""
+
+    def redirect_request(
+        self,
+        req: Request,
+        fp: object,
+        code: int,
+        msg: str,
+        headers: object,
+        newurl: str,
+    ) -> None:
+        raise DocsSyncError(
+            "refusing HTTP redirects; update the reviewed documentation source URL"
+        )
+
+
+DOCS_OPENER = build_opener(RejectRedirectHandler())
 
 
 def validate_source_url(url: str) -> None:
@@ -173,7 +193,7 @@ def _fetch_page_once(source_id: str, url: str) -> str:
             "User-Agent": "QUASAR-TON-Docs-Sync/1.1",
         },
     )
-    with urlopen(request, timeout=FETCH_TIMEOUT_SECONDS) as response:
+    with DOCS_OPENER.open(request, timeout=FETCH_TIMEOUT_SECONDS) as response:
         status = _response_status(response)
         if status is not None and status >= 400:
             raise HTTPError(url, status, "unexpected HTTP status", response.headers, None)
