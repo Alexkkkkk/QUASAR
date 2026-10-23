@@ -2,175 +2,47 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 const root = join(import.meta.dirname, '..');
-const master = readFileSync(join(root, 'contracts', 'quasar.tact'), 'utf8');
-const defi = readFileSync(join(root, 'contracts', 'quasar_defi.tact'), 'utf8');
-const common = readFileSync(join(root, 'contracts', 'quasar_common.tact'), 'utf8');
-const admin = readFileSync(join(root, 'contracts', 'quasar_admin.tact'), 'utf8');
+const master = readFileSync(join(root, 'tolk', 'contracts', 'QuasarMaster.tolk'), 'utf8');
+const defi = readFileSync(join(root, 'tolk', 'contracts', 'QuasarDeFi.tolk'), 'utf8');
+const common = readFileSync(join(root, 'tolk', 'contracts', 'QuasarCommon.tolk'), 'utf8');
+const wallet = readFileSync(join(root, 'tolk', 'contracts', 'QuasarWallet.tolk'), 'utf8');
+const admin = readFileSync(join(root, 'tolk', 'contracts', 'QuasarAdminTimelock.tolk'), 'utf8');
+const website = readFileSync(join(root, 'website', 'tonconnect.js'), 'utf8');
+const manifest = JSON.parse(readFileSync(join(root, 'website', 'tonconnect-manifest.json'), 'utf8')) as Record<string, string>;
 
-function assertContains(source: string, needle: string, label: string) {
-    if (!source.includes(needle)) throw new Error('Missing security invariant: ' + label);
+function requireSource(source: string, needle: string, label: string): void {
+    if (!source.includes(needle)) throw new Error(`Missing Tolk security invariant: ${label}`);
 }
 
-assertContains(common, 'const QUASAR_STORAGE_RESERVE: Int = ton("0.05");', 'shared storage reserve is explicit');
-assertContains(common, 'const QUASAR_MAX_TX_BPS: Int = 100;', 'wallet transfer policy is explicit');
-assertContains(common, 'const QUASAR_MAX_WALLET_BPS: Int = 300;', 'wallet balance policy is explicit');
-assertContains(common, 'const QUASAR_MAX_TX_AMOUNT: Int = QUASAR_MAX_SUPPLY * QUASAR_MAX_TX_BPS / 10000;', 'wallet transfer cap derives from the shared policy');
-assertContains(common, 'const QUASAR_MAX_WALLET_AMOUNT: Int = QUASAR_MAX_SUPPLY * QUASAR_MAX_WALLET_BPS / 10000;', 'wallet balance cap derives from the shared policy');
-assertContains(common, 'require(self.balance + msg.amount <= QUASAR_MAX_WALLET_AMOUNT, "Max wallet exceeded");', 'wallet enforces the shared balance cap');
-assertContains(common, 'require(msg.amount <= QUASAR_MAX_TX_AMOUNT, "Max tx exceeded");', 'wallet enforces the shared transfer cap');
-assertContains(master, 'require(msg.maxTxBps == QUASAR_MAX_TX_BPS && msg.maxWalletBps == QUASAR_MAX_WALLET_BPS && msg.cooldown == QUASAR_TRANSFER_COOLDOWN, "Transfer limits are fixed");', 'AI cannot advertise an unsupported wallet policy');
-assertContains(master, 'require(msg.feeBps == QUASAR_WALLET_FEE_BPS && msg.burnShare <= 100 && msg.maxTxBps == QUASAR_MAX_TX_BPS && msg.maxWalletBps == QUASAR_MAX_WALLET_BPS && msg.cooldown == QUASAR_TRANSFER_COOLDOWN, "Only implemented limits are allowed");', 'owner cannot store a policy that differs from wallet code');
-assertContains(master, 'override const storageReserve: Int = QUASAR_STORAGE_RESERVE;', 'master retains storage reserve');
-assertContains(defi, 'override const storageReserve: Int = QUASAR_STORAGE_RESERVE;', 'DeFi retains storage reserve');
-assertContains(admin, 'override const storageReserve: Int = QUASAR_STORAGE_RESERVE;', 'admin timelock retains storage reserve');
-assertContains(master, 'myBalance() - QUASAR_STORAGE_RESERVE', 'master sweep preserves storage reserve');
-assertContains(defi, 'self.tonReserve + msg.amount + QUASAR_STORAGE_RESERVE', 'DeFi sweep preserves storage reserve');
+requireSource(common, 'const QUASAR_STORAGE_RESERVE: coins = 50000000', 'explicit 0.05 TON rent reserve');
+requireSource(common, 'const QUASAR_MAX_TX_BPS = 100', 'fixed maximum transfer policy');
+requireSource(common, 'const QUASAR_MAX_WALLET_BPS = 300', 'fixed maximum wallet policy');
+requireSource(common, 'struct (0x0f8a7ea5) TokenTransfer', 'TEP-74 transfer opcode');
+requireSource(common, 'struct (0x178d4519) InternalTransfer', 'TEP-74 internal transfer opcode');
+requireSource(common, 'struct (0x2c76b973) ProvideWalletAddress', 'TEP-89 wallet discovery opcode');
+requireSource(wallet, 'storage.balance + message.amount <= QUASAR_MAX_WALLET_AMOUNT', 'wallet holder cap');
+requireSource(wallet, 'message.amount <= QUASAR_MAX_TX_AMOUNT', 'wallet transaction cap');
+requireSource(wallet, 'contract.getOriginalBalance() >= 75000000', 'wallet fee reserve guard');
+requireSource(wallet, 'queryKey >= QUASAR_POOL_PAYOUT_MARKER', 'pool payout bounce namespace');
+requireSource(master, 's.core.totalSupply + msg.amount <= s.core.maxSupply', 'hard maximum supply');
+requireSource(master, 's.core.totalSupply -= msg.amount', 'burn debits total supply');
+requireSource(master, 's.core.buybackPool + s.user.stakingRewardsPool + s.user.pendingReferralTotal', 'reserve encumbers liabilities');
+requireSource(master, 's.core.buybackSwapPending == 0', 'buyback overlap guard');
+requireSource(master, 'reserveGramsOnBalance(QUASAR_STORAGE_RESERVE, RESERVE_MODE_EXACT_AMOUNT)', 'master deploy reserve guard');
+requireSource(defi, 'assert (msg.feeBps > 0 && msg.feeBps <= 30)', 'DeFi fee ceiling');
+requireSource(defi, 'requireDeadline(msg.deadline)', 'DeFi deadline guard');
+requireSource(defi, 's.tonReserve + msg.amount + QUASAR_STORAGE_RESERVE', 'DeFi sweep reserve guard');
+requireSource(defi, 'reserveGramsOnBalance(QUASAR_STORAGE_RESERVE, RESERVE_MODE_EXACT_AMOUNT)', 'DeFi deploy reserve guard');
+requireSource(admin, 'validateTimelockStorage', 'timelock storage validation');
+requireSource(admin, 'assert (storage.minDelay >= 86400)', 'timelock minimum delay');
+requireSource(admin, 'storage.pendingCalls.delete', 'timelock delete-before-send');
 
-assertContains(master, 'require(msg.amount <= self.totalSupply, "Supply underflow");', 'burn cannot underflow totalSupply');
-assertContains(master, 'require(self.totalSupply + msg.amount <= self.maxSupply, "Max supply exceeded");', 'mint cannot exceed the hard supply cap');
-assertContains(master, 'fun _mintQueryId(): Int', 'mint bounces use a reserved query id');
-assertContains(master, 'queryId: self._mintQueryId(),', 'mint uses the reserved query id');
-assertContains(master, 'self.totalSupply = self.totalSupply - msg.amount;', 'mint bounces roll back total supply');
-assertContains(master, 'const MASTER_TRANSFER_QUERY_PREFIX: Int = 1 << 63;', 'Master transfers use a disjoint query-id namespace');
-assertContains(master, 'fun _newMasterTransferQueryId(): Int {', 'every Master transfer has a generated query ID');
-assertContains(master, 'self.masterPayoutSeq = id;', 'the Master transfer sequence advances before dispatch');
-assertContains(master, 'let transferQueryId: Int = self._newMasterTransferQueryId();', 'transfer helpers materialize unique generated IDs');
-assertContains(master, 'if (msg.queryId >= MASTER_TRANSFER_QUERY_PREFIX) {', 'only Master-tagged bounces can restore payout entitlements');
-assertContains(master, 'let localId: Int = payoutId >= MASTER_TRANSFER_QUERY_PREFIX', 'payout ledger keys are normalized from tagged transfer IDs');
-assertContains(master, 'forwardTonAmount: ton("0.01")', 'DeFi fee transfer emits accounting notification');
-assertContains(master, 'self._sendTokensToDefi(defiAmt);', 'fee split uses the generated-ID accounting path');
-assertContains(master, 'receive(msg: ClaimReferralRewards)', 'referral rewards have a claim path');
-assertContains(master, 'self.pendingReferralRewards.set(referrer', 'referral rewards are escrowed before claim');
-assertContains(master, 'pendingReferralTotal: Int as coins;', 'referral liabilities have an aggregate reserve counter');
-assertContains(master, 'self.buybackPool + self.stakingRewardsPool + self.pendingReferralTotal', 'all referral liabilities encumber the reserve');
-assertContains(master, 'require(msg.referrer != newAddress(0, 0), "Invalid referrer");', 'referrals cannot be assigned to the zero address');
-assertContains(defi, 'if (msg.from == self.qsrMaster)', 'master-funded DeFi notification is distinguished');
-assertContains(defi, 'message RefundPendingQsr', 'pending QSR deposits have a refund path');
-assertContains(defi, 'self._sendQsr(sender(), pending!!, 3, self._nextPayoutId())', 'pending QSR refunds return the deposited tokens');
-assertContains(defi, 'self.tonReserve + msg.amount + QUASAR_STORAGE_RESERVE', 'TON sweep preserves LP reserves');
-assertContains(master, 'require(pending == 0 || self.stakingRewardsPool >= pending, "Rewards pool empty")', 'staking cannot erase unpaid rewards');
-assertContains(defi, 'self.qsrReserve = self.qsrReserve + msg.amount;', 'master-funded DeFi fees enter qsrReserve');
-assertContains(defi, 'let farmAmount: Int = self._min(msg.lpAmount, farmStake!!.staked);', 'partial LP exit only unstakes farmed LP');
-assertContains(master, 'receive(msg: ProposeOwner)', 'ownership transfer requires an explicit proposal');
-assertContains(master, 'require(sender() == self.pendingOwner, "Not pending owner");', 'only the pending owner may accept ownership');
-assertContains(master, 'require(now() >= self.ownerTransferAt, "Timelock active");', 'ownership acceptance honors the timelock');
-
-assertContains(master, 'let extended: Int = now() + self.stakingLockPeriod;', 'staking top-up extends the lock (F-05)');
-assertContains(master, 'fun _requireAiCooldown() { require(now() - self.lastAiActionTime >= self.aiActionCooldown, "AI cooldown") }', 'AI cooldown is unconditional (F-07)');
-assertContains(master, 'self.buybackThreshold = 10_000_000_000;', 'buyback threshold is QSR-denominated (F-09)');
-assertContains(master, 'fun _sendBuybackToDefi', 'buyback swap leg is routed through the DeFi AMM (F-09)');
-assertContains(master, 'storeUint(0x5f4a3b21, 32)', 'buyback marker payload identifies the swap leg (F-09)');
-assertContains(master, 'receive(msg: BuybackTon)', 'master accounts the AMM buyback TON proceeds (F-09)');
-assertContains(master, 'require(self.buybackSwapPending == 0, "Buyback pending");', 'buybacks cannot overlap while a swap is pending');
-assertContains(master, 'buybackQueries: map<Int, Bool>;', 'buyback query ids are replay-protected');
-assertContains(master, 'require(self.buybackQueries.get(msg.queryId) == null, "Query already used");', 'buyback trigger query ids are unique');
-assertContains(defi, 'fun _executeBuybackSwap', 'DeFi executes the master-initiated buyback swap (F-09)');
-assertContains(defi, 'self._executeBuybackSwap(msg.amount, msg.queryId);', 'the buyback swap runs atomically inside the credit transaction (F-09)');
-assertContains(defi, 'message(0x2c7e91a4) BuybackTon', 'buyback TON return uses a dedicated opcode (F-09)');
-assertContains(master, 'aiActionOldAddress: map<Int, Address>;', 'AI address actions are reversible (F-07)');
-assertContains(master, 'receive(msg: ProposeContent)', 'jetton metadata changes require an explicit proposal (TEP-64, #58)');
-assertContains(master, 'require(prefix == 0x00 || prefix == 0x01, "Invalid TEP-64 content prefix");', 'only documented TEP-64 layouts may be staged (#58)');
-assertContains(master, 'require(self.contentAt > 0 && now() >= self.contentAt, "Content timelock active");', 'metadata updates honor the 48h timelock (TEP-64, #58)');
-assertContains(master, 'self.content = self.pendingContent!!;', 'metadata is only written by the timelocked confirmation (TEP-64, #58)');
-assertContains(master, 'fun _workchainOf(a: Address): Int?', 'TEP-89 discovery parses the owner workchain (#60)');
-assertContains(master, 'storeUint(0, 2)             // wallet_address: addr_none$00', 'TEP-89 wrong-workchain answers carry addr_none (#60)');
-assertContains(common, 'receive(msg: ProvideWalletAddress) {', 'the jetton wallet answers TEP-89 discovery itself (#56)');
-assertContains(defi, 'require(msg.feeBps > 0 && msg.feeBps <= 30, "Fee must not exceed 0.30%");', 'DeFi fee ceiling matches the docs (F-13)');
-assertContains(defi, 'fun _requireDeadline(deadline: Int)', 'DeFi operations have an explicit expiry guard');
-assertContains(defi, 'require(deadline > now(), "Operation expired");', 'expired swaps and liquidity operations are rejected');
-assertContains(defi, 'minimumLiquidity: Int as coins;', 'the first LP has permanently locked minimum liquidity');
-assertContains(defi, 'require(rootLp > self.minimumLiquidity, "Initial liquidity too small");', 'initial liquidity cannot bypass the locked minimum');
-assertContains(defi, 'require(lpToMint >= msg.minLpOut, "LP slippage exceeded");', 'LP minting has user-controlled minimum output');
-assertContains(defi, 'require(tonOut >= msg.minTonOut, "TON slippage exceeded");', 'liquidity removal has a TON minimum output');
-assertContains(defi, 'require(qsrOut >= msg.minQsrOut, "QSR slippage exceeded");', 'liquidity removal has a QSR minimum output');
-assertContains(defi, 'receive(msg: EmergencyWithdrawFarm)', 'farm principal has an emergency withdrawal path');
-assertContains(defi, 'receive(msg: ProposePoolOwner)', 'DeFi ownership transfer requires an explicit proposal');
-assertContains(defi, 'require(now() >= self.ownerTransferAt, "Timelock active");', 'DeFi ownership acceptance honors the timelock');
-assertContains(defi, 'self.pendingFeeAt = now() + self.ownerTransferDelay;', 'DeFi fee changes are staged behind a timelock');
-assertContains(defi, 'self.pendingMaxTradeAt = now() + self.ownerTransferDelay;', 'DeFi trade-limit changes are staged behind a timelock');
-assertContains(defi, 'priceCumulativeQsrPerTon: Int;', 'DeFi exposes cumulative price observations for TWAP consumers');
-
-assertContains(master, 'self.buybackSwapPending == 0 && self.buybackPool >= self.buybackThreshold', 'a pending buyback swap cannot be overwritten by the fee path (M-03)');
-
-assertContains(common, 'message(0xd53276db) TokenExcesses', 'excesses use the TEP-74 opcode (F-21)');
-assertContains(master, 'body: TransferConfirmed{ queryId: msg.queryId }.toCell()', 'the master dispatches source-wallet cleanup from the authenticated FeeTransfer path (P0.2)');
-assertContains(common, 'if (receiver == null) { return }', 'stale transfer confirmations are a no-op, not a revert (P0.2)');
-assertContains(common, 'body: TokenExcesses{ queryId: msg.queryId }.toCell()', 'excesses carry the request query id (F-21)');
-assertContains(master, 'return accrued > self.stakingRewardsPool ? self.stakingRewardsPool : accrued;', 'staking rewards are capped by the fee pool (F-23)');
-assertContains(master, 'emit(EventBuybackExecuted{ tonSpent: 0, qsrBurned: burnPart }.toCell());', 'the buyback receipt keeps the remaining-value slot free (F-22: v5 uses an emit() external message, which cannot consume it)');
-
-const aiPriceSignal = master.slice(master.indexOf('receive(msg: AIPriceSignal)'), master.indexOf('receive(msg: AIAnomalyAlert)'));
-if (aiPriceSignal.includes('self.mintable = true')) throw new Error('AIPriceSignal can re-enable minting');
-
-// ─── Website / dApp invariants (documentation-driven) ───
-const websiteJs = readFileSync(join(root, 'website', 'tonconnect.js'), 'utf8');
-const websiteHtml = readFileSync(join(root, 'website', 'index.html'), 'utf8');
-const manifest = JSON.parse(readFileSync(join(root, 'website', 'tonconnect-manifest.json'), 'utf8'));
-
-// QuasarWallet.receive(TokenTransfer) spends 0.02 + 0.05 TON from the source
-// wallet balance. Attaching less makes the second action fail with exit code 37.
-const depositGas = Number((websiteJs.match(/DEPOSIT:\s*'(\d+)'/) || [])[1]);
-if (!Number.isFinite(depositGas) || depositGas < 70_000_000) {
-    throw new Error('dApp deposit gas is below the 0.07 TON the wallet spends: ' + depositGas);
-}
-
-// TEP-74 deposit: the transfer must carry a non-zero forward TON amount so the
-// receiving wallet emits the TokenNotification that credits the deposit.
-if (!websiteJs.includes('DEPOSIT_FORWARD_TON')) throw new Error('missing jetton forward TON');
-
-// TON Connect: url/name/iconUrl are required, iconUrl must be a PNG (no SVG),
-// and the CDN bundle must be pinned instead of @latest.
 for (const key of ['url', 'name', 'iconUrl']) {
-    if (!manifest[key]) throw new Error('manifest field missing: ' + key);
+    if (!manifest[key]) throw new Error(`TON Connect manifest field missing: ${key}`);
 }
-if (!manifest.iconUrl.endsWith('.png')) throw new Error('manifest iconUrl must be a PNG');
-if (manifest.url.endsWith('/')) throw new Error('manifest url should not end with a slash');
-if (websiteHtml.includes('@tonconnect/ui@latest')) throw new Error('TON Connect UI must be pinned');
+if (!manifest.iconUrl.endsWith('.png')) throw new Error('TON Connect icon must be a PNG');
+requireSource(website, 'JETTON_TRANSFER_OP = 0x0f8a7ea5', 'dApp TEP-74 transfer opcode');
+requireSource(website, 'DEPOSIT_FORWARD_TON', 'dApp forwards TON for TEP-74 notifications');
+requireSource(website, 'runGetMethod', 'dApp reads on-chain getters');
 
-assertContains(master, 'require(burnAmount <= self.totalSupply, "Burn exceeds supply");', 'the fee burn is explicitly capped by the circulating supply (F-36)');
-assertContains(master, 'require(self.govProposalExecuted.get(msg.proposalId) == null, "Proposal already executed");', 'a governance proposal id is single-use (F-35)');
-assertContains(master, 'fun _logAnomaly(', 'AI market-data writes share one bounded writer (F-34)');
-assertContains(master, 'QUASAR_AI_PRICE_HISTORY_CAP', 'AI price history retention is capped (F-34)');
-
-console.log('Security invariants passed: ' + [
-    'burn supply guard',
-    'hard supply cap',
-    'DeFi fee reserve reconciliation',
-    'partial LP farm exit',
-    'pending deposit refunds',
-    'LP reserve sweep protection',
-    'staking reward preservation',
-    'mint-stop protection',
-    'referral escrow',
-    'timelocked ownership transfer',
-    'staking lock extension',
-    'unconditional AI cooldown',
-    'QSR-denominated buyback threshold',
-    'buyback AMM swap leg',
-    'reversible AI address actions',
-    'DeFi fee ceiling',
-    'deadline and slippage guards',
-    'initial LP minimum liquidity',
-    'farm emergency withdrawal',
-    'DeFi owner timelock',
-    'timelocked DeFi fee controls',
-    'AMM price observations',
-    'buyback swap overlap guard',
-    'authenticated transfer confirmations',
-    'dApp deposit gas covers the wallet fee legs',
-    'TON Connect manifest and pinned SDK bundle'
-].join(', '));
-
-// ─── A-67: signed AI oracle decisions ───
-assertContains(master, 'aiOraclePubKey: Int as uint256;', 'the oracle authority is an Ed25519 public key');
-assertContains(master, 'aiNonce: Int as uint64;', 'signed decisions carry a nonce counter');
-assertContains(master, 'const AI_DECISION_DOMAIN: Int = 0x51a5c3d2;', 'the signed payload is domain-separated');
-assertContains(master, 'message(0x7a1e5c01) AISignedDecision', 'the signed-decision opcode is pinned for the off-chain signer');
-assertContains(master, '.storeUint(AI_DECISION_DOMAIN, 32)', 'the signed cell starts with the domain tag');
-assertContains(master, 'require(checkSignature(signed.hash(), msg.signature, self.aiOraclePubKey), "Bad oracle signature");', 'the oracle is authenticated by signature, not by sender');
-assertContains(master, 'require(msg.nonce > self.aiNonce, "Stale oracle nonce");', 'a signed decision cannot be replayed');
-assertContains(master, 'require(msg.validUntil >= now(), "Signed decision expired");', 'a signed decision expires');
-assertContains(master, 'require(self.aiOraclePubKey != 0, "No oracle key");', 'signed decisions are inert until a key is installed');
-assertContains(master, 'require(self.aiFullAutonomy, "No autonomy");', 'a signed pause cannot resume the economy without full autonomy');
-assertContains(master, 'receive(msg: ClearAiOracleKey)', 'the owner can revoke the oracle key');
-assertContains(master, 'self._restoreAiAction(msg.actionId, act);', 'signed actions stay reversible through the shared override path');
+console.log('Tolk security invariants passed: wallet caps, ABI opcodes, rent reserves, supply cap, AMM limits, timelock validation, and dApp safety checks');

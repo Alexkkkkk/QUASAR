@@ -119,7 +119,7 @@ export function isMergeableCandidate(pr) {
   return { ok: true, why: 'green' };
 }
 const PROTECTED_PREFIXES = [
-  '.github/workflows/', 'contracts/', 'scripts/', 'docs/ai/',
+  '.github/workflows/', 'tolk/contracts/', 'tolk/Acton.toml', 'scripts/', 'docs/ai/',
   '.github/dependabot.yml',
 ];
 const PROTECTED_FILES = new Set([

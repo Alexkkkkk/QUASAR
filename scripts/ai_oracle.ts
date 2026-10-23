@@ -506,10 +506,10 @@ function decisionBlockedBySignals(signalAnalysis: OracleSignalAnalysis): OracleD
 // the domain tag and the message opcode are pinned constants in both files.
 // https://docs.tact-lang.org/ref/core-crypto#checksignature
 
-/** Domain tag; must equal `AI_DECISION_DOMAIN` in contracts/quasar.tact. */
+/** Domain tag; must equal `AI_DECISION_DOMAIN` in tolk/contracts/QuasarMaster.tolk. */
 export const AI_DECISION_DOMAIN = 0x51a5c3d2;
 
-/** Explicit message opcode of `AISignedDecision` in contracts/quasar.tact. */
+/** Explicit message opcode of `AiSignedDecision` in tolk/contracts/QuasarMaster.tolk. */
 export const SIGNED_DECISION_OPCODE = 0x7a1e5c01;
 
 export const SIGNED_ORACLE_ACTIONS = {

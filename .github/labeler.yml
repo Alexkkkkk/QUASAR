@@ -1,6 +1,6 @@
 contracts:
   - changed-files:
-      - any-glob-to-any-file: ['contracts/**']
+      - any-glob-to-any-file: ['tolk/contracts/**', 'tolk/Acton.toml']
 
 tests:
   - changed-files:
@@ -20,7 +20,7 @@ dapp:
 
 defi:
   - changed-files:
-      - any-glob-to-any-file: ['contracts/quasar_defi.tact', 'scripts/deploy_defi.ts']
+      - any-glob-to-any-file: ['tolk/contracts/QuasarDeFi.tolk']
 
 ton-docs:
   - changed-files:

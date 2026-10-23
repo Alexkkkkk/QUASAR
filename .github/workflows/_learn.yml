@@ -60,7 +60,7 @@ jobs:
             echo "no pattern changes tonight"
             exit 0
           fi
-          blocked=$(printf '%s\n' "$changed" | grep -E '^(\.github/workflows/|contracts/)' || true)
+          blocked=$(printf '%s\n' "$changed" | grep -E '^(\.github/workflows/|tolk/(contracts/|Acton\.toml$))' || true)
           [[ -z "$blocked" ]] || { echo "::error::Learn touched protected paths: $blocked"; exit 1; }
           # The learn loop may only ever rewrite its own memory file.
           extra=$(printf '%s\n' "$changed" | grep -v -x 'docs/ai/failure_patterns.md' || true)

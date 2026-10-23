@@ -9,7 +9,7 @@
 - [ ] Deployment or configuration behavior changed
 - [ ] Security-sensitive change reviewed against `docs/SECURITY_AUDIT.md`
 
-## TON conformance (required for any `contracts/**` change)
+## TON conformance (required for any `tolk/contracts/**` change)
 
 - [ ] TEP-74 / TEP-64 / TEP-89 reference link added to this description
 - [ ] `docs/TON_CONFORMANCE_MATRIX.md` updated

@@ -1,3 +1,5 @@
+# Historical Tact workflow reference. The active workflow is
+# .github/workflows/ai-ollama-agent.yml and uses Acton/Tolk.
 name: QUASAR Ollama issue agent
 
 on:

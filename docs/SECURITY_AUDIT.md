@@ -1,5 +1,10 @@
 # QUASAR Contract Security Review
 
+> **Historical Tact evidence:** the findings below concern the former Tact
+> generation. QUASAR's active code is `tolk/contracts/`; its new StateInit,
+> storage, code hash, address space, gas and action traces have not received an
+> independent audit. This document is not a Tolk release approval.
+
 Date: 2026-09-15
 Scope: contracts/quasar.tact, contracts/quasar_defi.tact, generated bindings, deployment flow, and CI validation.
 
@@ -36,7 +41,7 @@ an unimplemented claim path.
 ## Test coverage added
 
 - npm run security:check validates the source-level invariants above.
-- npm run testnet:smoke performs read-only testnet checks: deployment presence, Master/DeFi linkage, non-zero supply, reserve sanity, and configured supply.
+- The former read-only testnet smoke command checked deployment presence, Master/DeFi linkage, non-zero supply, reserve sanity, and configured supply.
 - Generated TypeScript bindings, ABI, and BOC artifacts are regenerated from the patched contracts.
 
 ## Residual risks requiring independent review

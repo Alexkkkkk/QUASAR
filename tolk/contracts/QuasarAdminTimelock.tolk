@@ -123,6 +123,35 @@ fun zeroAddress(): address {
     return address.fromWorkchainAndHash(BASECHAIN, 0);
 }
 
+fun validateTimelockStorage(storage: QuasarAdminTimelockStorage) {
+    // These are constructor invariants in the former implementation. Keep them
+    // in executable code because Tolk StateInit data is built explicitly.
+    assert (storage.admin != zeroAddress()) throw 45350;
+    assert (storage.master != zeroAddress()) throw 45351;
+    assert (storage.minDelay >= 86400) throw 45353;
+}
+
+fun newQuasarAdminTimelockStorage(
+    admin: address,
+    master: address,
+    defi: address,
+    minDelay: uint32,
+): QuasarAdminTimelockStorage {
+    val storage = QuasarAdminTimelockStorage {
+        admin,
+        pendingAdmin: zeroAddress(),
+        adminTransferAt: 0,
+        adminTransferDelay: ADMIN_TRANSFER_DELAY,
+        minDelay,
+        lastQueuedCallId: 0,
+        master,
+        defi,
+        pendingCalls: [],
+    };
+    validateTimelockStorage(storage);
+    return storage;
+}
+
 fun requireAdmin(storage: QuasarAdminTimelockStorage, senderAddress: address) {
     assert (senderAddress == storage.admin) throw 45352;
 }
@@ -181,6 +210,9 @@ contract QuasarAdminTimelock {
 
 fun onInternalMessage(in: InMessage) {
     val msg = lazy AllowedMessageToQuasarAdminTimelock.fromSlice(in.body);
+    // A StateInit can be attached to any first internal message, not only Deploy.
+    // Validate before dispatch so an invalid zero-admin/short-delay instance is inert.
+    validateTimelockStorage(QuasarAdminTimelockStorage.load());
     match (msg) {
         QueueAdminCall => {
             var storage = QuasarAdminTimelockStorage.load();

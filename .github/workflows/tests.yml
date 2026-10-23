@@ -51,6 +51,17 @@ jobs:
         if: matrix.package == 'contracts'
         run: npm ci
 
+      - name: Set up Acton (contracts)
+        if: matrix.package == 'contracts'
+        uses: ton-blockchain/setup-acton@0f9f436843d740466cae2d7411ff59072dde942e # v1.2.0
+        with:
+          working-directory: tolk
+
+      - name: Initialize Acton project (contracts)
+        if: matrix.package == 'contracts'
+        working-directory: tolk
+        run: acton init
+
       - name: Build contracts and run security check
         if: matrix.package == 'contracts'
         run: |

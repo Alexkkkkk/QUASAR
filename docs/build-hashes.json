@@ -1,54 +1,43 @@
 {
-  "generatedAt": "2026-10-13T04:21:31.861Z",
-  "note": "Build-artifact hashes only. Mainnet/testnet addresses must be published separately once deployments exist.",
+  "schemaVersion": 2,
+  "toolchain": {
+    "project": "Tolk/Acton",
+    "acton": "1.2.1"
+  },
+  "generatedAt": "2026-10-23T05:57:10.074Z",
+  "note": "Hashes identify reproducible fresh-deployment Tolk artifacts. They do not establish state or address compatibility with legacy Tact deployments.",
   "artifacts": [
     {
-      "file": "build/quasar_QuasarMaster.abi",
-      "sha256": "895bd034ab852d368120ecb77b2921ffa38a8bc3c4a8d346f4e2e942364da50c"
+      "file": "tolk/build/synchronized/abi/QuasarAdminTimelock.json",
+      "sha256": "91856e03f72138871cd93eab0f8e280c5ad4e570ea94ead7cd065fe7ab181352"
     },
     {
-      "file": "build/quasar_QuasarMaster.code.boc",
-      "sha256": "93738fe6259e88322eb7b25fe5ab1cd9074293f0f0657d7e747ae5fd578e9c43"
+      "file": "tolk/build/synchronized/abi/QuasarDeFi.json",
+      "sha256": "2885b332359a2c51c62a5c02364bfa294dc83303774cdb6bad5d1371c899c16a"
     },
     {
-      "file": "build/quasar_QuasarWallet.abi",
-      "sha256": "adc88283cc149e85142b22587af7026336b2b569aa4f14db258f0a3cdebd58e1"
+      "file": "tolk/build/synchronized/abi/QuasarMaster.json",
+      "sha256": "358132a6f350e154169b26c8d9cca087732e60a9175724d91814443ebad19818"
     },
     {
-      "file": "build/quasar_QuasarWallet.code.boc",
-      "sha256": "1603c28096be9b75a1a3c46c1b95c66874143ddbdc14efea308acf2e4b539527"
+      "file": "tolk/build/synchronized/abi/QuasarWallet.json",
+      "sha256": "a0070f74cf9ed33c17cb9a8e64870c15f4b95b62fbe95ca8b19fb36407876d00"
     },
     {
-      "file": "build/quasar_admin_QuasarAdminTimelock.abi",
-      "sha256": "63643d58276cbf35d0a12d79089dbdaa0468b217d6538e78b99ba577ccc7fac3"
+      "file": "tolk/build/synchronized/boc/QuasarAdminTimelock.boc",
+      "sha256": "0cd585cf23014214900e75acd98b3a985f2815f9c2ba02fd0840c5d727729f44"
     },
     {
-      "file": "build/quasar_admin_QuasarAdminTimelock.code.boc",
-      "sha256": "638aebeded2657cb0547867e545f5dcf6522fd5f9b2430c53a7e203e930e1755"
+      "file": "tolk/build/synchronized/boc/QuasarDeFi.boc",
+      "sha256": "eb688cc25732f682ca5ed10e29586a93d9f876f4db1882e73f2eccb67034fbc0"
     },
     {
-      "file": "build/quasar_admin_QuasarWallet.abi",
-      "sha256": "089ebecdd4da74e0e42d3434b755f8563eccacd04ea3538ea6688033922ec4ec"
+      "file": "tolk/build/synchronized/boc/QuasarMaster.boc",
+      "sha256": "bc012bb675eeb2cdb7de635e2d74677390730fb4b007dfd41384b4ffd5da610a"
     },
     {
-      "file": "build/quasar_admin_QuasarWallet.code.boc",
-      "sha256": "1603c28096be9b75a1a3c46c1b95c66874143ddbdc14efea308acf2e4b539527"
-    },
-    {
-      "file": "build/quasar_defi_QuasarDeFi.abi",
-      "sha256": "8f3f0a5d31bd855b5507d63212dd2a1bd4d82d1c5bdf7fd3cf0f824f6928e447"
-    },
-    {
-      "file": "build/quasar_defi_QuasarDeFi.code.boc",
-      "sha256": "a7724a7677fd0c1692f26e4b50a195a35372b681d32469ab30b39d9030855f4a"
-    },
-    {
-      "file": "build/quasar_defi_QuasarWallet.abi",
-      "sha256": "768d392f2474064cfea53bb111b147150df61aaae94b1c40268f0ed248063453"
-    },
-    {
-      "file": "build/quasar_defi_QuasarWallet.code.boc",
-      "sha256": "1603c28096be9b75a1a3c46c1b95c66874143ddbdc14efea308acf2e4b539527"
+      "file": "tolk/build/synchronized/boc/QuasarWallet.boc",
+      "sha256": "e08ef86e24700183fa203947af5d1a34aacc4d10b47f0a5fc71e81932aa971ad"
     }
   ]
 }

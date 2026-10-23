@@ -1,5 +1,5 @@
 import "@gen/QuasarWallet.code"
-// QUASAR Jetton Master, ported from contracts/quasar.tact.
+// QUASAR Jetton Master. Historical Tact evidence is retained under docs/historical/.
 // The external ABI is pinned to docs/abi/quasar-master.json.  This is a
 // versioned Tolk layout: deployed Tact state data is not decoded by this code.
 import "QuasarCommon"
@@ -2118,11 +2118,26 @@ fun onInternalMessage(in: InMessage) {
     val msg = lazy AllowedMessageToQuasarMaster.fromSlice(in.body);
     match (msg) {
         Deploy => {
+            val body = DeployOk { queryId: msg.queryId };
+            val balanceBeforeMessage = contract.getOriginalBalance() - in.valueCoins;
+            if (balanceBeforeMessage < QUASAR_STORAGE_RESERVE) {
+                // Preserve the declared rent reserve before returning deployment value.
+                reserveGramsOnBalance(QUASAR_STORAGE_RESERVE, RESERVE_MODE_EXACT_AMOUNT);
+                val reserveReply = createMessage({
+                    bounce: BounceMode.NoBounce,
+                    dest: in.senderAddress,
+                    value: 0,
+                    body,
+                });
+                // SAFETY: the exact rent reserve is locked before this Deploy-only reply.
+                reserveReply.send(SEND_MODE_CARRY_ALL_BALANCE | SEND_MODE_IGNORE_ERRORS);
+                return;
+            }
             val deployOkMessage = createMessage({
                 bounce: BounceMode.NoBounce,
                 dest: in.senderAddress,
                 value: 0,
-                body: DeployOk { queryId: msg.queryId },
+                body,
             });
             deployOkMessage.send(
                 SEND_MODE_CARRY_ALL_REMAINING_MESSAGE_VALUE | SEND_MODE_IGNORE_ERRORS,

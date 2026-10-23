@@ -1,15 +1,30 @@
 # Решение о миграции Tact → Tolk
 
-Обновлено: 2026-10-22, PR #280. Разрешены параллельная Tolk-реализация, локальные build/test/script и проверка совместимости. Переключение production/testnet bytecode, deployment и перенос состояния не разрешены этим изменением.
+Обновлено: 2026-10-23, issue #289. QUASAR переключён на Tolk/Acton как
+единственный активный путь разработки контрактов. Канонические исходники,
+тесты, ABI snapshots, wrappers, CI и build hashes находятся в `tolk/` и
+строятся Acton `1.2.1`.
 
-В `tolk/` теперь есть отдельный проект Acton 1.2.1: Master, Wallet, DeFi и AdminTimelock. Корневые `contracts/*.tact`, npm/Tact build и действующее dApp остаются эталонным поддерживаемым путём. Историческое решение от 2026-09-29 «не добавлять Tolk в тот change set» не описывает текущее дерево PR.
+Предыдущие Tact-исходники, конфигурация, sandbox suites и deployment scripts
+перенесены в `docs/historical/tact-reference/`. Это read-only evidence для
+аудита миграции. Они не компилируются, не typecheck-ятся, не запускаются в CI и
+не входят в release artifacts.
 
-`scripts/sync_acton.py` строит свежий Tact baseline и изолированное поколение Tolk-артефактов. Проверяются сообщения и getter signatures, включая поля возвращаемых структур; сгенерированные TypeScript serializers сравниваются с Tact на одинаковых fixtures побайтово. Затем выполняются Acton-тесты и самостоятельные локальные Tolk-сценарии. Публикация ABI, BoC и wrappers атомарна; offline `--check` проверяет исходники и артефакты по SHA-256. Инструкция — [tolk/README.md](../tolk/README.md).
+## Совместимость и release boundary
 
-Сериализация Tolk storage является отдельной версией и не должна загружать данные действующего Tact-контракта. Крупные состояния разделяются на ref-chain cells с явными pack/unpack; успешная компиляция сама по себе не проверяет отсутствие runtime cell overflow. Регрессии должны проверять создание, изменение и round-trip состояния, включая ненулевые словари и крайние значения.
+Публичный wire ABI Tolk фиксируется compiler-derived snapshots: typed messages,
+explicit opcodes, field layouts, getters и method IDs. Это не доказывает
+совместимость хранения или адресов. Tolk использует versioned storage, новый
+code hash и новый StateInit; Tact Master, DeFi, Timelock и wallet storage нельзя
+загрузить в Tolk bytecode и нельзя считать старые wallet addresses адресами
+нового поколения.
 
-Совпадение message cells и getter ABI не является доказательством полной экономической, gas/trace или bounce/replay-эквивалентности. Смена языка и компилятора меняет code hashes и адреса. Tolk/TypeScript wrappers с custom storage serialization требуют явных custom hooks для `fromStorage`; генерация bindings не разрешает автоматический init или deployment из dApp. В рамках этого PR используются Tolk factory/pack/unpack и локальный эмулятор.
+Master и DeFi сохраняют rent reserve при `Deploy`; Timelock валидирует nonzero
+admin/master и минимальную задержку независимо от того, каким первым сообщением
+прикреплён StateInit. Эти проверки не заменяют полный behavioral audit.
 
-До release требуются полное поведенческое сравнение с Tact, проверка storage/init, gas и action traces успешных и отклонённых операций, независимый аудит и отдельный согласованный план смены адресов/состояния. Никакие deploy-секреты, реальные транзакции или канонические адреса этим изменением не публикуются.
-
-Источники: [Tolk overview](https://docs.ton.org/tolk/overview), [Acton scripting](https://ton-blockchain.github.io/acton/docs/scripting/overview), [Acton blockchain interaction](https://ton-blockchain.github.io/acton/docs/scripting/blockchain-interaction).
+Перед любым deployment всё ещё необходимы: differential traces success/reject/
+bounce paths, проверка non-empty storage dictionaries и границ cell, отдельный
+state-transition/claim plan, testnet rehearsal, reproducible code-hash review и
+независимый security audit. Никакие секреты, реальные транзакции или адреса не
+публикуются этим изменением.

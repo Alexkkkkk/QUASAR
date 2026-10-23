@@ -7,7 +7,7 @@ from pathlib import Path, PurePosixPath
 from ollama_issue_agent import AgentError, DIFF_HEADER_RE, validate_patch
 
 BLOCKED = re.compile(
-    r"^(?:contracts/|\.github/|package(?:-lock)?\.json$|"
+    r"^(?:tolk/(?:contracts/|Acton\.toml$)|\.github/|package(?:-lock)?\.json$|"
     r"scripts/(?:deploy|security_check|hub_audit|sync_action_pins))|"
     r"(?:^|/)(?:\.env(?:\.|$)|deployment\.json$|build-hashes\.json$|action_pins\.lock\.json$)|"
     r"mnemonic|seed|private[-_]?key", re.I

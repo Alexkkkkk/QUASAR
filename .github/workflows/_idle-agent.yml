@@ -71,6 +71,15 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Set up Acton
+        uses: ton-blockchain/setup-acton@0f9f436843d740466cae2d7411ff59072dde942e # v1.2.0
+        with:
+          working-directory: tolk
+
+      - name: Initialize Acton project
+        working-directory: tolk
+        run: acton init
+
       # ШАГ 1 — изучение (read-only, без tools записи): модель получает
       # ограниченный срез целевого модуля и выдаёт findings строгим JSON.
       - name: Build the study prompt from the target module
@@ -154,7 +163,7 @@ jobs:
           Return ONLY a text unified diff beginning with diff --git.
           You have no tools. Use the source excerpts below, preserve unrelated
           code, and change only files within the target module.
-          HARD BOUNDARIES: never modify contracts/,
+          HARD BOUNDARIES: never modify tolk/contracts/ or tolk/Acton.toml,
           .github/workflows/, deploy/security/hub scripts, package manifests,
           .env/keys material. No network beyond your model API.
           Findings:
@@ -193,7 +202,7 @@ jobs:
           npm run lint && npm test && npx tsc --noEmit
           git add --intent-to-add --all
           changed=$(git diff --name-only)
-          blocked=$(printf '%s\n' "$changed" | grep -E '^(\.github/workflows/|contracts/|scripts/(deploy|security_check|hub_audit|sync_action_pins)|package(-lock)?\.json$|(^|/)(deployment|build-hashes|action_pins\.lock)\.json$|(^|/)\.env($|\.)|mnemonic|seed|private[-_]?key)' || true)
+          blocked=$(printf '%s\n' "$changed" | grep -E '^(\.github/workflows/|tolk/(contracts/|Acton\.toml$)|scripts/(deploy|security_check|hub_audit|sync_action_pins)|package(-lock)?\.json$|(^|/)(deployment|build-hashes|action_pins\.lock)\.json$|(^|/)\.env($|\.)|mnemonic|seed|private[-_]?key)' || true)
           [[ -z "$blocked" ]] || { echo "::error::Idle fix touched red lines: $blocked"; exit 1; }
           [[ -n "$changed" ]] || { echo "no changes"; exit 0; }
           git config user.name quasar-autopilot

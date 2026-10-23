@@ -1,5 +1,8 @@
 # QUASAR: от 15 отдельных workflow к единому автономному организму
 
+> **Historical automation design:** code blocks below preserve the pre-cutover
+> Tact/CI design. Active workflows protect `tolk/contracts/` and use Acton.
+
 Цель: GitHub Actions в QUASAR (Alexkkkkk/QUASAR) перестают быть «островами» и
 собираются в один управляемый контур — с сохранением guardrails: read-only по
 умолчанию, protected paths, draft PR до CI, CI-only auto-merge после зелёных

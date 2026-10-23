@@ -238,6 +238,15 @@ jobs:
       - name: Install the root project
         run: npm ci
 
+      - name: Set up Acton
+        uses: ton-blockchain/setup-acton@0f9f436843d740466cae2d7411ff59072dde942e # v1.2.0
+        with:
+          working-directory: tolk
+
+      - name: Initialize Acton project
+        working-directory: tolk
+        run: acton init
+
       - name: Apply deterministic fixes for the detected classes
         env:
           PLAN: ${{ runner.temp }}/evidence/plan.json
@@ -468,7 +477,7 @@ jobs:
             echo "Автоматика: повесьте label \`ai-fix\` — сработает полный агент и откроет draft PR."
             echo "Контекст для моделей: \`docs/ai/failure_patterns.md\`."
             echo
-            echo "Не трогать: \`contracts/\`, \`.github/workflows/\` — по конституции это классы «человек»."
+            echo "Не трогать: \`tolk/contracts/\`, \`.github/workflows/\` — по конституции это классы «человек»."
           } > "$RUNNER_TEMP/issue-body.md"
           gh issue create --repo "$REPO" \
             --title "Failing checks on main (heal exhausted)" \
