@@ -164,6 +164,11 @@ uploads SARIF plus scheduled quality reports. The manual `acton-autofix`
 workflow produces a reviewable patch artifact and has read-only permissions;
 it never pushes or merges changes.
 
+The scheduled/manual `acton-autofix-bot` runs the same plain-output formatter
+and lint auto-fix, then only commits an isolated `automation/acton-autofix`
+branch and opens or updates a PR. It never writes `main`, merges, deploys,
+broadcasts, requests faucet funds, or accesses wallet secrets.
+
 Fuzz tests, pinned-block fork tests, gas baseline comparison, Studio, simulator,
 Docker localnet, deployment scripts, wallet/faucet actions, verification
 payments, and masterchain library publish/top-up remain explicit operator

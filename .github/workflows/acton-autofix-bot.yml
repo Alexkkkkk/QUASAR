@@ -1,0 +1,83 @@
+name: Acton Unattended Auto-fix Bot
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '37 3 * * 1'
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: acton-autofix-bot
+  cancel-in-progress: true
+
+jobs:
+  repair:
+    name: Generate and propose Acton fixes
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out protected base
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Set up Acton
+        uses: ton-blockchain/setup-acton@0f9f436843d740466cae2d7411ff59072dde942e # v1.2.0
+        with:
+          working-directory: tolk
+          version: '1.2.1'
+
+      - name: Initialize Acton project
+        working-directory: tolk
+        run: acton init --stdlib-only
+
+      - name: Apply safe Acton corrections
+        working-directory: tolk
+        run: |
+          set -euo pipefail
+          acton fmt
+          acton check --fix
+
+      - name: Prepare an isolated repair branch
+        id: changes
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --check
+          if git diff --quiet -- . ':!tolk/.acton' ':!tolk/build'; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          branch='automation/acton-autofix'
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git switch -C "$branch"
+          git add --all
+          git reset -- tolk/.acton tolk/build || true
+          git commit -m 'chore(acton): apply unattended formatter and lint fixes'
+          git push --force-with-lease origin "HEAD:$branch"
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+          echo "branch=$branch" >> "$GITHUB_OUTPUT"
+
+      - name: Open or update repair PR
+        if: steps.changes.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          branch='${{ steps.changes.outputs.branch }}'
+          existing=$(gh pr list --repo "$GITHUB_REPOSITORY" --head "$branch" --state open --json number --jq '.[0].number // empty')
+          if [ -n "$existing" ]; then
+            gh pr edit "$existing" --repo "$GITHUB_REPOSITORY" \
+              --title 'chore(acton): refresh unattended formatter and lint fixes' \
+              --body 'Acton unattended repair bot refreshed this isolated PR. Review the diff and CI before merging.'
+          else
+            gh pr create --repo "$GITHUB_REPOSITORY" --base main --head "$branch" \
+              --title 'chore(acton): apply unattended formatter and lint fixes' \
+              --body 'Generated automatically by Acton. This bot never writes to main, deploys contracts, broadcasts transactions, or manages wallets. Review CI and the diff before merging.'
+          fi

@@ -28,6 +28,12 @@ acton check --fix
 
 It creates a binary Git patch artifact for human review. It has read-only repository permissions and never pushes, opens a PR, merges, deploys, or changes a wallet. Local equivalents are:
 
+The scheduled/manual `acton-autofix-bot` is the unattended variant. When
+`acton fmt` or `acton check --fix` changes tracked source, it commits only an
+isolated `automation/acton-autofix` branch and opens or updates one PR. It has
+no permission to write `main`, merge, deploy, broadcast, use a faucet, or access
+wallet secrets. When no fix is available it performs no write at all.
+
 ```sh
 npm run acton:fmt       # format sources
 npm run acton:fix       # format and apply available plain-output lint fixes

@@ -426,6 +426,9 @@ T-11/T-12 реализуют проверяемую часть P4. Реальн�
   mutation sessions.
 - [x] Add a manual-only auto-fix workflow that emits a patch artifact without
   write permissions, push, merge, deployment, or wallet access.
+- [x] Add scheduled/manual unattended repair that can commit only an isolated
+  `automation/acton-autofix` branch and open/update a PR; main, merge, wallet,
+  deployment, and broadcast remain unavailable to the bot.
 - [x] Document fuzzing, pinned-block forks, simulator/localnet/Studio, scripts,
   deployment, verification, and library operations with explicit manual-only
   boundaries in `docs/ACTON_AUTOMATION.md`.
