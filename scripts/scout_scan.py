@@ -4,7 +4,7 @@
 Выход: список проблем на stdout. Без модели — только детерминированные
 сигналы: упавшие прогоны, issues без меток, зависшие PR, hotspots.
 """
-import json, os, subprocess, sys, time
+import json, subprocess, sys, time
 
 def gh(*args):
     return subprocess.run(["gh", *args], capture_output=True, text=True).stdout

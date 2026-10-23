@@ -10,7 +10,7 @@ import math
 import random
 import time
 
-from .core import Optimizer, Problem, Result, Vec
+from .core import Optimizer, Problem, Result
 
 
 class SA(Optimizer):

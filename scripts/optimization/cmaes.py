@@ -11,7 +11,7 @@ from __future__ import annotations
 import math
 import random
 import time
-from typing import List
+from typing import List, Sequence
 
 from .core import Optimizer, Problem, Result, Vec
 
