@@ -31,11 +31,11 @@ Storage намеренно **не является upgrade-compatible**. Tolk и
 
 ## Что ещё не доказано — не закрывать этим отчётом
 
-ABI parity подтверждает интерфейс, но не равенство каждой ветки выполнения. На дату проверки Tolk behavioral coverage остаётся неполным: Master имеет 4 сценария; DeFi — 5; Wallet — 6; Admin timelock — 8. Независимый read-only audit выделил приоритетные непройденные regressions:
+ABI parity подтверждает интерфейс, но не равенство каждой ветки выполнения. На дату проверки Tolk behavioral coverage остаётся неполным: Master имеет 5 сценариев; DeFi — 5; Wallet — 7; Admin timelock — 8 (всего 32 Acton contract tests с utility suites). Добавлены end-to-end regression paths для Master owner mint/supply/cap и Wallet rejected-pool-payout bounce/refund. Независимый read-only audit выделил приоритетные непройденные regressions:
 
-1. **Master:** обычный mint/burn и fee accounting; staking/referral/vesting; governance replay/quorum; buyback/DeFi payout bounce; AI signature success/bad-signature/replay/expiry; veto/override; owner/content/config timelocks; reserve/custody accounting.
+1. **Master:** burn/fee accounting; staking/referral/vesting; governance replay/quorum; buyback/DeFi payout bounce; AI signature success/bad-signature/replay/expiry; veto/override; owner/content/config timelocks; reserve/custody accounting.
 2. **DeFi:** QSR payout failure/excess sequencing; TON payout bounce при liquidity removal и swap; возврат pending deposit; farm funding/claim/emergency withdrawal; delayed fee/max-trade changes; quote rounding и event/getter result checks.
-3. **Wallet:** `PoolPayout` success/bounce/query-ID collision; `FeeTransfer` bounce; TEP-89 wallet reply thresholds/include-address path; заполненные persistent dictionaries/layout round-trip.
+3. **Wallet:** `PoolPayout` success and query-ID collision; `FeeTransfer` bounce; TEP-89 wallet reply thresholds/include-address path; заполненные persistent dictionaries/layout round-trip.
 4. **Admin:** pending call boundary timestamps/overflow semantics and all getter states across propose/cancel/execute; persisted Tolk storage round-trip.
 
 Это перечисление — backlog проверки, а не утверждение, что перечисленные реализации неверны. Перед любым реальным deploy нужны differential execution traces (success/reject/bounce), заполненные storage-dictionary fixtures, состояние/активов migration plan, testnet rehearsal и независимый security audit. См. также `docs/TOLK_MIGRATION_DECISION.md`.
