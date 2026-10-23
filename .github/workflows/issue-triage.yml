@@ -39,7 +39,7 @@ jobs:
           add() { labels+=("$1"); }
 
           # --- Маршрутизация по области -----------------------------------
-          grep -qiE 'contract|tact|jetton|tep-?74|tep-?89|minter|мастер' <<<"$text" && add contracts
+          grep -qiE 'contract|tolk|acton|jetton|tep-?74|tep-?89|minter|мастер' <<<"$text" && add contracts
           grep -qiE 'defi|amm|pool|liquidity|farm|swap|пул' <<<"$text" && add defi
           grep -qiE 'workflow|actions|ci\b|pipeline|автоматизац' <<<"$text" && add ci
           grep -qiE 'dependabot|vulnerabilit|npm audit|cve-|уязвим' <<<"$text" && add security

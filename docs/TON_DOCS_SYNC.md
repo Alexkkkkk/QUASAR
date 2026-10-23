@@ -6,7 +6,7 @@ AI issue agent использует выбранные официальные с
 
 `docs/ton/index.json` — manifest формата `schemaVersion: 1`. Для каждой страницы он хранит неизменяемые на момент синхронизации `id`, относительный путь, исходный URL и SHA-256 нормализованного UTF-8 содержимого. `scripts/sync_ton_docs.py` собирает индекс только из встроенного allowlist. Проверка хеша связывает каждую локальную страницу с записью в manifest; `--check` также сверяет manifest и содержимое с заново полученным набором источников.
 
-В allowlist входят страницы TON Docs о Jetton, TEP-64 metadata, security best practices и языке Tolk. TON Docs рекомендует Tolk и помечает Tact как deprecated. QUASAR пока использует Tact; этот RAG-контекст не разрешает автоматически мигрировать контракты.
+В allowlist входят страницы TON Docs о Jetton, TEP-64 metadata, security best practices и языке Tolk. TON Docs recommends Tolk. QUASAR uses Tolk/Acton under `tolk/contracts/`; archived Tact evidence is not an active source and does not authorize reintroducing Tact.
 
 Также сохранены три первичных MDX-файла из официального репозитория `ton-blockchain/acton`. Они соответствуют опубликованному разделу [Scripting in Acton](https://ton-blockchain.github.io/acton/docs/scripting/overview): сценарий запускается командой `acton script`, точкой входа служит `main()`, а без `--net` используется несохраняемый локальный эмулятор.
 

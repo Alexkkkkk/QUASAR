@@ -26,6 +26,6 @@ Workflow сам не делает merge: draft PR проверяет GitHub CI, 
 
 На GitHub-hosted runner модель скачивается из реестра Ollama при каждом запуске; локального дискового кэша между запусками нет. Текст issue и отрывки репозитория не отправляются во внешний inference API, но обрабатываются в инфраструктуре GitHub Actions. Не используйте агент для конфиденциальных задач.
 
-Синхронизируются только выбранные первичные страницы TON Docs из `docs/ton/index.json`, а не весь сайт. Это retrieval-augmented generation (RAG), не fine-tuning/обучение модели. TON Docs рекомендует Tolk; текущие контракты QUASAR написаны на Tact. Агент не переводит их на другой язык без прямого требования и отдельного человеческого решения.
+Синхронизируются только выбранные первичные страницы TON Docs из `docs/ton/index.json`, а не весь сайт. Это retrieval-augmented generation (RAG), не fine-tuning/обучение модели. QUASAR contracts are implemented in Tolk under `tolk/contracts/` and built with Acton. Archived Tact files under `docs/historical/tact-reference/` are historical evidence, not active source code.
 
 Автоматические проверки не являются независимым аудитом и не подтверждают готовность контрактов к testnet/mainnet. Контрактные изменения допускаются только по прямому запросу владельца и после обязательных контрактных checks; approving review не является gate. Независимый аудит по-прежнему обязателен до заявлений о безопасности или готовности к mainnet.

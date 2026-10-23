@@ -8,7 +8,7 @@ export function normalizeError(message) {
     .replace(/\beq[a-z0-9_-]{30,}/g, '<addr>')
     .replace(/[a-f0-9]{48,}/g, '<hash>')
     .replace(/\b\d+(?:\.\d+)?\b/g, '<n>')
-    .replace(/\b[a-z0-9_-]+\.(?:tact|ts|js|mjs|json|md)\b/g, '<file>')
+    .replace(/\b[a-z0-9_-]+\.(?:tolk|tact|ts|js|mjs|json|md)\b/g, '<file>')
     .replace(/\/[^\s"'`]+/g, '<path>')
     .replace(/[ \t]+/g, ' ')
     .trim()

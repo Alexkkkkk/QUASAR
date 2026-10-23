@@ -78,6 +78,6 @@ node scripts/ai/swarm/cli.mjs all             # full cycle (CI)
 
 The same root cause must hash identically for every agent, so error messages
 are canonicalized before hashing: lowercase, strip paths, numbers, hex,
-hashes and TON addresses (`EQ...`). "bounce at line 42 in quasar.tact" and
-"bounce at line 7 in quasar_common.tact" → one signature → the swarm learns
+hashes and TON addresses (`EQ...`). "bounce at line 42 in QuasarMaster.tolk" and
+"bounce at line 7 in QuasarCommon.tolk" → one signature → the swarm learns
 once, not twice.
