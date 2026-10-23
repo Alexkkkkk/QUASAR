@@ -1,26 +1,33 @@
 import "@acton/emulation/network"
 import "@acton/emulation/testing"
 import "@acton/testing/expect"
-import "@acton/types/transaction"
-import "@gen/QuasarWallet.code"
-import "@contracts/QuasarMaster"
-import "@wrappers/QuasarMaster.gen"
 import "@contracts/QuasarCommon"
+import "@contracts/QuasarMaster"
+import "@gen/QuasarWallet.code"
+import "@wrappers/QuasarMaster.gen"
 
 fun setupMaster(): (QuasarMaster, Treasury) {
     val owner = testing.treasury("quasar-master-owner");
-    val content = beginCell().storeUint(1, 8).storeString("https://example.invalid/qsr.json").endCell();
-    val master = QuasarMaster.fromStorage(newQuasarMasterStorage(
+    val content = beginCell()
+        .storeUint(1, 8)
+        .storeString("https://example.invalid/qsr.json")
+        .endCell();
+    val master = QuasarMaster.fromStorage(
+        newQuasarMasterStorage(
+            owner.address,
+            content,
+            quasarWalletCompiledCode(),
+        ),
+    );
+    val deployment = net.send(
         owner.address,
-        content,
-        quasarWalletCompiledCode(),
-    ));
-    val deployment = net.send(owner.address, createMessage({
-        bounce: BounceMode.NoBounce,
-        value: grams("5"),
-        dest: { workchain: master.address.getWorkchain(), stateInit: master.stateInit!! },
-        body: Deploy { queryId: 0 },
-    }));
+        createMessage({
+            bounce: BounceMode.NoBounce,
+            value: grams("5"),
+            dest: { workchain: master.address.getWorkchain(), stateInit: master.stateInit! },
+            body: Deploy { queryId: 0 },
+        }),
+    );
     expect(deployment).toHaveSuccessfulDeploy({
         to: master.address,
     });
@@ -28,7 +35,7 @@ fun setupMaster(): (QuasarMaster, Treasury) {
 }
 
 get fun `test quasar master: initialization retains supply, fee, pool and pause defaults`() {
-    val (master, owner) = setupMaster();
+    val (master, _owner) = setupMaster();
     expect(master.getMaxSupply()).toEqual(QUASAR_MAX_SUPPLY);
     expect(master.getReserveBalance()).toEqual(0);
     expect(master.getCustodyBalance()).toEqual(0);
@@ -60,4 +67,29 @@ get fun `test quasar master: signed AI authority begins disabled and uninitializ
     expect(master.getAiNonce()).toEqual(0);
     expect(master.getAiSignedDecisionCount()).toEqual(0);
     expect(master.getAiSignedDomain()).toEqual(0x51a5c3d2);
+}
+
+get fun `test quasar master TEP-89: addr_none owner receives addr_none wallet response`() {
+    val (master, _) = setupMaster();
+    val requester = testing.treasury("quasar-master-discovery-requester");
+    val result = net.send(
+        requester.address,
+        createMessage({
+            bounce: BounceMode.NoBounce,
+            value: grams("0.01"),
+            dest: master.address,
+            body: ProvideWalletAddress {
+                queryId: 17,
+                ownerAddress: createAddressNone(),
+                includeAddress: true,
+            },
+        }),
+    );
+    expect(result).toHaveSuccessfulTx<ProvideWalletAddress>({
+        from: requester.address,
+        to: master.address,
+    });
+    expect(result).toHaveSuccessfulTx<TakeWalletAddress>({
+        to: requester.address,
+    });
 }

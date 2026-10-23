@@ -149,7 +149,11 @@ struct QuasarWalletInitData {
 
 fun quasarWalletInitData(owner: address, master: address): cell {
     // Tact's init StateInit data is `false` followed by the two constructor addresses.
-    return QuasarWalletInitData { initialized: false, owner, master }.toCell();
+    return QuasarWalletInitData {
+        initialized: false,
+        owner,
+        master,
+    }.toCell();
 }
 
 fun emptyQuasarWalletStorage(owner: address, master: address): QuasarWalletStorage {
@@ -190,7 +194,9 @@ fun QuasarWalletStorage.load(): QuasarWalletStorage {
 
     var payoutTail = tail.loadRef().beginParse();
     val pendingPoolPayouts = createMapFromLowLevelDict<int257, int257>(payoutTail.loadDict());
-    val pendingPoolPayoutReceivers = createMapFromLowLevelDict<int257, address>(payoutTail.loadDict());
+    val pendingPoolPayoutReceivers = createMapFromLowLevelDict<int257, address>(
+        payoutTail.loadDict(),
+    );
     payoutTail.assertEnd();
     tail.assertEnd();
     root.assertEnd();
@@ -238,10 +244,7 @@ fun QuasarWalletStorage.save(self) {
 fun quasarWalletDeployment(owner: address, master: address, walletCode: cell): AutoDeployAddress {
     return {
         workchain: BASECHAIN,
-        stateInit: {
-            code: walletCode,
-            data: quasarWalletInitData(owner, master),
-        },
+        stateInit: { code: walletCode, data: quasarWalletInitData(owner, master) },
     };
 }
 
@@ -258,7 +261,7 @@ fun isZeroAddress(value: address): bool {
 // no-response sentinel. Preserve that compatibility while also accepting the
 // standard TEP-74 addr_none encoding represented by a nullable address.
 fun isNoResponseAddress(value: address?): bool {
-    return value == null || isZeroAddress(value!!);
+    return value == null || isZeroAddress(value);
 }
 
 fun isMintMarkedPayload(payload: slice): bool {

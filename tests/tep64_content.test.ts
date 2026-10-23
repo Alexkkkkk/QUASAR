@@ -15,7 +15,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { beginCell, toNano } from '@ton/core';
+import { beginCell, Dictionary, toNano } from '@ton/core';
 import { createHash } from 'node:crypto';
 import { Blockchain } from '@ton/sandbox';
 
@@ -73,10 +73,21 @@ test('TEP-64 off-chain content is 0x01 ++ ASCII URI', () => {
     assert.equal(parsed.uri, METADATA_URL);
 });
 
+test('TEP-64 parser follows a long off-chain Snake URI through continuation cells', () => {
+    const uri = `https://example.invalid/${'metadata/'.repeat(40)}jetton.json`;
+    const cell = buildOffchainContent(uri);
+    assert.ok(cell.refs.length > 0, 'a URI larger than the root payload must use continuation cells');
+    assert.equal(parseContent(cell).uri, uri);
+});
+
 test('TEP-64 on-chain content is 0x00 ++ sha256-keyed dictionary and round-trips', () => {
     const cell = buildOnchainContent(ATTRIBUTES);
     const s = cell.beginParse();
     assert.equal(s.loadUint(8), CONTENT_ONCHAIN_PREFIX, 'on-chain content must start with 0x00');
+    const dict = s.loadDictDirect(Dictionary.Keys.BigUint(256), Dictionary.Values.Cell());
+    const nameValue = dict.get(fieldKeyHash('name'));
+    assert.ok(nameValue, 'the name entry must be present in the on-chain dictionary');
+    assert.equal(nameValue.beginParse().loadUint(8), 0, 'each ContentData value must start with snake#00');
 
     const parsed = parseContent(cell);
     assert.equal(parsed.layout, 'onchain');
@@ -107,6 +118,8 @@ test('TEP-64 parser rejects an unknown prefix instead of guessing', () => {
 
 test('TEP-64 preflight rejects a decimals / mint-multiplier mismatch', () => {
     assert.doesNotThrow(() => assertDecimalsConsistent(ATTRIBUTES, DECIMALS));
+    assert.doesNotThrow(() => assertDecimalsConsistent({ ...ATTRIBUTES, decimals: '19' }, 19));
+    assert.doesNotThrow(() => assertDecimalsConsistent({ ...ATTRIBUTES, decimals: '255' }, 255));
     assert.throws(() => assertDecimalsConsistent({ ...ATTRIBUTES, decimals: '6' }, DECIMALS), /disagrees with the mint multiplier/);
     assert.throws(() => assertRequiredFields({ name: 'QUASAR', symbol: 'QSR' }), /missing the required attribute "decimals"/);
 });

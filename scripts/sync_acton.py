@@ -126,6 +126,9 @@ def synchronize(root: Path, acton: str = "acton") -> dict:
         (stage / "node_modules").symlink_to(root / "node_modules", target_is_directory=True)
         if (project / ".acton").is_dir():
             shutil.copytree(project / ".acton", stage / ".acton")
+        # Keep the synchronized generation subject to the same four Acton
+        # validation gates used in CI: format, build, lint, and test.
+        run([acton, "fmt", "--check"], stage)
         run([acton, "build"], stage)
         generated = stage / OUTPUT
         summary = verify(root, generated / "abi")
@@ -138,6 +141,7 @@ def synchronize(root: Path, acton: str = "acton") -> dict:
                  str(generated / "boc" / f"{contract}.boc"),
                  str(generated / "wrappers-ts" / f"{contract}.gen.ts")], stage)
         run(["node", "--import", "tsx", str(root / "scripts/check_acton_wrappers.ts"), str(generated)], root)
+        run([acton, "check"], stage)
         run([acton, "test"], stage)
         for script in ("local-smoke.tolk", "storage-fee.tolk"):
             arguments = ["3600"] if script == "storage-fee.tolk" else []

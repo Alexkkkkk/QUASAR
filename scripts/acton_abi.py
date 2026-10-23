@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 from pathlib import Path
 
 CONTRACTS = {
@@ -25,6 +26,15 @@ TACT_ARTIFACTS = {
 }
 
 
+def normalize_type_name(name: str) -> str:
+    """Match Tact acronym spelling to Acton's canonical PascalCase spelling."""
+    return re.sub(
+        r"[A-Z]{2,}(?=[A-Z][a-z]|$)",
+        lambda match: match.group(0)[0] + match.group(0)[1:].lower(),
+        name,
+    )
+
+
 def tact_type(t: dict, *, stack: bool = False) -> dict:
     if t.get("kind") != "simple":
         raise ValueError(f"Unsupported Tact type: {t}")
@@ -37,7 +47,7 @@ def tact_type(t: dict, *, stack: bool = False) -> dict:
         kind = "slice" if stack else "remaining"
     else:
         kind = name
-    return {"type": kind, "optional": bool(t.get("optional", False))}
+    return {"type": normalize_type_name(kind), "optional": bool(t.get("optional", False))}
 
 
 def tolk_type(abi: dict, idx: int, *, stack: bool = False, seen: frozenset = frozenset()) -> dict:
@@ -52,7 +62,7 @@ def tolk_type(abi: dict, idx: int, *, stack: bool = False, seen: frozenset = fro
         declaration = next(d for d in abi["declarations"] if d["name"] == t["alias_name"])
         return tolk_type(abi, declaration["target_ty_idx"], stack=stack, seen=seen | {idx})
     if kind == "StructRef":
-        kind = t["struct_name"]
+        kind = normalize_type_name(t["struct_name"])
     elif kind in ("intN", "uintN", "bitsN"):
         kind = ("slice" if kind == "bitsN" else "int") if stack else f"{kind[:-1]}{t['n']}"
     elif kind == "coins" and stack:
@@ -84,11 +94,11 @@ def compare_abi(reference: dict, abi: dict) -> list[str]:
         prefix = d.get("prefix", {})
         if prefix.get("prefix_len") != 32:
             errors.append(f"{d['name']}: opcode must be 32 bits")
-        actual[d["name"]] = {
+        actual[normalize_type_name(d["name"])] = {
             "opcode": f"0x{prefix.get('prefix_num', 0):08x}",
             "fields": [(f["name"], tolk_type(abi, f["ty_idx"])) for f in d["fields"]],
         }
-    expected = {m["name"]: {
+    expected = {normalize_type_name(m["name"]): {
         "opcode": m["opcode"],
         "fields": [(f["name"], tact_type(f["type"])) for f in m["fields"]],
     } for m in reference["messages"]}
@@ -115,9 +125,9 @@ def compare_abi(reference: dict, abi: dict) -> list[str]:
 
 def compare_getter_layouts(tact_abi: dict, abi: dict) -> list[str]:
     """Check named return structures, whose fields are absent from snapshots."""
-    expected = {d["name"]: d for d in tact_abi["types"]}
-    actual = {d["name"]: d for d in abi["declarations"] if d["kind"] == "struct"}
-    pending = [g["returnType"]["type"] for g in tact_abi["getters"]]
+    expected = {normalize_type_name(d["name"]): d for d in tact_abi["types"]}
+    actual = {normalize_type_name(d["name"]): d for d in abi["declarations"] if d["kind"] == "struct"}
+    pending = [normalize_type_name(g["returnType"]["type"]) for g in tact_abi["getters"]]
     visited = set()
     errors = []
     while pending:
@@ -129,7 +139,7 @@ def compare_getter_layouts(tact_abi: dict, abi: dict) -> list[str]:
         got = [(f["name"], tolk_type(abi, f["ty_idx"], stack=True)) for f in actual.get(name, {}).get("fields", [])]
         if name not in actual or wanted != got:
             errors.append(f"getter return struct {name}: expected {wanted!r}, got {got!r}")
-        pending.extend(f["type"]["type"] for f in expected[name]["fields"])
+        pending.extend(normalize_type_name(f["type"]["type"]) for f in expected[name]["fields"])
     return errors
 
 

@@ -16,6 +16,10 @@ const contracts = [
 type Field = { name: string; type: { type: string; optional: boolean; format?: number | string } };
 type Message = { name: string; fields: Field[] };
 
+function normalizeTypeName(name: string): string {
+    return name.replace(/[A-Z]{2,}(?=[A-Z][a-z]|$)/g, (match) => match[0] + match.slice(1).toLowerCase());
+}
+
 function value(field: Field, variant: number, tolk: boolean): unknown {
     const type = field.type;
     if (type.optional && variant === 0) return null;
@@ -44,7 +48,7 @@ for (const [contract, snapshot, tactArtifact] of contracts) {
     const tolk = await import(pathToFileURL(join(generated, 'wrappers-ts', `${contract}.gen.ts`)).href);
     for (const message of reference.messages) {
         const serializeTact = tact[`store${message.name}`];
-        const serializeTolk = tolk[contract][`createCellOf${message.name}`];
+        const serializeTolk = tolk[contract][`createCellOf${normalizeTypeName(message.name)}`];
         assert.equal(typeof serializeTact, 'function', `${contract}.${message.name}: missing Tact serializer`);
         assert.equal(typeof serializeTolk, 'function', `${contract}.${message.name}: missing Tolk serializer`);
         for (let variant = 0; variant < 2; variant++) {

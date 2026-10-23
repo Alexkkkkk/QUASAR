@@ -142,8 +142,8 @@ test('F-21 TEP-74: a transfer returns the unused message value to response_desti
     expectCommitted(transferRes, 'the transfer');
 
     const fee = (100n * QSR * 30n) / 10_000n;
-    assert.equal((await bobC.getGetWalletData()).balance, 100n * QSR - fee, 'the recipient wallet is credited with the amount minus the 0.30% fee');
-    assert.equal((await aliceC.getGetWalletData()).balance, 900n * QSR, 'the sender wallet is debited by the full amount');
+    assert.equal((await bobC.getGetWalletData()).balance, 100n * QSR, 'the recipient wallet is credited with the requested TEP-74 amount');
+    assert.equal((await aliceC.getGetWalletData()).balance, 900n * QSR - fee, 'the sender wallet pays the transfer amount plus the 0.30% fee');
 
     // The receiving Jetton wallet is the contract that must return the leftover
     // message value to `response_destination` (TEP-74, step 3).

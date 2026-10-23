@@ -23,8 +23,10 @@ import { createHash } from 'node:crypto';
 export const CONTENT_OFFCHAIN_PREFIX = 0x01;
 export const CONTENT_ONCHAIN_PREFIX = 0x00;
 
-/** Bytes one snake cell carries: 127 * 8 = 1016 bits, under the 1023-bit cell limit. */
-const SNAKE_CHUNK_BYTES = 127;
+/** The first ContentData cell carries `snake#00`, leaving 126 whole bytes. */
+const SNAKE_ROOT_CHUNK_BYTES = 126;
+/** Continuation cells carry no prefix and can hold 127 whole bytes. */
+const SNAKE_TAIL_CHUNK_BYTES = 127;
 
 /** Attributes this project knows about, used to decode dictionary keys. */
 // `wallet-discovery` (TEP-89) is the attribute a NON-upgradable master uses to
@@ -59,45 +61,50 @@ export function reverseFieldKey(key: bigint): string | null {
     return null;
 }
 
-/** Reads the bits of a slice into a UTF-8 string (snake chunk payload). */
-function sliceToString(slice: Slice): string {
+/** Reads the byte-aligned payload bits of one snake chunk. */
+function sliceToBuffer(slice: Slice): Buffer {
     const whole = Math.floor(slice.remainingBits / 8);
-    if (whole > 0) return slice.loadBuffer(whole).toString('utf8');
-    return '';
+    if (slice.remainingBits % 8 !== 0) throw new Error('TEP-64 snake data is not byte-aligned');
+    return whole > 0 ? slice.loadBuffer(whole) : Buffer.alloc(0);
+}
+
+/** Decodes the remaining payload and one-reference continuation chain. */
+function fromSnakeSlice(slice: Slice): string {
+    const parts: Buffer[] = [];
+    let current: Slice | null = slice;
+    for (let guard = 0; current !== null && guard < 64; guard += 1) {
+        parts.push(sliceToBuffer(current));
+        if (current.remainingRefs === 0) return Buffer.concat(parts).toString('utf8');
+        if (current.remainingRefs !== 1) throw new Error('TEP-64 snake cell has more than one continuation');
+        current = current.loadRef().beginParse();
+    }
+    throw new Error('TEP-64 snake chain exceeds 64 cells');
 }
 
 /** Encodes a string as a TEP-64 snake cell (a single cell when it fits). */
 export function toSnakeCell(value: string): Cell {
     const buf = Buffer.from(value, 'utf8');
-    if (buf.length === 0) return beginCell().endCell();
-
-    // Cells are filled with whole bytes, so chunk on byte boundaries: 127 bytes
-    // is 1016 bits, safely inside the 1023 bits a cell can carry.
-    const chunks: Buffer[] = [];
-    for (let i = 0; i < buf.length; i += SNAKE_CHUNK_BYTES) {
-        chunks.push(buf.subarray(i, i + SNAKE_CHUNK_BYTES));
+    let tail: Cell | null = null;
+    for (let end = buf.length; end > SNAKE_ROOT_CHUNK_BYTES; end -= SNAKE_TAIL_CHUNK_BYTES) {
+        const start = Math.max(SNAKE_ROOT_CHUNK_BYTES, end - SNAKE_TAIL_CHUNK_BYTES);
+        const builder = beginCell().storeBuffer(buf.subarray(start, end));
+        if (tail !== null) builder.storeRef(tail);
+        tail = builder.endCell();
     }
-
-    // Chain them so each cell references the next: head -> chunk1 -> chunk2 ...
-    let acc: Cell | null = null;
-    for (let i = chunks.length - 1; i >= 0; i -= 1) {
-        const b = beginCell().storeBuffer(chunks[i]);
-        if (acc !== null) b.storeRef(acc);
-        acc = b.endCell();
-    }
-    return acc as Cell;
+    const root = beginCell()
+        .storeUint(0, 8)
+        .storeBuffer(buf.subarray(0, Math.min(buf.length, SNAKE_ROOT_CHUNK_BYTES)));
+    if (tail !== null) root.storeRef(tail);
+    return root.endCell();
 }
 
 /** Decodes a snake cell back into a string. */
 export function fromSnakeCell(cell: Cell): string {
-    const parts: string[] = [];
-    let current: Cell | null = cell;
-    for (let guard = 0; current !== null && guard < 64; guard += 1) {
-        const s = current.beginParse();
-        parts.push(sliceToString(s));
-        current = s.remainingRefs > 0 ? s.loadRef() : null;
+    const root = cell.beginParse();
+    if (root.remainingBits < 8 || root.loadUint(8) !== 0) {
+        throw new Error('TEP-64 snake cell must start with 0x00');
     }
-    return parts.join('');
+    return fromSnakeSlice(root);
 }
 
 /** Off-chain layout: `0x01` ++ ASCII URI pointing at the metadata JSON. */
@@ -157,7 +164,7 @@ export function parseContent(content: Cell): {
     const prefix = s.loadUint(8);
 
     if (prefix === CONTENT_OFFCHAIN_PREFIX) {
-        return { layout: 'offchain', uri: sliceToString(s) };
+        return { layout: 'offchain', uri: fromSnakeSlice(s) };
     }
     if (prefix !== CONTENT_ONCHAIN_PREFIX) {
         return { layout: 'unknown' };
@@ -192,8 +199,8 @@ export function assertDecimalsConsistent(metadata: Record<string, string>, multi
     const raw = metadata.decimals;
     if (raw === undefined) throw new Error('TEP-64 metadata is missing the required attribute "decimals"');
     const parsed = Number(raw);
-    if (!Number.isInteger(parsed) || parsed < 0 || parsed > 18) {
-        throw new Error(`TEP-64 "decimals" must be an integer between 0 and 18, got "${raw}"`);
+    if (!Number.isInteger(parsed) || parsed < 0 || parsed > 255) {
+        throw new Error(`TEP-64 "decimals" must be an integer between 0 and 255, got "${raw}"`);
     }
     if (parsed !== multiplierExponent) {
         throw new Error(

@@ -67,7 +67,7 @@ get fun `test common wire: TEP-89 take wallet supports addr_none and Maybe ref`(
     val decoded = TakeWalletAddress.fromCell(included.toCell());
     expect(decoded.walletAddress.castToInternal()).toEqual(owner);
     expect(decoded.ownerAddress).toBeNotNull();
-    var ownerWire = decoded.ownerAddress!!.beginParse();
+    var ownerWire = decoded.ownerAddress!.beginParse();
     expect(ownerWire.loadAddressAny().castToInternal()).toEqual(owner);
     ownerWire.assertEnd();
 }
