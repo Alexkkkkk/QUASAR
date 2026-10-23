@@ -2,21 +2,17 @@
 
 ## Before opening a pull request
 
-Install the locked Node dependencies and the pinned Acton `1.2.1` toolchain.
-Then run the same Tolk checks as CI:
+Install the pinned Acton `1.2.1` toolchain. Then run the same Tolk checks as CI:
 
 ```bash
-npm ci
-npm run acton:init  # Refreshes Acton stdlib only; does not rewrite tolk/Acton.toml
-npm run lint
-npm test
-npx tsc --noEmit
-npm run abi:verify
-npm run abi:dapp
-npm run deployment:check
-npm run pins:check
-npm run hub:audit
-npm audit --audit-level=high
+cd tolk
+acton init --stdlib-only
+acton doctor
+acton fmt --check
+acton check --output-format github
+acton build
+acton wrapper --all --output-dir build/synchronized/wrappers
+acton test
 ```
 
 `npm run build` invokes `scripts/sync_acton.py`. It builds an isolated Tolk

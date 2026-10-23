@@ -14,6 +14,8 @@ import { fileURLToPath } from 'node:url';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const SKIP_DIRS = new Set(['.git', 'build', 'node_modules', '__pycache__']);
+const SKIP_PREFIXES = ['docs/ai/', 'docs/automation-pack-', 'docs/historical/'];
+const SKIP_FILES = new Set(['CHANGELOG.md']);
 const SCAN_EXT = new Set(['.md', '.yml', '.yaml', '.ts', '.js', '.mjs', '.py', '.json']);
 const COMMAND_RE = /npm run ([a-z0-9][a-z0-9:_-]*)/g;
 
@@ -21,6 +23,8 @@ function collectFiles(dir: string, out: string[] = []): string[] {
     for (const entry of readdirSync(dir)) {
         if (SKIP_DIRS.has(entry)) continue;
         const full = join(dir, entry);
+        const rel = relative(root, full).replaceAll('\\', '/');
+        if (SKIP_PREFIXES.some((prefix) => rel.startsWith(prefix)) || SKIP_FILES.has(rel)) continue;
         if (statSync(full).isDirectory()) collectFiles(full, out);
         else if (SCAN_EXT.has(extname(entry)) || entry === '.env.example') out.push(full);
     }

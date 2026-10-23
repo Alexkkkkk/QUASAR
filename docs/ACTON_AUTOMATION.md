@@ -12,8 +12,9 @@ The reusable `QUASAR CI` checks now include:
 - `acton build` and generated Tolk wrappers;
 - `acton check --output-format github` annotations;
 - `acton check --output-format sarif` uploaded as an artifact;
-- native Acton tests and the existing Node/Python gates;
-- ABI, dApp, deployment-artifact, TypeScript and action-pin checks.
+- native Acton tests;
+- generated ABI/source artifacts uploaded for inspection, without deployment or
+  network access.
 
 The scheduled/manual [`acton-quality.yml`](../.github/workflows/acton-quality.yml) workflow additionally exports full LCOV coverage, creates a gas snapshot, and runs diagnostic critical/major mutation testing. Mutation is currently non-blocking because Acton 1.2.1 exits with `Argument list too long (os error 7)` in this repository even with one worker; the workflow preserves its session/report artifact instead of claiming a score.
 

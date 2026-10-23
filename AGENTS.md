@@ -49,9 +49,8 @@ Copilot, внешний ассистент), который работает с 
   code hash и адреса нового поколения; менять только по прямому запросу
   владельца и с обязательной полной CI-проверкой;
 - корневой `package.json`, `package-lock.json`;
-- `scripts/deploy*`, `scripts/security_check.ts`, `scripts/check_deployment.ts`,
-  `scripts/hub_audit.ts`, `scripts/sync_action_pins.ts`;
-- `**/deployment.json`, `**/build-hashes.json`, `**/action_pins.lock.json`;
+- `scripts/deploy*`, `scripts/security_check.ts`, `scripts/check_deployment.ts`;
+- `**/deployment.json`, `**/build-hashes.json`;
 - любые `.env*` (кроме `.env.example`), файлы с mnemonic / private key / seed.
 
 Эти же пути отклоняет preflight в `ai-fix-agent.yml` и не переписывает
@@ -60,17 +59,14 @@ Copilot, внешний ассистент), который работает с 
 ## 4. Обязательные проверки перед PR
 
 ```bash
-npm ci
-npm run lint
-npm run security:check
-npm test
-npx tsc --noEmit
-npm run abi:verify
-npm run abi:dapp
-npm run deployment:check
-npm run pins:check
-npm run hub:audit
-npm audit --audit-level=high
+cd tolk
+acton init --stdlib-only
+acton doctor
+acton fmt --check
+acton check --output-format github
+acton build
+acton wrapper --all --output-dir build/synchronized/wrappers
+acton test
 ```
 
 Для изменений в `integrations/**` дополнительно:
@@ -99,20 +95,17 @@ PR не создаётся, если хотя бы одна проверка п�
 
 ## 6. Полная автоматика исправления ошибок
 
-Автоматическая система описана в [`docs/AUTOFIX.md`](docs/AUTOFIX.md):
+Автоматическая система описана в [`docs/ACTON_AUTOMATION.md`](docs/ACTON_AUTOMATION.md):
 
-- `QUASAR autofix` — реакция на упавший CI и метку `autofix`: диагностика →
-  фикcеры → проверка → draft PR → отчёт в issue; draft автоматически становится
-  ready и ставится на auto-merge только после зелёных обязательных checks;
-- `QUASAR Dependabot remediation` — сбор алертов и draft PR с неразрушающими
-  обновлениями каждые 6 часов;
-- `QUASAR dApp CI` — обязательные проверки вложенного `integrations/minter-tasks`;
-- `QUASAR issue triage` — автоматическая сортировка входящих задач.
+- `ci.yml` вызывает только reusable Acton/Tolk checks;
+- `acton-quality.yml` запускает отчёты coverage/gas/mutation по расписанию и вручную;
+- `acton-autofix.yml` генерирует reviewable patch artifact;
+- `acton-autofix-bot.yml` может создать или обновить только изолированный PR с
+  formatter/lint fixes. Он не пишет в `main`, не merge-ит, не deploy-ит и не
+  использует wallet secrets.
 
-Агент обязан **использовать эту систему**, а не обходить её: исправление
-оформляется как ветка + draft PR. Человеческий approving review не требуется;
-GitHub merge-gates — ноль approvals, без bypass, строгая проверка обязательных
-checks на актуальном base. `do-not-merge` всегда останавливает auto-merge.
+Все прочие AI, dApp, release, Dependabot, triage, swarm и auto-merge workflows
+удалены как не относящиеся к минимальному Acton/Tolk toolchain.
 
 ## 7. Стиль
 

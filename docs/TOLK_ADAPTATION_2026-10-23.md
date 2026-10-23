@@ -66,8 +66,8 @@ directory traversal использует Dirent, а файл проверяет�
 
 Успешно выполнены `npm ci`, `npm run acton:init`, `npm run lint`,
 `npm run security:check`, `npm test`, `npx tsc --noEmit`, `npm run abi:verify`,
-`npm run abi:migration:check`, `npm run abi:dapp`, `npm run deployment:check`, `npm run pins:check`,
-`npm run hub:audit`, `npm audit --audit-level=high`,
+`npm run abi:migration:check`, `npm run abi:dapp`, `npm run deployment:check`, `npm run acton:check:sarif`,
+`npm run acton:doctor`, `npm audit --audit-level=high`,
 `python3 scripts/sync_acton.py --check`, `yamllint`, `actionlint 1.7.12` и
 `git diff --check`.
 

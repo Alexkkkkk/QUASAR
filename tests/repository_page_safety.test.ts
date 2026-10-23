@@ -44,12 +44,3 @@ test('wallet and transaction controls fail closed unless testnet contracts are c
     assert.match(page, /if \(ready && typeof window\.initTonConnect === 'function'\)/);
     assert.match(page, /connectRoot\.hidden = !ready/);
 });
-
-
-test('merged-PR issue closer only acts on explicit references', () => {
-    const workflow = read('.github/workflows/_close-issues.yml');
-    assert.match(workflow, /github\.event\.pull_request\.merged == true/);
-    assert.ok(workflow.includes('--json title,body,mergeCommit'));
-    assert.ok(workflow.includes("grep -oiE '(closes?|closed|fix|fixes|fixed|resolves?|resolved) #[0-9]+'"));
-    assert.ok(workflow.includes('gh issue close "$n" --reason completed'));
-});

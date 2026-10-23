@@ -114,11 +114,14 @@ npm run test:tolk
 
 ## CI и автоматизация GitHub
 
-При изменениях в pull request запускаются сборка и тесты контрактов Tolk, проверки dApp и Python, CodeQL и итоговый `validate / verify`. Для завершения PR обязательны успешные проверки на текущем head; актуальный набор условий задан настройками репозитория.
+При изменениях в pull request запускается минимальный Acton/Tolk pipeline:
+`acton doctor`, `fmt --check`, GitHub lint annotations, build, wrapper generation
+и native tests. Scheduled/manual workflow отдельно формирует coverage, gas и
+mutation reports. Manual и unattended auto-fix workflows создают только patch
+artifact или изолированный PR и не меняют `main`.
 
-Workflow [`quasar.yml`](.github/workflows/quasar.yml) маршрутизирует события к отдельным модулям ревью и сопровождения. [`automerge.yml`](.github/workflows/automerge.yml) рассматривает открытые PR для продвижения и постановки в GitHub auto-merge только после прохождения обязательных checks и при отсутствии конфликтов и `do-not-merge`. Branch protection остаётся последним gate; успешный CI сам по себе не равен merge.
-
-В репозитории сейчас нет GitHub Pages workflow: CI не публикует сайт и не развёртывает контракты. Release, deployment, подпись транзакций и on-chain операции требуют отдельного решения и сюда не автоматизированы.
+Все legacy AI, dApp, release, Dependabot, triage, swarm и auto-merge Actions
+удалены. Deployment, подпись транзакций и on-chain операции не автоматизируются.
 
 ## ABI, сборка и совместимость
 

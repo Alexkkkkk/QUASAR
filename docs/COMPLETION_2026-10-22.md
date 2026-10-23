@@ -14,7 +14,7 @@
 
 ## Проверки
 
-На текущем checkout прошёл полный корневой `npm test`: 259 Node.js/TypeScript-тестов и 27 Python-тестов. Успешно завершились также `npm run lint`, `npm run security:check`, `npx tsc --noEmit`, `npm run abi:verify`, `npm run abi:dapp`, `npm run deployment:check`, `npm run pins:check`, `npm run hub:audit` и `npm audit --audit-level=high` (0 уязвимостей в корневом lock-файле). `hub:audit` выдал предупреждения о live-проверках, отключённых без `--online`, но завершился без ошибок. `deployment:check` не означает, что контракт развёрнут или выполнен testnet smoke.
+На текущем checkout прошёл полный корневой `npm test`: 259 Node.js/TypeScript-тестов и 27 Python-тестов. Успешно завершились также `npm run lint`, `npm run security:check`, `npx tsc --noEmit`, `npm run abi:verify`, `npm run abi:dapp`, `npm run deployment:check`, `npm run acton:check:sarif`, `npm run acton:doctor` и `npm audit --audit-level=high` (0 уязвимостей в корневом lock-файле). `hub:audit` выдал предупреждения о live-проверках, отключённых без `--online`, но завершился без ошибок. `deployment:check` не означает, что контракт развёрнут или выполнен testnet smoke.
 
 Для вложенного приложения после `HUSKY=0 npm ci` прошли `npx tsc --noEmit`, сборка и все 15 Jest suites: 87 тестов. Сборка сообщает о недоступных source maps в стороннем TON Connect SDK, но завершается успешно. Его `npm audit` не проходит: 50 high и 7 moderate advisories, 0 critical. `npm audit fix` не применялся: доступные автоисправления требуют крупных изменений инструментов и зависимостей. Эти результаты относятся к дереву зависимостей вложенного приложения; они не означают 57 отдельных уязвимостей production-кода.
 

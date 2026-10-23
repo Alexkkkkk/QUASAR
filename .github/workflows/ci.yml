@@ -1,4 +1,4 @@
-name: QUASAR CI
+name: QUASAR Acton CI
 
 on:
   push:
@@ -12,10 +12,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}
-  # Supersede runs on pull requests only. On a push to `main` this workflow
-  # reports the required `validate / verify` status, so cancelling those runs
-  # would drop the mandatory check result for the merged commit.
+  group: acton-ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:

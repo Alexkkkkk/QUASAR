@@ -36,7 +36,7 @@ CLASS_RULES: list[tuple[str, str, str, str]] = [
     (
         "action-pin-drift",
         r"pins:check|action pin|action_pins\.lock|out-of-date action pins",
-        "Переразрешить SHA пинов: `npm run pins:sync`.",
+        "Переразрешить SHA пинов: `npm run acton:fix`.",
         "high",
     ),
     (
