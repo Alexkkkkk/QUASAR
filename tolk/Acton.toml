@@ -41,7 +41,7 @@ fail-fast = true
 
 [lint]
 max-warnings = 0
-exclude = ["build/synchronized/wrappers/*.tolk"]
+exclude = ["build/synchronized/wrappers/*.tolk", "build/generations/**/wrappers/*.tolk"]
 
 [scripts]
 local-smoke = "acton script scripts/local-smoke.tolk"
