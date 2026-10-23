@@ -17,7 +17,7 @@
 ## Pattern: tests-red-after-docs-pack
 Signature:
   - CI fails at step "Build and run contract and tooling tests" (~2 min)
-  - steps before green: YAML lint, actionlint, tact lint, npm ci
+  - steps before green: YAML lint, actionlint, Tolk/Acton lint, npm ci
   - "QUASAR Tests" workflow also failing on same commit
 Root cause: docs-тесты ссылались на команду покрытия, которой не было
   в package.json на момент прогона (уточнено в PR #173, коммит

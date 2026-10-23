@@ -49,8 +49,8 @@ test("validateLesson rejects wrong kind and bad agent names", () => {
 });
 
 test("normalizeError canonicalizes paths, numbers, hashes and addresses", () => {
-  const a = normalizeError("Bounce at line 42 in quasar.tact run 0x12AB eqabc12345678901234567890123456789012");
-  const b = normalizeError("bounce at line 7 in quasar_common.tact run 0xFFEE eqdef09876543210987654321098765432109");
+  const a = normalizeError("Bounce at line 42 in QuasarMaster.tolk run 0x12AB eqabc12345678901234567890123456789012");
+  const b = normalizeError("bounce at line 7 in QuasarCommon.tolk run 0xFFEE eqdef09876543210987654321098765432109");
   assert.equal(a, b);
   assert.ok(!a.includes("42"));
 });

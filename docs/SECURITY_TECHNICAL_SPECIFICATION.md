@@ -22,11 +22,11 @@ This document records the security contract that must be true before testnet or 
 
 ## Required verification gates
 
-- Type-check and compile both Tact contracts.
-- Run all contract tests, including TEP-74 conformance, mint-bounce, DeFi reserve, farm, staking, and AI rollback regressions.
+- Format, type-check, and compile the canonical Tolk contracts with the pinned Acton toolchain.
+- Run all Acton-emulated contract tests, including TEP-74 conformance, mint-bounce, DeFi reserve, farm, staking, and AI rollback regressions.
 - Run the static security checker and inspect the generated artifact hashes.
 - Execute the full testnet scenario with real Jetton wallet discovery, bounced transfers, excesses, buyback success and buyback bounce, pool refund, farm claim, and owner timelock.
-- Do not call the system mainnet-ready until an independent TON/Tact audit covers message authorization, action-phase value modes, bounce paths, and reserve reconciliation.
+- Do not call the system mainnet-ready until an independent TON/Tolk audit covers message authorization, action-phase value modes, bounce paths, and reserve reconciliation. The Tolk cutover is a fresh deployment boundary, not an in-place upgrade.
 
 ## Explicit non-goals
 
