@@ -674,5 +674,202 @@
       "opcode": "0x7362d09c"
     }
   ],
-  "schemaVersion": 2
+  "schemaVersion": 3,
+  "types": {
+    "DeFiReserveSnapshot": {
+      "fields": [
+        {
+          "name": "lpTotalSupply",
+          "type": {
+            "optional": false,
+            "type": "int257"
+          }
+        },
+        {
+          "name": "tonReserve",
+          "type": {
+            "optional": false,
+            "type": "int257"
+          }
+        },
+        {
+          "name": "qsrReserve",
+          "type": {
+            "optional": false,
+            "type": "int257"
+          }
+        },
+        {
+          "name": "feeAccumulatedTon",
+          "type": {
+            "optional": false,
+            "type": "int257"
+          }
+        },
+        {
+          "name": "feeAccumulatedQsr",
+          "type": {
+            "optional": false,
+            "type": "int257"
+          }
+        },
+        {
+          "name": "farmRewardReserve",
+          "type": {
+            "optional": false,
+            "type": "int257"
+          }
+        },
+        {
+          "name": "farmTotalStaked",
+          "type": {
+            "optional": false,
+            "type": "int257"
+          }
+        }
+      ]
+    },
+    "FarmInfo": {
+      "fields": [
+        {
+          "name": "staked",
+          "type": {
+            "optional": false,
+            "type": "int257"
+          }
+        },
+        {
+          "name": "rewardPerSecond",
+          "type": {
+            "optional": false,
+            "type": "int257"
+          }
+        },
+        {
+          "name": "lastUpdate",
+          "type": {
+            "optional": false,
+            "type": "int257"
+          }
+        },
+        {
+          "name": "accRewardPerShare",
+          "type": {
+            "optional": false,
+            "type": "int257"
+          }
+        },
+        {
+          "name": "startTime",
+          "type": {
+            "optional": false,
+            "type": "int257"
+          }
+        },
+        {
+          "name": "endTime",
+          "type": {
+            "optional": false,
+            "type": "int257"
+          }
+        }
+      ]
+    },
+    "LpInfo": {
+      "fields": [
+        {
+          "name": "totalSupply",
+          "type": {
+            "optional": false,
+            "type": "int257"
+          }
+        },
+        {
+          "name": "tonReserve",
+          "type": {
+            "optional": false,
+            "type": "int257"
+          }
+        },
+        {
+          "name": "qsrReserve",
+          "type": {
+            "optional": false,
+            "type": "int257"
+          }
+        }
+      ]
+    },
+    "SwapQuote": {
+      "fields": [
+        {
+          "name": "tonIn",
+          "type": {
+            "optional": false,
+            "type": "int257"
+          }
+        },
+        {
+          "name": "qsrIn",
+          "type": {
+            "optional": false,
+            "type": "int257"
+          }
+        },
+        {
+          "name": "tonOut",
+          "type": {
+            "optional": false,
+            "type": "int257"
+          }
+        },
+        {
+          "name": "qsrOut",
+          "type": {
+            "optional": false,
+            "type": "int257"
+          }
+        },
+        {
+          "name": "fee",
+          "type": {
+            "optional": false,
+            "type": "int257"
+          }
+        },
+        {
+          "name": "priceImpactBps",
+          "type": {
+            "optional": false,
+            "type": "int257"
+          }
+        }
+      ]
+    },
+    "UserFarmInfo": {
+      "fields": [
+        {
+          "name": "staked",
+          "type": {
+            "optional": false,
+            "type": "int257"
+          }
+        },
+        {
+          "name": "debt",
+          "type": {
+            "optional": false,
+            "type": "int257"
+          }
+        },
+        {
+          "name": "pending",
+          "type": {
+            "optional": false,
+            "type": "int257"
+          }
+        }
+      ]
+    }
+  }
 }

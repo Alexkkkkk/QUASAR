@@ -1367,7 +1367,7 @@
           "name": "ownerAddress",
           "type": {
             "optional": false,
-            "type": "address"
+            "type": "any_address"
           }
         },
         {
@@ -1726,5 +1726,702 @@
       "opcode": "0xd2715d2c"
     }
   ],
-  "schemaVersion": 2
+  "schemaVersion": 3,
+  "types": {
+    "AiActionLog": {
+      "custom_pack_unpack": {
+        "pack_to_builder": true,
+        "unpack_from_slice": true
+      },
+      "fields": [
+        {
+          "name": "actionId",
+          "type": {
+            "optional": false,
+            "type": "int257"
+          }
+        },
+        {
+          "name": "timestamp",
+          "type": {
+            "optional": false,
+            "type": "int257"
+          }
+        },
+        {
+          "name": "actionType",
+          "type": {
+            "optional": false,
+            "type": "string"
+          }
+        },
+        {
+          "name": "oldValue",
+          "type": {
+            "optional": false,
+            "type": "int257"
+          }
+        },
+        {
+          "name": "newValue",
+          "type": {
+            "optional": false,
+            "type": "int257"
+          }
+        },
+        {
+          "name": "reason",
+          "type": {
+            "optional": false,
+            "type": "string"
+          }
+        },
+        {
+          "name": "executed",
+          "type": {
+            "optional": false,
+            "type": "bool"
+          }
+        },
+        {
+          "name": "vetoed",
+          "type": {
+            "optional": false,
+            "type": "bool"
+          }
+        },
+        {
+          "name": "overridden",
+          "type": {
+            "optional": false,
+            "type": "bool"
+          }
+        }
+      ]
+    },
+    "AiRecommendation": {
+      "fields": [
+        {
+          "name": "timestamp",
+          "type": {
+            "optional": false,
+            "type": "int257"
+          }
+        },
+        {
+          "name": "action",
+          "type": {
+            "optional": false,
+            "type": "string"
+          }
+        },
+        {
+          "name": "confidence",
+          "type": {
+            "optional": false,
+            "type": "int257"
+          }
+        },
+        {
+          "name": "executed",
+          "type": {
+            "optional": false,
+            "type": "bool"
+          }
+        }
+      ]
+    },
+    "AiState": {
+      "fields": [
+        {
+          "name": "oracleAddress",
+          "type": {
+            "optional": false,
+            "type": "address"
+          }
+        },
+        {
+          "name": "aiModeEnabled",
+          "type": {
+            "optional": false,
+            "type": "bool"
+          }
+        },
+        {
+          "name": "fullAutonomy",
+          "type": {
+            "optional": false,
+            "type": "bool"
+          }
+        },
+        {
+          "name": "lastRebalanceAt",
+          "type": {
+            "optional": false,
+            "type": "int257"
+          }
+        },
+        {
+          "name": "totalSignalsReceived",
+          "type": {
+            "optional": false,
+            "type": "int257"
+          }
+        },
+        {
+          "name": "currentFeeBps",
+          "type": {
+            "optional": false,
+            "type": "int257"
+          }
+        },
+        {
+          "name": "priceHistoryCount",
+          "type": {
+            "optional": false,
+            "type": "int257"
+          }
+        },
+        {
+          "name": "anomalyCount",
+          "type": {
+            "optional": false,
+            "type": "int257"
+          }
+        },
+        {
+          "name": "lastHeartbeat",
+          "type": {
+            "optional": false,
+            "type": "int257"
+          }
+        },
+        {
+          "name": "isAlive",
+          "type": {
+            "optional": false,
+            "type": "bool"
+          }
+        },
+        {
+          "name": "lastQueryId",
+          "type": {
+            "optional": false,
+            "type": "int257"
+          }
+        }
+      ]
+    },
+    "AutonomyState": {
+      "fields": [
+        {
+          "name": "fullAutonomyEnabled",
+          "type": {
+            "optional": false,
+            "type": "bool"
+          }
+        },
+        {
+          "name": "aiActionCooldown",
+          "type": {
+            "optional": false,
+            "type": "int257"
+          }
+        },
+        {
+          "name": "lastAiActionTime",
+          "type": {
+            "optional": false,
+            "type": "int257"
+          }
+        },
+        {
+          "name": "heartbeatTimeout",
+          "type": {
+            "optional": false,
+            "type": "int257"
+          }
+        },
+        {
+          "name": "lastHeartbeat",
+          "type": {
+            "optional": false,
+            "type": "int257"
+          }
+        },
+        {
+          "name": "ownerOverrideWindow",
+          "type": {
+            "optional": false,
+            "type": "int257"
+          }
+        },
+        {
+          "name": "vetoThresholdBps",
+          "type": {
+            "optional": false,
+            "type": "int257"
+          }
+        },
+        {
+          "name": "totalVetoStake",
+          "type": {
+            "optional": false,
+            "type": "int257"
+          }
+        },
+        {
+          "name": "pendingActions",
+          "type": {
+            "optional": false,
+            "type": "int257"
+          }
+        }
+      ]
+    },
+    "BuybackState": {
+      "fields": [
+        {
+          "name": "enabled",
+          "type": {
+            "optional": false,
+            "type": "bool"
+          }
+        },
+        {
+          "name": "pool",
+          "type": {
+            "optional": false,
+            "type": "int257"
+          }
+        },
+        {
+          "name": "threshold",
+          "type": {
+            "optional": false,
+            "type": "int257"
+          }
+        },
+        {
+          "name": "cooldown",
+          "type": {
+            "optional": false,
+            "type": "int257"
+          }
+        },
+        {
+          "name": "burnPercent",
+          "type": {
+            "optional": false,
+            "type": "int257"
+          }
+        },
+        {
+          "name": "buybackSwapPending",
+          "type": {
+            "optional": false,
+            "type": "int257"
+          }
+        },
+        {
+          "name": "buybackSwapQueryId",
+          "type": {
+            "optional": false,
+            "type": "int257"
+          }
+        },
+        {
+          "name": "lastBuybackAt",
+          "type": {
+            "optional": false,
+            "type": "int257"
+          }
+        },
+        {
+          "name": "totalBuybacks",
+          "type": {
+            "optional": false,
+            "type": "int257"
+          }
+        },
+        {
+          "name": "totalQsrBurnedViaBuyback",
+          "type": {
+            "optional": false,
+            "type": "int257"
+          }
+        },
+        {
+          "name": "totalTonSpent",
+          "type": {
+            "optional": false,
+            "type": "int257"
+          }
+        }
+      ]
+    },
+    "FeeConfig": {
+      "fields": [
+        {
+          "name": "feeBps",
+          "type": {
+            "optional": false,
+            "type": "int257"
+          }
+        },
+        {
+          "name": "burnShare",
+          "type": {
+            "optional": false,
+            "type": "int257"
+          }
+        },
+        {
+          "name": "treasuryShare",
+          "type": {
+            "optional": false,
+            "type": "int257"
+          }
+        },
+        {
+          "name": "maxTxBps",
+          "type": {
+            "optional": false,
+            "type": "int257"
+          }
+        },
+        {
+          "name": "maxWalletBps",
+          "type": {
+            "optional": false,
+            "type": "int257"
+          }
+        },
+        {
+          "name": "cooldown",
+          "type": {
+            "optional": false,
+            "type": "int257"
+          }
+        },
+        {
+          "name": "totalBurned",
+          "type": {
+            "optional": false,
+            "type": "int257"
+          }
+        },
+        {
+          "name": "totalFeesCollected",
+          "type": {
+            "optional": false,
+            "type": "int257"
+          }
+        }
+      ]
+    },
+    "GovernanceState": {
+      "fields": [
+        {
+          "name": "quorumBps",
+          "type": {
+            "optional": false,
+            "type": "int257"
+          }
+        },
+        {
+          "name": "totalStaked",
+          "type": {
+            "optional": false,
+            "type": "int257"
+          }
+        },
+        {
+          "name": "proposals",
+          "type": {
+            "optional": false,
+            "type": "int257"
+          }
+        }
+      ]
+    },
+    "JettonData": {
+      "fields": [
+        {
+          "name": "totalSupply",
+          "type": {
+            "optional": false,
+            "type": "int257"
+          }
+        },
+        {
+          "name": "mintable",
+          "type": {
+            "optional": false,
+            "type": "bool"
+          }
+        },
+        {
+          "name": "adminAddress",
+          "type": {
+            "optional": false,
+            "type": "address"
+          }
+        },
+        {
+          "name": "jettonContent",
+          "type": {
+            "optional": false,
+            "type": "cell"
+          }
+        },
+        {
+          "name": "jettonWalletCode",
+          "type": {
+            "optional": false,
+            "type": "cell"
+          }
+        }
+      ]
+    },
+    "ReferralInfo": {
+      "custom_pack_unpack": {
+        "pack_to_builder": true,
+        "unpack_from_slice": true
+      },
+      "fields": [
+        {
+          "name": "referrer",
+          "type": {
+            "optional": false,
+            "type": "address"
+          }
+        },
+        {
+          "name": "totalEarned",
+          "type": {
+            "optional": false,
+            "type": "int257"
+          }
+        },
+        {
+          "name": "totalReferrals",
+          "type": {
+            "optional": false,
+            "type": "int257"
+          }
+        }
+      ]
+    },
+    "ReserveSnapshot": {
+      "fields": [
+        {
+          "name": "reserveBalance",
+          "type": {
+            "optional": false,
+            "type": "int257"
+          }
+        },
+        {
+          "name": "freeReserve",
+          "type": {
+            "optional": false,
+            "type": "int257"
+          }
+        },
+        {
+          "name": "buybackPool",
+          "type": {
+            "optional": false,
+            "type": "int257"
+          }
+        },
+        {
+          "name": "stakingRewardsPool",
+          "type": {
+            "optional": false,
+            "type": "int257"
+          }
+        },
+        {
+          "name": "referralLiability",
+          "type": {
+            "optional": false,
+            "type": "int257"
+          }
+        },
+        {
+          "name": "custodyBalance",
+          "type": {
+            "optional": false,
+            "type": "int257"
+          }
+        },
+        {
+          "name": "totalStaked",
+          "type": {
+            "optional": false,
+            "type": "int257"
+          }
+        },
+        {
+          "name": "totalSupply",
+          "type": {
+            "optional": false,
+            "type": "int257"
+          }
+        }
+      ]
+    },
+    "StakeInfo": {
+      "custom_pack_unpack": {
+        "pack_to_builder": true,
+        "unpack_from_slice": true
+      },
+      "fields": [
+        {
+          "name": "amount",
+          "type": {
+            "optional": false,
+            "type": "int257"
+          }
+        },
+        {
+          "name": "startTime",
+          "type": {
+            "optional": false,
+            "type": "int257"
+          }
+        },
+        {
+          "name": "lastClaim",
+          "type": {
+            "optional": false,
+            "type": "int257"
+          }
+        },
+        {
+          "name": "lockEnd",
+          "type": {
+            "optional": false,
+            "type": "int257"
+          }
+        }
+      ]
+    },
+    "StakingConfig": {
+      "fields": [
+        {
+          "name": "enabled",
+          "type": {
+            "optional": false,
+            "type": "bool"
+          }
+        },
+        {
+          "name": "apyBps",
+          "type": {
+            "optional": false,
+            "type": "int257"
+          }
+        },
+        {
+          "name": "minStake",
+          "type": {
+            "optional": false,
+            "type": "int257"
+          }
+        },
+        {
+          "name": "lockPeriod",
+          "type": {
+            "optional": false,
+            "type": "int257"
+          }
+        },
+        {
+          "name": "totalStaked",
+          "type": {
+            "optional": false,
+            "type": "int257"
+          }
+        }
+      ]
+    },
+    "UserLiabilitySnapshot": {
+      "fields": [
+        {
+          "name": "pendingQsrDeposit",
+          "type": {
+            "optional": false,
+            "type": "int257"
+          }
+        },
+        {
+          "name": "stakedPrincipal",
+          "type": {
+            "optional": false,
+            "type": "int257"
+          }
+        },
+        {
+          "name": "pendingReferralReward",
+          "type": {
+            "optional": false,
+            "type": "int257"
+          }
+        },
+        {
+          "name": "vestedUnclaimed",
+          "type": {
+            "optional": false,
+            "type": "int257"
+          }
+        }
+      ]
+    },
+    "VestingInfo": {
+      "custom_pack_unpack": {
+        "pack_to_builder": true,
+        "unpack_from_slice": true
+      },
+      "fields": [
+        {
+          "name": "totalAmount",
+          "type": {
+            "optional": false,
+            "type": "int257"
+          }
+        },
+        {
+          "name": "claimed",
+          "type": {
+            "optional": false,
+            "type": "int257"
+          }
+        },
+        {
+          "name": "startTime",
+          "type": {
+            "optional": false,
+            "type": "int257"
+          }
+        },
+        {
+          "name": "cliff",
+          "type": {
+            "optional": false,
+            "type": "int257"
+          }
+        },
+        {
+          "name": "duration",
+          "type": {
+            "optional": false,
+            "type": "int257"
+          }
+        }
+      ]
+    }
+  }
 }

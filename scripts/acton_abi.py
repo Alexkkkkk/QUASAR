@@ -26,6 +26,8 @@ CONTRACTS = {
 
 def type_shape(abi: dict[str, Any], index: int, seen: frozenset[int] = frozenset()) -> dict[str, Any]:
     """Return a stable, compiler-neutral representation of a Tolk ABI type."""
+    if type(index) is not int or index < 0:
+        raise ValueError(f"invalid ABI type index {index}")
     if index in seen:
         raise ValueError(f"recursive ABI type at index {index}")
     try:
@@ -48,10 +50,23 @@ def type_shape(abi: dict[str, Any], index: int, seen: frozenset[int] = frozenset
         prefix = {"intN": "int", "uintN": "uint", "bitsN": "bits"}[kind]
         return {"type": f"{prefix}{value['n']}", "optional": False}
     if kind == "cellOf":
-        return {"type": "cell", "optional": False}
-    if kind in {"addressOpt", "addressAny"}:
-        return {"type": "address", "optional": kind == "addressOpt"}
-    return {"type": kind, "optional": False}
+        return {
+            "type": "cell", "optional": False,
+            "inner": type_shape(abi, value["inner_ty_idx"], seen | {index}),
+        }
+    if kind == "mapKV":
+        return {
+            "type": "map", "optional": False,
+            "key": type_shape(abi, value["key_ty_idx"], seen | {index}),
+            "value": type_shape(abi, value["value_ty_idx"], seen | {index}),
+        }
+    if kind == "addressOpt":
+        return {"type": "address", "optional": True}
+    if kind == "addressAny":
+        return {"type": "any_address", "optional": False}
+    if kind in {"void", "int", "slice", "cell", "builder", "bool", "coins", "address", "remaining", "string"}:
+        return {"type": kind, "optional": False}
+    raise ValueError(f"unsupported ABI type kind {kind!r}; extend the snapshot codec before accepting it")
 
 
 def declaration_map(abi: dict[str, Any]) -> dict[int, dict[str, Any]]:
@@ -60,6 +75,46 @@ def declaration_map(abi: dict[str, Any]) -> dict[int, dict[str, Any]]:
         for item in abi["declarations"]
         if item.get("kind") == "struct" and "ty_idx" in item
     }
+
+
+def public_structs(abi: dict[str, Any], shapes: list[dict[str, Any]]) -> dict[str, Any]:
+    """Pin fields of reachable public structs, including getter stack layouts.
+
+    Named references keep recursive cell/map records finite. Private storage
+    records are not included unless a public message or getter exposes them.
+    """
+    declarations = {
+        item["name"]: item for item in abi["declarations"] if item.get("kind") == "struct"
+    }
+    definitions: dict[str, Any] = {}
+
+    def visit(shape: dict[str, Any]) -> None:
+        for key in ("inner", "key", "value"):
+            if key in shape:
+                visit(shape[key])
+        if not shape["type"].startswith("struct:"):
+            return
+        name = shape["type"].removeprefix("struct:")
+        if name in definitions:
+            return
+        if name not in declarations:
+            raise ValueError(f"missing ABI struct declaration {name!r}")
+        declaration = declarations[name]
+        definition: dict[str, Any] = {"fields": [
+            {"name": field["name"], "type": type_shape(abi, field["ty_idx"])}
+            for field in declaration.get("fields", [])
+        ]}
+        if "prefix" in declaration:
+            definition["prefix"] = declaration["prefix"]
+        if "custom_pack_unpack" in declaration:
+            definition["custom_pack_unpack"] = declaration["custom_pack_unpack"]
+        definitions[name] = definition
+        for field in definition["fields"]:
+            visit(field["type"])
+
+    for shape in shapes:
+        visit(shape)
+    return dict(sorted(definitions.items()))
 
 
 def create_snapshot(abi: dict[str, Any]) -> dict[str, Any]:
@@ -93,8 +148,11 @@ def create_snapshot(abi: dict[str, Any]) -> dict[str, Any]:
             ],
             "returns": type_shape(abi, getter["return_ty_idx"]),
         })
+    shapes = [field["type"] for message in messages for field in message["fields"]]
+    shapes.extend(field["type"] for getter in getters for field in getter["arguments"])
+    shapes.extend(getter["returns"] for getter in getters)
     return {
-        "schemaVersion": 2,
+        "schemaVersion": 3,
         "compiler": {
             "name": abi["compiler_name"],
             "version": abi["compiler_version"],
@@ -102,6 +160,7 @@ def create_snapshot(abi: dict[str, Any]) -> dict[str, Any]:
         "contract": abi["contract_name"],
         "messages": sorted(messages, key=lambda item: item["name"]),
         "getters": sorted(getters, key=lambda item: item["name"]),
+        "types": public_structs(abi, shapes),
     }
 
 

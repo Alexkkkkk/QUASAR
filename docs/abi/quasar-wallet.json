@@ -124,7 +124,7 @@
           "name": "ownerAddress",
           "type": {
             "optional": false,
-            "type": "address"
+            "type": "any_address"
           }
         },
         {
@@ -254,5 +254,39 @@
       "opcode": "0x0b1cc4aa"
     }
   ],
-  "schemaVersion": 2
+  "schemaVersion": 3,
+  "types": {
+    "JettonWalletData": {
+      "fields": [
+        {
+          "name": "balance",
+          "type": {
+            "optional": false,
+            "type": "coins"
+          }
+        },
+        {
+          "name": "owner",
+          "type": {
+            "optional": false,
+            "type": "address"
+          }
+        },
+        {
+          "name": "master",
+          "type": {
+            "optional": false,
+            "type": "address"
+          }
+        },
+        {
+          "name": "walletCode",
+          "type": {
+            "optional": false,
+            "type": "cell"
+          }
+        }
+      ]
+    }
+  }
 }

@@ -1,404 +1,164 @@
 # QUASAR
 
-> A pre-launch TON Jetton and DeFi engineering prototype with explicit on-chain risk boundaries.
+> Предзапусковой прототип Jetton и DeFi для TON. Канонические смарт-контракты проекта написаны на **Tolk** и собираются инструментарием **Acton 1.2.1**.
 
 [![QUASAR CI](https://github.com/Alexkkkkk/QUASAR/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Alexkkkkk/QUASAR/actions/workflows/ci.yml)
-[![GitHub Pages](https://github.com/Alexkkkkk/QUASAR/actions/workflows/pages.yml/badge.svg?branch=main)](https://github.com/Alexkkkkk/QUASAR/actions/workflows/pages.yml)
 [![TON](https://img.shields.io/badge/Blockchain-TON-blue)](https://ton.org)
-[![Tolk](https://img.shields.io/badge/Language-Tolk-blue)](https://docs.ton.org/tolk/overview)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Tolk](https://img.shields.io/badge/Contracts-Tolk-blue)](https://docs.ton.org/tolk/overview)
+[![Лицензия MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 > [!WARNING]
-> **Pre-launch and not independently audited.** A testnet smoke run and independent security audit remain open release gates. Do not use real funds or treat any yield figure as a promise.
+> **Проект не запущен в production и не прошёл независимый аудит.** Не отправляйте реальные средства и не воспринимайте расчётные награды, APY или другие показатели как обещание доходности. До развёртывания обязательны отдельная репетиция в testnet, план перехода состояния и независимый аудит текущего Tolk-поколения.
 
-> [!NOTE]
-> The website's wallet and contract controls remain disabled until both contract addresses are configured for an explicit TON testnet deployment.
+> [!IMPORTANT]
+> Tolk-контракты — **новое поколение**, а не обновление существующих Tact-контрактов. Их код, схема состояния, `StateInit` и адреса отличаются. Состояние и адреса старого поколения нельзя считать совместимыми с новыми контрактами.
 
-**[Live preview](https://alexkkkkk.github.io/QUASAR) · [Testnet deployment checklist](docs/TESTNET_DEPLOY_CHECKLIST.md) · [Security status](docs/AUDIT_STATUS.md) · [Contributing](docs/CONTRIBUTING.md)**
+## Что такое QUASAR
 
-## Overview
+QUASAR — прототип токена QSR и связанных TON-контрактов. Репозиторий содержит Jetton master и wallets, CPMM-пул QSR/TON, учёт ликвидности и LP, фарминг, стейкинг, вестинг, реферальный учёт и административные механизмы. В системе также присутствует ограниченный интерфейс для действий AI Oracle; наличие такого кода не означает, что автономный агент включён или безопасен.
 
-**QUASAR** is a TON Jetton and DeFi prototype. It includes a CPMM pool, LP farming, staking, vesting, referrals, and an optional AI oracle. The contracts are pre-testnet and must not be treated as audited, production-ready, or a promise of yield.
+Веб-интерфейс находится в `website/`. Без корректной конфигурации развёртывания адреса контрактов не загружаются, а транзакционные действия остаются отключёнными. В репозитории нет опубликованной конфигурации `website/deployment.json`; этот файл намеренно исключён из Git.
 
-## Automation
+**Ссылки:** [статус аудита](docs/AUDIT_STATUS.md) · [решение о миграции на Tolk](docs/TOLK_MIGRATION_DECISION.md) · [проверка готовности к mainnet](docs/MAINNET_READINESS_CHECKLIST.md) · [вклад в проект](docs/CONTRIBUTING.md)
 
-- **CI** runs contract checks, tests, ABI and dApp validation, deployment checks, TypeScript checks, build hashes, and dependency audit on pushes and pull requests to main.
-- **GitHub Pages deployment is disabled.** The currently hosted version may remain available, but changes to `website/**` are not published automatically.
-- **Automation hub** (`quasar.yml`) is the single event router for the AI surface: a pure decision function ([`scripts/router.mjs`](scripts/router.mjs), covered by `tests/router.test.mjs`) selects which reusable module runs for each event. The modules live as `workflow_call` files: `_ai-fix`, `_ai-review`, `_close-issues`, `_ai-merge`, `_pr-polish`, `_hub-audit`, `_stale`, `_dms`.
-- **AI issue agent** (`_ai-fix.yml`) stays on the Groq workflow. An Ollama (`qwen2.5-coder:3b`) implementation and TON Docs RAG workflow templates are in [`docs/ai/`](docs/ai/AI_ISSUE_AGENT.md); they become active only after a repository owner installs them under `.github/workflows/`. The flow is isolated validation and draft PR; automatic merge is allowed only after all required checks are green. Deployment and on-chain actions remain forbidden.
-- **Development process**: issue → `ai-fix` → draft PR `ai/<n>-agent` → required CI checks → automatic ready/auto-merge only after all six required status contexts succeed. The branch ruleset requires **zero approving reviews**, has no bypass actors, and requires checks against the current base. The `do-not-merge` label blocks automation. Release publication remains owner-initiated; website/contract deployment and every on-chain action remain disabled.
-- **TON Docs context** is a seven-page, allowlisted Markdown snapshot. Sync scripts and review steps are documented in [TON Docs sync](docs/TON_DOCS_SYNC.md); refreshing it does not train model weights.
-- **Issue linking** closes issues only when an explicit closing keyword appears in the title, body, or merge-commit headline of a merged PR.
+## Текущая архитектура
 
-
-## Architecture
-
-```
-┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
-│   QuasarMaster  │◄────│   QuasarDeFi    │     │   QuasarWallet  │
-│   (Jetton +    │     │   (DEX + Farm)  │     │   (User Token   │
-│    AI Oracle)   │     │                 │     │    Storage)     │
-└────────┬────────┘     └────────┬────────┘     └─────────────────┘
-         │                       │
-         │  5% of remainder ────┘
-         │  Jetton transfers
-         │
-    ┌────┴────┐
-    │  TON    │
-    │ Connect │
-    │  Web3   │
-    └─────────┘
+```mermaid
+flowchart LR
+    User[Кошелёк пользователя] --> Wallet[QuasarWallet<br/>Jetton wallet]
+    Wallet <--> Master[QuasarMaster<br/>Jetton master и учёт]
+    Wallet <--> DeFi[QuasarDeFi<br/>CPMM, LP и фарминг]
+    Master <--> DeFi
+    Admin[QuasarAdminTimelock<br/>отложенные вызовы] -. разрешённая цель .-> Master
+    Admin -. разрешённая цель .-> DeFi
+    UI[website/<br/>TON Connect UI] -. адреса из локальной<br/>deployment-конфигурации .-> User
 ```
 
-## Feature Matrix
+| Контракт | Исходник | Назначение |
+| --- | --- | --- |
+| `QuasarMaster` | [`tolk/contracts/QuasarMaster.tolk`](tolk/contracts/QuasarMaster.tolk) | Jetton master, выпуск и учёт QSR, комиссии, стейкинг, вестинг, referral и административная логика. |
+| `QuasarWallet` | [`tolk/contracts/QuasarWallet.tolk`](tolk/contracts/QuasarWallet.tolk) | Jetton wallet; общий wallet-код подключается master и DeFi. |
+| `QuasarDeFi` | [`tolk/contracts/QuasarDeFi.tolk`](tolk/contracts/QuasarDeFi.tolk) | CPMM-пул, обмен, ликвидность, LP и учёт фарминга. |
+| `QuasarAdminTimelock` | [`tolk/contracts/QuasarAdminTimelock.tolk`](tolk/contracts/QuasarAdminTimelock.tolk) | Отложенное исполнение административных вызовов. |
 
-| Area | What the source implements |
-|------|----------------------------|
-| **AI controls** | Optional, owner-governed risk controls; disabled by default. |
-| **Built-in DEX** | CPMM AMM with minimum-output and deadline checks; prototype, not a live market. |
-| **Yield farming** | LP auto-stake; rewards are claimed explicitly, with no auto-compounding. |
-| **Buyback accounting** | Fee distribution is tracked; buybacks require an owner-authenticated trigger. |
-| **Staking** | Rewards depend on fee inflows; no APY is guaranteed. |
-| **Referrals** | Escrowed rewards with explicit claims. |
-| **Team vesting** | Linear two-year unlock with a cliff. |
-| **Community veto** | Separately deposited QSR escrow for reversible AI/governance actions. |
-| **Owner controls** | Two-step transfer with a 48-hour timelock; no multisig yet. |
-| **Wallet policy** | Outgoing transfers are capped at 1% of max supply; receiving wallets at 3% of max supply; cooldown enforced. |
-| **Transfer fee** | Fixed at 0.30% in wallet code. |
+Точные сообщения, opcodes, поля и getters задаются исходниками Tolk и compiler-derived ABI snapshots в [`docs/abi/`](docs/abi/). Описание функций — не гарантия конкретного результата транзакции: проверяйте контрактное состояние, параметры и обработку отказов.
 
----
+## Единственный активный toolchain контрактов
 
-## DeFi Integration
+- **Язык контрактов:** Tolk.
+- **Сборка, генерация ABI/wrappers и эмуляционные тесты:** Acton CLI `1.2.1`, закреплённый в [`tolk/Acton.toml`](tolk/Acton.toml).
+- **Исходники проекта Acton:** `tolk/contracts/` и `tolk/tests/`.
+- **ABI snapshots и интерфейсы:** `docs/abi/`; ABI создаётся и проверяется по результатам компиляции.
+- **Единая контролируемая публикация локальных build-артефактов:** `scripts/sync_acton.py` и `tolk/build/synchronized/`.
 
-### DEX (QuasarDeFi)
+Исторические Tact-файлы находятся только в [`docs/historical/tact-reference/`](docs/historical/tact-reference/). Они сохранены как свидетельства прежнего поколения, не входят в активную сборку и не являются альтернативным путём разработки.
 
-Built-in **Constant Product Market Maker (CPMM)** AMM. No external DEX needed.
+## Разработка и локальная проверка
 
-| Parameter | Value |
-|-----------|-------|
-| Model | CPMM (x * y = k) |
-| Fee | 0.30% per swap (owner-configurable only downwards) |
-| Slippage protection | Configurable min output plus transaction deadline |
-| Reentrancy guard | Yes |
-| First LP protection | 1,000 permanently locked minimum LP units |
-| Price observations | Cumulative QSR/TON and TON/QSR observations for TWAP consumers |
+### Требования
 
-#### Swap QSR → TON
-```bash
-# 1. Send QSR from the user's Jetton wallet to QuasarDeFi.
-# 2. Submit the swap using the deposited amount.
-SwapToTON { qsrAmount: 1000000000, minTonOut: 50000000, deadline: 2000000000 }
+- Node.js **22 или 24** и npm.
+- Python **3.11+** с `pip`.
+- Acton CLI **1.2.1**.
+
+Сначала установите базовый Acton CLI по [официальной инструкции](https://ton-blockchain.github.io/acton/docs/installation), затем установите требуемую версию:
+
+```sh
+acton up 1.2.1
+acton --version
+node --version
+python3 --version
 ```
 
-#### Swap TON → QSR
-```bash
-# Buy QSR with TON (send TON with message)
-SwapToQSR { tonAmount: 50000000, minQsrOut: 900000000, deadline: 2000000000 }
-```
+`npm ci` устанавливает JavaScript-зависимости, но **не устанавливает Acton**. Python-зависимости тестов перечислены в `requirements.txt`.
 
-#### Add Liquidity
-```bash
-# 1. Deposit QSR to QuasarDeFi from the user's Jetton wallet.
-# 2. Send TON with this message; the QSR deposit is consumed atomically.
-AddLiquidity {
-  tonAmount: 1000000000,
-  qsrAmount: 100000000000,
-  minLpOut: 9000000000,
-  deadline: 2000000000
-}
-```
+### Проверка чистой рабочей копии
 
-#### Remove Liquidity
-```bash
-# Burn LP tokens, receive proportional TON + QSR
-RemoveLiquidity {
-  lpAmount: 50000000000,
-  minTonOut: 490000000,
-  minQsrOut: 49000000000,
-  deadline: 2000000000
-}
-```
+Из корня репозитория:
 
-### Liquidity Pools
-
-- **LP Token**: Proportional share of TON + QSR reserves
-- **First Deposit**: LP = sqrt(ton * qsr) minus 1,000 units sent to a permanently locked minimum-liquidity bucket
-- **Subsequent**: LP proportional to existing reserves
-- **Auto-stake**: LP tokens automatically staked in farm
-- **Emergency farm exit**: `EmergencyWithdrawFarm {}` returns LP principal to the user's available LP balance and forfeits unclaimed rewards
-
-### Yield Farming
-
-The documented farm reward rate is ~0.1 QSR/sec by default; rewards are configurable and do not imply a guaranteed return.
-
-| Parameter | Value |
-|-----------|-------|
-| Reward rate | 0.1 QSR/sec (configurable) |
-| Reward handling | Claim explicitly; no auto-compound |
-| Lock | None for farm |
-| APY | Not guaranteed; depends on the configured reward rate and on-chain liquidity |
-
-```bash
-# Claim farm rewards (LP auto-staked on add liquidity)
-ClaimFarmRewards {}
-```
-
-Unconsumed QSR deposits sent to the DeFi contract can be returned with
-`RefundPendingQsr {}`. The refund path remains available while the pool is
-paused so a failed or abandoned two-step operation does not strand user funds.
-
-### Fee Distribution (Updated)
-
-```
-Every Transfer: 0.30% fee (30 bps, enforced in QuasarWallet)
-├─ 50% of the fee is burned immediately (feeBurnShare = 50)
-└─ the remaining 50% is split in QuasarMaster.FeeTransfer:
-   ├─ 15% of the remainder → Buyback bucket (burns QSR from the reserve; the non-burned share is swapped for TON through the DeFi AMM when configured)
-   ├─ 10% of the remainder → Staking Rewards
-   ├─ 5% of the remainder → DeFi Pool (defiFeeShareBps = 500, i.e. 2.5% of the fee)
-   ├─ up to 1% of the original fee → escrowed referral reward (paid out of the treasury share)
-   └─ remainder Treasury (includes the former 15% lottery share, retired with the lottery feature)
-```
-
----
-
-## Staking Vault
-
-The source supports staking rewards from transaction fees; a configured APY target is not a promise of actual yield.
-
-```bash
-# 1. Deposit QSR to QuasarMaster from the user's Jetton wallet.
-# 2. Consume that deposit with this message.
-Stake { amount: 100000000000 }
-
-# Claim rewards anytime
-ClaimRewards {}
-
-# Unstake after lock period
-Unstake { amount: 50000000000 }
-```
-
-- **Min Stake**: 100 QSR
-- **Lock Period**: 30 days; a top-up restarts the lock, it never shortens it
-- **Configured APY target**: 20% (adjustable by AI); not a guaranteed return
-- **Rewards**: Paid instantly from fee pool
-
-The master does not accept a bare `Stake` message as a deposit. QSR must be
-sent to the master wallet first; this prevents staking unowned tokens.
-
----
-
-## Referral System
-
-Invite friends and accrue **up to 1% of the eligible fee** generated by referred users.
-
-```bash
-# Register with a referrer
-RegisterReferral { referrer: EQ... }
-
-# Claim accumulated rewards
-ClaimReferralRewards {}
-```
-
-Rewards are escrowed in the master contract and must be claimed explicitly.
-
----
-
-## Team Vesting
-
-Team tokens unlock linearly over 2 years with a cliff.
-
-```bash
-# Owner adds vesting schedule
-AddVesting { beneficiary: EQ..., totalAmount: 100000000000, cliff: 7776000, duration: 63072000 }
-
-# Beneficiary claims unlocked tokens
-ClaimVested {}
-```
-
----
-
-
----
-
-## AI Sovereignty
-
-The AI Oracle can apply bounded risk controls with owner-confirmed issuance:
-
-| Control | Cooldown | Veto |
-|---------|----------|------|
-| Fee adjustment | 6h | Yes |
-| Treasury change | 6h | Yes |
-| Anti-whale limits | 6h | Yes |
-| Buyback settings | 6h | Yes |
-| Trading toggle | 6h | Yes |
-| Emergency pause | Instant | No |
-| Oracle rotation | 6h | Yes |
-
-### Safeguards (as implemented)
-- **Community Veto**: `VetoAIAction` accepts only separately deposited QSR from an existing staker. The default threshold is 10% of `totalStaked`; vetoing restores the complete pre-action snapshot, marks the action closed, blocks `OwnerOverride`, and `ReleaseVeto` returns each escrow once through the typed bounce-recovery ledger
-- **Owner Override**: 24h window for every logged AI action; the current implementation restores the full pre-action snapshot for reversible AI controls
-- **Dead Man's Switch**: `Claim AI Control` lets the owner reclaim control if the AI is silent 7 days
-- **Minting authority**: AI may pause trading and adjust fees, but only the owner-authenticated `Stop Minting` path can set `mintable = false`
-- **AI cooldown**: `aiActionCooldown` (6h) gates every administrative AI action in every mode; market signals are logged but not rate-limited
-- **AI fund-flow boundary**: market signals never execute buybacks or move reserve funds; an owner-authenticated `TriggerBuyback` is required
-
----
-
-## Web3 UI
-
-Connect any TON wallet via **TON Connect 2.0**:
-
-- Swap QSR ↔ TON with slippage protection
-- Add/remove liquidity
-- Stake/unstake QSR
-- Claim farming rewards
-- Real-time balance display
-
-### Contract Addresses (auto-loaded)
-
-The UI loads addresses from `website/deployment.json` after deployment:
-
-```json
-{
-  "contracts": {
-    "master": { "address": "EQ..." },
-    "defi": { "address": "EQ..." }
-  }
-}
-```
-
----
-
-## Quick Start
-
-### 1. Install & Build
-
-```bash
+```sh
 git clone https://github.com/Alexkkkkk/QUASAR.git
 cd QUASAR
 npm ci
-npm run acton:init  # Updates Acton's standard library; preserves tolk/Acton.toml
-npm run build        # Builds, tests and atomically publishes Tolk artifacts
-```
-
-### 2. Verify the Tolk generation
-
-```bash
+python3 -m pip install -r requirements.txt
+npm run acton:init
 npm run lint
 npm test
+npx tsc --noEmit
 npm run abi:verify
+npm run abi:migration:check
 npm run abi:dapp
 python3 scripts/sync_acton.py --check
 ```
 
-The active contracts are a fresh Tolk generation. Their StateInit, storage
-schema, code hash and deterministic addresses are not compatible with a legacy
-Tact deployment. Deployment, migration, signing and broadcast are not part of
-this repository workflow; they need a separately approved plan, testnet
-rehearsal and independent audit.
+`npm run acton:init` инициализирует стандартную библиотеку Acton для проекта и сохраняет закреплённую версию в `tolk/Acton.toml`. `npm run lint` выполняет проверки форматирования, компиляцию, генерацию wrappers и проверки Acton. `npm test` запускает контролируемую сборку, security checks, Node.js и Python-регрессии. Для отдельного запуска эмуляционных тестов Tolk используйте:
 
-Operational checklists:
-
-- `docs/TESTNET_DEPLOY_CHECKLIST.md` — step-by-step disposable testnet deploy checklist.
-- `docs/TESTNET_SMOKE_RUNBOOK.md` — automated + manual post-deploy smoke flow.
-- `docs/MAINNET_READINESS_CHECKLIST.md` — later mainnet release gate.
-
-### 4. Serve Website
-
-```bash
-npm run website      # Serves website/ on localhost
+```sh
+npm run test:tolk
 ```
 
----
+### Основные команды
 
-## Smart Contracts
+| Команда | Назначение |
+| --- | --- |
+| `npm run build` | Собрать изолированное поколение Tolk, проверить его и атомарно опубликовать локальные артефакты. |
+| `python3 scripts/sync_acton.py --check` | Проверить согласованность исходников и опубликованного build-поколения без его перестройки. |
+| `npm run abi:verify` | Сверить compiler-derived ABI с зафиксированными snapshots. |
+| `npm run abi:migration:check` | Сравнить выбранные wire-level интерфейсы исторического и текущего поколений; это не проверка поведенческой или storage-эквивалентности. |
+| `npm run abi:dapp` | Проверить интерфейс сайта относительно контрактного ABI. |
+| `npm run security:check` | Запустить локальные security-инварианты репозитория. Это не независимый аудит. |
+| `npm run deployment:check` | Проверить локальную конфигурацию deployment, если она существует. Отсутствие файла не означает, что контракт развёрнут. |
+| `npm run website` | Локально раздать статические файлы каталога `website/`. |
 
-| Contract | File | Description |
-|----------|------|-------------|
-| `QuasarMaster` | `tolk/contracts/QuasarMaster.tolk` | Jetton minter, fee distributor, staking, AI oracle |
-| `QuasarDeFi` | `tolk/contracts/QuasarDeFi.tolk` | CPMM DEX, liquidity pool, yield farming |
-| `QuasarWallet` | `tolk/contracts/QuasarWallet.tolk` | Shared wallet source imported by Master and DeFi |
-| `QuasarAdminTimelock` | `tolk/contracts/QuasarAdminTimelock.tolk` | Delayed administrative execution |
+Другие обязательные проверки перед изменениями перечислены в [`docs/CONTRIBUTING.md`](docs/CONTRIBUTING.md) и CI.
 
----
+## CI и автоматизация GitHub
 
-## Tokenomics
+При изменениях в pull request запускаются сборка и тесты контрактов Tolk, проверки dApp и Python, CodeQL и итоговый `validate / verify`. Для завершения PR обязательны успешные проверки на текущем head; актуальный набор условий задан настройками репозитория.
 
-| Parameter | Value |
-|-----------|-------|
-| Maximum Supply | 1,000,000,000 QSR |
-| Decimals | 9 |
-| Symbol | QSR |
-| Fee | 0.30% |
-| Burn | 50% of fees |
-| DeFi Pool | 5% of fees |
-| Staking APY | Configured target; not guaranteed |
-| Farm APY | Dynamic estimate; not guaranteed |
-| Referral | 1% lifetime |
-| Buyback Threshold | 10 QSR (QSR-denominated pool) |
+Workflow [`quasar.yml`](.github/workflows/quasar.yml) маршрутизирует события к отдельным модулям ревью и сопровождения. [`automerge.yml`](.github/workflows/automerge.yml) рассматривает открытые PR для продвижения и постановки в GitHub auto-merge только после прохождения обязательных checks и при отсутствии конфликтов и `do-not-merge`. Branch protection остаётся последним gate; успешный CI сам по себе не равен merge.
 
----
+В репозитории сейчас нет GitHub Pages workflow: CI не публикует сайт и не развёртывает контракты. Release, deployment, подпись транзакций и on-chain операции требуют отдельного решения и сюда не автоматизированы.
 
-## Roadmap
+## ABI, сборка и совместимость
 
-> Checked against the current repository. A checked item means the source implementation exists; it does not mean the feature has been audited, deployed to mainnet, or approved for production funds.
+Snapshots в `docs/abi/` помогают заметить изменения внешнего интерфейса: сообщений, полей и методов. Build-скрипт использует закреплённый генератор TypeScript wrappers и публикует артефакты после успешного прохождения проверок. Локальные результаты сборки не являются опубликованным deployment.
 
-- [x] Tolk smart contracts (Master, Wallet, DeFi and Timelock) implemented
-- [x] Web3 UI with TON Connect implemented
-- [x] CPMM DEX and LP farming implemented in source
-- [x] Enforce the 1,000,000,000 QSR maximum supply in the master contract
-- [x] Reconcile core tokenomics documentation with the on-chain implementation
-- [x] Add deadline and min-output protection to swaps and liquidity operations
-- [x] Lock minimum first-deposit liquidity against initial-price manipulation
-- [x] Add DeFi owner timelock, staged fee/trade-limit changes and price observations
-- [x] Keep LP removal, reward claims and pending-deposit refunds live during a DeFi pause
-- [ ] TON testnet deployment and public scenario testing
-- [ ] Independent security audit and remediation
-- [ ] Production-ready buyback swap with timeout/recovery path
-- [ ] Multisig execution for Master and DeFi critical administration
-- [ ] Standard LP Jetton and separate governance/veto vault
-- [ ] Mainnet launch with published addresses and build hashes
-- [ ] Cross-chain bridges (future)
-- [ ] Production AI agent deployment (future)
+Проверка ABI или совпадение build hashes сами по себе **не доказывают**:
 
----
+- эквивалентность всех ветвей поведения старому поколению;
+- совместимость или автоматический перенос storage;
+- сохранение прежних адресов контрактов и Jetton wallets;
+- готовность к работе с реальными активами.
 
-## License
+Любое изменение контрактной логики, wire format, авторизации, учёта активов, bounce-пути или storage требует целевых регрессионных тестов и рассмотрения рисков в PR.
 
-[MIT](LICENSE) © QUASAR Team
+## Статус запуска и безопасность
 
-## Links
+QUASAR — предзапусковой инженерный прототип. По состоянию репозитория отсутствуют официальные адреса Tolk-контрактов и tracked `website/deployment.json`; функциональный smoke-run в testnet и независимый аудит Tolk-поколения остаются отдельными release gates.
 
-- Whitepaper: [WHITEPAPER.md](WHITEPAPER.md)
-- Testnet & audit readiness checklist: [docs/TESTNET_AUDIT_READINESS_CHECKLIST.md](docs/TESTNET_AUDIT_READINESS_CHECKLIST.md)
-- Mainnet-readiness checklist: [docs/MAINNET_READINESS_CHECKLIST.md](docs/MAINNET_READINESS_CHECKLIST.md)
-- Open audit/findings tracker: [docs/AUDIT_STATUS.md](docs/AUDIT_STATUS.md)
-- Build hashes: [docs/build-hashes.json](docs/build-hashes.json)
-- Testnet smoke runbook: [docs/TESTNET_SMOKE_RUNBOOK.md](docs/TESTNET_SMOKE_RUNBOOK.md)
-- Website: [alexkkkkk.github.io/QUASAR](https://alexkkkkk.github.io/QUASAR)
-- Telegram: [@quasar_ton](https://t.me/quasar_ton)
-- Twitter: [@quasar_ton](https://twitter.com/quasar_ton)
+До любого реального развёртывания нужны, как минимум:
 
----
+1. Проверка чистой и воспроизводимой сборки конкретного release commit, ABI, wrappers и code hashes.
+2. Отдельно утверждённый план перехода для supply, пользовательских балансов, custody, LP/farm-позиций, staking, vesting, referral-обязательств и незавершённых выплат.
+3. Репетиция в тестовой сети, включая успешные, отказные и bounce-сценарии.
+4. Независимый аудит итоговых исходников, артефактов, сообщений и плана перехода.
+5. Проверенные адреса и операционные процедуры для admin, emergency, treasury и oracle-ключей.
 
-*QUASAR is a pre-launch engineering prototype. Use only a disposable testnet wallet after deployment checks; no production-readiness or yield claim is made.*
+Не сохраняйте в репозитории seed-фразы, закрытые ключи, `.env`, реальные deployment state или пользовательские секреты. Не используйте реальные средства при локальной разработке. Сборка и тесты этого репозитория не выполняют deploy, подпись, broadcast или миграцию активов.
 
-## Security status (independent audit)
+Подробный release gate: [`docs/MAINNET_READINESS_CHECKLIST.md`](docs/MAINNET_READINESS_CHECKLIST.md). Сообщать об уязвимости следует через приватный security-канал GitHub, а не публиковать эксплойт в открытой issue.
 
-An independent engineering audit of commit `af83516` returned **NO-GO** for
-real-funds testnet and mainnet. Remediation in `main`:
+## Полезные материалы
 
-- **H-01** — wallet cleanup messages are authenticated (PR #45).
-- **H-02** — bounced Master payouts restore the originating stake / vesting
-  claim / staking reward / referral liability, not only the aggregate counter.
-- **M-01** — bounced DeFi TON payouts (`RemoveLiquidity`, `SwapToTON`) roll back
-  `tonReserve` and the user's LP / deposit entitlement.
-- **M-02** — the admin timelock is deployed and serves as owner of Master and
-  DeFi; the smoke run validates the wiring.
-- **L-01** — governance votes are unique per `(voter, proposalId)`.
+- [`tolk/README.md`](tolk/README.md) — детали Tolk/Acton build pipeline.
+- [`docs/TON_CONFORMANCE_MATRIX.md`](docs/TON_CONFORMANCE_MATRIX.md) — матрица стандартов TON и проверок.
+- [`docs/abi/README.md`](docs/abi/README.md) — устройство ABI snapshots.
+- [`docs/AUDIT_STATUS.md`](docs/AUDIT_STATUS.md) — журнал статуса аудита и исторических finding'ов.
+- [`docs/TESTNET_DEPLOY_CHECKLIST.md`](docs/TESTNET_DEPLOY_CHECKLIST.md) — checklist тестового развёртывания.
+- [`docs/TESTNET_SMOKE_RUNBOOK.md`](docs/TESTNET_SMOKE_RUNBOOK.md) — testnet smoke-runbook.
+- [`docs/CONTRIBUTING.md`](docs/CONTRIBUTING.md) — правила разработки и CI-проверки.
 
-Still open before any real-funds launch: live testnet smoke, adversarial bounce
-tests and an independent audit of the fresh Tolk deployment generation. QUASAR
-is **not** audited by a third-party TON/Tolk firm and makes no assurance-of-
-yield or mainnet-readiness claim.
+## Лицензия
+
+Проект распространяется по лицензии [MIT](LICENSE). Лицензия не является гарантией безопасности кода, доступности сети или сохранности средств.

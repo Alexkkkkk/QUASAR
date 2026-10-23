@@ -15,7 +15,7 @@ updates:
       include: scope
     groups:
       ton-sdk:
-        patterns: ["@ton/*", "@tact-lang/*"]
+        patterns: ["@ton/*"]
         update-types: [minor, patch]
       dev-tooling:
         patterns: ["typescript", "tsx", "dotenv", "husky", "@types/*"]

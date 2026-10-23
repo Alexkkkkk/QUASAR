@@ -94,17 +94,28 @@ def publish(root: Path, generated: Path) -> None:
     generation = generations / uuid.uuid4().hex
     shutil.copytree(generated, generation)
     target = build / "synchronized"
+    legacy = None
     if target.exists() and not target.is_symlink():
-        target.rename(generations / ("legacy-" + uuid.uuid4().hex))
+        legacy = generations / ("legacy-" + uuid.uuid4().hex)
+        target.rename(legacy)
     link = build / (".synchronized-" + uuid.uuid4().hex)
+    committed = False
     try:
         link.symlink_to(generation.relative_to(build), target_is_directory=True)
         os.replace(link, target)
+        committed = True
         fd = os.open(build, os.O_RDONLY | os.O_DIRECTORY)
         try:
             os.fsync(fd)
         finally:
             os.close(fd)
+    except OSError:
+        # The first publication may replace a pre-existing real directory.
+        # Restore it if creating/committing the pointer fails. Once committed,
+        # a later fsync error must not overwrite the new valid generation.
+        if legacy is not None and not committed:
+            legacy.rename(target)
+        raise
     finally:
         link.unlink(missing_ok=True)
 

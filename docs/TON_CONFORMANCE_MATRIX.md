@@ -11,6 +11,27 @@
 - [TON security best practices](https://docs.ton.org/contract-dev/techniques/security)
 - [Tolk](https://docs.ton.org/tolk/overview) — active QUASAR contract language through Acton 1.2.1.
 
+## Актуальные Tolk-регрессии — 2026-10-23, #293
+
+`docs/abi/` schema 3 фиксирует порядок и типы полей публичных getter-структур,
+а не только имена. Snapshot сохраняет параметры typed cells/maps и различает
+`any_address` и internal `address`. Codec-регрессии находятся в
+`tests/test_acton_abi.py`; контрактный ABI описан в
+[TON Docs](https://docs.ton.org/tolk/features/contract-abi).
+
+`tolk/tests/master-mint-bounce.test.tolk` проверяет owner-only mint и возврат
+`totalSupply` после bounce исходящего `InternalTransfer`.
+`tolk/tests/wallet-regression.test.tolk` проверяет отказ повторного pending
+queryId, wallet-side TEP-89 с минимальным gas budget и marker-first pool payout
+bounce с восстановлением баланса и `PayoutFailed`. Это дополнительные
+эмуляционные регрессии, а не независимый аудит всех исторических findings.
+
+`tests/test_sync_acton.py` проверяет offline integrity, блокировку одновременных
+build, отказ стадий валидации и сохранность прежнего поколения при ошибках
+публикации. Изменены только tooling, snapshots и тесты: Tolk bytecode, storage
+schema, message opcodes и method IDs не меняются. Старое Tact-состояние не
+становится совместимым с Tolk вследствие прохождения этих проверок.
+
 ## Historical Tact on-chain conformance
 
 | Standard / requirement | Wire-level implementation | Auth / failure behaviour | Verification |
