@@ -17,9 +17,13 @@ fun regressionWalletDeployment(owner: address, master: address): AutoDeployAddre
     };
 }
 
-fun setupRegressionWallet(initialBalance: coins): RegressionWalletFixture {
-    val owner = testing.treasury("wallet-regression-owner");
-    val master = testing.treasury("wallet-regression-master");
+fun setupRegressionWallet(
+    initialBalance: coins,
+    ownerName: string = "wallet-regression-owner",
+    masterName: string = "wallet-regression-master",
+): RegressionWalletFixture {
+    val owner = testing.treasury(ownerName);
+    val master = testing.treasury(masterName);
     val deployment = regressionWalletDeployment(owner.address, master.address);
     val walletAddress = deployment.calculateAddress();
     val deployed = net.send(
@@ -141,9 +145,110 @@ get fun `test wallet TEP-89: deployed wallet replies only when discovery value m
         from: requester.address,
         to: wallet.address,
     });
+    val expectedWallet = quasarWalletAddress(
+        requester.address,
+        wallet.master.address,
+        build("QuasarWallet"),
+    );
+    val expectedOwnerRef = (requester.address as any_address).toCell();
+    val expectedTakeWalletAddress = TakeWalletAddress {
+        queryId: 89,
+        walletAddress: expectedWallet as any_address,
+        ownerAddress: expectedOwnerRef,
+    }.toCell();
     expect(discovery).toHaveSuccessfulTx<TakeWalletAddress>({
         from: wallet.address,
         to: requester.address,
+        body: expectedTakeWalletAddress,
+    });
+
+    val omitted = net.send(
+        requester.address,
+        createMessage({
+            bounce: BounceMode.NoBounce,
+            value: grams("0.01"),
+            dest: wallet.address,
+            body: ProvideWalletAddress {
+                queryId: 90,
+                ownerAddress: requester.address as any_address,
+                includeAddress: false,
+            },
+        }),
+    );
+    expect(omitted).toHaveSuccessfulTx<TakeWalletAddress>({
+        to: requester.address,
+        body: TakeWalletAddress {
+            queryId: 90,
+            walletAddress: expectedWallet as any_address,
+            ownerAddress: null,
+        }
+        .toCell(),
+    });
+}
+
+get fun `test wallet pool marker cannot collide with pending high-bit TEP-74 query IDs`() {
+    testing.setNow(100);
+    val collidingId: uint64 = (QUASAR_POOL_PAYOUT_MARKER + 42) as uint64;
+    val recipient = testing.treasury("wallet-regression-collision-recipient");
+
+    val poolFirst = setupRegressionWallet(1000000);
+    val poolCursor = testing.createTraceIterationCursor(
+        poolFirst.owner.address,
+        createMessage({
+            bounce: BounceMode.NoBounce,
+            value: grams("0.2"),
+            dest: poolFirst.address,
+            body: PoolPayout {
+                queryId: 42,
+                amount: 1000,
+                destination: recipient.address,
+                responseDestination: null,
+            },
+        }),
+    );
+    val poolRoot = poolCursor.executeN(1);
+    expect(poolRoot).toHaveSuccessfulTx<PoolPayout>({ to: poolFirst.address });
+    poolCursor.close();
+    val transferCollision = net.send(
+        poolFirst.owner.address,
+        regressionTransfer(poolFirst, collidingId, 1000, recipient.address),
+    );
+    expect(transferCollision).toHaveFailedTx<TokenTransfer>({
+        from: poolFirst.owner.address,
+        to: poolFirst.address,
+        exitCode: 112,
+    });
+
+    val transferFirst = setupRegressionWallet(
+        1000000,
+        "wallet-regression-transfer-owner",
+        "wallet-regression-transfer-master",
+    );
+    val transferCursor = testing.createTraceIterationCursor(
+        transferFirst.owner.address,
+        regressionTransfer(transferFirst, collidingId, 1000, recipient.address),
+    );
+    val transferRoot = transferCursor.executeN(1);
+    expect(transferRoot).toHaveSuccessfulTx<TokenTransfer>({ to: transferFirst.address });
+    transferCursor.close();
+    val poolCollision = net.send(
+        transferFirst.owner.address,
+        createMessage({
+            bounce: BounceMode.NoBounce,
+            value: grams("0.2"),
+            dest: transferFirst.address,
+            body: PoolPayout {
+                queryId: 42,
+                amount: 1000,
+                destination: recipient.address,
+                responseDestination: null,
+            },
+        }),
+    );
+    expect(poolCollision).toHaveFailedTx<PoolPayout>({
+        from: transferFirst.owner.address,
+        to: transferFirst.address,
+        exitCode: 112,
     });
 }
 

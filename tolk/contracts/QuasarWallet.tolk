@@ -116,18 +116,15 @@ fun onBouncedMessage(in: InMessageBounced) {
                 return;
             }
 
-            val feeLookup = storage.pendingResponseFees.get(queryKey);
             val responseLookup = storage.pendingResponses.get(queryKey);
-            val fee: int257? = feeLookup.isFound ? feeLookup.loadValue() : null;
             val response: address? = responseLookup.isFound ? responseLookup.loadValue() : null;
             storage.pendingResponseFees.delete(queryKey);
             storage.pendingResponses.delete(queryKey);
             storage.pendingResponseReceivers.delete(queryKey);
-            if (fee != null) {
-                storage.balance += bounced.amount + (fee as coins);
-            } else {
-                storage.balance += bounced.amount;
-            }
+            // The master-bound FeeTransfer is an independent asynchronous leg.
+            // Its bounce restores the fee itself; this recipient-leg bounce
+            // restores only principal, never a fee the master may have credited.
+            storage.balance += bounced.amount;
             storage.save();
 
             if (!isNoResponseAddress(response) && response! != contract.getAddress()) {
@@ -304,7 +301,13 @@ fun onInternalMessage(in: InMessage) {
             if (storage.owner != storage.master) {
                 assert (message.amount <= QUASAR_MAX_TX_AMOUNT) throw 111;
             }
-            assert (!storage.pendingResponseFees.exists(message.queryId as int257)) throw 112;
+            val queryKey: int257 = message.queryId as int257;
+            assert (!storage.pendingResponseFees.exists(queryKey)) throw 112;
+            if (queryKey >= QUASAR_POOL_PAYOUT_MARKER) {
+                assert (
+                    !storage.pendingPoolPayouts.exists(queryKey - QUASAR_POOL_PAYOUT_MARKER)
+                ) throw 112;
+            }
 
             val fee: coins = max(1, (message.amount * QUASAR_WALLET_FEE_BPS) / 10000);
             // TEP-74 `amount` is the amount the recipient receives. QUASAR's
@@ -354,9 +357,11 @@ fun onInternalMessage(in: InMessage) {
                 SEND_MODE_PAY_FEES_SEPARATELY,
             );
 
-            val residual = in.valueCoins - 70000000 - 20000000;
-            // Keep residual TON in this wallet for both TEP-74 addr_none and
-            // QUASAR's legacy all-zero internal no-response sentinel.
+            // The outgoing message budgets above total 0.07 TON. Return every
+            // positive remainder to a supplied response destination instead of
+            // retaining an additional fixed 0.02 TON from each transfer.
+            val residual = in.valueCoins - 70000000;
+            // Preserve QUASAR's legacy all-zero internal no-response sentinel.
             if (residual > 0 && !isNoResponseAddress(message.responseDestination)) {
                 val excess = createMessage({
                     bounce: BounceMode.NoBounce,
@@ -373,7 +378,11 @@ fun onInternalMessage(in: InMessage) {
             assert (in.senderAddress == storage.owner) throw 107;
             assert (message.amount > 0) throw 101;
             assert (storage.balance >= message.amount) throw 109;
+            val poolId: int257 = message.queryId as int257;
+            assert (poolId < QUASAR_POOL_PAYOUT_MARKER) throw 112;
             assert (!storage.pendingPoolPayouts.exists(message.queryId as int257)) throw 112;
+            val markedQueryKey: int257 = poolId + QUASAR_POOL_PAYOUT_MARKER;
+            assert (!storage.pendingResponseFees.exists(markedQueryKey)) throw 112;
 
             storage.balance -= message.amount;
             storage.pendingPoolPayouts.set(message.queryId as int257, message.amount as int257);
@@ -429,8 +438,24 @@ fun onInternalMessage(in: InMessage) {
         ProvideWalletAddress => {
             val storage = QuasarWalletStorage.load();
             assert (in.valueCoins >= 6100000) throw 116;
+            var walletAddress: any_address = createAddressNone();
+            if (message.ownerAddress.isInternal()) {
+                val requestedOwner = message.ownerAddress.castToInternal();
+                val derivedWallet = quasarWalletAddress(
+                    requestedOwner,
+                    storage.master,
+                    contract.getCode(),
+                );
+                val requestedOwnerAny = message.ownerAddress;
+                val derivedWalletAny = derivedWallet as any_address;
+                val (ownerWc, _) = requestedOwnerAny.getWorkchainAndHash();
+                val (walletWc, _) = derivedWalletAny.getWorkchainAndHash();
+                if (ownerWc == walletWc) {
+                    walletAddress = derivedWalletAny;
+                }
+            }
             val ownerRef: Cell<any_address>? = message.includeAddress
-                ? (storage.owner as any_address).toCell()
+                ? message.ownerAddress.toCell()
                 : null;
             val response = createMessage({
                 bounce: BounceMode.NoBounce,
@@ -438,7 +463,7 @@ fun onInternalMessage(in: InMessage) {
                 value: 0,
                 body: TakeWalletAddress {
                     queryId: message.queryId,
-                    walletAddress: contract.getAddress() as any_address,
+                    walletAddress,
                     ownerAddress: ownerRef,
                 },
             });

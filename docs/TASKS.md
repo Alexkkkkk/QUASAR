@@ -11,6 +11,155 @@
 
 ---
 
+## Активные P0/P1 задачи — TON / полный Acton coverage, issue #300
+
+Ниже — findings, подтверждённые шестью независимыми проверками активных Tolk
+контрактов 2026-10-23. Ни один пункт не считается закрытым до исправления,
+регрессионного теста, полного CI и обновления ABI/build hash. Отдельный внешний
+аудит безопасности по-прежнему обязателен.
+
+- [~] **DOC-01 Полный разбор Acton documentation.** Официальный sitemap содержит
+  180 уникальных Acton-страниц; полный URL-инвентарь —
+  [`docs/ACTON_DOCS_COVERAGE_2026-10-23.md`](ACTON_DOCS_COVERAGE_2026-10-23.md).
+  Требуется сопоставить каждую страницу с QUASAR, закреплённым Acton 1.2.1,
+  tests и security policy; все реальные пропуски превратить в task ниже/отдельный
+  task с официальным URL и критериями приёмки, а каждую функцию обозначить как
+  implemented, task, version-gated или аргументированно not applicable. Не
+  исполнять real-wallet, key, broadcast, deploy, verifier-payment, publication,
+  validator и remote-network действия из примеров документации. Источник:
+  [официальный sitemap Acton](https://ton-blockchain.github.io/acton/sitemap.xml).
+
+- [~] **DOC-02 Полный разбор всего docs.ton.org.** Официальный sitemap содержит
+  453 уникальных URL; полный список страниц, сгруппированный по разделам, —
+  [`docs/TON_DOCS_COVERAGE_2026-10-23.md`](TON_DOCS_COVERAGE_2026-10-23.md).
+  Для **каждой** строки требуется зафиксировать repo/test evidence, отдельный
+  task ID, version gate либо обоснованное not-applicable/deferred. Разделы TON
+  включают APIs, applications, contracts, foundations, languages, nodes, Tolk,
+  TVM, onboarding и contribution; coverage не означает механический перенос в
+  on-chain Jetton/DeFi код. Не выполнять live wallet/key, payment, broadcast,
+  deployment, validator, node, mainnet/testnet mutation и publication actions.
+  Источники: [официальный sitemap TON Docs](https://docs.ton.org/sitemap.xml),
+  [Start here](https://docs.ton.org/start-here) и
+  [полный llms index](https://docs.ton.org/llms.txt).
+
+- [ ] **T-23 `ToggleMinting` / `AiToggleMinting` меняют tradingEnabled вместо mintable.**
+  - Файлы: `tolk/contracts/QuasarMaster.tolk:2540-2550,2769-2791`;
+    `tolk/tests/quasar-master.test.tolk`.
+  - Проблема: `Mint` гейтит `core.mintable`, а getter `get_jetton_data` сообщает
+    `mintable`; два toggle-handler изменяют только независимый trading flag.
+    Значение getter не отражает заявленное действие; AI audit лог тоже снимал
+    прежнее значение не того поля.
+  - Исправление/приёмка: менять и логировать именно `mintable`; проверить owner
+    off/on, неизменность trading state, mint refusal/success и AI branch при
+    включённом signed-authority пути. Источники:
+    [TEP-74](https://github.com/ton-blockchain/TEPs/blob/master/text/0074-jettons-standard.md),
+    [TON Jetton API](https://docs.ton.org/contracts/standard/tokens/jettons/api).
+
+- [ ] **T-24 `InternalTransfer` bounce может повторно зачислить уже принятую fee.**
+  - Файл: `tolk/contracts/QuasarWallet.tolk:75-151`; tests:
+    `tolk/tests/wallet-jetton.test.tolk`.
+  - Проблема: master `FeeTransfer` и recipient `InternalTransfer` независимы.
+    Когда fee принят master, а recipient leg затем bounced до `TransferConfirmed`,
+    sender wallet возвращает principal **и fee**, хотя fee остаётся учтена master;
+    баланс wallet liabilities становится зависимым от порядка сообщений.
+  - Исправление/приёмка: сохранять однократное восстановление principal и вести
+    fee/confirmation lifecycle через оба порядка `FeeTransfer` / recipient bounce /
+    `TransferConfirmed`; проверить sender balance, wallet/master fee ledger и
+    pending storage после каждой permutations. Источники:
+    [TON internal messages](https://docs.ton.org/foundations/messages/internal),
+    [Acton/Tolk test runner](https://ton-blockchain.github.io/acton/docs/testing/overview).
+
+- [ ] **T-25 TEP-74 transfer принимает 70–90 mTON и удерживает refundable residual.**
+  - Файл: `tolk/contracts/QuasarWallet.tolk:296-368`; tests:
+    `tolk/tests/wallet-jetton.test.tolk`.
+  - Проблема: accepted-value floor — 70,000,000 nanotons, но ответ `excesses`
+    появляется только для `in.valueCoins - 90,000,000 > 0`; указанный диапазон
+    может приниматься без полного возврата остатка при non-null response destination.
+  - Исправление/приёмка: возвратить положительный остаток после действительно
+    необходимых outgoing amounts/fees, либо отклонить insufficient funding до
+    записи состояния; regression 70, 80, 90 mTON и верхняя граница с точным value
+    `TokenExcesses`. Источник:
+    [TEP-74 transfers](https://docs.ton.org/contracts/standard/tokens/jettons/transfer).
+
+- [ ] **T-26 Wallet TEP-89 отвечает своим адресом, а не derivation для запроса.**
+  - Файл: `tolk/contracts/QuasarWallet.tolk:429-445`;
+    `tolk/tests/wallet-regression.test.tolk:103-148`.
+  - Проблема: `ProvideWalletAddress.ownerAddress` может отличаться от сохранённого
+    `storage.owner`; ответ всегда содержит данный instance address и owner, а не
+    wallet derived для запрошенного internal owner. Действующий тест не проверяет
+    response fields.
+  - Исправление/приёмка: получить детерминированный wallet для запрошенного owner
+    и того же master/code, echo optional owner из request, соблюдать `addr_none`,
+    external и workchain result; проверить query ID, адрес и optional-ref both ways.
+    Источники: [TEP-89](https://github.com/ton-blockchain/TEPs/blob/master/text/0089-jetton-wallet-discovery.md),
+    [TON API](https://docs.ton.org/contracts/standard/tokens/jettons/api).
+
+- [ ] **T-27 Wallet pool-payout marker пересекает произвольный TEP-74 `uint64 query_id`.**
+  - Файлы: `tolk/contracts/QuasarCommon.tolk:14-17`,
+    `tolk/contracts/QuasarWallet.tolk:82-138,296-380` и DeFi payout routing.
+  - Проблема: bit 63 зарезервирован marker namespace; обычный допустимый запрос
+    `query_id` с тем же значением, что in-flight marked pool payout, не различим в
+    bounce handler. Не сужать TEP-74 тип без обоснования.
+  - Исправление/приёмка: обеспечить уникальность непересекающихся pending ledger
+    IDs до обеих отправок; покрыть обычный high-bit TEP-74 ID, marked payout,
+    collision/refusal и bounce, сохранив 64-bit wire ABI. Источники:
+    [TEP-74](https://github.com/ton-blockchain/TEPs/blob/master/text/0074-jettons-standard.md),
+    [Tolk jetton payload](https://docs.ton.org/tolk/features/jetton-payload).
+
+- [ ] **T-28 `SwapToQsr` не возвращает TON, если QSR payout bounced.**
+  - Файл: `tolk/contracts/QuasarDeFi.tolk:984-1077,1245-1284`;
+    tests: `tolk/tests/quasar-defi.test.tolk`.
+  - Проблема: input TON остаётся зачисленным в `tonReserve`; `PayoutFailed` лишь
+    возвращает QSR в `qsrReserve`. Swapper платит TON и не получает QSR, а его
+    TON остаётся в пуле без payer claim.
+  - Исправление/приёмка: добавить replay-safe settlement/refund claim для paired
+    assets (без двойной выдачи) либо эквивалентную доказуемую recovery-модель;
+    успешная и bounced payout trace подтверждают balances/reserves/fee. Источники:
+    [TON internal/bounce](https://docs.ton.org/foundations/messages/internal),
+    [Tolk bounced handlers](https://docs.ton.org/tolk/features/message-handling).
+
+- [ ] **T-29 Liquidity removal теряет LP entitlement при bounce TON leg после QSR успеха.**
+  - Файл: `tolk/contracts/QuasarDeFi.tolk:984-1023,1496-1537`;
+    tests: `tolk/tests/quasar-defi.test.tolk`.
+  - Проблема: после `qsrSettled` TON leg может bounced; code возвращает TON в
+    reserve, но не восстанавливает LP и не оставляет withdrawal claim/retry. LP
+    сожжены, пользователь получает только QSR и лишается доли невыданного TON.
+  - Исправление/приёмка: сохранить trackable и защищённое право пользователя на
+    TON либо восстановить полноценную парную позицию без двойной выплаты; тесты
+    проверяют обе ноги, LP supply, reserves, claim/retry и replay.
+    Источники: [TON message modes](https://docs.ton.org/foundations/messages/modes),
+    [TON internal messages](https://docs.ton.org/foundations/messages/internal).
+
+- [ ] **T-30 Закрыть post-bounce test coverage gaps по master, DeFi и timelock.**
+  - Master: реальный master mint→burn/supply update, spoofed/invalid BurnNotification,
+    maxSupply boundary, полные поля `get_jetton_data`, delayed/cancelled/unauthorized
+    owner transfer; файлы `tolk/tests/quasar-master.test.tolk` и
+    `tolk/tests/master-mint-bounce.test.tolk`.
+  - DeFi: positive swap both directions, balanced liquidity add/remove and limits;
+    bounce/excess ledger recovery для swap, removal, farm reward/refund и buyback;
+    farming accrual/config/stake/claim/emergency cases;
+    файл `tolk/tests/quasar-defi.test.tolk`.
+  - AdminTimelock: trace подтверждает target/body/value, bounced managed target и
+    недостаток средств сохраняют корректную retry/cancelability;
+    файл `tolk/tests/admin-timelock.test.tolk`.
+  - Для каждого пункта добавить точные assertions по всем данным и отказам,
+    вызывая active Acton native test suite, не симуляторный placeholder.
+    Источники: [Acton testing](https://ton-blockchain.github.io/acton/docs/testing/overview),
+    [trace reading](https://ton-blockchain.github.io/acton/docs/testing/reading-transaction-chains).
+
+- [ ] **T-31 TEP-74/Tolk serialization boundary tests.**
+  - Файлы: `tolk/contracts/QuasarCommon.tolk`,
+    `tolk/contracts/QuasarMasterRecords.tolk`,
+    `tolk/tests/common-wire.test.tolk`, `tolk/tests/master-records.test.tolk`.
+  - Зафиксировать `Either` selector + inline/ref forms `forwardPayload`; high-bit
+    `query_id` boundary; snake strings spanning refs; malformed/truncated nested
+    refs/trailing bits; assert **every** unpacked `EventFeeDistributed` field.
+    Источники: [TEP-74](https://github.com/ton-blockchain/TEPs/blob/master/text/0074-jettons-standard.md),
+    [TON cells](https://docs.ton.org/foundations/serialization/cells),
+    [Tolk serialization](https://docs.ton.org/tolk/types/overall-serialization).
+
+---
+
 ## Актуальная адаптация Tolk — 2026-10-23, #293
 
 Исправления после cutover #290/#291: `scripts/acton_abi.py` и `docs/abi/` теперь

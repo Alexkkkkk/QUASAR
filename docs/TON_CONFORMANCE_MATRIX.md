@@ -128,6 +128,23 @@ TON Docs distinguishes running blockchain nodes/LiteServers from application-fac
 These are source and sandbox-test results only. Contract code hashes and addresses change when rebuilt; no deployment, address publication, or mainnet state claim is made.
 
 
+## Активные Tolk findings и targeted fixes — 2026-10-23, issue #300
+
+В рабочей ветке исправлены master mintability toggle, wallet bounce accounting,
+возврат TEP-74 TON excesses, TEP-89 derivation/echo и overlap между 64-bit user
+query IDs и pool-payout IDs. Новый wallet regression проверяет точный
+сериализованный `TakeWalletAddress`; collision tests покрывают оба порядка
+создания in-flight операций. `npm run test:tolk` прошёл **39/39 тестов в 8 файлах**.
+
+Это именно targeted Acton emulator result: AI-signed toggle, широкий suite
+`npm test`, форматтер/lint, ABI/wrapper/hash regeneration и все release gates ещё
+ожидают проверки. T-28/T-29 DeFi bounce recovery остаются открытыми, а полный
+coverage официальной документации — в
+[`docs/TASKS.md`](TASKS.md), [`Acton URL inventory`](ACTON_DOCS_COVERAGE_2026-10-23.md)
+и [`TON Docs URL inventory`](TON_DOCS_COVERAGE_2026-10-23.md); каждой странице
+ещё требуется evidence-based classification. Ни один результат не является
+независимым security audit, upgrade или deployment.
+
 ## Canonical Acton/Tolk interface gate (2026-10-23)
 
 `tolk/` фиксирует Acton 1.2.1. `scripts/acton_abi.py` создаёт и проверяет compiler-derived snapshots incoming message names/opcodes/field order/wire types и getter IDs/arguments/return types. `scripts/check_acton_wrappers.ts` проверяет, что TypeScript wrappers содержат serializer каждого публичного сообщения с утверждённым opcode. Этот interface gate не подменяет проверку полного поведения и storage.

@@ -141,3 +141,49 @@ get fun `test quasar master: owner mint updates supply and recipient wallet, whi
     });
     expect(master.getJettonData().totalSupply).toEqual(1000);
 }
+
+get fun `test quasar master: ToggleMinting changes mintability without changing trading`() {
+    testing.setNow(100);
+    val (master, owner) = setupMaster();
+    val recipient = testing.treasury("quasar-master-mint-toggle-recipient");
+    expect(master.getJettonData().mintable).toEqual(true);
+    expect(master.isTradingEnabled()).toEqual(true);
+
+    val disabled = net.send(
+        owner.address,
+        createMessage({
+            bounce: BounceMode.NoBounce,
+            value: grams("0.1"),
+            dest: master.address,
+            body: ToggleMinting { enabled: false },
+        }),
+    );
+    expect(disabled).toHaveSuccessfulTx<ToggleMinting>({ to: master.address });
+    expect(master.getJettonData().mintable).toEqual(false);
+    expect(master.isTradingEnabled()).toEqual(true);
+
+    val rejected = net.send(
+        owner.address,
+        createMessage({
+            bounce: BounceMode.NoBounce,
+            value: grams("0.1"),
+            dest: master.address,
+            body: Mint { amount: 1, receiver: recipient.address },
+        }),
+    );
+    expect(rejected).toHaveFailedTx<Mint>({ to: master.address, exitCode: 1101 });
+    expect(master.getJettonData().totalSupply).toEqual(0);
+
+    val enabled = net.send(
+        owner.address,
+        createMessage({
+            bounce: BounceMode.NoBounce,
+            value: grams("0.1"),
+            dest: master.address,
+            body: ToggleMinting { enabled: true },
+        }),
+    );
+    expect(enabled).toHaveSuccessfulTx<ToggleMinting>({ to: master.address });
+    expect(master.getJettonData().mintable).toEqual(true);
+    expect(master.isTradingEnabled()).toEqual(true);
+}
