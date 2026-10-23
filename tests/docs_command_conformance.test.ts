@@ -44,6 +44,15 @@ test('every documented `npm run` command exists in package.json', () => {
     assert.deepEqual(missing, [], `documented commands missing from package.json:\n${missing.join('\n')}`);
 });
 
+test('README distinguishes Acton stdlib initialization from the pinned CLI version', () => {
+    const readme = readFileSync(join(root, 'README.md'), 'utf8');
+    assert.equal(scripts()['acton:init'], 'cd tolk && acton init --stdlib-only');
+    assert.match(readme, /обновляет только стандартную библиотеку Acton/);
+    assert.match(readme, /Версия CLI закреплена в `tolk\/Acton\.toml`/);
+    assert.match(readme, /команда её не переписывает/);
+    assert.doesNotMatch(readme, /сохраняет закреплённую версию в `tolk\/Acton\.toml`/);
+});
+
 test('the AI oracle exposes a key generation command', () => {
     assert.ok(scripts()['oracle:keygen'], 'oracle:keygen must be defined');
     const env = readFileSync(join(root, '.env.example'), 'utf8');
