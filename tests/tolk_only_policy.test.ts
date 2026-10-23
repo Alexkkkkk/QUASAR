@@ -1,8 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
+import { closeSync, constants, existsSync, fstatSync, mkdtempSync, openSync, readFileSync, readdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { dirname, extname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { tmpdir } from 'node:os';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const ignoredDirectories = new Set([
@@ -30,36 +31,48 @@ type PackageJson = {
 };
 
 function findLegacyContractInputs(directory: string, found: string[] = []): string[] {
-    for (const entry of readdirSync(directory)) {
-        if (ignoredDirectories.has(entry)) continue;
-        const fullPath = join(directory, entry);
-        if (statSync(fullPath).isDirectory()) {
+    for (const entry of readdirSync(directory, { withFileTypes: true })) {
+        if (ignoredDirectories.has(entry.name)) continue;
+        const fullPath = join(directory, entry.name);
+        if (entry.isDirectory()) {
             findLegacyContractInputs(fullPath, found);
             continue;
         }
 
         const relativePath = relative(root, fullPath).replaceAll('\\', '/');
         if (relativePath.startsWith(historicalPrefix)) continue;
-        if (legacyContractExtensions.has(extname(entry)) || entry === 'tact.config.json') {
+        if (legacyContractExtensions.has(extname(entry.name)) || entry.name === 'tact.config.json') {
             found.push(relativePath);
         }
     }
     return found;
 }
 
+function readScriptSource(fullPath: string): string {
+    // Validate and read the same open file, never a path checked with stat.
+    // O_NOFOLLOW prevents replacing the final path with a symbolic link.
+    const descriptor = openSync(fullPath, constants.O_RDONLY | constants.O_NOFOLLOW);
+    try {
+        assert.ok(fstatSync(descriptor).isFile(), `${fullPath}: expected a regular source file`);
+        return readFileSync(descriptor, 'utf8');
+    } finally {
+        closeSync(descriptor);
+    }
+}
+
 function findArchivedWrapperImports(directory: string, found: string[] = []): string[] {
-    for (const entry of readdirSync(directory)) {
-        if (ignoredDirectories.has(entry)) continue;
-        const fullPath = join(directory, entry);
-        if (statSync(fullPath).isDirectory()) {
+    for (const entry of readdirSync(directory, { withFileTypes: true })) {
+        if (ignoredDirectories.has(entry.name)) continue;
+        const fullPath = join(directory, entry.name);
+        if (entry.isDirectory()) {
             findArchivedWrapperImports(fullPath, found);
             continue;
         }
 
         const relativePath = relative(root, fullPath).replaceAll('\\', '/');
-        if (relativePath.startsWith(historicalPrefix) || !activeScriptExtensions.has(extname(entry))) continue;
+        if (relativePath.startsWith(historicalPrefix) || !activeScriptExtensions.has(extname(entry.name))) continue;
 
-        const source = readFileSync(fullPath, 'utf8');
+        const source = readScriptSource(fullPath);
         const patterns = [
             /\bfrom\s*["']([^"']+)["']/g,
             /\b(?:import|require)\s*\(\s*["']([^"']+)["']/g,
@@ -104,4 +117,18 @@ test('Tolk/Acton is the only active contract compiler and source tree', () => {
         [],
         'active TypeScript/JavaScript must not import archived Tact generated wrappers',
     );
+});
+
+test('policy source reader uses a regular descriptor and refuses symbolic links', () => {
+    const directory = mkdtempSync(join(tmpdir(), 'quasar-policy-'));
+    try {
+        const source = join(directory, 'source.js');
+        const link = join(directory, 'link.js');
+        writeFileSync(source, 'export const value = 1;\n');
+        symlinkSync(source, link);
+        assert.equal(readScriptSource(source), 'export const value = 1;\n');
+        assert.throws(() => readScriptSource(link), { code: 'ELOOP' });
+    } finally {
+        rmSync(directory, { recursive: true, force: true });
+    }
 });

@@ -7,6 +7,7 @@
 - Расширены Tolk-регрессии сообщений, авторизации и bounce; инструкции установки, активная память агента и Tolk-only policy приведены к Acton 1.2.1.
 - Tolk-контракты, их storage schema и bytecode не изменяются этим исправлением. Историческое Tact evidence сохранено; deploy, merge и реальные on-chain операции не выполнялись. Независимый аудит нового поколения остаётся отдельным gate.
 - Ветка перенесена на актуальный `main` с parity gate #292. Различие `any_address` разрешено только для двух существующих TEP-89 owner query fields; негативные тесты не допускают ослабления остальных address/optionality проверок.
+- CodeQL path-check/read race в policy scanner устранена через Dirent и чтение того же открытого file descriptor с `O_NOFOLLOW`; добавлена регрессия отказа symlink. Security rule не отключалось.
 
 ## 2026-10-22 — fix(web): точные суммы и защита подписи в отдельной ветке
 

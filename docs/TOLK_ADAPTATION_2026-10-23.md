@@ -57,6 +57,11 @@ Policy запрещает активные Tact/FunC исходники, пря�
 whitepaper, agent memory, attributes и Dependabot согласованы с Tolk/Acton;
 инструкции явно требуют Acton 1.2.1, Node 22/24, Python 3.11+ и requirements.
 
+GitHub CodeQL выявил path-check/read гонку в новом policy scanner. Она устранена:
+directory traversal использует Dirent, а файл проверяется и читается через один
+открытый descriptor с `O_NOFOLLOW`. Добавлена регрессия отказа symbolic link;
+правило CodeQL не отключается и findings не dismiss-ятся.
+
 ## Результаты полного локального прогона
 
 Успешно выполнены `npm ci`, `npm run acton:init`, `npm run lint`,
@@ -66,7 +71,7 @@ whitepaper, agent memory, attributes и Dependabot согласованы с Tol
 `python3 scripts/sync_acton.py --check`, `yamllint`, `actionlint 1.7.12` и
 `git diff --check`.
 
-Tolk: **36 passed** в восьми файлах. Node: **129 passed**. Python unittest:
+Tolk: **36 passed** в восьми файлах. Node: **130 passed**. Python unittest:
 **69 passed**, включая 23 новых offline-теста codec/publication и две новые
 регрессии узкого parity allowlist. Дополнительный запуск Python через pytest,
 как в GitHub CI: **81 passed, 86 subtests passed**. Root dependency audit:
