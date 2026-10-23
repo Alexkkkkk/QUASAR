@@ -34,6 +34,13 @@ NULLABLE_ADDRESS_WIDENINGS = {
     ("Wallet", "InternalTransfer", "responseDestination"),
     ("Wallet", "PoolPayout", "responseDestination"),
 }
+# Schema 3 distinguishes any_address from internal address. These existing
+# TEP-89 query fields accept addr_none/unsupported owners and return addr_none;
+# no other address field may silently broaden to an arbitrary MsgAddress.
+ANY_ADDRESS_WIDENINGS = {
+    ("Master", "ProvideWalletAddress", "ownerAddress"),
+    ("Wallet", "ProvideWalletAddress", "ownerAddress"),
+}
 CONSTANT_SOURCES = {
     "legacy": [
         ROOT / "docs/historical/tact-reference/contracts/quasar_common.tact",
@@ -238,7 +245,13 @@ def check_contract(label: str, old: dict[str, Any], new: dict[str, Any]) -> list
                 f"{label}.{old_name}: field count mismatch {len(old_fields)} != {len(new_fields)}"
             )
         for index, (old_field, new_field) in enumerate(zip(old_fields, new_fields)):
-            if old_field[:2] != new_field[:2]:
+            address_widening = (
+                old_field[0] == new_field[0]
+                and old_field[1] == "address"
+                and new_field[1] == "any_address"
+                and (label, old_name, old_field[0]) in ANY_ADDRESS_WIDENINGS
+            )
+            if old_field[:2] != new_field[:2] and not address_widening:
                 errors.append(
                     f"{label}.{old_name} field {index}: name/type mismatch "
                     f"{old_field[:2]!r} != {new_field[:2]!r}"

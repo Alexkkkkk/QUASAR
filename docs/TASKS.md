@@ -22,10 +22,14 @@ commit. В `scripts/sync_acton.py` исправлено восстановлен
 
 Tolk-only policy блокирует активные legacy compiler inputs и импорты архивных
 wrappers; Quick Start и `.agents/memory/` описывают Acton 1.2.1, Node 22/24 и
-Python 3.11+. Регрессии контрактов расширяются в `tolk/tests/`, без изменения
+Python 3.11+. Регрессии контрактов расширены в `tolk/tests/`, без изменения
 `tolk/contracts/`, storage schema, opcodes и bytecode. Независимый аудит и
 testnet rehearsal остаются открытыми; deployment и реальные транзакции не входят
 в эту задачу.
+
+После обновления `main` (#292) сохранён migration parity gate: schema 3
+разрешает `any_address` только для двух существующих TEP-89 owner query fields;
+другие address widenings, переименования и изменение optionality отклоняются.
 
 ## P1 — Конформанс стандартам TON
 
