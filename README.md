@@ -151,6 +151,7 @@ QUASAR — предзапусковой инженерный прототип. �
 
 ## Полезные материалы
 
+- [`examples/counter/README.md`](examples/counter/README.md) — отдельный учебный Counter на Tolk с локальными эмуляционными тестами; он не входит в активные контракты QUASAR.
 - [`tolk/README.md`](tolk/README.md) — детали Tolk/Acton build pipeline.
 - [`docs/TON_CONFORMANCE_MATRIX.md`](docs/TON_CONFORMANCE_MATRIX.md) — матрица стандартов TON и проверок.
 - [`docs/abi/README.md`](docs/abi/README.md) — устройство ABI snapshots.
