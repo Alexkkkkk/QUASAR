@@ -93,3 +93,51 @@ get fun `test quasar master TEP-89: addr_none owner receives addr_none wallet re
         to: requester.address,
     });
 }
+
+get fun `test quasar master: owner mint updates supply and recipient wallet, while tx cap rejects`() {
+    testing.setNow(100);
+    val (master, owner) = setupMaster();
+    val recipient = testing.treasury("quasar-master-mint-recipient");
+    val recipientWallet = master.getWalletAddress(recipient.address);
+
+    val minted = net.send(
+        owner.address,
+        createMessage({
+            bounce: BounceMode.NoBounce,
+            value: grams("0.5"),
+            dest: master.address,
+            body: Mint {
+                amount: 1000,
+                receiver: recipient.address,
+            },
+        }),
+    );
+    expect(minted).toHaveSuccessfulTx<Mint>({ from: owner.address, to: master.address });
+    expect(minted).toHaveSuccessfulTx<InternalTransfer>({
+        from: master.address,
+        to: recipientWallet,
+    });
+    expect(master.getJettonData().totalSupply).toEqual(1000);
+    expect(net.runGetMethod<JettonWalletData>(recipientWallet, "get_wallet_data").balance).toEqual(
+        1000,
+    );
+
+    val rejected = net.send(
+        owner.address,
+        createMessage({
+            bounce: BounceMode.NoBounce,
+            value: grams("0.1"),
+            dest: master.address,
+            body: Mint {
+                amount: QUASAR_MAX_TX_AMOUNT + 1,
+                receiver: recipient.address,
+            },
+        }),
+    );
+    expect(rejected).toHaveFailedTx<Mint>({
+        from: owner.address,
+        to: master.address,
+        exitCode: 1101,
+    });
+    expect(master.getJettonData().totalSupply).toEqual(1000);
+}
