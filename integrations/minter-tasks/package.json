@@ -11,7 +11,7 @@
     "@mui/lab": "^5.0.0-alpha.85",
     "@mui/material": "^5.8.2",
     "@tonconnect/sdk": "3.0.6",
-    "@tonconnect/ui-react": "^2.0.11",
+    "@tonconnect/ui-react": "^5.0.1",
     "bignumber.js": "^9.1.0",
     "buffer": "^6.0.3",
     "notistack": "^2.0.5",
