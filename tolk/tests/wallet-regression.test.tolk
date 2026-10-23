@@ -181,8 +181,7 @@ get fun `test wallet TEP-89: deployed wallet replies only when discovery value m
             queryId: 90,
             walletAddress: expectedWallet as any_address,
             ownerAddress: null,
-        }
-        .toCell(),
+        }.toCell(),
     });
 }
 

@@ -168,7 +168,10 @@ get fun `test quasar master: ToggleMinting changes mintability without changing 
             bounce: BounceMode.NoBounce,
             value: grams("0.1"),
             dest: master.address,
-            body: Mint { amount: 1, receiver: recipient.address },
+            body: Mint {
+                amount: 1,
+                receiver: recipient.address,
+            },
         }),
     );
     expect(rejected).toHaveFailedTx<Mint>({ to: master.address, exitCode: 1101 });
