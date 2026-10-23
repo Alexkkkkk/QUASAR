@@ -13,6 +13,7 @@
     "lint": "cd tolk && acton fmt --check && acton build && acton wrapper --all --output-dir build/synchronized/wrappers && acton check",
     "abi:check": "npm run build && npm run abi:verify",
     "abi:verify": "python3 scripts/acton_abi.py",
+    "abi:migration:check": "python3 scripts/check_migration_parity.py",
     "abi:dapp": "tsx scripts/check_dapp_abi.ts",
     "abi:update": "cd tolk && acton build && cd .. && python3 scripts/acton_abi.py --update",
     "website": "npx serve website",
