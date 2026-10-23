@@ -1,4 +1,4 @@
-> Historical engineering/task log. Any Tact source paths, commands, or migration decisions below describe the pre-migration state and are not current instructions. Active contracts and toolchain: `tolk/contracts/` + Acton.
+> Исторические разделы P1 и далее сохраняют журнал прежних работ: Tact-пути и команды в них не являются текущими инструкциями. Актуальные контракты: `tolk/contracts/` + Acton.
 
 # QUASAR — задание (открытые findings и работы)
 
@@ -10,6 +10,22 @@
 `npx tsc --noEmit`, `npm run security:check`, `node --import tsx --test tests/*.test.ts`.
 
 ---
+
+## Актуальная адаптация Tolk — 2026-10-23, #293
+
+Исправления после cutover #290/#291: `scripts/acton_abi.py` и `docs/abi/` теперь
+фиксируют полный shape публичных getter-структур, typed cells/maps и различают
+`any_address`. Добавлены `tests/test_acton_abi.py` и `tests/test_sync_acton.py`:
+codec, offline integrity, lock, validation failures и rollback первого symlink
+commit. В `scripts/sync_acton.py` исправлено восстановление прежнего каталога
+при отказе публикации.
+
+Tolk-only policy блокирует активные legacy compiler inputs и импорты архивных
+wrappers; Quick Start и `.agents/memory/` описывают Acton 1.2.1, Node 22/24 и
+Python 3.11+. Регрессии контрактов расширяются в `tolk/tests/`, без изменения
+`tolk/contracts/`, storage schema, opcodes и bytecode. Независимый аудит и
+testnet rehearsal остаются открытыми; deployment и реальные транзакции не входят
+в эту задачу.
 
 ## P1 — Конформанс стандартам TON
 

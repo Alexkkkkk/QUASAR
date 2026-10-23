@@ -4,9 +4,27 @@
 исходники, эмуляционные тесты, ABI, BoC и generated wrappers строятся только
 из Tolk через закреплённый Acton `1.2.1`.
 
+## Предварительные требования
+
+- Node.js 22 или 24 и npm.
+- Python 3.11+ с `pip`: `scripts/sync_acton.py` использует встроенный в Python
+  3.11 модуль `tomllib`; для Python-части `npm test` нужен `numpy` из
+  `requirements.txt`.
+- Заранее установленный Acton CLI **1.2.1**. Установите начальный бинарный файл
+  по [официальной инструкции Acton](https://ton-blockchain.github.io/acton/docs/installation),
+  затем выполните `acton up 1.2.1`. `npm ci` не устанавливает Acton.
+
+Перед локальной проверкой убедитесь, что используются именно эти инструменты:
+
+```sh
+acton --version             # должен вывести acton 1.2.1
+python3 --version           # Python 3.11 или новее
+python3 -m pip install -r requirements.txt
+```
+
 ## Локальная проверка
 
-Установите Acton `1.2.1`, затем из корня репозитория выполните:
+Из корня репозитория выполните:
 
 ```sh
 npm ci

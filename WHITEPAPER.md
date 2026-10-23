@@ -179,7 +179,7 @@ In the current QuasarMaster source, the buyback executes in two legs. The burn l
 
 QUASAR is at a pre-testnet/mainnet stage and should not be used with significant funds until the following work is complete:
 
-- independent audit of the Tact contracts;
+- independent audit of the current Tolk contracts;
 - unit, integration, and property-based tests for fees, mint, burn, swaps, staking, claims, and vesting;
 - review of owner and AI Oracle permissions;
 - review of coins, basis-point arithmetic, and rounding;

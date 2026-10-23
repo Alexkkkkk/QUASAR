@@ -2,7 +2,7 @@
 # regardless of the platform that checks them out.
 * text=auto eol=lf
 
-*.tact  text eol=lf
+*.tolk  text eol=lf
 *.ts    text eol=lf
 *.js    text eol=lf
 *.json  text eol=lf

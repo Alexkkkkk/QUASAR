@@ -272,12 +272,28 @@ The UI loads addresses from `website/deployment.json` after deployment:
 
 ## Quick Start
 
-### 1. Install & Build
+### Предварительные требования
+
+- Node.js 22 или 24 и npm (версия проекта закреплена в `package.json`).
+- Python 3.11+ с `pip`: синхронизация Tolk использует стандартный модуль
+  `tomllib`, а Python-часть `npm test` требует `numpy` из `requirements.txt`.
+- Предварительно установленный Acton CLI **1.2.1**. Установите начальный бинарный
+  файл по [официальной инструкции Acton](https://ton-blockchain.github.io/acton/docs/installation),
+  затем закрепите версию через `acton up 1.2.1` и проверьте
+  `acton --version`. Acton не устанавливается через `npm ci`.
+
+```bash
+acton --version             # должен вывести acton 1.2.1
+python3 --version           # Python 3.11 или новее
+```
+
+### 1. Установка и сборка
 
 ```bash
 git clone https://github.com/Alexkkkkk/QUASAR.git
 cd QUASAR
 npm ci
+python3 -m pip install -r requirements.txt
 npm run acton:init  # Updates Acton's standard library; preserves tolk/Acton.toml
 npm run build        # Builds, tests and atomically publishes Tolk artifacts
 ```

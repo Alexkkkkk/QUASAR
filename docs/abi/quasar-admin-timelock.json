@@ -184,5 +184,39 @@
       "opcode": "0x4b204782"
     }
   ],
-  "schemaVersion": 2
+  "schemaVersion": 3,
+  "types": {
+    "PendingAdminCall": {
+      "fields": [
+        {
+          "name": "target",
+          "type": {
+            "optional": false,
+            "type": "address"
+          }
+        },
+        {
+          "name": "value",
+          "type": {
+            "optional": false,
+            "type": "coins"
+          }
+        },
+        {
+          "name": "body",
+          "type": {
+            "optional": false,
+            "type": "cell"
+          }
+        },
+        {
+          "name": "executeAt",
+          "type": {
+            "optional": false,
+            "type": "uint32"
+          }
+        }
+      ]
+    }
+  }
 }
