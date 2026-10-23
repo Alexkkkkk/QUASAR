@@ -149,6 +149,18 @@ class SynchronizationTests(unittest.TestCase):
         self.assertNotIn('"--net"', runner)
         self.assertNotIn('"--fork-net"', runner)
 
+    def test_sync_uses_acton_format_build_wrapper_lint_and_test_gates(self):
+        runner = (ROOT / "scripts/sync_acton.py").read_text()
+        formatter = 'run([acton, "fmt", "--check"], stage)'
+        build = 'run([acton, "build"], stage)'
+        wrapper = 'run([acton, "wrapper", "--all", "--output-dir", OUTPUT + "/wrappers"], stage)'
+        linter = 'run([acton, "check"], stage)'
+        tests = 'run([acton, "test"], stage)'
+        self.assertLess(runner.index(formatter), runner.index(build))
+        self.assertLess(runner.index(build), runner.index(wrapper))
+        self.assertLess(runner.index(wrapper), runner.index(linter))
+        self.assertLess(runner.index(linter), runner.index(tests))
+
 
 if __name__ == "__main__":
     unittest.main()

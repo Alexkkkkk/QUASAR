@@ -18,13 +18,13 @@ type AllowedMessageToWallet =
 type BounceOpToHandle = InternalTransfer | FeeTransfer | BurnNotification
 
 fun sendTokenExcesses(to: address, queryId: uint64, value: coins, mode: int) {
-    val message = createMessage({
+    val excessesMessage = createMessage({
         bounce: BounceMode.NoBounce,
         dest: to,
         value,
         body: TokenExcesses { queryId },
     });
-    message.send(mode);
+    excessesMessage.send(mode);
 }
 
 fun sendNotification(
@@ -35,14 +35,14 @@ fun sendNotification(
     forwardTonAmount: coins,
     forwardPayload: slice,
 ) {
-    val message = createMessage({
+    val notificationMessage = createMessage({
         // The Tact reference uses bounce=true for the owner notification.
         bounce: BounceMode.Only256BitsOfBody,
         dest: owner,
         value: forwardTonAmount,
         body: TokenNotification { queryId, amount, from, forwardPayload },
     });
-    message.send(SEND_MODE_PAY_FEES_SEPARATELY | SEND_MODE_IGNORE_ERRORS);
+    notificationMessage.send(SEND_MODE_PAY_FEES_SEPARATELY | SEND_MODE_IGNORE_ERRORS);
 }
 
 fun sendInternalTransfer(
@@ -56,7 +56,7 @@ fun sendInternalTransfer(
     value: coins,
     sendMode: int,
 ) {
-    val message = createMessage({
+    val internalTransferMessage = createMessage({
         bounce: BounceMode.Only256BitsOfBody,
         dest: deployment,
         value,
@@ -69,7 +69,7 @@ fun sendInternalTransfer(
             forwardPayload,
         },
     });
-    message.send(sendMode);
+    internalTransferMessage.send(sendMode);
 }
 
 fun onBouncedMessage(in: InMessageBounced) {
@@ -124,18 +124,15 @@ fun onBouncedMessage(in: InMessageBounced) {
             storage.pendingResponses.delete(queryKey);
             storage.pendingResponseReceivers.delete(queryKey);
             if (fee != null) {
-                storage.balance += bounced.amount + (fee!! as coins);
+                storage.balance += bounced.amount + (fee as coins);
             } else {
                 storage.balance += bounced.amount;
             }
             storage.save();
 
-            if (
-                !isNoResponseAddress(response) &&
-                response!! != contract.getAddress()
-            ) {
+            if (!isNoResponseAddress(response) && response! != contract.getAddress()) {
                 sendTokenExcesses(
-                    response!!,
+                    response!,
                     bounced.queryId,
                     0,
                     SEND_MODE_CARRY_ALL_REMAINING_MESSAGE_VALUE | SEND_MODE_IGNORE_ERRORS,
@@ -162,12 +159,9 @@ fun onBouncedMessage(in: InMessageBounced) {
             storage.pendingBurnResponses.delete(queryKey);
             storage.save();
 
-            if (
-                !isNoResponseAddress(response) &&
-                response!! != contract.getAddress()
-            ) {
+            if (!isNoResponseAddress(response) && response! != contract.getAddress()) {
                 sendTokenExcesses(
-                    response!!,
+                    response!,
                     bounced.queryId,
                     0,
                     SEND_MODE_CARRY_ALL_REMAINING_MESSAGE_VALUE | SEND_MODE_IGNORE_ERRORS,
@@ -214,7 +208,7 @@ fun onInternalMessage(in: InMessage) {
 
             if (!isNoResponseAddress(message.responseDestination)) {
                 sendTokenExcesses(
-                    message.responseDestination!!,
+                    message.responseDestination!,
                     message.queryId,
                     0,
                     SEND_MODE_CARRY_ALL_REMAINING_MESSAGE_VALUE | SEND_MODE_IGNORE_ERRORS,
@@ -252,7 +246,8 @@ fun onInternalMessage(in: InMessage) {
                 assert (receiverLookup.isFound) throw 105;
                 val receiver = receiverLookup.loadValue();
                 assert (
-                    in.senderAddress == quasarWalletAddress(receiver, storage.master, contract.getCode())
+                    in.senderAddress ==
+                    quasarWalletAddress(receiver, storage.master, contract.getCode())
                 ) throw 106;
                 storage.pendingResponseFees.delete(queryKey);
                 storage.pendingResponses.delete(queryKey);
@@ -272,7 +267,8 @@ fun onInternalMessage(in: InMessage) {
                 assert (receiverLookup.isFound) throw 105;
                 val receiver = receiverLookup.loadValue();
                 assert (
-                    in.senderAddress == quasarWalletAddress(receiver, storage.master, contract.getCode())
+                    in.senderAddress ==
+                    quasarWalletAddress(receiver, storage.master, contract.getCode())
                 ) throw 106;
                 storage.pendingPoolPayouts.delete(localId);
                 storage.pendingPoolPayoutReceivers.delete(localId);
@@ -286,9 +282,9 @@ fun onInternalMessage(in: InMessage) {
                 val burnResponse = burnLookup.loadValue();
                 storage.pendingBurnResponses.delete(queryKey);
                 storage.save();
-                if (!isNoResponseAddress(burnResponse) && burnResponse!! != contract.getAddress()) {
+                if (!isNoResponseAddress(burnResponse) && burnResponse! != contract.getAddress()) {
                     sendTokenExcesses(
-                        burnResponse!!,
+                        burnResponse!,
                         message.queryId,
                         0,
                         SEND_MODE_CARRY_ALL_REMAINING_MESSAGE_VALUE | SEND_MODE_IGNORE_ERRORS,
@@ -302,7 +298,6 @@ fun onInternalMessage(in: InMessage) {
             assert (in.senderAddress == storage.owner) throw 107;
             assert (message.amount > 0) throw 101;
             assert (!isZeroAddress(message.destination)) throw 108;
-            assert (storage.balance >= message.amount) throw 109;
 
             val currentTime = blockchain.now();
             assert (currentTime - storage.lastTxTime >= QUASAR_TRANSFER_COOLDOWN) throw 110;
@@ -312,21 +307,28 @@ fun onInternalMessage(in: InMessage) {
             assert (!storage.pendingResponseFees.exists(message.queryId as int257)) throw 112;
 
             val fee: coins = max(1, (message.amount * QUASAR_WALLET_FEE_BPS) / 10000);
-            val sendAmount: coins = message.amount - fee;
-            assert (sendAmount > 0) throw 113;
+            // TEP-74 `amount` is the amount the recipient receives. QUASAR's
+            // fixed wallet fee is an additional debit, never a deduction from
+            // the standard InternalTransfer amount.
+            val totalDebit: coins = message.amount + fee;
+            assert (storage.balance >= totalDebit) throw 109;
             // Tact's myBalance() includes the current account balance after the
             // storage phase; BALANCE FIRST is the corresponding safe primitive.
             assert (contract.getOriginalBalance() >= 75000000) throw 114;
             assert (in.valueCoins >= 70000000) throw 115;
 
             storage.lastTxTime = currentTime;
-            storage.balance -= message.amount;
+            storage.balance -= totalDebit;
             storage.pendingResponseFees.set(message.queryId as int257, fee as int257);
             storage.pendingResponseReceivers.set(message.queryId as int257, message.destination);
             storage.pendingResponses.set(message.queryId as int257, message.responseDestination);
             storage.save();
 
-            val recipient = quasarWalletDeployment(message.destination, storage.master, contract.getCode());
+            val recipient = quasarWalletDeployment(
+                message.destination,
+                storage.master,
+                contract.getCode(),
+            );
             val feeMessage = createMessage({
                 bounce: BounceMode.Only256BitsOfBody,
                 dest: storage.master,
@@ -343,7 +345,7 @@ fun onInternalMessage(in: InMessage) {
             sendInternalTransfer(
                 recipient,
                 message.queryId,
-                sendAmount,
+                message.amount,
                 storage.owner,
                 message.responseDestination,
                 message.forwardTonAmount,
@@ -358,7 +360,7 @@ fun onInternalMessage(in: InMessage) {
             if (residual > 0 && !isNoResponseAddress(message.responseDestination)) {
                 val excess = createMessage({
                     bounce: BounceMode.NoBounce,
-                    dest: message.responseDestination!!,
+                    dest: message.responseDestination!,
                     value: residual,
                     body: TokenExcesses { queryId: message.queryId },
                 });
@@ -378,7 +380,11 @@ fun onInternalMessage(in: InMessage) {
             storage.pendingPoolPayoutReceivers.set(message.queryId as int257, message.destination);
             storage.save();
 
-            val recipient = quasarWalletDeployment(message.destination, storage.master, contract.getCode());
+            val recipient = quasarWalletDeployment(
+                message.destination,
+                storage.master,
+                contract.getCode(),
+            );
             val markedQueryId: uint64 = message.queryId + QUASAR_POOL_PAYOUT_MARKER;
             sendInternalTransfer(
                 recipient,
@@ -401,7 +407,9 @@ fun onInternalMessage(in: InMessage) {
             assert (!storage.pendingBurnResponses.exists(message.queryId as int257)) throw 112;
 
             storage.balance -= message.amount;
-            storage.pendingBurnResponses.set(message.queryId as int257, message.responseDestination);
+            storage
+                .pendingBurnResponses
+                .set(message.queryId as int257, message.responseDestination);
             storage.save();
 
             val burn = createMessage({
@@ -419,7 +427,7 @@ fun onInternalMessage(in: InMessage) {
         }
 
         ProvideWalletAddress => {
-            var storage = QuasarWalletStorage.load();
+            val storage = QuasarWalletStorage.load();
             assert (in.valueCoins >= 6100000) throw 116;
             val ownerRef: Cell<any_address>? = message.includeAddress
                 ? (storage.owner as any_address).toCell()

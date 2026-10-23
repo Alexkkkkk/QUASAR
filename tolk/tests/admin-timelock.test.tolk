@@ -1,8 +1,6 @@
 import "@acton/emulation/network"
 import "@acton/emulation/testing"
 import "@acton/testing/expect"
-import "@acton/types/transaction"
-import "@stdlib/tvm-dicts"
 import "@contracts/QuasarAdminTimelock"
 import "@wrappers/QuasarAdminTimelock.gen"
 
@@ -23,16 +21,19 @@ fun setupTimelock(): (QuasarAdminTimelock, Treasury, Treasury, Treasury) {
             lastQueuedCallId: 0,
             master: master.address,
             defi: defi.address,
-            pendingCalls: createEmptyDict(),
-        }
+            pendingCalls: [],
+        },
     );
 
-    val deployResult = net.send(admin.address, createMessage({
-        bounce: BounceMode.NoBounce,
-        value: grams("10"),
-        dest: { workchain: timelock.address.getWorkchain(), stateInit: timelock.stateInit!! },
-        body: Deploy { queryId: 0 },
-    }));
+    val deployResult = net.send(
+        admin.address,
+        createMessage({
+            bounce: BounceMode.NoBounce,
+            value: grams("10"),
+            dest: { workchain: timelock.address.getWorkchain(), stateInit: timelock.stateInit! },
+            body: Deploy { queryId: 0 },
+        }),
+    );
     expect(deployResult).toHaveSuccessfulDeploy<Deploy>({
         from: admin.address,
         to: timelock.address,
@@ -43,11 +44,11 @@ fun setupTimelock(): (QuasarAdminTimelock, Treasury, Treasury, Treasury) {
         bounced: true,
     });
 
-    return (timelock, admin, master, defi)
+    return (timelock, admin, master, defi);
 }
 
 fun callBody(): cell {
-    return beginCell().storeUint(0x12345678, 32).endCell()
+    return beginCell().storeUint(0x12345678, 32).endCell();
 }
 
 get fun `test admin timelock: deploy initializes the contract`() {
@@ -57,7 +58,7 @@ get fun `test admin timelock: deploy initializes the contract`() {
     expect(timelock.getDefi()).toEqual(defi.address);
     expect(timelock.getPendingAdmin()).toEqual(zeroAddress());
     expect(timelock.getMinDelay()).toEqual(MIN_DELAY);
-    expect(timelock.getLastQueuedCallId()).toEqual(0)
+    expect(timelock.getLastQueuedCallId()).toEqual(0);
 }
 
 get fun `test admin timelock: authorized queue stores managed call`() {
@@ -80,11 +81,11 @@ get fun `test admin timelock: authorized queue stores managed call`() {
     val pending = timelock.getPendingCall(7);
     expect(pending).toBeNotNull();
     if (pending == null) {
-        return
+        return;
     }
-    expect(pending!!.target).toEqual(master.address);
-    expect(pending!!.value).toEqual(grams("0.1"));
-    expect(pending!!.executeAt).toEqual((queuedAt + MIN_DELAY) as int)
+    expect(pending.target).toEqual(master.address);
+    expect(pending.value).toEqual(grams("0.1"));
+    expect(pending.executeAt).toEqual((queuedAt + MIN_DELAY) as int);
 }
 
 get fun `test admin timelock: unauthorized queue cancel and propose are rejected`() {
@@ -125,7 +126,7 @@ get fun `test admin timelock: unauthorized queue cancel and propose are rejected
         from: outsider.address,
         to: timelock.address,
         exitCode: 45352,
-    })
+    });
 }
 
 get fun `test admin timelock: only master and nonzero defi are managed targets`() {
@@ -164,7 +165,7 @@ get fun `test admin timelock: only master and nonzero defi are managed targets`(
         from: admin.address,
         to: timelock.address,
         exitCode: 42797,
-    })
+    });
 }
 
 get fun `test admin timelock: queue ids must strictly increase`() {
@@ -217,7 +218,7 @@ get fun `test admin timelock: queue ids must strictly increase`() {
         { bounce: false, value: grams("0.2") },
     );
     expect(higher).toHaveSuccessfulTx<QueueAdminCall>({ to: timelock.address });
-    expect(timelock.getLastQueuedCallId()).toEqual(11)
+    expect(timelock.getLastQueuedCallId()).toEqual(11);
 }
 
 get fun `test admin timelock: execution is delayed, permissionless, and deletes first`() {
@@ -249,9 +250,9 @@ get fun `test admin timelock: execution is delayed, permissionless, and deletes 
     val pending = timelock.getPendingCall(1);
     expect(pending).toBeNotNull();
     if (pending == null) {
-        return
+        return;
     }
-    testing.setNow(pending!!.executeAt as uint32);
+    testing.setNow(pending.executeAt as uint32);
 
     val ready = timelock.sendExecuteAdminCall(
         outsider.address,
@@ -262,7 +263,7 @@ get fun `test admin timelock: execution is delayed, permissionless, and deletes 
         from: outsider.address,
         to: timelock.address,
     });
-    expect(timelock.getPendingCall(1)).toBeNull()
+    expect(timelock.getPendingCall(1)).toBeNull();
 }
 
 get fun `test admin timelock: admin can cancel a call and cancellation is authorized`() {
@@ -296,11 +297,11 @@ get fun `test admin timelock: admin can cancel a call and cancellation is author
         { bounce: false, value: grams("0.2") },
     );
     expect(cancelled).toHaveSuccessfulTx<CancelAdminCall>({ to: timelock.address });
-    expect(timelock.getPendingCall(1)).toBeNull()
+    expect(timelock.getPendingCall(1)).toBeNull();
 }
 
 get fun `test admin timelock: admin transfer is cancellable and delayed`() {
-    val (timelock, admin, master, _) = setupTimelock();
+    val (timelock, admin, _master, _) = setupTimelock();
     val newAdmin = testing.treasury("admin-timelock-new-admin");
     val outsider = testing.treasury("admin-timelock-transfer-outsider");
 
@@ -358,5 +359,5 @@ get fun `test admin timelock: admin transfer is cancellable and delayed`() {
         to: timelock.address,
     });
     expect(timelock.getAdmin()).toEqual(newAdmin.address);
-    expect(timelock.getPendingAdmin()).toEqual(zeroAddress())
+    expect(timelock.getPendingAdmin()).toEqual(zeroAddress());
 }

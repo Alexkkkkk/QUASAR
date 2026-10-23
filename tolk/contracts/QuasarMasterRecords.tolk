@@ -8,9 +8,84 @@
 // Event serializers retain the Tact wire layout. Tolk does not automatically
 // write or consume a struct prefix when packToBuilder/unpackFromSlice is custom,
 // therefore each prefixed event handles its 32-bit header explicitly.
-import "@contracts/QuasarMaster"
+// Master record and event types live with their serializers so this module can be
+// imported by the production entrypoint without an import cycle.
 
-fun AIActionLog.unpackFromSlice(mutate root: slice): AIActionLog {
+@overflow1023_policy("suppress")
+struct (0xa8f1237b) EventFeeDistributed {
+    totalFee: int257
+    burn: int257
+    buyback: int257
+    staking: int257
+    referral: int257
+    treasury: int257
+    defiPool: int257
+}
+
+@overflow1023_policy("suppress")
+struct (0x081fb0a9) EventAiVeto {
+    actionId: int257
+    voter: address
+    amount: int257
+    actionStake: int257
+    vetoed: bool
+}
+
+@overflow1023_policy("suppress")
+struct (0x9e7176a7) EventAiSignedDecision {
+    queryId: int257
+    nonce: int257
+    action: int257
+    value: int257
+}
+
+@overflow1023_policy("suppress")
+struct AiActionLog {
+    actionId: int257
+    timestamp: int257
+    actionType: string
+    oldValue: int257
+    newValue: int257
+    reason: string
+    executed: bool
+    vetoed: bool
+    overridden: bool
+}
+
+@overflow1023_policy("suppress")
+struct StakeInfo {
+    amount: int257
+    startTime: int257
+    lastClaim: int257
+    lockEnd: int257
+}
+
+struct ReferralInfo {
+    referrer: address
+    totalEarned: int257
+    totalReferrals: int257
+}
+
+@overflow1023_policy("suppress")
+struct VestingInfo {
+    totalAmount: int257
+    claimed: int257
+    startTime: int257
+    cliff: int257
+    duration: int257
+}
+
+@overflow1023_policy("suppress")
+struct PendingMasterPayout {
+    kind: int257
+    beneficiary: address
+    amount: coins
+    d1: int257
+    d2: int257
+    d3: int257
+}
+
+fun AiActionLog.unpackFromSlice(mutate root: slice): AiActionLog {
     var actionHead = root.loadRef().beginParse();
     val actionId = actionHead.loadInt(257) as int257;
     val timestamp = actionHead.loadInt(257) as int257;
@@ -26,10 +101,20 @@ fun AIActionLog.unpackFromSlice(mutate root: slice): AIActionLog {
     statusTail.assertEnd();
     actionHead.assertEnd();
     root.assertEnd();
-    return { actionId, timestamp, actionType, oldValue, newValue, reason, executed, vetoed, overridden };
+    return {
+        actionId,
+        timestamp,
+        actionType,
+        oldValue,
+        newValue,
+        reason,
+        executed,
+        vetoed,
+        overridden,
+    };
 }
 
-fun AIActionLog.packToBuilder(self, mutate root: builder) {
+fun AiActionLog.packToBuilder(self, mutate root: builder) {
     var statusTail = beginCell();
     statusTail.storeInt(self.newValue, 257);
     statusTail.storeString(self.reason);
@@ -57,7 +142,12 @@ fun StakeInfo.unpackFromSlice(mutate root: slice): StakeInfo {
     lockTail.assertEnd();
     stakeHead.assertEnd();
     root.assertEnd();
-    return { amount, startTime, lastClaim, lockEnd };
+    return {
+        amount,
+        startTime,
+        lastClaim,
+        lockEnd,
+    };
 }
 
 fun StakeInfo.packToBuilder(self, mutate root: builder) {
@@ -82,7 +172,13 @@ fun VestingInfo.unpackFromSlice(mutate root: slice): VestingInfo {
     scheduleTail.assertEnd();
     vestingHead.assertEnd();
     root.assertEnd();
-    return { totalAmount, claimed, startTime, cliff, duration };
+    return {
+        totalAmount,
+        claimed,
+        startTime,
+        cliff,
+        duration,
+    };
 }
 
 fun VestingInfo.packToBuilder(self, mutate root: builder) {
@@ -105,7 +201,11 @@ fun ReferralInfo.unpackFromSlice(mutate root: slice): ReferralInfo {
     val totalReferrals = referral.loadInt(257) as int257;
     referral.assertEnd();
     root.assertEnd();
-    return { referrer, totalEarned, totalReferrals };
+    return {
+        referrer,
+        totalEarned,
+        totalReferrals,
+    };
 }
 
 fun ReferralInfo.packToBuilder(self, mutate root: builder) {
@@ -129,7 +229,14 @@ fun PendingMasterPayout.unpackFromSlice(mutate root: slice): PendingMasterPayout
     dataTail.assertEnd();
     payoutHead.assertEnd();
     root.assertEnd();
-    return { kind, beneficiary, amount, d1, d2, d3 };
+    return {
+        kind,
+        beneficiary,
+        amount,
+        d1,
+        d2,
+        d3,
+    };
 }
 
 fun PendingMasterPayout.packToBuilder(self, mutate root: builder) {
@@ -162,7 +269,15 @@ fun EventFeeDistributed.unpackFromSlice(mutate root: slice): EventFeeDistributed
     defiTail.assertEnd();
     feeTail.assertEnd();
     root.assertEnd();
-    return { totalFee, burn, buyback, staking, referral, treasury, defiPool };
+    return {
+        totalFee,
+        burn,
+        buyback,
+        staking,
+        referral,
+        treasury,
+        defiPool,
+    };
 }
 
 fun EventFeeDistributed.packToBuilder(self, mutate root: builder) {
@@ -191,7 +306,13 @@ fun EventAiVeto.unpackFromSlice(mutate root: slice): EventAiVeto {
     val vetoed = vetoTail.loadBool();
     vetoTail.assertEnd();
     root.assertEnd();
-    return { actionId, voter, amount, actionStake, vetoed };
+    return {
+        actionId,
+        voter,
+        amount,
+        actionStake,
+        vetoed,
+    };
 }
 
 fun EventAiVeto.packToBuilder(self, mutate root: builder) {
@@ -213,7 +334,12 @@ fun EventAiSignedDecision.unpackFromSlice(mutate root: slice): EventAiSignedDeci
     val value = valueTail.loadInt(257) as int257;
     valueTail.assertEnd();
     root.assertEnd();
-    return { queryId, nonce, action, value };
+    return {
+        queryId,
+        nonce,
+        action,
+        value,
+    };
 }
 
 fun EventAiSignedDecision.packToBuilder(self, mutate root: builder) {

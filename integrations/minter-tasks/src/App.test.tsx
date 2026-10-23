@@ -1,5 +1,6 @@
 import { vi } from "vitest";
 import {
+  buildJettonOffChainMetadata,
   buildJettonOnchainMetadata,
   readJettonMetadata,
   resolveJettonDecimals,
@@ -107,6 +108,22 @@ test("Unavailable fully-offchain metadata returns a recoverable empty view", asy
     metadata: {},
     metadataError: "Timeout",
   });
+});
+
+test("long offchain metadata URI is written and read as a SnakeData chain", async () => {
+  const uri = `https://example.com/${"metadata/".repeat(40)}jetton.json`;
+  const dataCell = buildJettonOffChainMetadata(uri);
+  expect(dataCell.refs.length).toBeGreaterThan(0);
+  fetchMock.mockResolvedValueOnce(metadataResponse({ name: "Long URI" }));
+
+  expect(await readJettonMetadata(dataCell)).toEqual({
+    persistenceType: "offchain_private_domain",
+    metadata: { name: "Long URI" },
+  });
+  expect(fetchMock).toHaveBeenCalledWith(
+    uri,
+    expect.objectContaining({ headers: { Accept: "application/json" } }),
+  );
 });
 
 test("does not guess decimals when external metadata is unavailable", () => {

@@ -22,6 +22,10 @@
       "tag": "v7.0.0",
       "sha": "bf12e9b00b37c5c0ca2b87b79b2daf7891dbda13"
     },
+    "ton-blockchain/setup-acton": {
+      "tag": "v1.2.0",
+      "sha": "0f9f436843d740466cae2d7411ff59072dde942e"
+    },
     "actions/stale": {
       "tag": "v11.0.0",
       "sha": "4391f3da665fdf50b6810c1a66712fb9ba21aa93"

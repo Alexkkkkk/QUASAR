@@ -1,5 +1,4 @@
 import "@acton/testing/expect"
-import "@contracts/QuasarMaster"
 import "@contracts/QuasarMasterRecords"
 
 fun recordsTestOwner(): address {
@@ -13,7 +12,7 @@ fun recordsTestPeer(): address {
 get fun `test master records: wide storage records round trip through bounded map leaves`() {
     val owner = recordsTestOwner();
     val peer = recordsTestPeer();
-    val action = AIActionLog {
+    val action = AiActionLog {
         actionId: -101,
         timestamp: 20261022,
         actionType: "rebalance",
@@ -24,7 +23,12 @@ get fun `test master records: wide storage records round trip through bounded ma
         vetoed: false,
         overridden: true,
     };
-    val stake = StakeInfo { amount: 1000, startTime: 2000, lastClaim: 3000, lockEnd: 4000 };
+    val stake = StakeInfo {
+        amount: 1000,
+        startTime: 2000,
+        lastClaim: 3000,
+        lockEnd: 4000,
+    };
     val vesting = VestingInfo {
         totalAmount: 5000,
         claimed: 600,
@@ -32,7 +36,11 @@ get fun `test master records: wide storage records round trip through bounded ma
         cliff: 8000,
         duration: 9000,
     };
-    val referral = ReferralInfo { referrer: peer, totalEarned: 111, totalReferrals: 222 };
+    val referral = ReferralInfo {
+        referrer: peer,
+        totalEarned: 111,
+        totalReferrals: 222,
+    };
     val payout = PendingMasterPayout {
         kind: -7,
         beneficiary: peer,
@@ -42,7 +50,7 @@ get fun `test master records: wide storage records round trip through bounded ma
         d3: 10,
     };
 
-    var actions: map<int257, AIActionLog> = [];
+    var actions: map<int257, AiActionLog> = [];
     actions.set(-1, action);
     val actionResult = actions.get(-1);
     expect(actionResult.isFound).toEqual(true);
@@ -159,7 +167,12 @@ get fun `test master records: EventAiVeto keeps manual Tact root and tail layout
 }
 
 get fun `test master records: EventAiSignedDecision keeps manual Tact root and tail layout`() {
-    val event = EventAiSignedDecision { queryId: 12, nonce: -13, action: 14, value: -15 };
+    val event = EventAiSignedDecision {
+        queryId: 12,
+        nonce: -13,
+        action: 14,
+        value: -15,
+    };
     var root = event.toCell().beginParse();
     expect(root.loadUint(32)).toEqual(0x9e7176a7);
     expect(root.loadInt(257)).toEqual(event.queryId);

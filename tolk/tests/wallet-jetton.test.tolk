@@ -10,13 +10,14 @@ struct WalletFixture {
     master: Treasury
 }
 
-fun walletDeployment(owner: address, master: address, workchain: int8 = BASECHAIN): AutoDeployAddress {
+fun walletDeployment(
+    owner: address,
+    master: address,
+    workchain: int8 = BASECHAIN,
+): AutoDeployAddress {
     return {
         workchain,
-        stateInit: {
-            code: build("QuasarWallet"),
-            data: quasarWalletInitData(owner, master),
-        },
+        stateInit: { code: build("QuasarWallet"), data: quasarWalletInitData(owner, master) },
     };
 }
 
@@ -25,25 +26,32 @@ fun setupWallet(initialBalance: coins, workchain: int8 = BASECHAIN): WalletFixtu
     val master = testing.treasury("wallet-master", BASECHAIN);
     val deployment = walletDeployment(owner.address, master.address, workchain);
     val walletAddress = deployment.calculateAddress();
-    val deployed = net.send(master.address, createMessage({
-        bounce: BounceMode.NoBounce,
-        value: grams("1"),
-        dest: deployment,
-        body: InternalTransfer {
-            queryId: 1,
-            amount: initialBalance,
-            from: master.address,
-            responseDestination: null,
-            forwardTonAmount: 0,
-            forwardPayload: createEmptySlice(),
-        },
-    }));
+    val deployed = net.send(
+        master.address,
+        createMessage({
+            bounce: BounceMode.NoBounce,
+            value: grams("1"),
+            dest: deployment,
+            body: InternalTransfer {
+                queryId: 1,
+                amount: initialBalance,
+                from: master.address,
+                responseDestination: null,
+                forwardTonAmount: 0,
+                forwardPayload: createEmptySlice(),
+            },
+        }),
+    );
     expect(deployed).toHaveSuccessfulTx<InternalTransfer>({
         from: master.address,
         to: walletAddress,
     });
     expect(testing.isDeployed(walletAddress)).toEqual(true);
-    return { address: walletAddress, owner, master };
+    return {
+        address: walletAddress,
+        owner,
+        master,
+    };
 }
 
 fun WalletFixture.walletData(self): JettonWalletData {
@@ -69,32 +77,55 @@ fun transferMessage(
             responseDestination,
             customPayload: null,
             forwardTonAmount,
-            forwardPayload: beginCell().storeUint(0, 32).storeString("wallet test").endCell().beginParse(),
+            forwardPayload: beginCell()
+                .storeUint(0, 32)
+                .storeString("wallet test")
+                .endCell()
+                .beginParse(),
         },
     });
 }
 
-get fun `test wallet TEP-74: transfer credits recipient, charges 30bps, notifies and returns excesses`() {
+get fun `test wallet TEP-74: transfer delivers amount and charges 30bps additionally`() {
     testing.setNow(100);
     val wallet = setupWallet(1000000);
     val recipient = testing.treasury("wallet-transfer-recipient");
     val response = testing.treasury("wallet-transfer-response");
     val amount: coins = 1000;
     val fee: coins = 3;
-    val recipientWallet = quasarWalletAddress(recipient.address, wallet.master.address, build("QuasarWallet"));
+    val recipientWallet = quasarWalletAddress(
+        recipient.address,
+        wallet.master.address,
+        build("QuasarWallet"),
+    );
 
     val txs = net.send(
         wallet.owner.address,
-        transferMessage(wallet, 10, amount, recipient.address, response.address, grams("0.01")),
+        transferMessage(
+            wallet,
+            10,
+            amount,
+            recipient.address,
+            response.address,
+            grams("0.01"),
+        ),
     );
 
-    expect(txs).toHaveSuccessfulTx<TokenTransfer>({ from: wallet.owner.address, to: wallet.address });
-    expect(txs).toHaveSuccessfulTx<FeeTransfer>({ from: wallet.address, to: wallet.master.address });
+    expect(txs).toHaveSuccessfulTx<TokenTransfer>({ from: wallet
+            .owner
+            .address, to: wallet.address });
+    expect(txs).toHaveSuccessfulTx<FeeTransfer>({ from: wallet.address, to: wallet
+            .master
+            .address });
     expect(txs).toHaveSuccessfulTx<InternalTransfer>({ from: wallet.address, to: recipientWallet });
-    expect(txs).toHaveSuccessfulTx<TokenNotification>({ from: recipientWallet, to: recipient.address });
+    expect(
+        txs,
+    ).toHaveSuccessfulTx<TokenNotification>({ from: recipientWallet, to: recipient.address });
     expect(txs).toHaveSuccessfulTx<TokenExcesses>({ to: response.address });
-    expect(wallet.walletData().balance).toEqual(1000000 - amount);
-    expect(net.runGetMethod<JettonWalletData>(recipientWallet, "get_wallet_data").balance).toEqual(amount - fee);
+    expect(wallet.walletData().balance).toEqual(1000000 - amount - fee);
+    expect(net.runGetMethod<JettonWalletData>(recipientWallet, "get_wallet_data").balance).toEqual(
+        amount,
+    );
 }
 
 get fun `test wallet TEP-74: owner and excesses authorization are enforced`() {
@@ -122,12 +153,15 @@ get fun `test wallet TEP-74: owner and excesses authorization are enforced`() {
     expect(root).toHaveSuccessfulTx<TokenTransfer>({ to: wallet.address });
     cursor.close();
 
-    val forgedExcess = net.send(outsider.address, createMessage({
-        bounce: BounceMode.NoBounce,
-        value: grams("0.02"),
-        dest: wallet.address,
-        body: TokenExcesses { queryId: 12 },
-    }));
+    val forgedExcess = net.send(
+        outsider.address,
+        createMessage({
+            bounce: BounceMode.NoBounce,
+            value: grams("0.02"),
+            dest: wallet.address,
+            body: TokenExcesses { queryId: 12 },
+        }),
+    );
     expect(forgedExcess).toHaveFailedTx<TokenExcesses>({
         from: outsider.address,
         to: wallet.address,
@@ -135,7 +169,7 @@ get fun `test wallet TEP-74: owner and excesses authorization are enforced`() {
     });
 }
 
-get fun `test wallet TEP-74: internal transfer bounce restores transfer amount and fee`() {
+get fun `test wallet TEP-74: internal transfer bounce restores amount and additional fee`() {
     testing.setNow(100);
     val initial: coins = 1000000;
     val amount: coins = 1000;
@@ -149,17 +183,22 @@ get fun `test wallet TEP-74: internal transfer bounce restores transfer amount a
     val root = cursor.executeN(1);
     expect(root).toHaveSuccessfulTx<TokenTransfer>({ to: wallet.address });
     cursor.close();
-    expect(wallet.walletData().balance).toEqual(initial - amount);
+    expect(wallet.walletData().balance).toEqual(initial - amount - 3);
 
-    val bouncedBody = beginCell().storeUint(0xffffffff, 32)
-        .storeSlice(InternalTransfer {
-            queryId: 13,
-            amount: 997,
-            from: wallet.owner.address,
-            responseDestination: response.address,
-            forwardTonAmount: 0,
-            forwardPayload: createEmptySlice(),
-        }.toCell().beginParse())
+    val bouncedBody = beginCell()
+        .storeUint(0xffffffff, 32)
+        .storeSlice(
+            InternalTransfer {
+                queryId: 13,
+                amount,
+                from: wallet.owner.address,
+                responseDestination: response.address,
+                forwardTonAmount: 0,
+                forwardPayload: createEmptySlice(),
+            }
+            .toCell()
+            .beginParse(),
+        )
         .endCell();
     val bounced = createMessage({
         bounce: BounceMode.NoBounce,
@@ -178,27 +217,35 @@ get fun `test wallet TEP-74: burn sends notification and master excesses clear p
     testing.setNow(100);
     val wallet = setupWallet(1000000);
     val response = testing.treasury("wallet-burn-response");
-    val burn = net.send(wallet.owner.address, createMessage({
-        bounce: BounceMode.NoBounce,
-        value: grams("0.2"),
-        dest: wallet.address,
-        body: TokenBurn {
-            queryId: 20,
-            amount: 400,
-            responseDestination: response.address,
-            customPayload: null,
-        },
-    }));
+    val burn = net.send(
+        wallet.owner.address,
+        createMessage({
+            bounce: BounceMode.NoBounce,
+            value: grams("0.2"),
+            dest: wallet.address,
+            body: TokenBurn {
+                queryId: 20,
+                amount: 400,
+                responseDestination: response.address,
+                customPayload: null,
+            },
+        }),
+    );
     expect(burn).toHaveSuccessfulTx<TokenBurn>({ from: wallet.owner.address, to: wallet.address });
-    expect(burn).toHaveSuccessfulTx<BurnNotification>({ from: wallet.address, to: wallet.master.address });
+    expect(burn).toHaveSuccessfulTx<BurnNotification>({ from: wallet.address, to: wallet
+            .master
+            .address });
     expect(wallet.walletData().balance).toEqual(999600);
 
-    val masterExcess = net.send(wallet.master.address, createMessage({
-        bounce: BounceMode.NoBounce,
-        value: grams("0.02"),
-        dest: wallet.address,
-        body: TokenExcesses { queryId: 20 },
-    }));
+    val masterExcess = net.send(
+        wallet.master.address,
+        createMessage({
+            bounce: BounceMode.NoBounce,
+            value: grams("0.02"),
+            dest: wallet.address,
+            body: TokenExcesses { queryId: 20 },
+        }),
+    );
     expect(masterExcess).toHaveSuccessfulTx<TokenExcesses>({
         from: wallet.master.address,
         to: wallet.address,
@@ -231,20 +278,27 @@ get fun `test wallet policy: tx cap, holder cap and cooldown match Tact constant
 
     val target = setupWallet(QUASAR_MAX_WALLET_AMOUNT - 1);
     val sourceOwner = testing.treasury("wallet-holder-source");
-    val sourceWallet = quasarWalletAddress(sourceOwner.address, target.master.address, build("QuasarWallet"));
-    val holderCap = net.send(sourceWallet, createMessage({
-        bounce: BounceMode.NoBounce,
-        value: grams("0.02"),
-        dest: target.address,
-        body: InternalTransfer {
-            queryId: 33,
-            amount: 2,
-            from: sourceOwner.address,
-            responseDestination: null,
-            forwardTonAmount: 0,
-            forwardPayload: createEmptySlice(),
-        },
-    }));
+    val sourceWallet = quasarWalletAddress(
+        sourceOwner.address,
+        target.master.address,
+        build("QuasarWallet"),
+    );
+    val holderCap = net.send(
+        sourceWallet,
+        createMessage({
+            bounce: BounceMode.NoBounce,
+            value: grams("0.02"),
+            dest: target.address,
+            body: InternalTransfer {
+                queryId: 33,
+                amount: 2,
+                from: sourceOwner.address,
+                responseDestination: null,
+                forwardTonAmount: 0,
+                forwardPayload: createEmptySlice(),
+            },
+        }),
+    );
     expect(holderCap).toHaveFailedTx<InternalTransfer>({ to: target.address, exitCode: 102 });
 }
 
@@ -253,29 +307,37 @@ get fun `test wallet TEP-74: burn bounce restores balance and returns excesses`(
     val initial: coins = 1000000;
     val wallet = setupWallet(initial);
     val response = testing.treasury("wallet-burn-bounce-response");
-    val cursor = testing.createTraceIterationCursor(wallet.owner.address, createMessage({
-        bounce: BounceMode.NoBounce,
-        value: grams("0.2"),
-        dest: wallet.address,
-        body: TokenBurn {
-            queryId: 40,
-            amount: 400,
-            responseDestination: response.address,
-            customPayload: null,
-        },
-    }));
+    val cursor = testing.createTraceIterationCursor(
+        wallet.owner.address,
+        createMessage({
+            bounce: BounceMode.NoBounce,
+            value: grams("0.2"),
+            dest: wallet.address,
+            body: TokenBurn {
+                queryId: 40,
+                amount: 400,
+                responseDestination: response.address,
+                customPayload: null,
+            },
+        }),
+    );
     val root = cursor.executeN(1);
     expect(root).toHaveSuccessfulTx<TokenBurn>({ to: wallet.address });
     cursor.close();
     expect(wallet.walletData().balance).toEqual(initial - 400);
 
-    val bouncedBody = beginCell().storeUint(0xffffffff, 32)
-        .storeSlice(BurnNotification {
-            queryId: 40,
-            amount: 400,
-            sender: wallet.owner.address,
-            responseDestination: response.address,
-        }.toCell().beginParse())
+    val bouncedBody = beginCell()
+        .storeUint(0xffffffff, 32)
+        .storeSlice(
+            BurnNotification {
+                queryId: 40,
+                amount: 400,
+                sender: wallet.owner.address,
+                responseDestination: response.address,
+            }
+            .toCell()
+            .beginParse(),
+        )
         .endCell();
     val bounced = createMessage({
         bounce: BounceMode.NoBounce,

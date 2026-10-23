@@ -1,9 +1,9 @@
 import "@acton/emulation/network"
 import "@acton/emulation/testing"
 import "@acton/testing/expect"
-import "@gen/QuasarWallet.code"
 import "@contracts/QuasarCommon"
 import "@contracts/QuasarDeFi"
+import "@gen/QuasarWallet.code"
 import "@wrappers/QuasarDeFi.gen"
 
 struct DeFiFixture {
@@ -17,17 +17,24 @@ fun setupDeFi(): DeFiFixture {
     val owner = testing.treasury("quasar-defi-owner");
     val qsrMaster = testing.treasury("quasar-defi-qsr-master");
     val defi = QuasarDeFi.fromStorage(newQuasarDeFiStorage(owner.address, qsrMaster.address));
-    val deployed = net.send(owner.address, createMessage({
-        bounce: BounceMode.NoBounce,
-        value: grams("5"),
-        dest: { workchain: defi.address.getWorkchain(), stateInit: defi.stateInit!! },
-        body: Deploy { queryId: 0 },
-    }));
+    val deployed = net.send(
+        owner.address,
+        createMessage({
+            bounce: BounceMode.NoBounce,
+            value: grams("5"),
+            dest: { workchain: defi.address.getWorkchain(), stateInit: defi.stateInit! },
+            body: Deploy { queryId: 0 },
+        }),
+    );
     expect(deployed).toHaveSuccessfulDeploy<Deploy>({
         from: owner.address,
         to: defi.address,
     });
-    return { defi, owner, qsrMaster };
+    return {
+        defi,
+        owner,
+        qsrMaster,
+    };
 }
 
 fun addInitialLiquidity(fixture: DeFiFixture, provider: Treasury): void {
@@ -40,19 +47,22 @@ fun addInitialLiquidity(fixture: DeFiFixture, provider: Treasury): void {
     );
     val poolWalletAddress = poolWallet.calculateAddress();
 
-    val deposit = net.send(fixture.qsrMaster.address, createMessage({
-        bounce: BounceMode.NoBounce,
-        value: grams("1"),
-        dest: poolWallet,
-        body: InternalTransfer {
-            queryId: 1,
-            amount: qsrAmount,
-            from: provider.address,
-            responseDestination: null,
-            forwardTonAmount: grams("0.01"),
-            forwardPayload: createEmptySlice(),
-        },
-    }));
+    val deposit = net.send(
+        fixture.qsrMaster.address,
+        createMessage({
+            bounce: BounceMode.NoBounce,
+            value: grams("1"),
+            dest: poolWallet,
+            body: InternalTransfer {
+                queryId: 1,
+                amount: qsrAmount,
+                from: provider.address,
+                responseDestination: null,
+                forwardTonAmount: grams("0.01"),
+                forwardPayload: createEmptySlice(),
+            },
+        }),
+    );
     expect(deposit).toHaveSuccessfulTx<InternalTransfer>({
         from: fixture.qsrMaster.address,
         to: poolWalletAddress,
@@ -64,21 +74,25 @@ fun addInitialLiquidity(fixture: DeFiFixture, provider: Treasury): void {
     expect(fixture.defi.pendingQsrDeposit(provider.address)).toEqual(qsrAmount);
 
     val expectedLp = fixture.defi.estimateLpOut(tonAmount, qsrAmount);
-    val added = fixture.defi.sendAddLiquidity(
-        provider.address,
-        tonAmount,
-        qsrAmount,
-        expectedLp as coins,
-        (testing.getNow() + 3600) as uint32,
-        { bounce: false, value: tonAmount },
-    );
+    val added = fixture
+        .defi
+        .sendAddLiquidity(
+            provider.address,
+            tonAmount,
+            qsrAmount,
+            expectedLp as coins,
+            (testing.getNow() + 3600) as uint32,
+            { bounce: false, value: tonAmount },
+        );
     expect(added).toHaveSuccessfulTx<AddLiquidity>({
         from: provider.address,
         to: fixture.defi.address,
     });
     expect(fixture.defi.poolInfo().tonReserve).toEqual(tonAmount);
     expect(fixture.defi.poolInfo().qsrReserve).toEqual(qsrAmount);
-    expect(fixture.defi.poolInfo().totalSupply).toEqual(expectedLp + fixture.defi.minimumLiquidity());
+    expect(fixture.defi.poolInfo().totalSupply).toEqual(
+        expectedLp + fixture.defi.minimumLiquidity(),
+    );
     expect(fixture.defi.lpBalance(provider.address)).toEqual(expectedLp);
     expect(fixture.defi.pendingQsrDeposit(provider.address)).toEqual(0);
 }
@@ -98,11 +112,13 @@ get fun `test quasar defi: initialization retains owner, QSR master, and pool de
 get fun `test quasar defi: unauthorized admin pause change is rejected`() {
     val fixture = setupDeFi();
     val outsider = testing.treasury("quasar-defi-admin-outsider");
-    val result = fixture.defi.sendSetPaused(
-        outsider.address,
-        true,
-        { bounce: false, value: grams("0.1") },
-    );
+    val result = fixture
+        .defi
+        .sendSetPaused(
+            outsider.address,
+            true,
+            { bounce: false, value: grams("0.1") },
+        );
     expect(result).toHaveFailedTx<SetPaused>({
         from: outsider.address,
         to: fixture.defi.address,
@@ -114,14 +130,16 @@ get fun `test quasar defi: forged token notification cannot create a pending dep
     val fixture = setupDeFi();
     val outsider = testing.treasury("quasar-defi-notification-outsider");
     val provider = testing.treasury("quasar-defi-notification-provider");
-    val forged = fixture.defi.sendTokenNotification(
-        outsider.address,
-        1,
-        grams("1"),
-        provider.address,
-        createEmptySlice(),
-        { bounce: false, value: grams("0.1") },
-    );
+    val forged = fixture
+        .defi
+        .sendTokenNotification(
+            outsider.address,
+            1,
+            grams("1"),
+            provider.address,
+            createEmptySlice(),
+            { bounce: false, value: grams("0.1") },
+        );
     expect(forged).toHaveFailedTx<TokenNotification>({
         from: outsider.address,
         to: fixture.defi.address,
@@ -142,27 +160,31 @@ get fun `test quasar defi: expired and insufficient-minimum swap requests preser
     addInitialLiquidity(fixture, provider);
     val before = fixture.defi.poolInfo();
 
-    val expired = fixture.defi.sendSwapToQSR(
-        provider.address,
-        grams("0.1"),
-        0,
-        testing.getNow(),
-        { bounce: false, value: grams("0.1") },
-    );
-    expect(expired).toHaveFailedTx<SwapToQSR>({
+    val expired = fixture
+        .defi
+        .sendSwapToQsr(
+            provider.address,
+            grams("0.1"),
+            0,
+            testing.getNow(),
+            { bounce: false, value: grams("0.1") },
+        );
+    expect(expired).toHaveFailedTx<SwapToQsr>({
         from: provider.address,
         to: fixture.defi.address,
         exitCode: 1003,
     });
 
-    val minOut = fixture.defi.sendSwapToQSR(
-        provider.address,
-        grams("0.1"),
-        grams("200"),
-        (testing.getNow() + 3600) as uint32,
-        { bounce: false, value: grams("0.1") },
-    );
-    expect(minOut).toHaveFailedTx<SwapToQSR>({
+    val minOut = fixture
+        .defi
+        .sendSwapToQsr(
+            provider.address,
+            grams("0.1"),
+            grams("200"),
+            (testing.getNow() + 3600) as uint32,
+            { bounce: false, value: grams("0.1") },
+        );
+    expect(minOut).toHaveFailedTx<SwapToQsr>({
         from: provider.address,
         to: fixture.defi.address,
         exitCode: 1153,

@@ -1,7 +1,7 @@
+import "@stdlib/gas-payments"
 // Positional CLI argument is parsed by Acton against main()'s ABI.
 import "@acton/io"
 import "@acton/emulation/network"
-import "@stdlib/gas-payments"
 import "@gen/QuasarWallet.code"
 
 fun main(duration: int) {

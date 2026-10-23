@@ -9,6 +9,8 @@ import { Sha256 } from "@aws-crypto/sha256-js";
 const ONCHAIN_CONTENT_PREFIX = 0x00;
 const OFFCHAIN_CONTENT_PREFIX = 0x01;
 const SNAKE_PREFIX = 0x00;
+const ROOT_PAYLOAD_BYTES = Math.floor((1023 - 8) / 8);
+const TAIL_PAYLOAD_BYTES = Math.floor(1023 / 8);
 
 export const JETTON_WALLET_CODE = Cell.fromBoc(walletHex.hex)[0];
 export const JETTON_MINTER_CODE = Cell.fromBoc(minterHex.hex)[0]; // code cell from build output
@@ -83,10 +85,20 @@ export function buildJettonOnchainMetadata(data: { [s: string]: string | undefin
 }
 
 export function buildJettonOffChainMetadata(contentUri: string): Cell {
-  return beginCell()
-    .storeInt(OFFCHAIN_CONTENT_PREFIX, 8)
-    .storeBuffer(Buffer.from(contentUri, "ascii"))
-    .endCell();
+  const uri = Buffer.from(contentUri, "utf8");
+  let tail: Cell | null = null;
+  for (let end = uri.length; end > ROOT_PAYLOAD_BYTES; end -= TAIL_PAYLOAD_BYTES) {
+    const start = Math.max(ROOT_PAYLOAD_BYTES, end - TAIL_PAYLOAD_BYTES);
+    const next = new Cell();
+    next.bits.writeBuffer(uri.subarray(start, end));
+    if (tail) next.refs.push(tail);
+    tail = next;
+  }
+  const root = new Cell();
+  root.bits.writeUint8(OFFCHAIN_CONTENT_PREFIX);
+  root.bits.writeBuffer(uri.subarray(0, Math.min(uri.length, ROOT_PAYLOAD_BYTES)));
+  if (tail) root.refs.push(tail);
+  return root;
 }
 
 export type PersistenceType = "onchain" | "offchain_private_domain" | "offchain_ipfs";
@@ -127,7 +139,7 @@ export async function readJettonMetadata(contentCell: Cell): Promise<{
         }
       }
       case OFFCHAIN_CONTENT_PREFIX: {
-        const uri = contentSlice.readRemainingBytes().toString("ascii");
+        const uri = readSnakeString(contentSlice);
         const persistenceType = isIpfsUri(uri) ? "offchain_ipfs" : "offchain_private_domain";
         try {
           const { metadata } = await fetchJettonMetadata(uri);
@@ -166,6 +178,19 @@ function metadataErrorMessage(error: unknown): string {
 
 function isIpfsUri(uri: string): boolean {
   return uri.startsWith("ipfs://") || /(^|\/)ipfs[.:/]/i.test(uri);
+}
+
+/** Reads the root payload and one-reference continuation chain used by SnakeData. */
+function readSnakeString(root: Slice): string {
+  const parts: Buffer[] = [];
+  let current: Slice | null = root;
+  for (let guard = 0; current && guard < 64; guard += 1) {
+    parts.push(current.readRemainingBytes());
+    if (current.remainingRefs === 0) return Buffer.concat(parts).toString("utf8");
+    if (current.remainingRefs !== 1) throw new Error("Invalid TEP-64 SnakeData continuation");
+    current = current.readRef();
+  }
+  throw new Error("TEP-64 SnakeData exceeds 64 cells");
 }
 
 export function resolveJettonMetadataUri(uri: string): string {

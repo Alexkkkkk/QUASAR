@@ -233,7 +233,6 @@ contract QuasarWallet {
         require(msg.amount > 0, "Invalid amount");
         require(sender() == self.owner, "Not owner");
         require(msg.destination != newAddress(0, 0), "Invalid destination");
-        require(self.balance >= msg.amount, "Insufficient");
         require(now() - self.lastTxTime >= QUASAR_TRANSFER_COOLDOWN, "Cooldown");
         if (self.owner != self.master) {
             require(msg.amount <= QUASAR_MAX_TX_AMOUNT, "Max tx exceeded");
@@ -243,11 +242,14 @@ contract QuasarWallet {
 
         let fee: Int = msg.amount * QUASAR_WALLET_FEE_BPS / 10000;
         if (fee < 1) { fee = 1 }
-        let sendAmount: Int = msg.amount - fee;
-        require(sendAmount > 0, "Amount too small");
+        // TEP-74 defines `amount` as the amount credited by internal_transfer.
+        // The QUASAR wallet fee is charged in addition to it, rather than
+        // silently withholding tokens from the recipient's transfer amount.
+        let totalDebit: Int = msg.amount + fee;
+        require(self.balance >= totalDebit, "Insufficient");
         require(myBalance() >= ton("0.075"), "Insufficient TON for transfer");
         require(context().value >= ton("0.07"), "Insufficient TON attached for transfer");
-        self.balance = self.balance - msg.amount;
+        self.balance = self.balance - totalDebit;
         self.pendingResponseFees.set(msg.queryId, fee);
         self.pendingResponseReceivers.set(msg.queryId, msg.destination);
         self.pendingResponses.set(msg.queryId, msg.responseDestination);
@@ -261,7 +263,7 @@ contract QuasarWallet {
             mode: SendPayGasSeparately,
             body: InternalTransfer{
                 queryId: msg.queryId,
-                amount: sendAmount,
+                amount: msg.amount,
                 from: self.owner,
                 responseDestination: msg.responseDestination,
                 forwardTonAmount: msg.forwardTonAmount,

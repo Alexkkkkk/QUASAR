@@ -173,10 +173,11 @@ test('F-30-04 on-chain: the inbound residual is refunded to response_destination
     assert.equal(refunded.length, 1, 'the receiving wallet must still return its excess to response_destination (F-21) — ' + describe(transferRes));
     assert.ok(refunded[0].value > 0n, 'the receiver excess refund must carry value — ' + describe(transferRes));
 
-    // 3. Jetton accounting is unchanged.
+    // 3. TEP-74 delivers the requested amount; the wallet fee is an additional
+    // debit from the sender rather than a hidden recipient-side deduction.
     const fee = (100n * QSR * 30n) / 10_000n;
-    assert.equal((await bobC.getGetWalletData()).balance, 100n * QSR - fee, 'the recipient is credited amount minus fee');
-    assert.equal((await aliceC.getGetWalletData()).balance, 900n * QSR, 'the sender is debited the full amount');
+    assert.equal((await bobC.getGetWalletData()).balance, 100n * QSR, 'the recipient is credited the requested TEP-74 amount');
+    assert.equal((await aliceC.getGetWalletData()).balance, 900n * QSR - fee, 'the sender is debited the transfer amount plus fee');
 });
 
 test('F-30-04 source: both legs stay balance-funded and the residual is refunded as the final excesses action', () => {

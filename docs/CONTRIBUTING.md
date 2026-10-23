@@ -11,6 +11,28 @@ npm test
 npm run build
 ```
 
+The Tolk migration is checked with the pinned Acton `1.2.1` toolchain. After
+installing Acton from the official release, run the same validation gates used
+in CI:
+
+```bash
+cd tolk
+acton init
+acton fmt --check
+cd ..
+python3 scripts/sync_acton.py
+cd tolk
+acton check
+acton test
+cd ..
+python3 scripts/sync_acton.py --check
+```
+
+`sync_acton.py` performs an isolated Acton build, generates the Tolk and
+TypeScript wrappers, checks the ABI against the Tact reference, and only then
+atomically publishes the local generated artifacts. It does not deploy or
+broadcast transactions.
+
 Do not commit `.env`, wallet material, deployment state, or generated local
 artifacts. Never use a real wallet mnemonic or a mainnet key in tests.
 

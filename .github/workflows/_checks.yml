@@ -53,6 +53,19 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Set up Acton
+        uses: ton-blockchain/setup-acton@0f9f436843d740466cae2d7411ff59072dde942e # v1.2.0
+        with:
+          working-directory: tolk
+
+      - name: Initialize Acton project
+        working-directory: tolk
+        run: acton init
+
+      - name: Verify Tolk formatting
+        working-directory: tolk
+        run: acton fmt --check
+
       - name: Lint workflow YAML
         run: |
           set -euo pipefail
@@ -67,6 +80,16 @@ jobs:
 
       - name: Type-check Tact contracts
         run: npm run lint
+
+      - name: Build, test and synchronize the Tolk migration
+        run: python3 scripts/sync_acton.py
+
+      - name: Lint Tolk contracts with Acton annotations
+        working-directory: tolk
+        run: acton check --output-format github
+
+      - name: Verify synchronized Tolk artifacts
+        run: python3 scripts/sync_acton.py --check
 
       - name: Install Python dependencies
         run: python3 -m pip install --quiet -r requirements.txt

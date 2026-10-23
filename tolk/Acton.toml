@@ -2,6 +2,7 @@
 name = "quasar-tolk"
 description = "QUASAR Tolk migration, verified against the preserved Tact reference"
 version = "3.0.0"
+repository = "https://github.com/Alexkkkkk/QUASAR"
 license = "MIT"
 
 [toolchain]
@@ -37,6 +38,14 @@ output-sources = "build/synchronized/sources"
 
 [test]
 fail-fast = true
+
+[lint]
+max-warnings = 0
+exclude = ["build/synchronized/wrappers/*.tolk"]
+
+[scripts]
+local-smoke = "acton script scripts/local-smoke.tolk"
+storage-fee = "acton script scripts/storage-fee.tolk 3600"
 
 [fmt]
 width = 100
