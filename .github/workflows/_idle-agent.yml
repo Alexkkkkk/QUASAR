@@ -78,7 +78,7 @@ jobs:
 
       - name: Initialize Acton project
         working-directory: tolk
-        run: acton init
+        run: acton init --stdlib-only
 
       # ШАГ 1 — изучение (read-only, без tools записи): модель получает
       # ограниченный срез целевого модуля и выдаёт findings строгим JSON.

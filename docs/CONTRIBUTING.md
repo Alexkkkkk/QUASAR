@@ -7,7 +7,7 @@ Then run the same Tolk checks as CI:
 
 ```bash
 npm ci
-npm run acton:init
+npm run acton:init  # Refreshes Acton stdlib only; does not rewrite tolk/Acton.toml
 npm run lint
 npm test
 npx tsc --noEmit

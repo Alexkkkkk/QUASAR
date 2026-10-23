@@ -278,7 +278,7 @@ The UI loads addresses from `website/deployment.json` after deployment:
 git clone https://github.com/Alexkkkkk/QUASAR.git
 cd QUASAR
 npm ci
-npm run acton:init
+npm run acton:init  # Updates Acton's standard library; preserves tolk/Acton.toml
 npm run build        # Builds, tests and atomically publishes Tolk artifacts
 ```
 

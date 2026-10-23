@@ -5,7 +5,7 @@ ready for mainnet. Every unchecked item blocks a public launch.
 
 ## 1. Reproducible Tolk build
 
-- [ ] A clean checkout passes `npm ci`, `npm run acton:init`, `npm run lint` and
+- [ ] A clean checkout passes `npm ci`, stdlib-only `npm run acton:init`, `npm run lint` and
   `npm test` with Acton `1.2.1`.
 - [ ] `npm run abi:verify`, `npm run abi:dapp`, `npm run hashes:build` and
   `python3 scripts/sync_acton.py --check` pass for the exact release commit.

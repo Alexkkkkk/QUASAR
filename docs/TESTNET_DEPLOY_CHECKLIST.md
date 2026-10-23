@@ -11,7 +11,7 @@ rehearsal. It neither authorizes a transaction nor supplies signing material.
 ## Reproducible contract generation
 
 - [ ] A clean checkout has Node dependencies installed with `npm ci`.
-- [ ] Acton `1.2.1` is installed and `npm run acton:init` succeeds.
+- [ ] Acton `1.2.1` is installed and `npm run acton:init` succeeds; it only refreshes the standard library and preserves `tolk/Acton.toml`.
 - [ ] `npm run lint` succeeds.
 - [ ] `npm test` succeeds, including Acton emulation tests.
 - [ ] `npm run abi:verify` and `npm run abi:dapp` succeed.

@@ -207,7 +207,7 @@ jobs:
 
       - name: Initialize Acton project
         working-directory: tolk
-        run: acton init
+        run: acton init --stdlib-only
 
       - name: Lint Tolk contracts
         run: npm run lint

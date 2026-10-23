@@ -20,7 +20,7 @@ QUASAR — pre-launch TON Jetton/DeFi prototype на [Tolk](https://docs.ton.org
 
 ```bash
 npm ci
-npm run acton:init
+npm run acton:init  # stdlib-only; leaves the checked-in Acton.toml unchanged
 npm run lint
 npm test
 npx tsc --noEmit

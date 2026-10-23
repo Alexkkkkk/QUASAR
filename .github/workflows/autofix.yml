@@ -245,7 +245,7 @@ jobs:
 
       - name: Initialize Acton project
         working-directory: tolk
-        run: acton init
+        run: acton init --stdlib-only
 
       - name: Apply deterministic fixes for the detected classes
         env:

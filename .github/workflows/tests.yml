@@ -60,7 +60,7 @@ jobs:
       - name: Initialize Acton project (contracts)
         if: matrix.package == 'contracts'
         working-directory: tolk
-        run: acton init
+        run: acton init --stdlib-only
 
       - name: Build contracts and run security check
         if: matrix.package == 'contracts'
