@@ -14,11 +14,19 @@ KINDS = {"bug", "dead", "test", "doc", "sec"}
 # "scripts/hub_audit.ts" и "./scripts/hub_audit.ts" ловится одинаково.
 REDLINES = (
     ".github/workflows",
+    # Контракты живут в tolk/contracts: без этого префикса red line "contracts"
+    # не срабатывал ни на одном реальном пути и агент мог править контракты.
+    "tolk/contracts",
+    "tolk/Acton.toml",
     "contracts",
     "scripts/deploy",
     "scripts/security_check",
     "scripts/hub_audit",
     "scripts/sync_action_pins",
+    "scripts/sync_acton",
+    "scripts/check_migration_parity",
+    "docs/abi",
+    "docs/build-hashes.json",
 )
 
 
