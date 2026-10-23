@@ -1,19 +1,11 @@
-#!/bin/bash
-set -e
+#!/usr/bin/env bash
+set -euo pipefail
 
-echo "🌟 Building QUASAR Jetton (Tact)..."
-
-mkdir -p build
-
-# Check if tact is installed
-if command -v npx &> /dev/null; then
-    npx tact --config tact.config.json
-    echo "✅ Contracts compiled successfully"
-else
-    echo "⚠️  npx not found. Install Node.js dependencies first:"
-    echo "   npm install"
+if ! command -v acton >/dev/null 2>&1; then
+    echo "Acton 1.2.1 is required. Install it and run: npm run acton:init" >&2
     exit 1
 fi
 
-echo "🚀 Build complete!"
-echo "📁 Compiled files in ./build/"
+printf '%s\n' 'Building QUASAR contracts with Tolk/Acton...'
+python3 scripts/sync_acton.py
+printf '%s\n' 'Tolk artifacts are published in tolk/build/synchronized/'

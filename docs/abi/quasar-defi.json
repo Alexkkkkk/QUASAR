@@ -1,798 +1,678 @@
 {
-  "schemaVersion": 1,
+  "compiler": {
+    "name": "tolk",
+    "version": "1.5.0"
+  },
   "contract": "QuasarDeFi",
-  "artifact": "quasar_defi_QuasarDeFi.abi",
-  "messages": [
+  "getters": [
     {
-      "name": "AcceptPoolOwner",
-      "opcode": "0x3b837993",
-      "fields": []
-    },
-    {
-      "name": "AddLiquidity",
-      "opcode": "0xb857497a",
-      "fields": [
+      "arguments": [
         {
           "name": "tonAmount",
           "type": {
-            "kind": "simple",
-            "type": "uint",
             "optional": false,
-            "format": "coins"
+            "type": "int"
           }
         },
         {
           "name": "qsrAmount",
           "type": {
-            "kind": "simple",
-            "type": "uint",
             "optional": false,
-            "format": "coins"
+            "type": "int"
+          }
+        }
+      ],
+      "methodId": 75587,
+      "name": "estimateLpOut",
+      "returns": {
+        "optional": false,
+        "type": "int"
+      }
+    },
+    {
+      "arguments": [
+        {
+          "name": "lpAmount",
+          "type": {
+            "optional": false,
+            "type": "int"
+          }
+        }
+      ],
+      "methodId": 66602,
+      "name": "estimateRemoveLiquidity",
+      "returns": {
+        "optional": false,
+        "type": "struct:LpInfo"
+      }
+    },
+    {
+      "arguments": [
+        {
+          "name": "tonAmount",
+          "type": {
+            "optional": false,
+            "type": "int"
+          }
+        }
+      ],
+      "methodId": 122618,
+      "name": "estimateSwapToQsr",
+      "returns": {
+        "optional": false,
+        "type": "struct:SwapQuote"
+      }
+    },
+    {
+      "arguments": [
+        {
+          "name": "qsrAmount",
+          "type": {
+            "optional": false,
+            "type": "int"
+          }
+        }
+      ],
+      "methodId": 106665,
+      "name": "estimateSwapToTon",
+      "returns": {
+        "optional": false,
+        "type": "struct:SwapQuote"
+      }
+    },
+    {
+      "arguments": [],
+      "methodId": 119094,
+      "name": "farmInfo",
+      "returns": {
+        "optional": false,
+        "type": "struct:FarmInfo"
+      }
+    },
+    {
+      "arguments": [],
+      "methodId": 106766,
+      "name": "farmRewardReserve",
+      "returns": {
+        "optional": false,
+        "type": "int"
+      }
+    },
+    {
+      "arguments": [],
+      "methodId": 74248,
+      "name": "feeAccumulatedQsr",
+      "returns": {
+        "optional": false,
+        "type": "int"
+      }
+    },
+    {
+      "arguments": [],
+      "methodId": 89179,
+      "name": "feeAccumulatedTon",
+      "returns": {
+        "optional": false,
+        "type": "int"
+      }
+    },
+    {
+      "arguments": [],
+      "methodId": 68211,
+      "name": "feeConfig",
+      "returns": {
+        "optional": false,
+        "type": "int"
+      }
+    },
+    {
+      "arguments": [],
+      "methodId": 85880,
+      "name": "get_reserve_snapshot",
+      "returns": {
+        "optional": false,
+        "type": "struct:DeFiReserveSnapshot"
+      }
+    },
+    {
+      "arguments": [],
+      "methodId": 81909,
+      "name": "lastPriceObservation",
+      "returns": {
+        "optional": false,
+        "type": "int"
+      }
+    },
+    {
+      "arguments": [
+        {
+          "name": "user",
+          "type": {
+            "optional": false,
+            "type": "address"
+          }
+        }
+      ],
+      "methodId": 66831,
+      "name": "lpBalance",
+      "returns": {
+        "optional": false,
+        "type": "int"
+      }
+    },
+    {
+      "arguments": [],
+      "methodId": 130544,
+      "name": "minimumLiquidity",
+      "returns": {
+        "optional": false,
+        "type": "int"
+      }
+    },
+    {
+      "arguments": [],
+      "methodId": 83229,
+      "name": "owner",
+      "returns": {
+        "optional": false,
+        "type": "address"
+      }
+    },
+    {
+      "arguments": [],
+      "methodId": 121967,
+      "name": "ownerTransferAt",
+      "returns": {
+        "optional": false,
+        "type": "int"
+      }
+    },
+    {
+      "arguments": [],
+      "methodId": 106429,
+      "name": "pendingFee",
+      "returns": {
+        "optional": false,
+        "type": "int"
+      }
+    },
+    {
+      "arguments": [],
+      "methodId": 97869,
+      "name": "pendingFeeAt",
+      "returns": {
+        "optional": false,
+        "type": "int"
+      }
+    },
+    {
+      "arguments": [],
+      "methodId": 109589,
+      "name": "pendingMaxTrade",
+      "returns": {
+        "optional": false,
+        "type": "int"
+      }
+    },
+    {
+      "arguments": [],
+      "methodId": 72297,
+      "name": "pendingMaxTradeAt",
+      "returns": {
+        "optional": false,
+        "type": "int"
+      }
+    },
+    {
+      "arguments": [],
+      "methodId": 97003,
+      "name": "pendingOwner",
+      "returns": {
+        "optional": false,
+        "type": "address"
+      }
+    },
+    {
+      "arguments": [
+        {
+          "name": "user",
+          "type": {
+            "optional": false,
+            "type": "address"
+          }
+        }
+      ],
+      "methodId": 83522,
+      "name": "pendingQsrDeposit",
+      "returns": {
+        "optional": false,
+        "type": "int"
+      }
+    },
+    {
+      "arguments": [
+        {
+          "name": "user",
+          "type": {
+            "optional": false,
+            "type": "address"
+          }
+        }
+      ],
+      "methodId": 118530,
+      "name": "pendingQsrDepositAt",
+      "returns": {
+        "optional": false,
+        "type": "int"
+      }
+    },
+    {
+      "arguments": [],
+      "methodId": 106583,
+      "name": "poolInfo",
+      "returns": {
+        "optional": false,
+        "type": "struct:LpInfo"
+      }
+    },
+    {
+      "arguments": [],
+      "methodId": 108554,
+      "name": "priceCumulativeQsrPerTon",
+      "returns": {
+        "optional": false,
+        "type": "int"
+      }
+    },
+    {
+      "arguments": [],
+      "methodId": 125062,
+      "name": "priceCumulativeTonPerQsr",
+      "returns": {
+        "optional": false,
+        "type": "int"
+      }
+    },
+    {
+      "arguments": [],
+      "methodId": 81078,
+      "name": "qsrMaster",
+      "returns": {
+        "optional": false,
+        "type": "address"
+      }
+    },
+    {
+      "arguments": [
+        {
+          "name": "user",
+          "type": {
+            "optional": false,
+            "type": "address"
+          }
+        }
+      ],
+      "methodId": 120611,
+      "name": "userFarm",
+      "returns": {
+        "optional": false,
+        "type": "struct:UserFarmInfo"
+      }
+    }
+  ],
+  "messages": [
+    {
+      "fields": [],
+      "name": "AcceptPoolOwner",
+      "opcode": "0x3b837993"
+    },
+    {
+      "fields": [
+        {
+          "name": "tonAmount",
+          "type": {
+            "optional": false,
+            "type": "coins"
+          }
+        },
+        {
+          "name": "qsrAmount",
+          "type": {
+            "optional": false,
+            "type": "coins"
           }
         },
         {
           "name": "minLpOut",
           "type": {
-            "kind": "simple",
-            "type": "uint",
             "optional": false,
-            "format": "coins"
+            "type": "coins"
           }
         },
         {
           "name": "deadline",
           "type": {
-            "kind": "simple",
-            "type": "uint",
             "optional": false,
-            "format": 32
+            "type": "uint32"
           }
         }
-      ]
+      ],
+      "name": "AddLiquidity",
+      "opcode": "0xb857497a"
     },
     {
+      "fields": [],
       "name": "CancelPoolOwner",
-      "opcode": "0x42943fa8",
-      "fields": []
+      "opcode": "0x42943fa8"
     },
     {
+      "fields": [],
       "name": "ClaimFarmRewards",
-      "opcode": "0x511327f0",
-      "fields": []
+      "opcode": "0x511327f0"
     },
     {
-      "name": "Deploy",
-      "opcode": "0x946a98b6",
       "fields": [
         {
           "name": "queryId",
           "type": {
-            "kind": "simple",
-            "type": "uint",
             "optional": false,
-            "format": 64
+            "type": "uint64"
           }
         }
-      ]
+      ],
+      "name": "Deploy",
+      "opcode": "0x946a98b6"
     },
     {
+      "fields": [],
       "name": "EmergencyWithdrawFarm",
-      "opcode": "0x66866ad9",
-      "fields": []
+      "opcode": "0x66866ad9"
     },
     {
-      "name": "FundFarm",
-      "opcode": "0x27895d7c",
       "fields": [
         {
           "name": "amount",
           "type": {
-            "kind": "simple",
-            "type": "uint",
             "optional": false,
-            "format": "coins"
+            "type": "coins"
           }
         }
-      ]
+      ],
+      "name": "FundFarm",
+      "opcode": "0x27895d7c"
     },
     {
-      "name": "PayoutFailed",
-      "opcode": "0x2945917f",
       "fields": [
         {
           "name": "queryId",
           "type": {
-            "kind": "simple",
-            "type": "uint",
             "optional": false,
-            "format": 64
+            "type": "uint64"
           }
         },
         {
           "name": "amount",
           "type": {
-            "kind": "simple",
-            "type": "uint",
             "optional": false,
-            "format": "coins"
+            "type": "coins"
           }
         },
         {
           "name": "destination",
           "type": {
-            "kind": "simple",
-            "type": "address",
-            "optional": false
+            "optional": false,
+            "type": "address"
           }
         }
-      ]
+      ],
+      "name": "PayoutFailed",
+      "opcode": "0x2945917f"
     },
     {
-      "name": "ProposePoolOwner",
-      "opcode": "0x17614302",
       "fields": [
         {
           "name": "newOwner",
           "type": {
-            "kind": "simple",
-            "type": "address",
-            "optional": false
+            "optional": false,
+            "type": "address"
           }
         }
-      ]
+      ],
+      "name": "ProposePoolOwner",
+      "opcode": "0x17614302"
     },
     {
+      "fields": [],
       "name": "RefundPendingQsr",
-      "opcode": "0x41348115",
-      "fields": []
+      "opcode": "0x41348115"
     },
     {
-      "name": "RemoveLiquidity",
-      "opcode": "0x509b0d6a",
       "fields": [
         {
           "name": "lpAmount",
           "type": {
-            "kind": "simple",
-            "type": "uint",
             "optional": false,
-            "format": "coins"
+            "type": "coins"
           }
         },
         {
           "name": "minTonOut",
           "type": {
-            "kind": "simple",
-            "type": "uint",
             "optional": false,
-            "format": "coins"
+            "type": "coins"
           }
         },
         {
           "name": "minQsrOut",
           "type": {
-            "kind": "simple",
-            "type": "uint",
             "optional": false,
-            "format": "coins"
+            "type": "coins"
           }
         },
         {
           "name": "deadline",
           "type": {
-            "kind": "simple",
-            "type": "uint",
             "optional": false,
-            "format": 32
+            "type": "uint32"
           }
         }
-      ]
+      ],
+      "name": "RemoveLiquidity",
+      "opcode": "0x509b0d6a"
     },
     {
-      "name": "SetFarmConfig",
-      "opcode": "0xe7ceed7e",
       "fields": [
         {
           "name": "rewardPerSecond",
           "type": {
-            "kind": "simple",
-            "type": "uint",
             "optional": false,
-            "format": "coins"
+            "type": "coins"
           }
         },
         {
           "name": "startTime",
           "type": {
-            "kind": "simple",
-            "type": "uint",
             "optional": false,
-            "format": 32
+            "type": "uint32"
           }
         },
         {
           "name": "endTime",
           "type": {
-            "kind": "simple",
-            "type": "uint",
             "optional": false,
-            "format": 32
+            "type": "uint32"
           }
         }
-      ]
+      ],
+      "name": "SetFarmConfig",
+      "opcode": "0xe7ceed7e"
     },
     {
-      "name": "SetFarmEnabled",
-      "opcode": "0x6482e5b4",
       "fields": [
         {
           "name": "enabled",
           "type": {
-            "kind": "simple",
-            "type": "bool",
-            "optional": false
+            "optional": false,
+            "type": "bool"
           }
         }
-      ]
+      ],
+      "name": "SetFarmEnabled",
+      "opcode": "0x6482e5b4"
     },
     {
-      "name": "SetFeeBps",
-      "opcode": "0x17000fb2",
       "fields": [
         {
           "name": "feeBps",
           "type": {
-            "kind": "simple",
-            "type": "uint",
             "optional": false,
-            "format": 16
+            "type": "uint16"
           }
         }
-      ]
+      ],
+      "name": "SetFeeBps",
+      "opcode": "0x17000fb2"
     },
     {
-      "name": "SetMaxTradeBps",
-      "opcode": "0xdcff684f",
       "fields": [
         {
           "name": "maxTradeBps",
           "type": {
-            "kind": "simple",
-            "type": "uint",
             "optional": false,
-            "format": 16
+            "type": "uint16"
           }
         }
-      ]
+      ],
+      "name": "SetMaxTradeBps",
+      "opcode": "0xdcff684f"
     },
     {
-      "name": "SetPaused",
-      "opcode": "0x096819ff",
       "fields": [
         {
           "name": "paused",
           "type": {
-            "kind": "simple",
-            "type": "bool",
-            "optional": false
+            "optional": false,
+            "type": "bool"
           }
         }
-      ]
+      ],
+      "name": "SetPaused",
+      "opcode": "0x096819ff"
     },
     {
-      "name": "SwapToQSR",
-      "opcode": "0x6cf24972",
       "fields": [
         {
           "name": "tonAmount",
           "type": {
-            "kind": "simple",
-            "type": "uint",
             "optional": false,
-            "format": "coins"
+            "type": "coins"
           }
         },
         {
           "name": "minQsrOut",
           "type": {
-            "kind": "simple",
-            "type": "uint",
             "optional": false,
-            "format": "coins"
+            "type": "coins"
           }
         },
         {
           "name": "deadline",
           "type": {
-            "kind": "simple",
-            "type": "uint",
             "optional": false,
-            "format": 32
+            "type": "uint32"
           }
         }
-      ]
+      ],
+      "name": "SwapToQsr",
+      "opcode": "0x6cf24972"
     },
     {
-      "name": "SwapToTON",
-      "opcode": "0x94e82670",
       "fields": [
         {
           "name": "qsrAmount",
           "type": {
-            "kind": "simple",
-            "type": "uint",
             "optional": false,
-            "format": "coins"
+            "type": "coins"
           }
         },
         {
           "name": "minTonOut",
           "type": {
-            "kind": "simple",
-            "type": "uint",
             "optional": false,
-            "format": "coins"
+            "type": "coins"
           }
         },
         {
           "name": "deadline",
           "type": {
-            "kind": "simple",
-            "type": "uint",
             "optional": false,
-            "format": 32
+            "type": "uint32"
           }
         }
-      ]
+      ],
+      "name": "SwapToTon",
+      "opcode": "0x94e82670"
     },
     {
-      "name": "SweepTON",
-      "opcode": "0x871208ba",
       "fields": [
         {
           "name": "amount",
           "type": {
-            "kind": "simple",
-            "type": "uint",
             "optional": false,
-            "format": "coins"
+            "type": "coins"
           }
         }
-      ]
+      ],
+      "name": "SweepTon",
+      "opcode": "0x871208ba"
     },
     {
+      "fields": [
+        {
+          "name": "queryId",
+          "type": {
+            "optional": false,
+            "type": "uint64"
+          }
+        }
+      ],
       "name": "TokenExcesses",
-      "opcode": "0xd53276db",
-      "fields": [
-        {
-          "name": "queryId",
-          "type": {
-            "kind": "simple",
-            "type": "uint",
-            "optional": false,
-            "format": 64
-          }
-        }
-      ]
+      "opcode": "0xd53276db"
     },
     {
-      "name": "TokenNotification",
-      "opcode": "0x7362d09c",
       "fields": [
         {
           "name": "queryId",
           "type": {
-            "kind": "simple",
-            "type": "uint",
             "optional": false,
-            "format": 64
+            "type": "uint64"
           }
         },
         {
           "name": "amount",
           "type": {
-            "kind": "simple",
-            "type": "uint",
             "optional": false,
-            "format": "coins"
+            "type": "coins"
           }
         },
         {
           "name": "from",
           "type": {
-            "kind": "simple",
-            "type": "address",
-            "optional": false
+            "optional": false,
+            "type": "address"
           }
         },
         {
           "name": "forwardPayload",
           "type": {
-            "kind": "simple",
-            "type": "slice",
             "optional": false,
-            "format": "remainder"
+            "type": "remaining"
           }
         }
-      ]
+      ],
+      "name": "TokenNotification",
+      "opcode": "0x7362d09c"
     }
   ],
-  "textReceivers": [
-    "Apply Fee Bps",
-    "Apply Max Trade Bps"
-  ],
-  "getters": [
-    {
-      "name": "estimateLpOut",
-      "methodId": 75587,
-      "arguments": [
-        {
-          "name": "tonAmount",
-          "type": {
-            "kind": "simple",
-            "type": "int",
-            "optional": false,
-            "format": 257
-          }
-        },
-        {
-          "name": "qsrAmount",
-          "type": {
-            "kind": "simple",
-            "type": "int",
-            "optional": false,
-            "format": 257
-          }
-        }
-      ],
-      "returns": {
-        "kind": "simple",
-        "type": "int",
-        "optional": false,
-        "format": 257
-      }
-    },
-    {
-      "name": "estimateRemoveLiquidity",
-      "methodId": 66602,
-      "arguments": [
-        {
-          "name": "lpAmount",
-          "type": {
-            "kind": "simple",
-            "type": "int",
-            "optional": false,
-            "format": 257
-          }
-        }
-      ],
-      "returns": {
-        "kind": "simple",
-        "type": "LPInfo",
-        "optional": false
-      }
-    },
-    {
-      "name": "estimateSwapToQsr",
-      "methodId": 122618,
-      "arguments": [
-        {
-          "name": "tonAmount",
-          "type": {
-            "kind": "simple",
-            "type": "int",
-            "optional": false,
-            "format": 257
-          }
-        }
-      ],
-      "returns": {
-        "kind": "simple",
-        "type": "SwapQuote",
-        "optional": false
-      }
-    },
-    {
-      "name": "estimateSwapToTon",
-      "methodId": 106665,
-      "arguments": [
-        {
-          "name": "qsrAmount",
-          "type": {
-            "kind": "simple",
-            "type": "int",
-            "optional": false,
-            "format": 257
-          }
-        }
-      ],
-      "returns": {
-        "kind": "simple",
-        "type": "SwapQuote",
-        "optional": false
-      }
-    },
-    {
-      "name": "farmInfo",
-      "methodId": 119094,
-      "arguments": [],
-      "returns": {
-        "kind": "simple",
-        "type": "FarmInfo",
-        "optional": false
-      }
-    },
-    {
-      "name": "farmRewardReserve",
-      "methodId": 106766,
-      "arguments": [],
-      "returns": {
-        "kind": "simple",
-        "type": "int",
-        "optional": false,
-        "format": 257
-      }
-    },
-    {
-      "name": "feeAccumulatedQsr",
-      "methodId": 74248,
-      "arguments": [],
-      "returns": {
-        "kind": "simple",
-        "type": "int",
-        "optional": false,
-        "format": 257
-      }
-    },
-    {
-      "name": "feeAccumulatedTon",
-      "methodId": 89179,
-      "arguments": [],
-      "returns": {
-        "kind": "simple",
-        "type": "int",
-        "optional": false,
-        "format": 257
-      }
-    },
-    {
-      "name": "feeConfig",
-      "methodId": 68211,
-      "arguments": [],
-      "returns": {
-        "kind": "simple",
-        "type": "int",
-        "optional": false,
-        "format": 257
-      }
-    },
-    {
-      "name": "get_reserve_snapshot",
-      "methodId": 85880,
-      "arguments": [],
-      "returns": {
-        "kind": "simple",
-        "type": "DeFiReserveSnapshot",
-        "optional": false
-      }
-    },
-    {
-      "name": "lastPriceObservation",
-      "methodId": 81909,
-      "arguments": [],
-      "returns": {
-        "kind": "simple",
-        "type": "int",
-        "optional": false,
-        "format": 257
-      }
-    },
-    {
-      "name": "lpBalance",
-      "methodId": 66831,
-      "arguments": [
-        {
-          "name": "user",
-          "type": {
-            "kind": "simple",
-            "type": "address",
-            "optional": false
-          }
-        }
-      ],
-      "returns": {
-        "kind": "simple",
-        "type": "int",
-        "optional": false,
-        "format": 257
-      }
-    },
-    {
-      "name": "minimumLiquidity",
-      "methodId": 130544,
-      "arguments": [],
-      "returns": {
-        "kind": "simple",
-        "type": "int",
-        "optional": false,
-        "format": 257
-      }
-    },
-    {
-      "name": "owner",
-      "methodId": 83229,
-      "arguments": [],
-      "returns": {
-        "kind": "simple",
-        "type": "address",
-        "optional": false
-      }
-    },
-    {
-      "name": "ownerTransferAt",
-      "methodId": 121967,
-      "arguments": [],
-      "returns": {
-        "kind": "simple",
-        "type": "int",
-        "optional": false,
-        "format": 257
-      }
-    },
-    {
-      "name": "pendingFee",
-      "methodId": 106429,
-      "arguments": [],
-      "returns": {
-        "kind": "simple",
-        "type": "int",
-        "optional": false,
-        "format": 257
-      }
-    },
-    {
-      "name": "pendingFeeAt",
-      "methodId": 97869,
-      "arguments": [],
-      "returns": {
-        "kind": "simple",
-        "type": "int",
-        "optional": false,
-        "format": 257
-      }
-    },
-    {
-      "name": "pendingMaxTrade",
-      "methodId": 109589,
-      "arguments": [],
-      "returns": {
-        "kind": "simple",
-        "type": "int",
-        "optional": false,
-        "format": 257
-      }
-    },
-    {
-      "name": "pendingMaxTradeAt",
-      "methodId": 72297,
-      "arguments": [],
-      "returns": {
-        "kind": "simple",
-        "type": "int",
-        "optional": false,
-        "format": 257
-      }
-    },
-    {
-      "name": "pendingOwner",
-      "methodId": 97003,
-      "arguments": [],
-      "returns": {
-        "kind": "simple",
-        "type": "address",
-        "optional": false
-      }
-    },
-    {
-      "name": "pendingQsrDeposit",
-      "methodId": 83522,
-      "arguments": [
-        {
-          "name": "user",
-          "type": {
-            "kind": "simple",
-            "type": "address",
-            "optional": false
-          }
-        }
-      ],
-      "returns": {
-        "kind": "simple",
-        "type": "int",
-        "optional": false,
-        "format": 257
-      }
-    },
-    {
-      "name": "pendingQsrDepositAt",
-      "methodId": 118530,
-      "arguments": [
-        {
-          "name": "user",
-          "type": {
-            "kind": "simple",
-            "type": "address",
-            "optional": false
-          }
-        }
-      ],
-      "returns": {
-        "kind": "simple",
-        "type": "int",
-        "optional": false,
-        "format": 257
-      }
-    },
-    {
-      "name": "poolInfo",
-      "methodId": 106583,
-      "arguments": [],
-      "returns": {
-        "kind": "simple",
-        "type": "LPInfo",
-        "optional": false
-      }
-    },
-    {
-      "name": "priceCumulativeQsrPerTon",
-      "methodId": 108554,
-      "arguments": [],
-      "returns": {
-        "kind": "simple",
-        "type": "int",
-        "optional": false,
-        "format": 257
-      }
-    },
-    {
-      "name": "priceCumulativeTonPerQsr",
-      "methodId": 125062,
-      "arguments": [],
-      "returns": {
-        "kind": "simple",
-        "type": "int",
-        "optional": false,
-        "format": 257
-      }
-    },
-    {
-      "name": "qsrMaster",
-      "methodId": 81078,
-      "arguments": [],
-      "returns": {
-        "kind": "simple",
-        "type": "address",
-        "optional": false
-      }
-    },
-    {
-      "name": "userFarm",
-      "methodId": 120611,
-      "arguments": [
-        {
-          "name": "user",
-          "type": {
-            "kind": "simple",
-            "type": "address",
-            "optional": false
-          }
-        }
-      ],
-      "returns": {
-        "kind": "simple",
-        "type": "UserFarmInfo",
-        "optional": false
-      }
-    }
-  ]
+  "schemaVersion": 2
 }

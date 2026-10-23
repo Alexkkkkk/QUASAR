@@ -77,14 +77,14 @@
 | `lockfile-out-of-sync` | `npm ci can only install` | `npm install --package-lock-only` |
 | `abi-drift` | `abi:verify`, снапшот ABI | `npm run abi:update` |
 | `build-hashes` | `hashes:build`, code hash | `npm run hashes:build` |
-| `contract-lint` | Tact-компиляция | **Патч запрещён** — нужен человек |
+| `contract-lint` | Acton/Tolk compiler checks | **Патч запрещён** — нужен человек |
 | `test-failure` | упавшие тесты | **Патч запрещён** — нужен человек |
 | `network-flake` | ECONNRESET, 429, 502 | Перезапуск, код не меняется |
 
 ### 3.3 Лечение (`heal`)
 
 `scripts/autofix/apply_fixes.sh` выполняет только идемпотентные механические
-операции. Скрипт **никогда** не переписывает `contracts/**`,
+операции. Скрипт **никогда** не переписывает `tolk/contracts/**`,
 `.github/workflows/**`, корневой `package.json`, деплой-скрипты и файлы секретов.
 
 ### 3.4 Проверка перед публикацией
@@ -139,7 +139,7 @@ npm audit --audit-level=high
 
 1. Автопочинка **не является независимым аудитом** и не подтверждает
    готовность контрактов к mainnet (issue #62).
-2. Контрактные изменения (`contracts/*.tact`) автоматике запрещены: они меняют
+2. Контрактные изменения (`tolk/contracts/*.tolk`) автоматике запрещены: они меняют
    code hash и адреса, поэтому требуют человеческого review.
 3. `npm audit fix` без `--force` не устраняет уязвимости, исправление которых
    требует ломающего major-обновления. Такие алерты попадают в отчёт как

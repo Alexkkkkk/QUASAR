@@ -12,17 +12,7 @@ fun setupTimelock(): (QuasarAdminTimelock, Treasury, Treasury, Treasury) {
     val defi = testing.treasury("admin-timelock-defi");
 
     val timelock = QuasarAdminTimelock.fromStorage(
-        QuasarAdminTimelockStorage {
-            admin: admin.address,
-            pendingAdmin: zeroAddress(),
-            adminTransferAt: 0,
-            adminTransferDelay: ADMIN_TRANSFER_DELAY,
-            minDelay: MIN_DELAY,
-            lastQueuedCallId: 0,
-            master: master.address,
-            defi: defi.address,
-            pendingCalls: [],
-        },
+        newQuasarAdminTimelockStorage(admin.address, master.address, defi.address, MIN_DELAY),
     );
 
     val deployResult = net.send(

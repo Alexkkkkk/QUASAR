@@ -1,75 +1,52 @@
-# QUASAR mainnet-readiness checklist
+# QUASAR Tolk mainnet-readiness checklist
 
-This is a release gate, not a claim that the contracts are audited or
-production-safe. Every unchecked item blocks a mainnet launch.
+This is a release gate, not a claim that QUASAR is audited, production-safe or
+ready for mainnet. Every unchecked item blocks a public launch.
 
-## 1. Code and review
+## 1. Reproducible Tolk build
 
-- [ ] The latest contract changes are merged to `main` only after CI is green.
-- [ ] `npm ci` completes with the committed lockfile.
-- [ ] `npm run lint` passes.
-- [ ] `npm test` passes, including `tests/audit_fixes.test.ts`.
-- [ ] A qualified independent TON/Tact auditor has reviewed the final commit.
-- [ ] No contract, generated binding, deployment script, or tokenomics parameter
-      changes after the audit without a new review.
+- [ ] A clean checkout passes `npm ci`, stdlib-only `npm run acton:init`, `npm run lint` and
+  `npm test` with Acton `1.2.1`.
+- [ ] `npm run abi:verify`, `npm run abi:dapp`, `npm run hashes:build` and
+  `python3 scripts/sync_acton.py --check` pass for the exact release commit.
+- [ ] Reviewed ABI snapshots, BOCs, code hashes and TypeScript wrapper output
+  are archived with the release evidence.
+- [ ] The website's manual serializers and getter calls are checked against the
+  compiler-derived Tolk ABI.
 
-## 2. Testnet acceptance
+## 2. New-deployment and migration boundary
 
-- [ ] A disposable testnet deploy has been funded and recorded in
-      `build/deployment.json`.
-- [ ] `npm run testnet:smoke` passes against that deployment.
-- [ ] Master and DeFi point to each other and the expected Jetton wallet code.
-- [ ] The configured supply matches the on-chain supply at 9 decimals.
-- [ ] Mint, transfer, fee split, burn, referral claim, staking, vesting, and
-      ownership timelock have each been exercised with small amounts.
-- [ ] DeFi add/remove liquidity, both swap directions, farm funding/rewards,
-      buyback, slippage, and trade-size limits have been exercised.
-- [ ] Bounce paths have been tested with adversarial recipients and low TON
-      balances; no QSR or reserve liability is lost.
-- [ ] AMM/farming tests cover zero-liquidity transitions, integer rounding,
-      extreme values, and exhausted reward reserves.
+- [ ] Governance explicitly approves a **new** Tolk deployment rather than an
+  in-place upgrade of a Tact contract.
+- [ ] A separate audited state-transition or claims plan reconciles supply,
+  balances, custody, LP/farm positions, stakes, vesting, referral liabilities,
+  pending payouts and bounce ledgers.
+- [ ] The plan provides old-to-new address mapping, replay protection, a claim
+  window and independent reconciliation.
+- [ ] StateInit/data builders, getter decoders, send encoders and derived wallet
+  address logic have been independently reviewed.
 
-## 3. Operations and key custody
+## 3. Testnet and independent audit
 
-- [ ] The owner is controlled by a multisig or equivalent protected signer.
-- [ ] The AI oracle is a separate, monitored key with a documented rotation
-      and emergency-reclaim procedure.
-- [ ] Full AI autonomy is disabled until its access-control and recovery model
-      has received a separate review.
-- [ ] Treasury, DeFi address, payout cap, fee, buyback, staking, and farming
-      parameters are final and documented.
-- [ ] TON gas balances for Master, DeFi, and operational wallets have a
-      replenishment policy.
-- [ ] Monitoring and alerts cover supply, reserve/custody balances, pool
-      reserves, failed/bounced transactions, buybacks, and admin messages.
-- [ ] An incident runbook defines who can pause, rotate keys, revoke DeFi,
-      and communicate an incident.
+- [ ] A disposable testnet rehearsal exercises deploy reserves, TEP-74/TEP-89,
+  ownership, timelock, liquidity, farm, all relevant reject paths and bounces.
+- [ ] Generated testnet addresses and code hashes match the reviewed release
+  artifacts.
+- [ ] A qualified independent TON/Tolk audit covers the final source, generated
+  BOCs, action traces and state-transition plan.
+- [ ] All critical/high findings are remediated and re-reviewed with the same
+  reproducibility gates.
 
-## 4. Deployment and public launch
+## 4. Operations and public launch
 
-- [ ] Mainnet metadata is immutable, reachable over HTTPS, and matches the
-      published symbol, decimals, name, and image.
-- [ ] Mainnet TonConnect manifest and frontend addresses have been reviewed.
-- [ ] The final deployment commit, code hashes, addresses, and owner address
-      are recorded in a release note.
-- [ ] The contracts are deployed first; getters and links are verified before
-      liquidity or public transfers are opened.
-- [ ] A small-amount mainnet smoke transaction succeeds before public launch.
-- [ ] Liquidity, farm funding, treasury funding, and initial limits are
-      explicitly approved and recorded.
-- [ ] Public documentation states that this is not a promise of yield and
-      describes admin powers, risks, fees, and emergency behavior.
-- [ ] Legal/regulatory review has been completed for the intended launch
-      jurisdictions.
+- [ ] Owner/admin, emergency, treasury and oracle roles use documented,
+  independently controlled signer policies.
+- [ ] Monitoring covers supply, reserves, custody, pool balances, bounces and
+  administrative messages.
+- [ ] The final release note records exact commit, Acton version, code hashes,
+  new addresses and all migration limitations.
+- [ ] Public documentation states that no yield is guaranteed and describes
+  administration, risks, fees and emergency behavior.
 
-## Required commands
-
-```bash
-npm ci
-npm run lint
-npm test
-npm run testnet:smoke
-```
-
-The smoke command is read-only. It does not deploy contracts, send TON/QSR,
-open liquidity, or alter admin settings.
+Network deployment, signing and asset migration must be approved separately;
+they are not automated by this repository.

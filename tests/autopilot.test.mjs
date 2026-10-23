@@ -75,7 +75,7 @@ test("protected path detection includes scripts and workflow files", () => {
 test("merge queue fails closed when file paths are unavailable or protected", () => {
   const base = { isDraft: false, mergeable: "MERGEABLE", labels: [], statusCheckRollup: [{ conclusion: "SUCCESS" }], files: [] };
   assert.equal(isMergeableCandidate({ ...base, files: undefined }).why, "missing-files");
-  assert.equal(isMergeableCandidate({ ...base, files: [{ path: "contracts/quasar.tact" }] }).why, "protected-paths");
+  assert.equal(isMergeableCandidate({ ...base, files: [{ path: "tolk/contracts/QuasarMaster.tolk" }] }).why, "protected-paths");
   assert.equal(isMergeableCandidate(base).ok, true);
 });
 

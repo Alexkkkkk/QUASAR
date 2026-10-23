@@ -45,8 +45,9 @@ Copilot, внешний ассистент), который работает с 
 - `.github/workflows/**` — менять только по прямому запросу владельца; изменения
   идут отдельной веткой/PR и проходят тот же набор обязательных checks;
 - `GEMINI.md`, `AGENTS.md`, `.github/copilot-instructions.md`, `docs/ai/**`;
-- `contracts/**` — изменение Tact-контракта меняет code hash и адреса; менять
-  только по прямому запросу владельца и с обязательной полной CI-проверкой;
+- `tolk/contracts/**`, `tolk/Acton.toml` — изменение Tolk-контракта меняет
+  code hash и адреса нового поколения; менять только по прямому запросу
+  владельца и с обязательной полной CI-проверкой;
 - корневой `package.json`, `package-lock.json`;
 - `scripts/deploy*`, `scripts/security_check.ts`, `scripts/check_deployment.ts`,
   `scripts/hub_audit.ts`, `scripts/sync_action_pins.ts`;
@@ -87,7 +88,7 @@ PR не создаётся, если хотя бы одна проверка п�
 
 ## 5. Обязательные требования к изменениям контрактов
 
-Любое изменение `contracts/*.tact` сопровождается:
+Любое изменение `tolk/contracts/*.tolk` сопровождается:
 
 - ссылкой на [docs.ton.org](https://docs.ton.org/) или TEP (74 / 64 / 89) в
   описании PR;
@@ -118,6 +119,6 @@ checks на актуальном base. `do-not-merge` всегда остана�
 - Язык документации и описаний issue/PR — русский, как в `docs/`.
 - Комментарии в коде — английский, как в контрактах.
 - Коммиты: `type(scope): описание (#issue)`.
-- TON Docs рекомендует Tolk и помечает Tact как deprecated. Миграция действующих
-  контрактов выполняется только по прямому запросу владельца и проходит CI;
+- QUASAR использует Tolk через закреплённый Acton. Исторический Tact-код находится
+  только в `docs/historical/tact-reference/` и не является build input;
   approving review не является gate.

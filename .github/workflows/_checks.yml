@@ -60,7 +60,7 @@ jobs:
 
       - name: Initialize Acton project
         working-directory: tolk
-        run: acton init
+        run: acton init --stdlib-only
 
       - name: Verify Tolk formatting
         working-directory: tolk
@@ -78,11 +78,11 @@ jobs:
           bash <(curl -fsSL https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash) 1.7.12
           ./actionlint -color .github/workflows/*.yml
 
-      - name: Type-check Tact contracts
+      - name: Lint Tolk contracts
         run: npm run lint
 
-      - name: Build, test and synchronize the Tolk migration
-        run: python3 scripts/sync_acton.py
+      - name: Build, test and synchronize canonical Tolk artifacts
+        run: npm run build
 
       - name: Lint Tolk contracts with Acton annotations
         working-directory: tolk

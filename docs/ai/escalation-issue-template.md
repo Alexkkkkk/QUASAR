@@ -14,5 +14,5 @@
    с локальным прогоном checks в песочнице).
 3. Контекст для моделей: `docs/ai/failure_patterns.md`.
 
-Не трогать: contracts/, .github/workflows/ — по конституции autonomy.json
+Не трогать: tolk/contracts/, tolk/Acton.toml, .github/workflows/ — по конституции autonomy.json
 это классы «человек».

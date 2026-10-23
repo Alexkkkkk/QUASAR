@@ -17,7 +17,7 @@ class IdlePatchTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory).resolve()
             self.assertTrue(validate_idle_patch(patch_for('tests/example.ts'), 'tests', root))
-            for name in ['contracts/example.tact', '.github/workflows/ci.yml', 'scripts/hub_audit.ts', 'package.json', 'tests/../scripts/file.ts', 'tests/.env', 'tests/private_key.ts']:
+            for name in ['tolk/contracts/example.tolk', '.github/workflows/ci.yml', 'scripts/hub_audit.ts', 'package.json', 'tests/../scripts/file.ts', 'tests/.env', 'tests/private_key.ts']:
                 with self.subTest(name=name), self.assertRaises(AgentError):
                     validate_idle_patch(patch_for(name), 'tests', root)
 

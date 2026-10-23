@@ -65,8 +65,8 @@ CLASS_RULES: list[tuple[str, str, str, str]] = [
     ),
     (
         "contract-lint",
-        r"tact --config|Tact compilation|contracts/.*\.tact:\d+",
-        "Проверить Tact-контракты; автоматический патч контрактов запрещён — нужен человек.",
+        r"acton (?:fmt|build|check|test)|Tolk synchronization|tolk/contracts/.*\.tolk:\d+",
+        "Проверить Tolk-контракты; автоматический патч контрактов запрещён — нужен человек.",
         "low",
     ),
     (

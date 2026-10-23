@@ -12,7 +12,8 @@ test('README exposes live automation and pre-launch risk status', () => {
     const readme = read('README.md');
     assert.ok(readme.includes('actions/workflows/ci.yml'));
     assert.match(readme, /Pre-launch and not independently audited/i);
-    assert.match(readme, /TON_NETWORK=testnet/);
+    assert.match(readme, /fresh Tolk generation/i);
+    assert.match(readme, /not compatible with a legacy\s+Tact deployment/i);
     assert.match(readme, /no APY is guaranteed/i);
 });
 

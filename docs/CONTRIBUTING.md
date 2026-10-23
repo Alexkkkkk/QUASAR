@@ -2,77 +2,49 @@
 
 ## Before opening a pull request
 
-Install the locked dependencies and run the same checks as CI:
+Install the locked Node dependencies and the pinned Acton `1.2.1` toolchain.
+Then run the same Tolk checks as CI:
 
 ```bash
 npm ci
+npm run acton:init  # Refreshes Acton stdlib only; does not rewrite tolk/Acton.toml
 npm run lint
 npm test
-npm run build
+npx tsc --noEmit
+npm run abi:verify
+npm run abi:dapp
+npm run deployment:check
+npm run pins:check
+npm run hub:audit
+npm audit --audit-level=high
 ```
 
-The Tolk migration is checked with the pinned Acton `1.2.1` toolchain. After
-installing Acton from the official release, run the same validation gates used
-in CI:
+`npm run build` invokes `scripts/sync_acton.py`. It builds an isolated Tolk
+project, generates wrappers, runs the ABI and wrapper gates, Acton tests and
+safe local scripts, then atomically publishes `tolk/build/synchronized/`.
+`python3 scripts/sync_acton.py --check` verifies a published generation without
+rebuilding it.
 
-```bash
-cd tolk
-acton init
-acton fmt --check
-cd ..
-python3 scripts/sync_acton.py
-cd tolk
-acton check
-acton test
-cd ..
-python3 scripts/sync_acton.py --check
-```
+Do not commit `.env`, wallet material, deployment state, generated local
+artifacts or network addresses. Never use a real wallet mnemonic or a mainnet
+key in tests. Deployment, signing, broadcast and all on-chain actions remain
+outside the automated workflow.
 
-`sync_acton.py` performs an isolated Acton build, generates the Tolk and
-TypeScript wrappers, checks the ABI against the Tact reference, and only then
-atomically publishes the local generated artifacts. It does not deploy or
-broadcast transactions.
+A Tolk contract change must include a regression test for the affected wire
+format or state transition. Changes to supply, fees, permissions, custody,
+bounce handling or storage layout require a security note in the pull request
+and an update to `docs/SECURITY_AUDIT.md`.
 
-Do not commit `.env`, wallet material, deployment state, or generated local
-artifacts. Never use a real wallet mnemonic or a mainnet key in tests.
+## How to contribute
 
-Contract changes should include a regression test for the affected message
-serialization or state transition. Deployment scripts must fail closed when
-the network or required secrets are missing.
-
-Changes to supply, fees, permissions, randomness, custody, or bounce handling
-require an explicit security note in the pull request and an update to
-`docs/SECURITY_AUDIT.md`.
-
-Thank you for your interest in contributing to QUASAR! We welcome contributions from the community.
-
-## How to Contribute
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-## Development Setup
-
-```bash
-git clone https://github.com/Alexkkkkk/QUASAR.git
-cd QUASAR
-npm install
-```
-
-## Code Style
-
-- Follow FunC best practices for smart contracts
-- Use meaningful variable names
-- Comment complex logic
-- Write tests for new features
+1. Fork the repository.
+2. Create a feature branch.
+3. Make a focused change with its tests.
+4. Run the required checks above.
+5. Push the branch and open a pull request in Russian.
 
 ## Security
 
-If you discover a security vulnerability, please email security@quasar-ton.dev instead of opening a public issue.
-
-## License
-
-By contributing, you agree that your contributions will be licensed under the MIT License.
+Report a security vulnerability through the repository's private security
+channel rather than a public issue. QUASAR is a pre-launch prototype and is not
+independently audited.

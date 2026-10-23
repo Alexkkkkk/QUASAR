@@ -1,25 +1,23 @@
 # ABI snapshots
 
-The JSON files in this directory record the public ABI that the CI pipeline
-expects from each compiled contract:
+The JSON files in this directory are canonical public-interface snapshots
+produced from the Acton/Tolk compiler ABI. They record each contract's typed
+incoming messages, explicit 32-bit opcodes, wire field shapes, getters, and
+method IDs.
 
-- typed receiver message names, opcodes, and serialized fields;
-- text receiver names;
-- getter names, method IDs, arguments, and return types.
+They are deliberately independent of legacy Tact artifacts. Passing this gate
+proves interface consistency for the current Tolk source; it does not prove
+storage, code-hash, deterministic-address, gas, or action-trace compatibility
+with prior Tact deployments.
 
-The snapshots are generated from the compiler's `.abi` artifacts. They are
-intentionally limited to the contract-facing ABI rather than the compiler's
-full set of imported type definitions.
-
-After an intentional contract ABI change, rebuild and review the resulting
-diff:
+After an intentional public ABI change, regenerate and review the snapshot:
 
 ```sh
 npm run abi:update
 npm run abi:verify
+npm run abi:dapp
 ```
 
-CI runs `npm run abi:verify` after the contract tests. It also compares the
-`QuasarWallet` BOC emitted by the `quasar` and `quasar_defi` builds, so a
-change to the shared wallet implementation cannot silently diverge between
-the two projects.
+The synchronized build contains one shared `QuasarWallet.boc` consumed by both
+Master and DeFi. CI verifies Tolk wrappers against these snapshots and verifies
+the manually serialized website opcodes against the same reviewed interface.

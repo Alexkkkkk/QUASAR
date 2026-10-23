@@ -28,11 +28,11 @@ MAX_FILE_CHARS = 7_000
 MAX_SOURCE_FILES = 12
 MAX_DOC_PAGES = 4
 
-ALLOWED_SUFFIXES = {".tact", ".ts", ".js", ".mjs", ".cjs", ".json", ".md"}
+ALLOWED_SUFFIXES = {".tolk", ".ts", ".js", ".mjs", ".cjs", ".json", ".md"}
 ALWAYS_CONTEXT = (
     "GROQ.md",
     "docs/TON_CONFORMANCE_MATRIX.md",
-    ".agents/memory/tact-runtime.md",
+    ".agents/memory/tolk-runtime.md",
 )
 PROTECTED_PATTERNS = (
     re.compile(r"^\.github/workflows/"),
@@ -127,7 +127,7 @@ def collect_source_context(repo_root: Path, issue_text: str) -> str:
     """Select a bounded set of useful source/test excerpts using lexical RAG."""
     issue_tokens = tokenize(issue_text)
     chunks: list[tuple[int, str, str]] = []
-    for folder in ("contracts", "scripts", "tests", "docs"):
+    for folder in ("tolk/contracts", "tolk/tests", "scripts", "tests", "docs"):
         base = repo_root / folder
         if not base.exists():
             continue
@@ -258,8 +258,8 @@ have executed tests.
 
 Project constraints:
 - QUASAR is a pre-launch TON Jetton/DeFi prototype and is not independently audited.
-- Keep existing Tact contracts in Tact. TON Docs currently recommends Tolk; do
-  not migrate languages unless the issue explicitly asks for a migration.
+- QUASAR contracts are implemented in Tolk under `tolk/contracts/`. Do not use
+  historical Tact evidence under `docs/historical/` as an active source path.
 - For contract changes, follow the existing repository conformance matrix and
   cite the matching official TON Docs URL in the patch/PR description.
 - Never read, add, print, or use wallet mnemonics, private keys, API keys, or

@@ -5,7 +5,7 @@
 [![QUASAR CI](https://github.com/Alexkkkkk/QUASAR/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Alexkkkkk/QUASAR/actions/workflows/ci.yml)
 [![GitHub Pages](https://github.com/Alexkkkkk/QUASAR/actions/workflows/pages.yml/badge.svg?branch=main)](https://github.com/Alexkkkkk/QUASAR/actions/workflows/pages.yml)
 [![TON](https://img.shields.io/badge/Blockchain-TON-blue)](https://ton.org)
-[![Tact](https://img.shields.io/badge/Language-Tact-purple)](https://tact-lang.org)
+[![Tolk](https://img.shields.io/badge/Language-Tolk-blue)](https://docs.ton.org/tolk/overview)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 > [!WARNING]
@@ -277,34 +277,26 @@ The UI loads addresses from `website/deployment.json` after deployment:
 ```bash
 git clone https://github.com/Alexkkkkk/QUASAR.git
 cd QUASAR
-npm install
-npm run build        # Builds both quasar + quasar_defi
+npm ci
+npm run acton:init  # Updates Acton's standard library; preserves tolk/Acton.toml
+npm run build        # Builds, tests and atomically publishes Tolk artifacts
 ```
 
-### 2. Configure Environment
-
-Create `.env` and choose the network explicitly:
+### 2. Verify the Tolk generation
 
 ```bash
-WALLET_MNEMONIC=word1 word2 ... word24
-TON_NETWORK=testnet          # use a disposable testnet wallet; mainnet is not release-ready
-TONCENTER_API_KEY=your_key   # optional
-AI_ORACLE_ADDRESS=EQ...      # optional
+npm run lint
+npm test
+npm run abi:verify
+npm run abi:dapp
+python3 scripts/sync_acton.py --check
 ```
 
-### 3. Deploy
-
-```bash
-# Deploy QuasarMaster + QuasarDeFi + auto-link
-npm run deploy
-
-# Or deploy DeFi separately (if master already deployed)
-npm run deploy:defi
-```
-
-The unified deployment mints the configured initial allocation and immediately
-locks minting. Any alternative allocation must be reviewed against the hard
-1,000,000,000 QSR cap before deployment.
+The active contracts are a fresh Tolk generation. Their StateInit, storage
+schema, code hash and deterministic addresses are not compatible with a legacy
+Tact deployment. Deployment, migration, signing and broadcast are not part of
+this repository workflow; they need a separately approved plan, testnet
+rehearsal and independent audit.
 
 Operational checklists:
 
@@ -324,9 +316,10 @@ npm run website      # Serves website/ on localhost
 
 | Contract | File | Description |
 |----------|------|-------------|
-| `QuasarMaster` | `contracts/quasar.tact` | Jetton minter, fee distributor, staking, AI oracle |
-| `QuasarDeFi` | `contracts/quasar_defi.tact` | CPMM DEX, liquidity pool, yield farming |
-| `QuasarWallet` | `contracts/quasar_common.tact` | Shared wallet source imported by Master and DeFi |
+| `QuasarMaster` | `tolk/contracts/QuasarMaster.tolk` | Jetton minter, fee distributor, staking, AI oracle |
+| `QuasarDeFi` | `tolk/contracts/QuasarDeFi.tolk` | CPMM DEX, liquidity pool, yield farming |
+| `QuasarWallet` | `tolk/contracts/QuasarWallet.tolk` | Shared wallet source imported by Master and DeFi |
+| `QuasarAdminTimelock` | `tolk/contracts/QuasarAdminTimelock.tolk` | Delayed administrative execution |
 
 ---
 
@@ -351,7 +344,7 @@ npm run website      # Serves website/ on localhost
 
 > Checked against the current repository. A checked item means the source implementation exists; it does not mean the feature has been audited, deployed to mainnet, or approved for production funds.
 
-- [x] Tact smart contracts (Master + DeFi) implemented
+- [x] Tolk smart contracts (Master, Wallet, DeFi and Timelock) implemented
 - [x] Web3 UI with TON Connect implemented
 - [x] CPMM DEX and LP farming implemented in source
 - [x] Enforce the 1,000,000,000 QSR maximum supply in the master contract
@@ -405,7 +398,7 @@ real-funds testnet and mainnet. Remediation in `main`:
   DeFi; the smoke run validates the wiring.
 - **L-01** — governance votes are unique per `(voter, proposalId)`.
 
-Still open before any real-funds launch: live testnet smoke and adversarial
-bounce tests on a disposable deployment. QUASAR is **not** audited by a
-third-party TON/Tact firm and makes no assurance-of-yield or mainnet-readiness
-claim.
+Still open before any real-funds launch: live testnet smoke, adversarial bounce
+tests and an independent audit of the fresh Tolk deployment generation. QUASAR
+is **not** audited by a third-party TON/Tolk firm and makes no assurance-of-
+yield or mainnet-readiness claim.

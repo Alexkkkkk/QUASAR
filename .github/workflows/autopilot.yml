@@ -15,7 +15,7 @@ name: autopilot
 # Hard brakes (scripts/ai/autopilot/cli.mjs, cannot be disabled by env):
 #   - open issue labeled `autopilot-stopped` -> everything halts
 #   - max 5 merges/day, max 3 new PRs/day
-#   - never merges PRs touching .github/workflows/**, contracts/**,
+#   - never merges PRs touching .github/workflows/**, tolk/contracts/**,
 #     script/** or .github/dependabot.yml — those need a human
 #   - knowledge self-merge requires ALL files under docs/ai/knowledge/
 #

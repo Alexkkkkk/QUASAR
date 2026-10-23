@@ -118,6 +118,15 @@ jobs:
       - name: Install Python test dependencies
         run: python3 -m pip install --quiet -r requirements.txt
 
+      - name: Set up Acton
+        uses: ton-blockchain/setup-acton@0f9f436843d740466cae2d7411ff59072dde942e # v1.2.0
+        with:
+          working-directory: tolk
+
+      - name: Initialize Acton project
+        working-directory: tolk
+        run: acton init --stdlib-only
+
       - name: Validate the repaired tree
         run: |
           set -euo pipefail

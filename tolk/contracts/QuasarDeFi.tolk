@@ -293,7 +293,7 @@ struct SwapQuote {
 }
 
 // Field order, widths, and the four-cell ref chain below are copied from the
-// isolated Tact compiler output for contracts/quasar_defi.tact. In particular,
+// isolated historical compiler output retained under docs/historical/. In particular,
 // Tact's struct-valued maps are dictionary values behind a reference.
 @overflow1023_policy("suppress")
 struct QuasarDeFiStorage {
@@ -1430,11 +1430,26 @@ fun onInternalMessage(in: InMessage) {
             sweep.send(SEND_MODE_PAY_FEES_SEPARATELY);
         }
         Deploy => {
+            val body = DeployOk { queryId: msg.queryId };
+            val balanceBeforeMessage = contract.getOriginalBalance() - in.valueCoins;
+            if (balanceBeforeMessage < QUASAR_STORAGE_RESERVE) {
+                // Preserve the declared rent reserve before returning deployment value.
+                reserveGramsOnBalance(QUASAR_STORAGE_RESERVE, RESERVE_MODE_EXACT_AMOUNT);
+                val reserveReply = createMessage({
+                    bounce: BounceMode.NoBounce,
+                    dest: in.senderAddress,
+                    value: 0,
+                    body,
+                });
+                // SAFETY: the exact rent reserve is locked before this Deploy-only reply.
+                reserveReply.send(SEND_MODE_CARRY_ALL_BALANCE | SEND_MODE_IGNORE_ERRORS);
+                return;
+            }
             val response = createMessage({
                 bounce: BounceMode.NoBounce,
                 dest: in.senderAddress,
                 value: 0,
-                body: DeployOk { queryId: msg.queryId },
+                body,
             });
             response.send(SEND_MODE_CARRY_ALL_REMAINING_MESSAGE_VALUE | SEND_MODE_IGNORE_ERRORS);
         }

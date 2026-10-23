@@ -34,6 +34,15 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Set up Acton
+        uses: ton-blockchain/setup-acton@0f9f436843d740466cae2d7411ff59072dde942e # v1.2.0
+        with:
+          working-directory: tolk
+
+      - name: Initialize Acton project
+        working-directory: tolk
+        run: acton init --stdlib-only
+
       - name: Build and test the exact release revision
         run: npm test
 
@@ -52,7 +61,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p dist-release
-          cp -R build dist-release/build
+          cp -RL tolk/build/synchronized dist-release/tolk-build
           cp docs/build-hashes.json dist-release/build-hashes.json
           cp -R docs/abi dist-release/abi
           cd dist-release && zip -qr ../quasar-release.zip .

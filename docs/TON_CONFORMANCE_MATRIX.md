@@ -1,6 +1,6 @@
 # QUASAR — TON Docs conformance matrix
 
-Базовая матрица сохраняет исторический снимок `main` после CI commit `414e15915e1a81ab7b02b6284b04f541e8e6be6c`; текущий полный аудит ведётся отдельно в `ai/full-audit-sync-2026-10`. Матрица отделяет on-chain обязанности от Nodes/API/SDK, TON Connect, indexers, Pages и toolchain, которые сверяются в off-chain секциях и не переносятся в Jetton/DeFi-код.
+Базовая таблица ниже сохраняет исторический Tact-снимок `main` после CI commit `414e15915e1a81ab7b02b6284b04f541e8e6be6c`. Текущая реализация находится в `tolk/contracts/`; её ABI фиксируется compiler-derived snapshots и Acton tests. Матрица отделяет on-chain обязанности от Nodes/API/SDK, TON Connect, indexers, Pages и toolchain, которые сверяются в off-chain секциях и не переносятся в Jetton/DeFi-код.
 
 ## Sources
 
@@ -9,9 +9,9 @@
 - [Token metadata / TEP-64](https://docs.ton.org/contracts/standard/tokens/metadata)
 - [Jetton wallet discovery / TEP-89](https://docs.ton.org/contracts/standard/tokens/jettons/find)
 - [TON security best practices](https://docs.ton.org/contract-dev/techniques/security)
-- [Tolk](https://docs.ton.org/tolk/overview) — TON Docs now recommends Tolk; QUASAR still ships Tact contracts and the migration stays tracked separately (#62/#74).
+- [Tolk](https://docs.ton.org/tolk/overview) — active QUASAR contract language through Acton 1.2.1.
 
-## On-chain conformance
+## Historical Tact on-chain conformance
 
 | Standard / requirement | Wire-level implementation | Auth / failure behaviour | Verification |
 | --- | --- | --- | --- |
@@ -107,8 +107,8 @@ TON Docs distinguishes running blockchain nodes/LiteServers from application-fac
 These are source and sandbox-test results only. Contract code hashes and addresses change when rebuilt; no deployment, address publication, or mainnet state claim is made.
 
 
-## Acton/Tolk compatibility gate, PR #280 (2026-10-22)
+## Canonical Acton/Tolk interface gate (2026-10-23)
 
-Параллельный `tolk/` фиксирует Acton 1.2.1. `scripts/acton_abi.py` сверяет incoming message names/opcodes/field order/wire types, getter IDs/arguments/return types и поля named getter structs с Tact ABI. `scripts/check_acton_wrappers.ts` сравнивает сериализацию всех публичных сообщений двумя независимыми сгенерированными wrappers на одинаковых nullable/payload/string fixtures. Совместимость входного message ABI не подменяет проверку полного поведения и storage.
+`tolk/` фиксирует Acton 1.2.1. `scripts/acton_abi.py` создаёт и проверяет compiler-derived snapshots incoming message names/opcodes/field order/wire types и getter IDs/arguments/return types. `scripts/check_acton_wrappers.ts` проверяет, что TypeScript wrappers содержат serializer каждого публичного сообщения с утверждённым opcode. Этот interface gate не подменяет проверку полного поведения и storage.
 
 `tolk/scripts/local-smoke.tolk` реализует самостоятельный `main()` по [официальной модели Acton scripting](https://ton-blockchain.github.io/acton/docs/scripting/overview): эмулированный wallet, local deploy/mint, проверка null из wait helpers и чтение getters. Broadcast отклоняется до открытия wallet. `scripts/sync_acton.py` публикует полный проверенный набор артефактов атомарно и выявляет drift offline. Tolk storage — отдельный ref-chain layout, не in-place upgrade Tact; bytecode/code hashes и адреса меняются. В этом increment не выполнялись реальные deployment, отправка транзакций или публикация адресов.

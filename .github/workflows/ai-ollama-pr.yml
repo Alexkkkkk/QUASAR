@@ -200,7 +200,16 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Type-check Tact contracts
+      - name: Set up Acton
+        uses: ton-blockchain/setup-acton@0f9f436843d740466cae2d7411ff59072dde942e # v1.2.0
+        with:
+          working-directory: tolk
+
+      - name: Initialize Acton project
+        working-directory: tolk
+        run: acton init --stdlib-only
+
+      - name: Lint Tolk contracts
         run: npm run lint
 
       - name: Install Python dependencies for contract tooling tests

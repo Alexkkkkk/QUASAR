@@ -1,5 +1,9 @@
 # QUASAR: от 15 отдельных workflow к единому автономному организму
 
+> **Historical automation design:** code blocks below preserve the pre-cutover
+> Tact/CI design. Active automation policies and workflows protect
+> `tolk/contracts/` and set up Acton before contract checks.
+
 Цель: GitHub Actions в QUASAR (Alexkkkkk/QUASAR) перестают быть «островами» и
 собираются в один управляемый контур — с сохранением guardrails: read-only по
 умолчанию, protected paths, draft PR до прохождения checks, CI-only auto-merge,
@@ -373,7 +377,7 @@ jobs:
             echo "::error::Gemini produced no file changes. No pull request was created."
             exit 1
           fi
-          protected_pattern='(^\.github/workflows/|^\.gemini/|^GEMINI\.md$|^docs/AI_AGENT\.md$|^docs/ai/AI_ISSUE_AGENT\.md$|^package(-lock)?\.json$|^scripts/(deploy[^/]*|security_check\.ts|check_deployment\.ts|hub_audit\.ts|sync_action_pins\.ts)$|(^|/)(deployment\.json|build-hashes\.json|action_pins\.lock\.json)$|(^|/)\.env($|\.)|(^|/)(seed([_-]?phrase)?|mnemonic|private[-_]?key|wallet[-_]?credentials?)(/|\.|$))'
+          protected_pattern='(^\.github/workflows/|^tolk/(contracts/|Acton\.toml$)|^\.gemini/|^GEMINI\.md$|^docs/AI_AGENT\.md$|^docs/ai/AI_ISSUE_AGENT\.md$|^package(-lock)?\.json$|^scripts/(deploy[^/]*|security_check\.ts|check_deployment\.ts|hub_audit\.ts|sync_action_pins\.ts)$|(^|/)(deployment\.json|build-hashes\.json|action_pins\.lock\.json)$|(^|/)\.env($|\.)|(^|/)(seed([_-]?phrase)?|mnemonic|private[-_]?key|wallet[-_]?credentials?)(/|\.|$))'
           blocked=$(printf '%s\n' "$changed" | grep -E "$protected_pattern" || true)
           if [[ -n "$blocked" ]]; then
             echo "::error::The patch touches protected files. No artifact or pull request was created."
