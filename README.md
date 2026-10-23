@@ -91,7 +91,7 @@ npm run abi:dapp
 python3 scripts/sync_acton.py --check
 ```
 
-`npm run acton:init` инициализирует стандартную библиотеку Acton для проекта и сохраняет закреплённую версию в `tolk/Acton.toml`. `npm run lint` выполняет проверки форматирования, компиляцию, генерацию wrappers и проверки Acton. `npm test` запускает контролируемую сборку, security checks, Node.js и Python-регрессии. Для отдельного запуска эмуляционных тестов Tolk используйте:
+`npm run acton:init` инициализирует или обновляет только стандартную библиотеку Acton. Версия CLI закреплена в `tolk/Acton.toml`; команда её не переписывает. `npm run lint` выполняет проверки форматирования, компиляцию, генерацию wrappers и проверки Acton. `npm test` запускает контролируемую сборку, security checks, Node.js и Python-регрессии. Для отдельного запуска эмуляционных тестов Tolk используйте:
 
 ```sh
 npm run test:tolk
@@ -151,6 +151,7 @@ QUASAR — предзапусковой инженерный прототип. �
 
 ## Полезные материалы
 
+- [`examples/counter/README.md`](examples/counter/README.md) — отдельный учебный Counter на Tolk с локальными эмуляционными тестами; он не входит в активные контракты QUASAR.
 - [`tolk/README.md`](tolk/README.md) — детали Tolk/Acton build pipeline.
 - [`docs/TON_CONFORMANCE_MATRIX.md`](docs/TON_CONFORMANCE_MATRIX.md) — матрица стандартов TON и проверок.
 - [`docs/abi/README.md`](docs/abi/README.md) — устройство ABI snapshots.
