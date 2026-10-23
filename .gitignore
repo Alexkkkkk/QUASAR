@@ -16,6 +16,8 @@ wallets/
 
 # Generated build artifacts (recreate with: npm run build)
 build/
+tolk/.acton/
+tolk/build/reports/
 
 # Local development and generated deployment state
 .idea/

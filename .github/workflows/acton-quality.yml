@@ -1,0 +1,79 @@
+name: Acton Quality Reports
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '17 3 * * 1'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: acton-quality-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  reports:
+    name: Native tests and Acton reports
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Acton
+        uses: ton-blockchain/setup-acton@0f9f436843d740466cae2d7411ff59072dde942e # v1.2.0
+        with:
+          working-directory: tolk
+          version: '1.2.1'
+
+      - name: Initialize Acton project
+        working-directory: tolk
+        run: acton init --stdlib-only
+
+      - name: Doctor
+        working-directory: tolk
+        run: acton doctor
+
+      - name: Format, build, check and test
+        working-directory: tolk
+        run: |
+          acton fmt --check
+          acton build
+          acton check --output-format github
+          acton test
+
+      - name: Full LCOV coverage
+        working-directory: tolk
+        run: |
+          mkdir -p build/reports
+          acton test --coverage --coverage-format lcov --coverage-file build/reports/lcov.info
+
+      - name: Gas snapshot
+        working-directory: tolk
+        run: |
+          mkdir -p build/reports
+          acton test --snapshot build/reports/gas-baseline.json
+
+      - name: Mutation testing (diagnostic until Acton ARG_MAX issue is resolved)
+        id: mutation
+        continue-on-error: true
+        working-directory: tolk
+        run: |
+          acton test --mutate --mutate-contract QuasarWallet \
+            --mutation-diff worktree \
+            --mutation-levels critical,major \
+            --mutation-workers 1 \
+            --mutation-session-id ci-wallet
+
+      - name: Upload Acton reports
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: acton-quality-reports
+          path: |
+            tolk/build/reports/**
+            tolk/build/mutation-sessions/**
+          if-no-files-found: warn

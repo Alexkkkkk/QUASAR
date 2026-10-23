@@ -152,3 +152,21 @@ proof of economic correctness.
 `tolk/` фиксирует Acton 1.2.1. `scripts/acton_abi.py` создаёт и проверяет compiler-derived snapshots incoming message names/opcodes/field order/wire types и getter IDs/arguments/return types. `scripts/check_acton_wrappers.ts` проверяет, что TypeScript wrappers содержат serializer каждого публичного сообщения с утверждённым opcode. Этот interface gate не подменяет проверку полного поведения и storage.
 
 `tolk/scripts/local-smoke.tolk` реализует самостоятельный `main()` по [официальной модели Acton scripting](https://ton-blockchain.github.io/acton/docs/scripting/overview): эмулированный wallet, local deploy/mint, проверка null из wait helpers и чтение getters. Broadcast отклоняется до открытия wallet. `scripts/sync_acton.py` публикует полный проверенный набор артефактов атомарно и выявляет drift offline. Tolk storage — отдельный ref-chain layout, не in-place upgrade Tact; bytecode/code hashes и адреса меняются. В этом increment не выполнялись реальные deployment, отправка транзакций или публикация адресов.
+
+### Acton automation coverage
+
+`tolk/Acton.toml` pins Acton 1.2.1, declares synchronized build outputs and
+wrapper destinations, and registers emulator-only scripts. Local automation is
+available through `acton:doctor`, `acton:fmt`, `acton:fix`, GitHub/SARIF lint
+outputs, wrapper generation, gas snapshots, LCOV, fuzz-seed support, and
+mutation sessions. CI runs the deterministic build/format/check/test gates and
+uploads SARIF plus scheduled quality reports. The manual `acton-autofix`
+workflow produces a reviewable patch artifact and has read-only permissions;
+it never pushes or merges changes.
+
+Fuzz tests, pinned-block fork tests, gas baseline comparison, Studio, simulator,
+Docker localnet, deployment scripts, wallet/faucet actions, verification
+payments, and masterchain library publish/top-up remain explicit operator
+workflows. They are documented in `docs/ACTON_AUTOMATION.md` and are not
+silently enabled in CI because they require network state, Docker resources,
+secrets, or real-value authorization.

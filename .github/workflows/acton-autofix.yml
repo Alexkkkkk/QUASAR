@@ -1,0 +1,54 @@
+name: Acton Auto-fix
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: acton-autofix-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  autofix:
+    name: Generate Acton formatting and lint patch
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Acton
+        uses: ton-blockchain/setup-acton@0f9f436843d740466cae2d7411ff59072dde942e # v1.2.0
+        with:
+          working-directory: tolk
+          version: '1.2.1'
+
+      - name: Initialize Acton project
+        working-directory: tolk
+        run: acton init --stdlib-only
+
+      - name: Apply formatter and available lint fixes
+        working-directory: tolk
+        run: |
+          set -euo pipefail
+          acton fmt
+          acton check --fix
+
+      - name: Validate the generated patch
+        run: |
+          set -euo pipefail
+          git diff --check
+          git diff --stat
+          git diff --binary -- . ':!tolk/.acton' ':!tolk/build' > "$RUNNER_TEMP/acton-autofix.patch"
+          test -s "$RUNNER_TEMP/acton-autofix.patch"
+
+      - name: Upload patch artifact for human review
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: acton-autofix-patch
+          path: ${{ runner.temp }}/acton-autofix.patch
+          if-no-files-found: error

@@ -62,6 +62,10 @@ jobs:
         working-directory: tolk
         run: acton init --stdlib-only
 
+      - name: Inspect resolved Acton project
+        working-directory: tolk
+        run: acton doctor
+
       - name: Verify Tolk formatting
         working-directory: tolk
         run: acton fmt --check
@@ -87,6 +91,19 @@ jobs:
       - name: Lint Tolk contracts with Acton annotations
         working-directory: tolk
         run: acton check --output-format github
+
+      - name: Export Acton SARIF diagnostics
+        working-directory: tolk
+        run: |
+          mkdir -p .acton/reports
+          acton check --output-format sarif --output-file .acton/reports/lint.sarif
+
+      - name: Upload Acton SARIF diagnostics
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: acton-lint-sarif
+          path: tolk/.acton/reports/lint.sarif
+          if-no-files-found: error
 
       - name: Verify synchronized Tolk artifacts
         run: python3 scripts/sync_acton.py --check

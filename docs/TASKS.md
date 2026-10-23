@@ -415,3 +415,21 @@ T-11/T-12 реализуют проверяемую часть P4. Реальн�
 Реализован отдельный pipeline `python3 scripts/sync_acton.py`: фиксированная версия Acton, свежий Tact baseline, сборка во временном проекте, сравнение message/getter ABI и wire-сериализации, генерация Tolk/TypeScript wrappers, Acton-тесты и локальные `main()`-сценарии. Полное поколение артефактов публикуется атомарно; offline `--check` обнаруживает изменения исходников и артефактов по SHA-256. Документация TON/Acton синхронизируется отдельно с manifest, блокировкой, retry и rollback. Избыточное расширение file permissions из CodeQL устранено.
 
 Регрессии миграции охватывают storage cell overflow и основные локальные contract flows. Это tooling-инкремент, а не полная production-миграция. Корневые Tact-контракты и действующий dApp не переключены на новый bytecode; секреты, deployment и on-chain операции не использовались. Точные выполненные проверки и оставшиеся ограничения записываются в `docs/ACTON_SCRIPTING_2026-10-22.md`; независимый аудит и release gates остаются открытыми.
+
+## T-26 — Acton automation contour
+
+- [x] Pin Acton 1.2.1, validate the resolved project with `acton doctor`, and
+  expose formatter, plain-output auto-fix, GitHub/SARIF diagnostics, wrapper
+  generation, gas snapshot, coverage, and mutation commands.
+- [x] Extend reusable CI with Acton doctor, GitHub annotations, SARIF artifact
+  upload, and add scheduled/manual native quality reports for coverage, gas, and
+  mutation sessions.
+- [x] Add a manual-only auto-fix workflow that emits a patch artifact without
+  write permissions, push, merge, deployment, or wallet access.
+- [x] Document fuzzing, pinned-block forks, simulator/localnet/Studio, scripts,
+  deployment, verification, and library operations with explicit manual-only
+  boundaries in `docs/ACTON_AUTOMATION.md`.
+- [ ] Add domain-specific scalar fuzz properties and commit a reviewed gas
+  baseline after selecting deterministic tests; resolve the Acton 1.2.1
+  mutation runner `Argument list too long (os error 7)` blocker before making
+  mutation score a required gate.

@@ -36,6 +36,12 @@ output-boc = "build/synchronized/boc"
 output-fift = "build/synchronized/fift"
 output-sources = "build/synchronized/sources"
 
+[wrappers.tolk]
+output-dir = "build/synchronized/wrappers"
+
+[wrappers.typescript]
+output-dir = "build/synchronized/wrappers-ts"
+
 [test]
 fail-fast = true
 
