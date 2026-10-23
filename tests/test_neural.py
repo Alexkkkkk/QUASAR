@@ -18,7 +18,6 @@ from scripts.optimization.neural import (  # noqa: E402
     ReLU,
     Sequential,
     SGD,
-    Sigmoid,
     SoftmaxCrossEntropy,
     Tanh,
     numerical_gradient_check,

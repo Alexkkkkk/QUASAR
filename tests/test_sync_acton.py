@@ -174,12 +174,18 @@ class SyncActonTest(unittest.TestCase):
         data = self.publish()
         summary = {"Contract": {"messages": 1, "getters": 1}}
         for failing_stage in ("fmt", "build", "wrapper", "check", "test", "script", "node"):
-            def fake_run(args: list[str], cwd: Path, **kwargs: object) -> str:
-                if args[1] == "--version":
+            def fake_run(
+                args: list[str],
+                cwd: Path,
+                _stage: str = failing_stage,
+                **kwargs: object,
+            ) -> str:
+                second = args[1] if len(args) > 1 else ""
+                if second == "--version":
                     return "acton 1.2.1 (fixture)\n"
-                if args[0] == "acton" and args[1] == "build":
+                if args[0] == "acton" and second == "build":
                     (cwd / sync.OUTPUT).mkdir(parents=True)
-                if args[1] == failing_stage or args[0] == failing_stage:
+                if second == _stage or args[0] == _stage:
                     raise subprocess.CalledProcessError(1, args)
                 return ""
             with (

@@ -5,6 +5,7 @@ Rejects anything the fixer must never touch: path traversal and the
 repository's red lines (workflows, contracts, deploy/security/hub scripts).
 """
 import json, re, sys
+from pathlib import Path
 
 KINDS = {"bug", "dead", "test", "doc", "sec"}
 
@@ -13,11 +14,19 @@ KINDS = {"bug", "dead", "test", "doc", "sec"}
 # "scripts/hub_audit.ts" и "./scripts/hub_audit.ts" ловится одинаково.
 REDLINES = (
     ".github/workflows",
+    # Контракты живут в tolk/contracts: без этого префикса red line "contracts"
+    # не срабатывал ни на одном реальном пути и агент мог править контракты.
+    "tolk/contracts",
+    "tolk/Acton.toml",
     "contracts",
     "scripts/deploy",
     "scripts/security_check",
     "scripts/hub_audit",
     "scripts/sync_action_pins",
+    "scripts/sync_acton",
+    "scripts/check_migration_parity",
+    "docs/abi",
+    "docs/build-hashes.json",
 )
 
 
@@ -33,8 +42,24 @@ def is_redline(path: str) -> bool:
     return any(p == r or p.startswith(r + "/") for r in REDLINES)
 
 
+def load_schema(path: Path) -> tuple[set[str], int]:
+    """Return the allowed finding kinds and the item cap declared by the schema."""
+    schema = json.loads(path.read_text(encoding="utf-8"))
+    findings = schema["properties"]["findings"]
+    kinds = set(findings["items"]["properties"]["kind"]["enum"])
+    limit = int(findings.get("maxItems", 10))
+    return kinds, limit
+
+
 def main() -> int:
-    schema_path = sys.argv[1]
+    if len(sys.argv) < 2:
+        print("usage: validate_findings.py <schema.json> < agent-reply", file=sys.stderr)
+        return 2
+    try:
+        kinds, limit = load_schema(Path(sys.argv[1]))
+    except (OSError, ValueError, KeyError, TypeError) as error:
+        print(f"cannot use schema {sys.argv[1]}: {error}", file=sys.stderr)
+        return 2
     raw = sys.stdin.read()
     m = re.search(r"\{.*\}", raw, re.S)
     if not m:
@@ -46,14 +71,14 @@ def main() -> int:
         print(f"invalid JSON: {e}", file=sys.stderr)
         return 1
     findings = data.get("findings")
-    if not isinstance(findings, list) or not (1 <= len(findings) <= 10):
-        print("findings must be a list of 1..10", file=sys.stderr)
+    if not isinstance(findings, list) or not (1 <= len(findings) <= limit):
+        print(f"findings must be a list of 1..{limit}", file=sys.stderr)
         return 1
     clean = []
     for f in findings:
         if not isinstance(f, dict):
             return 1
-        if f.get("kind") not in KINDS:
+        if f.get("kind") not in (kinds or KINDS):
             return 1
         sev = f.get("severity")
         if not isinstance(sev, int) or not (1 <= sev <= 3):

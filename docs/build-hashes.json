@@ -4,7 +4,7 @@
     "project": "Tolk/Acton",
     "acton": "1.2.1"
   },
-  "generatedAt": "2026-10-23T20:17:09.764Z",
+  "generatedAt": "2026-10-23T21:39:09.389Z",
   "note": "Hashes identify reproducible fresh-deployment Tolk artifacts. They do not establish state or address compatibility with legacy Tact deployments.",
   "artifacts": [
     {

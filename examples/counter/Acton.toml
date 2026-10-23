@@ -1,0 +1,26 @@
+[package]
+name = "quasar-counter-example"
+description = "A minimal, local-only counter example in Tolk"
+version = "0.1.0"
+license = "MIT"
+
+[toolchain]
+acton = "1.2.1"
+
+[contracts.Counter]
+display-name = "Counter"
+src = "contracts/Counter.tolk"
+depends = []
+
+[test]
+
+[fmt]
+width = 100
+ignore = []
+
+[import-mappings]
+acton = ".acton"
+contracts = "contracts"
+gen = "gen"
+tests = "tests"
+wrappers = "wrappers"
