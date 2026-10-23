@@ -40,7 +40,7 @@
   },
   "devDependencies": {
     "@testing-library/dom": "^10.4.2",
-    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/jest-dom": "^7.0.1",
     "@testing-library/react": "^16.3.0",
     "@testing-library/user-event": "^13.5.0",
     "@types/bn.js": "^5.1.0",
