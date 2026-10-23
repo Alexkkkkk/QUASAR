@@ -65,10 +65,11 @@ fun transferMessage(
     destination: address,
     responseDestination: address?,
     forwardTonAmount: coins = 0,
+    attachedValue: coins = grams("0.2"),
 ): OutMessage {
     return createMessage({
         bounce: BounceMode.NoBounce,
-        value: grams("0.2"),
+        value: attachedValue,
         dest: wallet.address,
         body: TokenTransfer {
             queryId,
@@ -128,6 +129,34 @@ get fun `test wallet TEP-74: transfer delivers amount and charges 30bps addition
     );
 }
 
+get fun `test wallet TEP-74: returns every TON remaining after required transfer budgets`() {
+    testing.setNow(100);
+    val wallet = setupWallet(1000000);
+    val recipient = testing.treasury("wallet-residual-recipient");
+    val response = testing.treasury("wallet-residual-response");
+    val amount: coins = 1000;
+    val txs = net.send(
+        wallet.owner.address,
+        transferMessage(
+            wallet,
+            14,
+            amount,
+            recipient.address,
+            response.address,
+            0,
+            grams("0.08"),
+        ),
+    );
+
+    expect(txs).toHaveSuccessfulTx<TokenTransfer>({ to: wallet.address });
+    expect(txs).toHaveSuccessfulTx<TokenExcesses>({
+        from: wallet.address,
+        to: response.address,
+        value: grams("0.01"),
+    });
+    expect(wallet.walletData().balance).toEqual(1000000 - amount - 3);
+}
+
 get fun `test wallet TEP-74: owner and excesses authorization are enforced`() {
     testing.setNow(100);
     val wallet = setupWallet(1000000);
@@ -169,7 +198,7 @@ get fun `test wallet TEP-74: owner and excesses authorization are enforced`() {
     });
 }
 
-get fun `test wallet TEP-74: internal transfer bounce restores amount and additional fee`() {
+get fun `test wallet TEP-74: recipient bounce restores principal without double-crediting master fee`() {
     testing.setNow(100);
     val initial: coins = 1000000;
     val amount: coins = 1000;
@@ -210,7 +239,7 @@ get fun `test wallet TEP-74: internal transfer bounce restores amount and additi
 
     expect(bounceTrace).toHaveSuccessfulTx({ to: wallet.address, bounced: true });
     expect(bounceTrace).toHaveSuccessfulTx<TokenExcesses>({ to: response.address });
-    expect(wallet.walletData().balance).toEqual(initial);
+    expect(wallet.walletData().balance).toEqual(initial - 3);
 }
 
 get fun `test wallet TEP-74: burn sends notification and master excesses clear pending response`() {

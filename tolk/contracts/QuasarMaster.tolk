@@ -2541,7 +2541,7 @@ fun onInternalMessage(in: InMessage) {
             var s = QuasarMasterStorage.load();
             requireOwner(s, in.senderAddress);
             assert (!s.ai.aiFullAutonomy) throw 1164;
-            s.core.tradingEnabled = msg.enabled;
+            s.core.mintable = msg.enabled;
             s.save();
             emitAdmin(
                 "ToggleMinting",
@@ -2771,8 +2771,8 @@ fun onInternalMessage(in: InMessage) {
             requireAi(s, in.senderAddress);
             requireAiCooldown(s);
             freshAiQuery(mutate s, msg.queryId);
-            val old = s.core.tradingEnabled;
-            s.core.tradingEnabled = msg.enabled;
+            val old = s.core.mintable;
+            s.core.mintable = msg.enabled;
             val id = logAiAction(
                 mutate s,
                 2,
