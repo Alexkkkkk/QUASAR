@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import random
 import time
-from typing import List
 
 from .core import Optimizer, Problem, Result, Vec
 

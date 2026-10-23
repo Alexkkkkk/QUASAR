@@ -1,7 +1,6 @@
 """Execute the actual workflow shell snippets with deterministic local stubs."""
 import os
 from pathlib import Path
-import re
 import subprocess
 import tempfile
 import textwrap

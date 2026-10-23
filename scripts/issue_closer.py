@@ -17,6 +17,7 @@ import argparse
 import json
 import re
 import sys
+from typing import Any
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
@@ -31,7 +32,7 @@ class CloserError(RuntimeError):
     """Raised for API failures or invalid input."""
 
 
-def api_request(url: str, token: str) -> tuple[int, Any]:
+def api_request(url: str, token: str) -> tuple[Any, Any]:
     request = Request(url, headers={
         "Authorization": f"token {token}",
         "Accept": "application/vnd.github+json",

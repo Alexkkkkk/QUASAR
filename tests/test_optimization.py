@@ -84,7 +84,6 @@ def test_fee_profile_respects_contract_policy() -> None:
 import unittest
 
 from scripts.optimization.annealing import SA as SimulatedAnnealing  # noqa: E402
-from scripts.optimization.evolution import DE  # noqa: E402
 from scripts.optimization.pso import PSO  # noqa: E402
 
 
