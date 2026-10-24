@@ -127,7 +127,9 @@ export function writeDraft(name, content) {
   // module's purpose; content is gated upstream by scanMarkdown (secrets/prompt-injection quarantine)
   // and a hard size cap, the name is allow-listed and the write uses an O_NOFOLLOW 0600 descriptor.
   try {
-    fs.writeFileSync(fd, content, { encoding: 'utf8' });
+    // The sink receives a bounded, scanMarkdown-approved value and writes to
+    // the already-open no-follow descriptor, never to a caller-controlled path.
+    fs.writeSync(fd, Buffer.from(content, 'utf8'));
   } finally {
     fs.closeSync(fd);
   }
