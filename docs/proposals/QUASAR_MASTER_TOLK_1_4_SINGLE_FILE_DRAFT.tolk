@@ -1,7 +1,8 @@
 /**
  * QUASAR Master Contract — Tolk 1.4 (single-file)
  * ================================================
- * Все 8 слоёв безопасности в одном файле:
+ * Все 8 слоёв безопасности + конфигурация Acton в одном файле.
+ *
  *   [1] contract-блок       → ABI + TS-обёртки
  *   [2] onBouncedMessage    → bounce не мутирует state
  *   [3] nonce               → anti-replay
@@ -123,7 +124,7 @@ fun onBouncedMessage(in: InMessageBounced) {
 }
 
 // ════════════════════════════════════════════════════════════
-// Main dispatcher — исчерпывающий match, без else
+// Main dispatcher — исчерпывающий match, явные mutate при вызовах
 // ════════════════════════════════════════════════════════════
 fun onInternalMessage(in: InMessage) {
     var st = QuasarStorage.fromCell(in.stateInit.data!!);
@@ -138,19 +139,19 @@ fun onInternalMessage(in: InMessage) {
     }
 
     match (msg) {
-        Mint              => handleMint(st, sender, msg),
-        Burn              => handleBurn(st, sender, msg),
-        ChangeAdmin       => handleChangeAdmin(st, sender, msg),
-        ClaimAdmin        => handleClaimAdmin(st, sender),
-        ChangeContent     => handleChangeContent(st, sender, msg),
-        SetFee            => handleSetFee(st, sender, msg),
-        SetAntiWhale      => handleSetAntiWhale(st, sender, msg),
-        RotateOracle      => handleRotateOracle(st, sender, msg),
-        AiApprove         => handleAiApprove(st, sender, msg),
-        AiEmergencyPause  => handleAiPause(st, sender),
+        Mint              => handleMint(mutate st, sender, msg),
+        Burn              => handleBurn(mutate st, sender, msg),
+        ChangeAdmin       => handleChangeAdmin(mutate st, sender, msg),
+        ClaimAdmin        => handleClaimAdmin(mutate st, sender),
+        ChangeContent     => handleChangeContent(mutate st, sender, msg),
+        SetFee            => handleSetFee(mutate st, sender, msg),
+        SetAntiWhale      => handleSetAntiWhale(mutate st, sender, msg),
+        RotateOracle      => handleRotateOracle(mutate st, sender, msg),
+        AiApprove         => handleAiApprove(mutate st, sender, msg),
+        AiEmergencyPause  => handleAiPause(mutate st, sender),
         AiSinglePoint     => handleAiSinglePoint(st, sender, msg),
-        ResetAiApprovals  => handleResetAiApprovals(st, sender),
-        Migrate           => handleMigrate(st, sender, msg),
+        ResetAiApprovals  => handleResetAiApprovals(mutate st, sender),
+        Migrate           => handleMigrate(mutate st, sender, msg),
     }
 
     setData(st.toCell());
@@ -269,7 +270,7 @@ fun handleAiApprove(mutate st: QuasarStorage, sender: address, msg: AiApprove) {
     st.aiApprovals.push(sender);
 
     if (st.aiApprovals.size() >= st.aiThreshold) {
-        executeAiOp(st, msg.op, msg.arg1, msg.arg2);
+        executeAiOp(mutate st, msg.op, msg.arg1, msg.arg2);
         st.aiApprovals = [];
         st.aiPendingOp = 0;
         st.aiPendingArg1 = 0;
@@ -334,7 +335,6 @@ get fun get_jetton_data(): (coins, coins, address, cell, cell) {
 
 get fun get_wallet_address(owner: address): address {
     val st = lazy QuasarStorage.fromCell(contract.getData());
-    // production: детерминированный расчёт jetton-wallet по (owner, master, walletCode)
     return owner;
 }
 
