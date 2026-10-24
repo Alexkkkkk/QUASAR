@@ -40,6 +40,7 @@
 | `QUASAR dApp CI` | push/PR, затрагивающий `integrations/**` | Чистый `npm ci`, типы, тесты, production build и audit вложенного TON Minter |
 | `QUASAR autofix` | падение CI, метка `autofix`/`ai-fix`, расписание, вручную | Диагностика отказа → детерминированные фиксеры → полная проверка → draft PR → отчёт в issue |
 | `QUASAR Dependabot remediation` | каждые 6 часов, push в lock-файлы, вручную | Сбор алертов, severity-отчёт, неразрушающие обновления, draft PR |
+| `QUASAR TON and Acton documentation sync` | ежедневно, изменения синхронизатора/снимка, вручную | Проверяет allowlisted official Markdown sources и snapshot; открывает или обновляет только draft PR в отдельной ветке |
 | `QUASAR issue triage` | новое/изменённое issue | Метки по области и приоритету, маршрутизация, инструкция автору |
 | `Dependabot auto-merge` | Dependabot PR | Включает auto-merge только когда все обязательные checks уже зелёные |
 | `Auto-update pull requests` | расписание, push в `main` | Rebase всех открытых PR, включая drafts, на актуальный `main`; merge выполняет только green-check automerge workflow |
@@ -116,10 +117,15 @@ npm audit --audit-level=high
 
 | Секрет | Назначение | Обязателен |
 | --- | --- | --- |
-| `GITHUB_TOKEN` | ветка, PR, комментарии; выдаётся автоматически | Да |
+| `GITHUB_TOKEN` | стандартный токен для обычных workflow; **не** используется для создания docs-sync PR, поскольку не инициирует последующие `pull_request` workflows | Да |
 | `GEMINI_API_KEY` | `AI PR review`, `AI issue discussion`, `QUASAR AI issue agent` | Только для AI-ревью |
-| `AUTO_MERGE_TOKEN` | fine-grained PAT с `contents: write` и `pull-requests: write`; нужен, чтобы обновление ветки запускало новый прогон проверок | Опционально |
+| `QUASAR_APP_ID` + `QUASAR_APP_KEY` | GitHub App credentials; docs-sync создаёт одноразовый installation token только с `contents: write` и `pull_requests: write`, ограниченный репозиторием | Предпочтительный способ для docs-sync |
+| `AUTO_MERGE_TOKEN` | fine-grained PAT с `contents: write` и `pull-requests: write`; запускает обычные PR workflows; используется docs-sync только если App token не настроен | Обязателен для docs-sync, если недоступен GitHub App |
 | `WALLET_MNEMONIC`, `ORACLE_SIGNING_KEY`, `TONCENTER_API_KEY` | деплой и on-chain | **Автоматике не передаются** |
+
+Docs-sync завершится с ошибкой и **не создаст PR**, если не настроены ни пара
+`QUASAR_APP_ID`/`QUASAR_APP_KEY`, ни `AUTO_MERGE_TOKEN`; он никогда не откатывается
+на `GITHUB_TOKEN`, чтобы не создавать PR без required CI.
 
 Разрешения репозитория (Settings → Actions → General):
 

@@ -19,7 +19,8 @@
 аудит безопасности по-прежнему обязателен.
 
 - [~] **DOC-01 Полный разбор Acton documentation.** Официальный sitemap содержит
-  180 уникальных Acton-страниц; полный URL-инвентарь —
+  180 уникальных Acton-страниц; URL-инвентарь собран, но все 180 строк всё ещё
+  `Review pending`; файл —
   [`docs/ACTON_DOCS_COVERAGE_2026-10-23.md`](ACTON_DOCS_COVERAGE_2026-10-23.md).
   Требуется сопоставить каждую страницу с QUASAR, закреплённым Acton 1.2.1,
   tests и security policy; все реальные пропуски превратить в task ниже/отдельный
@@ -30,7 +31,8 @@
   [официальный sitemap Acton](https://ton-blockchain.github.io/acton/sitemap.xml).
 
 - [~] **DOC-02 Полный разбор всего docs.ton.org.** Официальный sitemap содержит
-  453 уникальных URL; полный список страниц, сгруппированный по разделам, —
+  453 уникальных URL; инвентарь собран, но все 453 строки всё ещё `Review pending`;
+  сгруппированный по разделам список —
   [`docs/TON_DOCS_COVERAGE_2026-10-23.md`](TON_DOCS_COVERAGE_2026-10-23.md).
   Для **каждой** строки требуется зафиксировать repo/test evidence, отдельный
   task ID, version gate либо обоснованное not-applicable/deferred. Разделы TON
@@ -69,49 +71,48 @@
     [TON internal messages](https://docs.ton.org/foundations/messages/internal),
     [Acton/Tolk test runner](https://ton-blockchain.github.io/acton/docs/testing/overview).
 
-- [ ] **T-25 TEP-74 transfer принимает 70–90 mTON и удерживает refundable residual.**
+- [~] **T-25 TEP-74 transfer принимает 70–90 mTON и удерживает refundable residual.**
   - Файл: `tolk/contracts/QuasarWallet.tolk:296-368`; tests:
     `tolk/tests/wallet-jetton.test.tolk`.
   - Проблема: accepted-value floor — 70,000,000 nanotons, но ответ `excesses`
     появляется только для `in.valueCoins - 90,000,000 > 0`; указанный диапазон
     может приниматься без полного возврата остатка при non-null response destination.
-  - Исправление/приёмка: возвратить положительный остаток после действительно
-    необходимых outgoing amounts/fees, либо отклонить insufficient funding до
-    записи состояния; regression 70, 80, 90 mTON и верхняя граница с точным value
-    `TokenExcesses`. Источник:
+  - Исправлено: кошелёк возвращает весь положительный residual после обязательных
+    70 mTON outgoing budgets; добавлен integration regression и проверен bounce
+    principal-only accounting. Остаётся точная boundary-матрица 70, 80, 90 mTON
+    и верхняя граница с `TokenExcesses`. Источник:
     [TEP-74 transfers](https://docs.ton.org/contracts/standard/tokens/jettons/transfer).
 
-- [ ] **T-26 Wallet TEP-89 отвечает своим адресом, а не derivation для запроса.**
+- [~] **T-26 Wallet TEP-89 отвечает своим адресом, а не derivation для запроса.**
   - Файл: `tolk/contracts/QuasarWallet.tolk:429-445`;
     `tolk/tests/wallet-regression.test.tolk:103-148`.
-  - Проблема: `ProvideWalletAddress.ownerAddress` может отличаться от сохранённого
-    `storage.owner`; ответ всегда содержит данный instance address и owner, а не
-    wallet derived для запрошенного internal owner. Действующий тест не проверяет
-    response fields.
-  - Исправление/приёмка: получить детерминированный wallet для запрошенного owner
-    и того же master/code, echo optional owner из request, соблюдать `addr_none`,
-    external и workchain result; проверить query ID, адрес и optional-ref both ways.
+  - Исправлено: для внутреннего owner выводится wallet того же master/code;
+    unsupported workchain возвращает `addr_none`, optional owner echo проверяется
+    по точной сериализации `TakeWalletAddress`. Остаются отдельные external-address
+    и полный workchain boundary наборы.
     Источники: [TEP-89](https://github.com/ton-blockchain/TEPs/blob/master/text/0089-jetton-wallet-discovery.md),
     [TON API](https://docs.ton.org/contracts/standard/tokens/jettons/api).
 
-- [ ] **T-27 Wallet pool-payout marker пересекает произвольный TEP-74 `uint64 query_id`.**
+- [x] **T-27 Wallet pool-payout marker пересекает произвольный TEP-74 `uint64 query_id`.**
   - Файлы: `tolk/contracts/QuasarCommon.tolk:14-17`,
     `tolk/contracts/QuasarWallet.tolk:82-138,296-380` и DeFi payout routing.
-  - Проблема: bit 63 зарезервирован marker namespace; обычный допустимый запрос
-    `query_id` с тем же значением, что in-flight marked pool payout, не различим в
-    bounce handler. Не сужать TEP-74 тип без обоснования.
-  - Исправление/приёмка: обеспечить уникальность непересекающихся pending ledger
-    IDs до обеих отправок; покрыть обычный high-bit TEP-74 ID, marked payout,
-    collision/refusal и bounce, сохранив 64-bit wire ABI. Источники:
+  - Исправлено: marker namespace проверяется до lookup user ledger; одинаковый
+    high-bit query ID обрабатывается в обоих порядках in-flight операций, а bounce
+    восстанавливает только pool ledger. Сохранён 64-bit TEP-74 wire ABI; проверено
+    в `tolk/tests/wallet-regression.test.tolk`.
+  - Источники:
     [TEP-74](https://github.com/ton-blockchain/TEPs/blob/master/text/0074-jettons-standard.md),
     [Tolk jetton payload](https://docs.ton.org/tolk/features/jetton-payload).
 
-- [ ] **T-28 `SwapToQsr` не возвращает TON, если QSR payout bounced.**
+- [~] **T-28 `SwapToQsr` не возвращает TON, если QSR payout bounced.**
   - Файл: `tolk/contracts/QuasarDeFi.tolk:984-1077,1245-1284`;
     tests: `tolk/tests/quasar-defi.test.tolk`.
-  - Проблема: input TON остаётся зачисленным в `tonReserve`; `PayoutFailed` лишь
-    возвращает QSR, но не откатывает QSR fee и не предлагает swapper конечный
-    выбор; параллельные операции могут уже потратить backing до позднего bounce.
+  - Исправлено: QSR swap имеет single pending state; reserve-mutating swaps
+    блокируются до settlement; authenticated failure возвращает QSR и fee,
+    swapper выбирает exact-output retry или TON refund; bounced refund становится
+    claimable liability, защищённой от `SweepTon`. Bounce исходного `PoolPayout`
+    до wallet transfer также обрабатывается общим rollback helper и покрыт Acton
+    regression. Остаются repeated-bounce/legacy-callback свойства.
   - Исправление/приёмка: хранить single pending-swap state (original trader,
     `tonIn`, `qsrOut`, точную fee, текущий payout ID/destination/status); до
     settlement блокировать reserve-mutating операции. `PayoutFailed` ровно один
@@ -130,13 +131,13 @@
     [message modes and fees](https://docs.ton.org/v3/documentation/smart-contracts/message-management/message-modes-cookbook),
     [reserve action](https://docs.ton.org/foundations/actions/reserve).
 
-- [ ] **T-29 Liquidity removal теряет LP entitlement при bounce TON leg после QSR успеха.**
+- [~] **T-29 Liquidity removal теряет LP entitlement при bounce TON leg после QSR успеха.**
   - Файл: `tolk/contracts/QuasarDeFi.tolk:984-1023,1496-1537`;
     tests: `tolk/tests/quasar-defi.test.tolk`.
-  - Проблема: после `qsrSettled` TON leg может bounced; code возвращает TON в
-    reserve после QSR leg, удаляет единственный payout record и теряет все
-    свидетельства TON claim. Отдельно: если **QSR leg** RemoveLiquidity failed,
-    возврат LP balances/supply не восстанавливает LP farm stake, снятый до payout.
+  - Исправлено: bounced TON leg сохраняется как retryable claim с held-balance
+    accounting; QSR-leg failure восстанавливает LP balance/supply и исходный farm
+    stake. Один bounced TON payout → claim → новый destination проверен в Acton.
+    Остаются repeated-bounce/replay, storage-upgrade и parallel-payout свойства.
   - Исправление/приёмка: после QSR settlement сохранять неизменный `claimId`,
     beneficiary и один TON entitlement; его bounced TON становится retryable
     claim на новый internal destination без повторной QSR выплаты и без возврата
@@ -572,17 +573,121 @@ T-11/T-12 реализуют проверяемую часть P4. Реальн�
   - Остаются blockers к закрытию/PR: `npm run build` с обычным launcher падает из-за Tact compiler stack overflow; `security_check.ts` содержит устаревший invariant старого qid guard; build hashes требуют regeneration после contract changes. Эти три protected areas не менялись. Отдельные findings об event-driven/manual workflow dispatch, multi-file atomic sync, pending-state reconciliation minter, unbounded AI action history и semantics emergency pause/trading остаются открытыми либо требуют уточнения требований.
   - Изменения Tact меняют code hashes и адреса; никакого deployment, публикации адресов или on-chain действия не выполнялось.
 
-- [ ] **T-32 Автономная адаптация и синхронизация репозитория без ручного запуска.**
+- [~] **T-32 Автономная адаптация и синхронизация репозитория без ручного запуска.**
   - Расширить repo-native GitHub Actions: по расписанию и поддерживаемым upstream/CI/security событиям обнаруживать drift в TON/Acton docs, dependency pins и генераторах; запускать только allowlisted deterministic synchronizers; обновлять manifest/checksums, coverage tasks, ABI/wrappers/build artifacts как одну идемпотентную generation; при любом частичном сбое выполнять rollback и не публиковать неполное поколение.
   - Автоматике разрешены только заранее утверждённые пути и reproducible преобразования. Она deduplicates/out-of-order events, serializes конкурентные запуски, повторяет только transient ошибки с лимитом, проверяет current base/head, сохраняет provenance, создаёт draft PR без действий владельца и автоматически сливает лишь после всех обязательных проверок на неизменённом head SHA. Никакой записи прямо в `main`, использования issue/Markdown как инструкций, токенов deploy/on-chain, mainnet-операций или автоизменения contract business logic без отдельного release policy.
   - Приёмка: dry-run не пишет; repeated webhook/schedule события дают тот же результат; tests покрывают upstream timeout/429, corrupt/stale manifest, частичную генерацию, duplicate event, concurrency, untrusted payload, protected-file drift, unavailable fix и stale PR head. Неизвестные изменения fail closed: создаётся issue/task с доказательствами вместо speculative code patch.
   - Использовать существующие `scripts/sync_acton.py`, `scripts/sync_ton_docs.py`, `hub:audit` и fenced auto-merge; не дублировать отдельного LLM-поллера или unmanaged background service. Источники: [GitHub Actions workflow triggers](https://docs.github.com/en/actions/writing-workflows/choosing-when-your-workflow-runs/events-that-trigger-workflows), [Acton](https://ton-blockchain.github.io/acton/), [TON Docs](https://docs.ton.org/).
+  - Реализовано 2026-10-23: `.github/workflows/ton-docs-sync.yml` ежедневно валидирует deterministic allowlist, запускает snapshot tests и official source-check, сериализует запуски и создаёт draft PR только с `docs/ton/**`; redirect-follow запрещён. PR использует repository-scoped GitHub App token либо PAT, иначе fail-closed без `GITHUB_TOKEN` fallback; workflow включён в `hub:audit` и `tests/automation_hub.test.ts`.
+  - Осталось: управляемая синхронизация Acton wrappers/build artifacts и sitemap-derived coverage, межфайловая generation/rollback, проверка дубликатов/stale PR и их acceptance tests. Автоматическое изменение контрактного поведения не реализуется этой задачей без отдельной release policy.
 
 - [ ] **T-33 Trustless adaptive controls и автоматическая синхронизация DeFi параметров.**
   - Спроектировать bounded on-chain fee/slippage/farm controls на данных пула: TWAP/наблюдения цены, глубина резервов, timestamp и лимиты изменения; автоматические шаги должны быть permissionless/keeperless, воспроизводимыми, gas-bounded, replay-safe и не зависеть от внешнего AI, приватного ключа или доверенного cron.
   - До реализации зафиксировать экономические пределы владельца: min/max fee, cooldown, maximum parameter delta, observation window, manipulation cost и режим emergency pause; синхронизировать параметры Master/DeFi только атомарно либо через versioned pending state/timelock, отклоняя устаревшие версии. Нельзя менять параметры или выводить средства через «адаптацию» в обход владельца/паузы.
   - Приёмка: adversarial TWAP/flash manipulation и timestamp/replay/property tests, invariants для solvency, reserves, mint limits и pause, differential Acton/native tests, ABI/storage compatibility plan, новый security review и полный CI. Автоматически сгенерированные значения не считаются одобрением экономических параметров; до согласования лимитов эта задача остаётся design-only.
   - Источники: [TON message handling](https://docs.ton.org/tolk/features/message-handling), [TON security techniques](https://docs.ton.org/contracts/techniques/security), [TON internal messages](https://docs.ton.org/foundations/messages/internal).
+
+- [ ] **T-34 Закрыть cross-protocol buyback race и legacy pending-payout cutover.**
+  - Независимый Acton review 2026-10-23 обнаружил, что Master может прислать
+    buyback `TokenNotification` во время `pendingQsrSwap`; DeFi сейчас отклоняет
+    notification после зачисления Jetton в pool wallet, оставляя QSR вне учёта.
+    Нужны replay-safe очередь/отложенная обработка и согласованная отмена timeout
+    между Master и DeFi; нельзя размораживать резервы или терять callback.
+  - Старый `PendingTonPayout` decoder заполняет добавленные `activeAttemptId` и
+    `claimId` нулями, а новые callback checks требуют совпадающего attempt ID.
+    Либо нормализовать legacy in-flight записи с тестами старого cell layout, либо
+    зафиксировать отдельный fresh-StateInit cutover и доказать, что upgrade поверх
+    live адреса запрещён.
+  - Приёмка: Acton traces для buyback при status 1/2, timeout/cancel, повторов и
+    QSR/TON bounce; legacy cell fixtures и old callback cases; reserve, token
+    wallet balance, Master accounting и replay invariants; независимый security
+    review и все release gates. До закрытия deployment/cutover запрещён.
+  - Источники: [TON internal messages](https://docs.ton.org/foundations/messages/internal),
+    [Tolk bounce handling](https://docs.ton.org/tolk/features/message-handling),
+    [Acton testing](https://ton-blockchain.github.io/acton/docs/testing/overview).
+
+- [ ] **T-35 Acton generation/scripting integrity regressions.**
+  - В `tests/test_sync_acton.py` проверить, что изменение `tolk/Acton.toml`
+    обнаруживается `sync.check()` без запуска tools/публикации артефактов; также
+    закрепить broadcast guard обоих local scripts и отсутствие `--net`,
+    `--fork-net`, `--tonconnect` в автоматическом pipeline.
+  - Исправить onboarding contradiction: `npm run acton:init` — stdlib-only,
+    pin остаётся `acton up 1.2.1`; проверить документацию тестом. Проверить ссылки
+    на scripting report и явно различать emulator tests от live-network actions.
+  - Приёмка: offline regressions проходят на pinned Acton 1.2.1 и падают при
+    повреждении manifest/guard; wallet, endpoint, broadcast и deploy не используются.
+    Источники: [Acton.toml](https://ton-blockchain.github.io/acton/docs/acton-toml),
+    [build reference](https://ton-blockchain.github.io/acton/docs/building/reference),
+    [scripting](https://ton-blockchain.github.io/acton/docs/scripting/blockchain-interaction).
+
+- [ ] **T-36 Углубить локальные Acton contract tests и зафиксировать quality baselines.**
+  - Дополнить T-30/T-31: bounded fixed-seed fuzz/property tests для master
+    maxSupply и DeFi `estimateLpOut` с явными boundary cases; persistent typed-map
+    storage round-trip (empty/multi-entry, address/int257 keys); timelock trace
+    target/body/value assertions. На pinned CLI исследовать targeted mutation,
+    LCOV и gas snapshot без глобального порога; Test UI recipe/named trace — только
+    после проверки поддержки 1.2.1.
+  - Приёмка: все новые сценарии deterministic, bounded и offline; seed, CLI,
+    результаты и survivors записаны; mutation демонстрирует killed regression;
+    coverage используется для приоритизации, не как proof безопасности. Источники:
+    [fuzz](https://ton-blockchain.github.io/acton/docs/testing/fuzz-testing),
+    [coverage](https://ton-blockchain.github.io/acton/docs/testing/code-coverage),
+    [mutation](https://ton-blockchain.github.io/acton/docs/testing/mutation-testing/overview),
+    [gas](https://ton-blockchain.github.io/acton/docs/testing/gas-profiling-with-snapshots),
+    [Test UI](https://ton-blockchain.github.io/acton/docs/testing/test-ui/overview),
+    [transaction traces](https://ton-blockchain.github.io/acton/docs/testing/reading-transaction-chains).
+
+- [ ] **T-37 DApp использует compiler-generated typed QUASAR wrappers.**
+  - Заменить вручную поддерживаемые QUASAR opcode/BOC construction и raw getter
+    parsing в `website/tonconnect.js` проверенными generated serializers/typed
+    getters из Acton sync; стандартный TEP-74 transfer оставить явным. Проверять
+    payload fields и decode через offline ABI parity tests.
+  - Приёмка: ABI drift ломает gate, сериализация совпадает с compiler fixtures,
+    testnet/address/send safety сохраняются; live wallet/network send не применяется.
+    Источники: [dApps](https://ton-blockchain.github.io/acton/docs/dapps),
+    [frontend](https://ton-blockchain.github.io/acton/docs/tutorial/frontend).
+
+- [ ] **T-38 Безопасная developer onboarding, editor и workspace state.**
+  - Добавить pinned Acton IDE/LSP guide и project-scoped agent-skill policy;
+    исправить `acton:init` документацию; игнорировать `tolk/wallets.toml`,
+    `tolk/global.wallets.toml`, `.studio/`, `tolk/.acton-localnet/` с tests;
+    уточнить legacy-only env variables в `.env.example`. `acton doctor` описывать
+    только как opt-in remote probe с редактированием отчёта; paid source verification
+    — только отдельный approved release gate.
+  - Приёмка: guidance соответствует pinned 1.2.1; state игнорируется, source
+    остаётся trackable; никакие credentials, mnemonics или remote commands не
+    читаются/исполняются. Источники:
+    [IDE](https://ton-blockchain.github.io/acton/docs/ide-support/vscode),
+    [skills](https://ton-blockchain.github.io/acton/docs/agent-skills/overview),
+    [wallets](https://ton-blockchain.github.io/acton/docs/wallets),
+    [Studio](https://ton-blockchain.github.io/acton/docs/studio),
+    [verification](https://ton-blockchain.github.io/acton/docs/verify).
+
+- [ ] **T-39 Опциональная local environment smoke и CI observability.**
+  - После pinned-CLI feature check подготовить отдельно opt-in, loopback-only
+    simulator API tests и localnet lifecycle runbook/smoke; default CI остаётся
+    offline и без persistent containers/validator participation. Оценить LCOV
+    artifact upload и opt-in pre-push hook; `.github/workflows/**` менять только
+    в отдельно разрешённом owner-scoped change.
+  - Приёмка: cleanup гарантирован success/failure; нет public network/fork/wallet;
+    unsupported 1.2.1 flags fail closed; required checks/secrets не меняются.
+    Источники: [simulator](https://ton-blockchain.github.io/acton/docs/environments/simulator/overview),
+    [localnet](https://ton-blockchain.github.io/acton/docs/environments/localnet/overview),
+    [CI](https://ton-blockchain.github.io/acton/docs/ci-setup),
+    [hooks](https://ton-blockchain.github.io/acton/docs/commands/hooks).
+
+- [ ] **T-40 Закрыть page-by-page evidence classification Acton inventory.**
+  - 18-area review завершён; `docs/ACTON_DOCS_COVERAGE_2026-10-23.md` содержит
+    180 routes — все пока `Review pending`. Для каждого URL указать
+    implemented/evidence, linked task, version-gated, external/unsafe gate либо
+    аргументированное not-applicable. Не внедрять механически on-chain libraries
+    или precompiled BoC там, где нет QUASAR use case; не менять Acton pin и не
+    выполнять wallet/network/deploy/validator examples.
+  - Приёмка: ни одна строка не остаётся pending; каждое решение ссылается на
+    source/test/path и точный URL; actionable gaps связаны с T-30—T-39 или отдельным
+    scoped issue; DOC-01 отражает evidence, а не число просмотренных страниц.
+    Источники: [Acton llms index](https://ton-blockchain.github.io/acton/llms.txt),
+    [official sitemap](https://ton-blockchain.github.io/acton/sitemap.xml).
 
 ## T-24 — Acton scripting и атомарная синхронизация, PR #280
 

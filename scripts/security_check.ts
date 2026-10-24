@@ -31,7 +31,11 @@ requireSource(master, 's.core.buybackSwapPending == 0', 'buyback overlap guard')
 requireSource(master, 'reserveGramsOnBalance(QUASAR_STORAGE_RESERVE, RESERVE_MODE_EXACT_AMOUNT)', 'master deploy reserve guard');
 requireSource(defi, 'assert (msg.feeBps > 0 && msg.feeBps <= 30)', 'DeFi fee ceiling');
 requireSource(defi, 'requireDeadline(msg.deadline)', 'DeFi deadline guard');
-requireSource(defi, 's.tonReserve + msg.amount + QUASAR_STORAGE_RESERVE', 'DeFi sweep reserve guard');
+requireSource(
+    defi,
+    's.tonReserve + s.tonClaimsHeld + msg.amount + QUASAR_STORAGE_RESERVE',
+    'DeFi sweep reserve guard',
+);
 requireSource(defi, 'reserveGramsOnBalance(QUASAR_STORAGE_RESERVE, RESERVE_MODE_EXACT_AMOUNT)', 'DeFi deploy reserve guard');
 requireSource(admin, 'validateTimelockStorage', 'timelock storage validation');
 requireSource(admin, 'assert (storage.minDelay >= 86400)', 'timelock minimum delay');

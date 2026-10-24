@@ -56,8 +56,7 @@
   "packageManager": "npm@11.6.2",
   "dependencies": {
     "@ton/core": "^0.63.1",
-    "@ton/crypto": "^3.3.0",
-    "@ton/ton": "^16.3.0"
+    "@ton/crypto": "^3.3.0"
   },
   "devDependencies": {
     "@ton/sandbox": "^0.45.0",
