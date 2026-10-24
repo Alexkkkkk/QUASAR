@@ -1,4 +1,4 @@
-> Historical audit register: code paths below refer to the implementation at the time of each finding. Legacy contract evidence is archived under `docs/historical/tact-reference/`; current source of truth is `tolk/contracts/`.
+> Historical audit register: code paths below refer to the implementation at the time of each finding. Legacy contract evidence is archived under `legacy Tact artifacts`; current source of truth is `tolk/contracts/`.
 
 # Audit status
 
@@ -89,7 +89,7 @@ The merged diff and regression tests were checked against F-33–F-38. **None of
 
 ### Audit pack v2 — application record (2026-10-11)
 
-Source: audit pack v2 (`docs/historical/tact-reference/audit-pack-v2/`, staged verbatim as review material in
+Source: audit pack v2 (`legacy Tact artifactsaudit-pack-v2/`, staged verbatim as review material in
 PR #182). Applied to the real contracts in dedicated PRs. In this table,
 “applied” means the cited source/test is present in the reconciliation baseline;
 it is not an independent-audit conclusion.

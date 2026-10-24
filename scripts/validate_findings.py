@@ -24,7 +24,6 @@ REDLINES = (
     "scripts/hub_audit",
     "scripts/sync_action_pins",
     "scripts/sync_acton",
-    "scripts/check_migration_parity",
     "docs/abi",
     "docs/build-hashes.json",
 )

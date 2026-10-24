@@ -13,7 +13,6 @@ const ignoredDirectories = new Set([
     'node_modules',
     '__pycache__',
 ]);
-const historicalPrefix = 'docs/historical/tact-reference/';
 const legacyContractExtensions = new Set(['.fc', '.func', '.tact']);
 const activeScriptExtensions = new Set(['.ts', '.tsx', '.js', '.mjs', '.cjs']);
 const legacyCompilerPackages = new Set([
@@ -40,7 +39,6 @@ function findLegacyContractInputs(directory: string, found: string[] = []): stri
         }
 
         const relativePath = relative(root, fullPath).replaceAll('\\', '/');
-        if (relativePath.startsWith(historicalPrefix)) continue;
         if (legacyContractExtensions.has(extname(entry.name)) || entry.name === 'tact.config.json') {
             found.push(relativePath);
         }
@@ -70,7 +68,7 @@ function findArchivedWrapperImports(directory: string, found: string[] = []): st
         }
 
         const relativePath = relative(root, fullPath).replaceAll('\\', '/');
-        if (relativePath.startsWith(historicalPrefix) || !activeScriptExtensions.has(extname(entry.name))) continue;
+        if (!activeScriptExtensions.has(extname(entry.name))) continue;
 
         const source = readScriptSource(fullPath);
         const patterns = [
@@ -83,7 +81,7 @@ function findArchivedWrapperImports(directory: string, found: string[] = []): st
                 const specifier = match[1];
                 const base = specifier.startsWith('.') ? dirname(fullPath) : root;
                 const importedPath = relative(root, resolve(base, specifier)).replaceAll('\\', '/');
-                if (importedPath.startsWith(historicalPrefix)) {
+                if (legacyContractExtensions.has(extname(importedPath))) {
                     found.push(`${relativePath} -> ${specifier}`);
                 }
             }
@@ -110,12 +108,12 @@ test('Tolk/Acton is the only active contract compiler and source tree', () => {
     assert.deepEqual(
         findLegacyContractInputs(root),
         [],
-        'legacy contract files/config must remain only in docs/historical/tact-reference/',
+        'legacy contract files/config must not exist in the repository',
     );
     assert.deepEqual(
         findArchivedWrapperImports(root),
         [],
-        'active TypeScript/JavaScript must not import archived Tact generated wrappers',
+        'active TypeScript/JavaScript must not import legacy contract wrappers',
     );
 });
 

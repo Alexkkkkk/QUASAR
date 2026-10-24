@@ -99,7 +99,7 @@ npx tsc --noEmit
 npm run abi:verify
 npm run abi:dapp
 npm run pins:check
-npm run hub:audit
+npm test
 npm audit --audit-level=high
 ```
 

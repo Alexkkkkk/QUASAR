@@ -15,7 +15,7 @@ npm run abi:verify
 npm run abi:dapp
 npm run deployment:check
 npm run pins:check
-npm run hub:audit
+npm test
 npm audit --audit-level=high
 ```
 

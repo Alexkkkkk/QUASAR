@@ -472,7 +472,7 @@ testnet rehearsal остаются открытыми; deployment и реаль�
     только минт, а P2P-переводы между автономными кошельками его не видят.
   - Исправление: сообщения переименованы в `ToggleMinting` / `AIToggleMinting`
     с **явным закреплением прежних опкодов** (`0xf1822da1`, `0x0490d605`),
-    как задано паком аудита (`docs/historical/tact-reference/audit-pack-v2/contracts/quasar_master_fixes.tact.txt`).
+    как задано паком аудита (`legacy Tact artifactsaudit-pack-v2/contracts/quasar_master_fixes.tact.txt`).
     Wire-формат не изменился, поэтому `website/tonconnect.js` и внешние
     интеграции продолжают работать без миграции. Метка в AI-журнале действий
     и строка `OwnerOverride` переведены на новое имя.

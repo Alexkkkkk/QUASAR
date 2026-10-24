@@ -69,7 +69,7 @@ npm run abi:verify
 npm run abi:dapp
 npm run deployment:check
 npm run pins:check
-npm run hub:audit
+npm test
 npm audit --audit-level=high
 ```
 
@@ -120,5 +120,5 @@ checks на актуальном base. `do-not-merge` всегда остана�
 - Комментарии в коде — английский, как в контрактах.
 - Коммиты: `type(scope): описание (#issue)`.
 - QUASAR использует Tolk через закреплённый Acton. Исторический Tact-код находится
-  только в `docs/historical/tact-reference/` и не является build input;
+  только в `legacy Tact artifacts` и не является build input;
   approving review не является gate.

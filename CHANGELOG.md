@@ -38,7 +38,7 @@
 - `ci(audit)`: `scripts/hub_audit.ts` расширен правилами иммунной системы — write на
   уровне workflow, `workflow_call`-only модули, orphan-триггеры, дубли расписаний,
   наличие точки входа контура (#150).
-- `test`: `npm run hub:test` теперь прогоняет и `tests/router.test.mjs`; обновлены
+- `test`: `npm test` теперь прогоняет и `tests/router.test.mjs`; обновлены
   `tests/automation_hub.test.ts`, `tests/audit_2026_10_02.test.ts`,
   `tests/repository_page_safety.test.ts`, `tests/ai_review_workflow.test.ts`.
 - `chore(setup)`: добавлены метки `ai-merge-ok` и `needs-human`.

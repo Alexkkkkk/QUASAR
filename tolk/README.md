@@ -53,9 +53,9 @@ TypeScript wrappers генерируются закреплённым
 Tolk contracts являются новым generation deployment. Они имеют новый code hash,
 StateInit, storage schema и детерминированные адреса, включая адреса Jetton
 wallet. Это **не** in-place upgrade и не декодер состояния существующих
-Tact-контрактов. Существующий Tact исходник и старые sandbox suites сохранены
-только в [`../docs/historical/tact-reference/`](../docs/historical/tact-reference/)
-как доказательство миграции; они не участвуют в CI и release builds.
+Tact-контрактов. Legacy Tact исходники и старые sandbox suites удалены из
+репозитория; миграция завершена, а CI и release builds используют только
+Tolk/Acton.
 
 Деплой, broadcast, использование ключей и публикация адресов не входят в этот
 cutover. До нового deployment необходимы отдельный audited migration plan,
