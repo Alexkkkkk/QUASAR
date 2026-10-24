@@ -200,7 +200,7 @@ def _looks_like_markdown(markdown: str) -> bool:
 
 
 def _fetch_page_once(source_id: str, url: str) -> str:
-    request = Request(
+    request = Request(  # noqa: S310 - URL is validated by assert_https
         assert_https(url),
         headers={
             "Accept": "text/markdown, text/plain;q=0.9",
