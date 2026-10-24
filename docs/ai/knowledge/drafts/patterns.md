@@ -2,10 +2,10 @@
 
 ## HELD (adversarial counterexample) StaticCheck: Review swap deadline enforcement in QuasarDeFi
 - Proposed: Revert when now > deadline at the top of every swap and liquidity entry point.
-- Attack: COUNTEREXAMPLE: In a scenario where the deadline enforcement rule is not followed, the swap function in QuasarDeFi could be called before the deadline has passed. This would result in the swap being executed with an invalid deadline, leading to a gas exhaustion error.
+- Attack: Test the asynchronous boundary: a swap passes its initial deadline check, then a token callback or payout is delayed until after that deadline. Verify that pending state records the deadline and that settlement/retry paths enforce it. This is a review hypothesis, not a confirmed vulnerability.
 - Human must judge before this rule can be promoted.
 
 ## HELD (adversarial counterexample) BounceBug: Review bounced payout liability restore in QuasarMaster
 - Proposed: On bounce, restore the exact stake/vesting/referral liability recorded at send time; never touch only the aggregate counter.
-- Attack: COUNTEREXAMPLE: In a scenario where the QuasarMaster contract is designed to restore the exact stake/vesting/referral liability recorded at send time, but fails to do so correctly, it could lead to a bug where the restored liability is not accurately reflected in the contract's state. This could res
+- Attack: Test a stale, mismatched, or repeated bounce for one payout ID. Verify that the handler restores only the recorded beneficiary liability, exactly once, without altering another payout's aggregate accounting. This is a review hypothesis, not a confirmed defect.
 - Human must judge before this rule can be promoted.
