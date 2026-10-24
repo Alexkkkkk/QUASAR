@@ -28,6 +28,11 @@ import sys
 import urllib.error
 import urllib.request
 
+try:
+    from scripts.url_safety import assert_https, open_url
+except ModuleNotFoundError:  # direct `python3 scripts/<name>.py` execution
+    from url_safety import assert_https, open_url
+
 ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions"
 DEFAULT_MODEL = "gemini-3.8-flash"
 TIMEOUT_SECONDS = 600
@@ -54,8 +59,8 @@ def main() -> int:
         "messages": [{"role": "user", "content": prompt}],
         "max_tokens": MAX_TOKENS,
     }
-    request = urllib.request.Request(
-        ENDPOINT,
+    request = urllib.request.Request(  # noqa: S310 - URL is validated by assert_https
+        assert_https(ENDPOINT),
         data=json.dumps(payload).encode("utf-8"),
         headers={
             "Authorization": f"Bearer {key}",
@@ -64,7 +69,7 @@ def main() -> int:
         method="POST",
     )
     try:
-        with urllib.request.urlopen(request, timeout=TIMEOUT_SECONDS) as response:
+        with open_url(request, timeout=TIMEOUT_SECONDS) as response:
             body = response.read().decode("utf-8", "replace")
     except urllib.error.HTTPError as exc:
         detail = exc.read().decode("utf-8", "replace")[:500]

@@ -1,0 +1,11 @@
+.acton/
+.studio/
+build/
+dist/
+gen/
+node_modules/
+.env
+*.mnemonic
+wallets.toml
+global.wallets.toml
+global.libraries.toml

@@ -24,7 +24,12 @@ from dataclasses import dataclass
 from pathlib import Path
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlparse
-from urllib.request import Request, urlopen
+from urllib.request import Request
+
+try:
+    from scripts.url_safety import assert_https, open_url
+except ModuleNotFoundError:  # direct `python3 scripts/<name>.py` execution
+    from url_safety import assert_https, open_url
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -166,14 +171,14 @@ def _looks_like_markdown(markdown: str) -> bool:
 
 
 def _fetch_page_once(source_id: str, url: str) -> str:
-    request = Request(
-        url,
+    request = Request(  # noqa: S310 - URL is validated by assert_https
+        assert_https(url),
         headers={
             "Accept": "text/markdown, text/plain;q=0.9",
             "User-Agent": "QUASAR-TON-Docs-Sync/1.1",
         },
     )
-    with urlopen(request, timeout=FETCH_TIMEOUT_SECONDS) as response:
+    with open_url(request, timeout=FETCH_TIMEOUT_SECONDS) as response:
         status = _response_status(response)
         if status is not None and status >= 400:
             raise HTTPError(url, status, "unexpected HTTP status", response.headers, None)

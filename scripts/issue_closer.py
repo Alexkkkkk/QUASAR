@@ -19,7 +19,12 @@ import re
 import sys
 from typing import Any
 from urllib.error import HTTPError, URLError
-from urllib.request import Request, urlopen
+from urllib.request import Request
+
+try:
+    from scripts.url_safety import assert_https, open_url
+except ModuleNotFoundError:  # direct `python3 scripts/<name>.py` execution
+    from url_safety import assert_https, open_url
 
 CLOSING_KEYWORD_RE = re.compile(
     r"\b(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?):?\s+#(\d+)", re.IGNORECASE
@@ -33,13 +38,13 @@ class CloserError(RuntimeError):
 
 
 def api_request(url: str, token: str) -> tuple[Any, Any]:
-    request = Request(url, headers={
+    request = Request(assert_https(url), headers={  # noqa: S310 - URL is validated by assert_https
         "Authorization": f"token {token}",
         "Accept": "application/vnd.github+json",
         "User-Agent": "quasar-issue-closer",
     })
     try:
-        with urlopen(request, timeout=30) as response:
+        with open_url(request, timeout=30) as response:
             return json.loads(response.read().decode("utf-8")), response.headers
     except HTTPError as error:
         raise CloserError(f"GitHub API error {error.code} for {url}") from error
@@ -102,8 +107,8 @@ def close_issue(repo: str, number: int, token: str, pr_number: int) -> bool:
         "state_reason": "completed",
         "body": None,
     }).encode("utf-8")
-    request = Request(
-        f"{url}?close_comment=1",
+    request = Request(  # noqa: S310 - URL is validated by assert_https
+        assert_https(f"{url}?close_comment=1"),
         data=payload,
         method="PATCH",
         headers={
@@ -119,8 +124,8 @@ def close_issue(repo: str, number: int, token: str, pr_number: int) -> bool:
             f"найден в смёрженном PR #{pr_number}."
         )
     }
-    request_comment = Request(
-        f"{url}/comments",
+    request_comment = Request(  # noqa: S310 - URL is validated by assert_https
+        assert_https(f"{url}/comments"),
         data=json.dumps(comment).encode("utf-8"),
         method="POST",
         headers={
@@ -131,8 +136,8 @@ def close_issue(repo: str, number: int, token: str, pr_number: int) -> bool:
         },
     )
     try:
-        with urlopen(request_comment, timeout=30):
-            with urlopen(request, timeout=30):
+        with open_url(request_comment, timeout=30):
+            with open_url(request, timeout=30):
                 return True
     except (HTTPError, URLError) as error:
         print(f"failed to close #{number}: {error}", file=sys.stderr)

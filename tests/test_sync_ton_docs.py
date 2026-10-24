@@ -112,7 +112,7 @@ class SyncTonDocsTest(unittest.TestCase):
         unavailable = HTTPError(url, 503, "service unavailable", FakeHeaders(), None)
         response = FakeResponse(b"---\ntitle: Offline\n---\n\nActon content\n", final_url=url)
         with (
-            mock.patch.object(sync_ton_docs, "urlopen", side_effect=[unavailable, response]) as opener,
+            mock.patch.object(sync_ton_docs, "open_url", side_effect=[unavailable, response]) as opener,
             mock.patch.object(sync_ton_docs.time, "sleep") as sleep,
         ):
             actual = sync_ton_docs.fetch_page(source_id, url)
@@ -125,7 +125,7 @@ class SyncTonDocsTest(unittest.TestCase):
         url = dict(sync_ton_docs.SOURCES)["acton-scripting-overview"]
         missing = HTTPError(url, 404, "missing", FakeHeaders(), None)
         with (
-            mock.patch.object(sync_ton_docs, "urlopen", side_effect=missing) as opener,
+            mock.patch.object(sync_ton_docs, "open_url", side_effect=missing) as opener,
             mock.patch.object(sync_ton_docs.time, "sleep") as sleep,
         ):
             with self.assertRaises(sync_ton_docs.DocsSyncError):

@@ -16,7 +16,12 @@ import sys
 from pathlib import Path, PurePosixPath
 from typing import Any
 from urllib.error import HTTPError, URLError
-from urllib.request import Request, urlopen
+from urllib.request import Request
+
+try:
+    from scripts.url_safety import assert_https, open_url
+except ModuleNotFoundError:  # direct `python3 scripts/<name>.py` execution
+    from url_safety import assert_https, open_url
 
 
 DEFAULT_MODEL = "qwen2.5-coder:3b"
@@ -312,14 +317,14 @@ def call_ollama(
         "options": {"temperature": 0, "num_ctx": 16384, "num_predict": 8192},
     }
     url = host.rstrip("/") + "/api/chat"
-    request = Request(
-        url,
+    request = Request(  # noqa: S310 - URL is validated by assert_https
+        assert_https(url),
         data=json.dumps(payload).encode("utf-8"),
         headers={"Content-Type": "application/json", "Accept": "application/json"},
         method="POST",
     )
     try:
-        with urlopen(request, timeout=timeout_seconds) as response:
+        with open_url(request, timeout=timeout_seconds) as response:
             result = json.loads(response.read().decode("utf-8"))
     except HTTPError as error:
         raise AgentError(f"Ollama API returned HTTP {error.code}") from error
