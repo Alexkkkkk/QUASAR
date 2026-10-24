@@ -51,7 +51,7 @@ flowchart LR
 - **ABI snapshots и интерфейсы:** `docs/abi/`; ABI создаётся и проверяется по результатам компиляции.
 - **Единая контролируемая публикация локальных build-артефактов:** `scripts/sync_acton.py` и `tolk/build/synchronized/`.
 
-Исторические Tact-файлы находятся только в [`docs/historical/tact-reference/`](docs/historical/tact-reference/). Они сохранены как свидетельства прежнего поколения, не входят в активную сборку и не являются альтернативным путём разработки.
+Репозиторий содержит только активное Tolk-поколение. Legacy Tact-исходники и compiler parity baseline удалены; миграционные выводы сохранены в документации, но не являются частью исходного кода или сборки.
 
 ## Разработка и локальная проверка
 
@@ -86,7 +86,6 @@ npm run lint
 npm test
 npx tsc --noEmit
 npm run abi:verify
-npm run abi:migration:check
 npm run abi:dapp
 python3 scripts/sync_acton.py --check
 ```
@@ -104,9 +103,12 @@ npm run test:tolk
 | `npm run build` | Собрать изолированное поколение Tolk, проверить его и атомарно опубликовать локальные артефакты. |
 | `python3 scripts/sync_acton.py --check` | Проверить согласованность исходников и опубликованного build-поколения без его перестройки. |
 | `npm run abi:verify` | Сверить compiler-derived ABI с зафиксированными snapshots. |
-| `npm run abi:migration:check` | Сравнить выбранные wire-level интерфейсы исторического и текущего поколений; это не проверка поведенческой или storage-эквивалентности. |
+| `npm run abi:verify` | Сравнить выбранные wire-level интерфейсы исторического и текущего поколений; это не проверка поведенческой или storage-эквивалентности. |
 | `npm run abi:dapp` | Проверить интерфейс сайта относительно контрактного ABI. |
 | `npm run security:check` | Запустить локальные security-инварианты репозитория. Это не независимый аудит. |
+| `npm run test:tolk:fuzz` | Запустить воспроизводимые Acton fuzz-тесты с закреплённым seed. |
+| `npm run test:tolk:coverage` | Проверить coverage Tolk-тестов с текущим минимальным порогом 50%. |
+| `npm run test:tolk:mutation` | Запустить critical mutation testing для `QuasarMaster`; compile-error mutants считаются убитыми Acton. |
 | `npm run deployment:check` | Проверить локальную конфигурацию deployment, если она существует. Отсутствие файла не означает, что контракт развёрнут. |
 | `npm run deployment:preflight` | Полностью проверить Tolk build, ABI, dApp ABI, reviewed hashes и wrappers перед отдельно утверждённым deployment; команда не подписывает и не отправляет транзакции. |
 | `npm run website` | Локально раздать статические файлы каталога `website/`. |
@@ -117,7 +119,7 @@ npm run test:tolk
 
 При изменениях в pull request запускаются сборка и тесты контрактов Tolk, проверки dApp и Python, CodeQL и итоговый `validate / verify`. Для завершения PR обязательны успешные проверки на текущем head; актуальный набор условий задан настройками репозитория.
 
-Workflow [`quasar.yml`](.github/workflows/quasar.yml) маршрутизирует события к отдельным модулям ревью и сопровождения. [`automerge.yml`](.github/workflows/automerge.yml) рассматривает открытые PR для продвижения и постановки в GitHub auto-merge только после прохождения обязательных checks и при отсутствии конфликтов и `do-not-merge`. Branch protection остаётся последним gate; успешный CI сам по себе не равен merge.
+Основной workflow [`ci.yml`](.github/workflows/ci.yml) запускает обязательную проверку `validate / verify`, а [`tests.yml`](.github/workflows/tests.yml) параллельно проверяет contracts, dApp и Python. [`security-depth.yml`](.github/workflows/security-depth.yml) добавляет воспроизводимый fuzzing, coverage floor 50%, critical mutation testing Master и сохраняет отчёты как artifacts. Branch protection остаётся последним gate; успешный CI сам по себе не равен merge.
 
 В репозитории сейчас нет GitHub Pages workflow: CI не публикует сайт и не развёртывает контракты. Release, deployment, подпись транзакций и on-chain операции требуют отдельного решения и сюда не автоматизированы.
 

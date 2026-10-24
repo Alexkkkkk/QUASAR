@@ -22,7 +22,7 @@
 - [ ] `npm run abi:verify`
 - [ ] `npm run abi:dapp`
 - [ ] `npm run pins:check`
-- [ ] `npm run hub:audit`
+- [ ] `npm test`
 - [ ] Testnet smoke check (when deployment behavior changed)
 
 ## Checklist

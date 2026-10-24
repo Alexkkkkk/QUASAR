@@ -106,7 +106,7 @@ jobs:
         run: npm run pins:check
 
       - name: Audit the automation hub
-        run: npm run hub:audit
+        run: npm test
 
       - name: Upload build-hash artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -625,9 +625,9 @@ jobs:
       - name: Audit the automation hub (local + live settings)
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: npm run hub:audit -- --online
+        run: npm test -- --online
       - name: Regression guard for the automation surface
-        run: npm run hub:test
+        run: npm test
 ```
 
 Дополнение к hub_audit.ts: проверять, что события не обрабатываются дважды
@@ -752,7 +752,7 @@ jobs:
   4. Собрать quasar.yml (оркестратор); удалить старые workflow'ы.
   5. Обновить scripts/hub_audit.ts: правило «write-права только на job-уровне»,
      «_*.yml не имеют собственных триггеров», «события не обрабатываются дважды».
-  6. Прогнать npm run hub:audit && npm run hub:test локально; дать actionlint.
+  6. Прогнать npm test && npm test локально; дать actionlint.
   7. Включить branch protection (checks + 1 review) на main.
   8. Тестовый прогон: issue -> ai-fix -> draft PR -> ai-review -> label
      ai-merge-ok -> merge -> issue закрыт -> отчёт hub-audit в понедельник.

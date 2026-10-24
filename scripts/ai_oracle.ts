@@ -504,7 +504,6 @@ function decisionBlockedBySignals(signalAnalysis: OracleSignalAnalysis): OracleD
 // relaying address, so the operator can submit it from any hot wallet. The
 // signed cell must be built byte-exactly the same way on both sides, therefore
 // the domain tag and the message opcode are pinned constants in both files.
-// https://docs.tact-lang.org/ref/core-crypto#checksignature
 
 /** Domain tag; must equal `AI_DECISION_DOMAIN` in tolk/contracts/QuasarMaster.tolk. */
 export const AI_DECISION_DOMAIN = 0x51a5c3d2;

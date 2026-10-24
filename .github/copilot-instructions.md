@@ -13,7 +13,7 @@ QUASAR — pre-launch TON Jetton/DeFi prototype на [Tolk](https://docs.ton.org
 - `tolk/contracts/QuasarAdminTimelock.tolk` — timelock для owner actions.
 - `tolk/tests/` — Acton emulation tests; `scripts/` — Tolk build/ABI/security
   gates and off-chain utilities.
-- `docs/historical/tact-reference/` — read-only Tact evidence. It is never an
+- `legacy Tact artifacts` — read-only Tact evidence. It is never an
   active source, test, build, wrapper, deployment, or release input.
 
 ## Обязательные команды перед PR

@@ -6,7 +6,7 @@
 строятся Acton `1.2.1`.
 
 Предыдущие Tact-исходники, конфигурация, sandbox suites и deployment scripts
-перенесены в `docs/historical/tact-reference/`. Это read-only evidence для
+перенесены в `legacy Tact artifacts`. Это read-only evidence для
 аудита миграции. Они не компилируются, не typecheck-ятся, не запускаются в CI и
 не входят в release artifacts.
 

@@ -46,4 +46,4 @@ rehearsal. It neither authorizes a transaction nor supplies signing material.
   approve the exact network and addresses.
 
 Historical Tact deploy and smoke procedures are preserved only as audit evidence
-under `docs/historical/tact-reference/`; they must not be executed.
+under `legacy Tact artifacts`; they must not be executed.

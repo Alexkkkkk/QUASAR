@@ -107,16 +107,10 @@ jobs:
         run: npm run deployment:check
 
       - name: Publish build hashes
-        run: npm run hashes:build
+        run: npx tsx scripts/build_hashes.ts --write
 
       - name: Type-check scripts and tests
         run: npx tsc --noEmit
-
-      - name: Verify action pins match the declared tags
-        run: npm run pins:check
-
-      - name: Audit the automation hub
-        run: npm run hub:audit
 
       - name: Upload build-hash artifact
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

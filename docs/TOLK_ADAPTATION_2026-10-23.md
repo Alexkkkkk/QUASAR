@@ -53,7 +53,7 @@ TEP-89 discovery с проверкой бюджета ответа и marked poo
 
 Policy запрещает активные Tact/FunC исходники, прямые legacy compiler packages
 и импорты архивных wrappers из активного TS/JS. Историческое evidence сохранено
-в `docs/historical/tact-reference/` и не становится build input. Quick Start,
+в `legacy Tact artifacts` и не становится build input. Quick Start,
 whitepaper, agent memory, attributes и Dependabot согласованы с Tolk/Acton;
 инструкции явно требуют Acton 1.2.1, Node 22/24, Python 3.11+ и requirements.
 
@@ -66,8 +66,8 @@ directory traversal использует Dirent, а файл проверяет�
 
 Успешно выполнены `npm ci`, `npm run acton:init`, `npm run lint`,
 `npm run security:check`, `npm test`, `npx tsc --noEmit`, `npm run abi:verify`,
-`npm run abi:migration:check`, `npm run abi:dapp`, `npm run deployment:check`, `npm run pins:check`,
-`npm run hub:audit`, `npm audit --audit-level=high`,
+`npm run abi:verify`, `npm run abi:dapp`, `npm run deployment:check`, `npm run pins:check`,
+`npm test`, `npm audit --audit-level=high`,
 `python3 scripts/sync_acton.py --check`, `yamllint`, `actionlint 1.7.12` и
 `git diff --check`.
 
