@@ -209,6 +209,10 @@ contract QuasarAdminTimelock {
 }
 
 fun onInternalMessage(in: InMessage) {
+    // TON empty-body transfers are balance top-ups, not protocol messages.
+    if (in.body.isEmpty()) {
+        return;
+    }
     val msg = lazy AllowedMessageToQuasarAdminTimelock.fromSlice(in.body);
     // A StateInit can be attached to any first internal message, not only Deploy.
     // Validate before dispatch so an invalid zero-admin/short-delay instance is inert.

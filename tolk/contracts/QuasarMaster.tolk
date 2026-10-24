@@ -2115,6 +2115,10 @@ fun applyTextMessage(mutate s: QuasarMasterStorage, senderAddress: address, body
 }
 
 fun onInternalMessage(in: InMessage) {
+    // TON empty-body transfers are balance top-ups, not protocol messages.
+    if (in.body.isEmpty()) {
+        return;
+    }
     val msg = lazy AllowedMessageToQuasarMaster.fromSlice(in.body);
     match (msg) {
         Deploy => {

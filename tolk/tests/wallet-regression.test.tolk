@@ -54,6 +54,20 @@ fun RegressionWalletFixture.walletData(self): JettonWalletData {
     return net.runGetMethod(self.address, "get_wallet_data");
 }
 
+get fun `test wallet: empty internal message is a harmless top-up`() {
+    val wallet = setupRegressionWallet(grams("1"));
+    val result = net.send(
+        wallet.owner.address,
+        createMessage({
+            bounce: BounceMode.NoBounce,
+            value: grams("0.2"),
+            dest: wallet.address,
+            body: beginCell().endCell(),
+        }),
+    );
+    expect(result).toHaveSuccessfulTx({ from: wallet.owner.address, to: wallet.address });
+}
+
 fun regressionTransfer(
     wallet: RegressionWalletFixture,
     queryId: uint64,

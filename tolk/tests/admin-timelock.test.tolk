@@ -55,6 +55,16 @@ get fun `test admin timelock: deploy initializes the contract`() {
     expect(timelock.getLastQueuedCallId()).toEqual(0);
 }
 
+get fun `test admin timelock: empty internal message is a harmless top-up`() {
+    val (timelock, admin, _, _) = setupTimelock();
+    val result = timelock.sendAny(
+        admin.address,
+        beginCell().endCell(),
+        { bounce: false, value: grams("0.2") },
+    );
+    expect(result).toHaveSuccessfulTx({ from: admin.address, to: timelock.address });
+}
+
 get fun `test admin timelock: deploy reply covers funded reserve branch`() {
     val (timelock, admin, _, _) = setupTimelockWithValue(grams("1"));
     expect(timelock.getAdmin()).toEqual(admin.address);

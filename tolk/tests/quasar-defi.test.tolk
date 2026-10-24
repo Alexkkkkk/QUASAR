@@ -58,6 +58,18 @@ get fun `test DeFi estimateLpOut is nonnegative and symmetric before liquidity`(
     expect(forward).toEqual(reverse);
 }
 
+get fun `test quasar defi: empty internal message is a harmless top-up`() {
+    val fixture = setupDeFi();
+    val result = fixture
+        .defi
+        .sendAny(
+            fixture.owner.address,
+            beginCell().endCell(),
+            { bounce: false, value: grams("0.2") },
+        );
+    expect(result).toHaveSuccessfulTx({ from: fixture.owner.address, to: fixture.defi.address });
+}
+
 fun addInitialLiquidity(fixture: DeFiFixture, provider: Treasury): void {
     val qsrAmount: coins = grams("100");
     val tonAmount: coins = grams("1");

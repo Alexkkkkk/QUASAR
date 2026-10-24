@@ -49,6 +49,16 @@ get fun `test quasar master: initialization retains supply, fee, pool and pause 
     expect(master.isTradingEnabled()).toEqual(true);
 }
 
+get fun `test quasar master: empty internal message is a harmless top-up`() {
+    val (master, owner) = setupMaster();
+    val result = master.sendAny(
+        owner.address,
+        beginCell().endCell(),
+        { bounce: false, value: grams("0.2") },
+    );
+    expect(result).toHaveSuccessfulTx({ from: owner.address, to: master.address });
+}
+
 get fun `test quasar master: wallet getter uses compiled wallet code and exact owner master pair`() {
     val (master, _) = setupMaster();
     val walletOwner = testing.treasury("quasar-master-wallet-owner");
