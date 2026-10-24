@@ -1,6 +1,6 @@
 # Решение о миграции Tact → Tolk
 
-Обновлено: 2026-10-23, issue #289. QUASAR переключён на Tolk/Acton как
+Обновлено: 2026-10-24, issue #289. QUASAR полностью переключён на Tolk/Acton как
 единственный активный путь разработки контрактов. Канонические исходники,
 тесты, ABI snapshots, wrappers, CI и build hashes находятся в `tolk/` и
 строятся Acton `1.2.1`.
@@ -23,8 +23,9 @@ Master и DeFi сохраняют rent reserve при `Deploy`; Timelock вал�
 admin/master и минимальную задержку независимо от того, каким первым сообщением
 прикреплён StateInit. Эти проверки не заменяют полный behavioral audit.
 
-Перед любым deployment всё ещё необходимы: differential traces success/reject/
-bounce paths, проверка non-empty storage dictionaries и границ cell, отдельный
-state-transition/claim plan, testnet rehearsal, reproducible code-hash review и
-независимый security audit. Никакие секреты, реальные транзакции или адреса не
-публикуются этим изменением.
+Миграция compiler/source path завершена, но это не означает автоматическую
+миграцию уже развёрнутого состояния. Перед любым deployment всё ещё необходимы:
+differential traces success/reject/bounce paths, проверка non-empty storage
+dictionaries и границ cell, отдельный state-transition/claim plan, testnet
+rehearsal, reproducible code-hash review и независимый security audit. Никакие
+секреты, реальные транзакции или адреса не публикуются этим изменением.

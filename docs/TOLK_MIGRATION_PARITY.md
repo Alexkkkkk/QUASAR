@@ -1,4 +1,4 @@
-# Tact → Tolk migration parity record
+# Tact → Tolk migration parity record (archived baseline)
 
 Дата baseline: 2026-10-23. Исторический source baseline — parent commit `ef1f1ed7deaa4b95603a8114f775d615ded001bb` (непосредственно перед Tolk cutover в `4afa5434105f42237915f8db61469ff0f1ba45ec`). Старые ABI собраны из этого checkout официальным `@tact-lang/compiler 1.6.13`; исходники Tact не участвуют в активной сборке. Baseline snapshots находятся в `docs/historical/tact-reference/abi/`.
 
@@ -29,9 +29,13 @@
 
 Storage намеренно **не является upgrade-compatible**. Tolk использует отдельные versioned layouts; существующие Tact Master/DeFi/Admin state cells, StateInit, code hashes и адреса нельзя считать принимаемыми новыми контрактами. Это fresh-deployment boundary, а не доказательство data/state migration. Никакие адреса, ключи или активы этим переключением не переносились.
 
-## Что ещё не доказано — не закрывать этим отчётом
+## Граница отчёта после полного Tolk cutover
 
-ABI parity подтверждает интерфейс, но не равенство каждой ветки выполнения. На дату проверки Tolk behavioral coverage остаётся неполным: Master имеет 5 сценариев; DeFi — 5; Wallet — 7; Admin timelock — 8 (всего 32 Acton contract tests с utility suites). Добавлены end-to-end regression paths для Master owner mint/supply/cap и Wallet rejected-pool-payout bounce/refund. Независимый read-only audit выделил приоритетные непройденные regressions:
+ABI parity подтверждает интерфейс, но не равенство каждой ветки выполнения. Этот
+файл теперь используется только как проверяемый compatibility gate между
+историческим Tact ABI и каноническим Tolk ABI; Tact не является compiler или
+source input. Поведенческие, storage-migration, testnet и независимые security
+проверки остаются отдельными release gates:
 
 1. **Master:** burn/fee accounting; staking/referral/vesting; governance replay/quorum; buyback/DeFi payout bounce; AI signature success/bad-signature/replay/expiry; veto/override; owner/content/config timelocks; reserve/custody accounting.
 2. **DeFi:** QSR payout failure/excess sequencing; TON payout bounce при liquidity removal и swap; возврат pending deposit; farm funding/claim/emergency withdrawal; delayed fee/max-trade changes; quote rounding и event/getter result checks.
