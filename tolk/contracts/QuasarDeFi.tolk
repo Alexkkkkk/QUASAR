@@ -73,6 +73,20 @@ struct (0x871208ba) SweepTon {
 
 struct (0x41348115) RefundPendingQsr {}
 
+struct (0x04ee321c) RetrySwapQsr {
+    swapId: uint64
+    destination: address
+}
+
+struct (0xda903644) ClaimSwapTonRefund {
+    swapId: uint64
+}
+
+struct (0xc1e15710) ClaimTonPayout {
+    claimId: uint64
+    destination: address
+}
+
 struct (0x946a98b6) Deploy {
     queryId: uint64
 }
@@ -265,15 +279,24 @@ struct PendingTonPayout {
     qsrAmount: int257
     lpAmount: int257
     qsrSettled: bool
+    // LP stake to restore for kind 1, or the TON fee to restore for kind 2.
+    rollbackAmount: int257
+    claimId: uint64
+    activeAttemptId: uint64
+    // 0 = primary transfer pending, 1 = TON is claimable, 2 = retry pending.
+    stage: uint8
 }
 
-// The Tact source expresses map values as ^PendingTonPayout. Its five int257
-// fields plus an address do not fit in a single cell, so the migration keeps
-// their widths and stores the final three fields in an explicit tail ref.
+// The Tact source expresses map values as ^PendingTonPayout. Keep the original
+// field order, accept its legacy three-field tail, and append recovery metadata.
 struct PendingTonPayoutTail {
     qsrAmount: int257
     lpAmount: int257
     qsrSettled: bool
+    rollbackAmount: int257
+    claimId: uint64
+    activeAttemptId: uint64
+    stage: uint8
 }
 
 struct PendingTonPayoutWire {
@@ -281,6 +304,39 @@ struct PendingTonPayoutWire {
     beneficiary: address
     tonOut: int257
     tail: Cell<PendingTonPayoutTail>
+}
+
+struct PendingQsrSwap {
+    status: uint8
+    swapId: uint64
+    payoutId: uint64
+    beneficiary: address
+    destination: address
+    tonIn: coins
+    qsrOut: coins
+    feeQsr: coins
+}
+
+struct PendingQsrSwapTail {
+    qsrOut: coins
+    feeQsr: coins
+}
+
+struct PendingQsrSwapWire {
+    status: uint8
+    swapId: uint64
+    payoutId: uint64
+    beneficiary: address
+    destination: address
+    tonIn: coins
+    tail: Cell<PendingQsrSwapTail>
+}
+
+struct TonPayoutClaimInfo {
+    beneficiary: address
+    amount: int257
+    status: uint8
+    activeAttemptId: uint64
 }
 
 struct SwapQuote {
@@ -343,31 +399,87 @@ struct QuasarDeFiStorage {
     prevBuybackQueryId: uint64
     prevBuybackTonOut: coins
     prevBuybackFee: coins
+    pendingQsrSwap: PendingQsrSwap
+    tonClaimsHeld: coins
 }
 
 fun PendingTonPayout.toWireCell(self): Cell<PendingTonPayoutWire> {
-    val tail = PendingTonPayoutTail {
-        qsrAmount: self.qsrAmount,
-        lpAmount: self.lpAmount,
-        qsrSettled: self.qsrSettled,
-    }.toCell();
+    var tail = beginCell();
+    tail.storeInt(self.qsrAmount, 257);
+    tail.storeInt(self.lpAmount, 257);
+    tail.storeBool(self.qsrSettled);
+    tail.storeInt(self.rollbackAmount, 257);
+    tail.storeUint(self.claimId, 64);
+    tail.storeUint(self.activeAttemptId, 64);
+    tail.storeUint(self.stage, 8);
     return PendingTonPayoutWire {
         kind: self.kind,
         beneficiary: self.beneficiary,
         tonOut: self.tonOut,
-        tail,
+        tail: tail.endCell() as Cell<PendingTonPayoutTail>,
     }.toCell();
 }
 
 fun PendingTonPayoutWire.toPendingTonPayout(self): PendingTonPayout {
-    val tail = self.tail.load();
+    var tail = self.tail.beginParse();
+    val qsrAmount = tail.loadInt(257) as int257;
+    val lpAmount = tail.loadInt(257) as int257;
+    val qsrSettled = tail.loadBool();
+    var rollbackAmount: int257 = 0;
+    var claimId: uint64 = 0;
+    var activeAttemptId: uint64 = 0;
+    var stage: uint8 = 0;
+    // Existing dictionaries contain only qsrAmount, lpAmount and qsrSettled.
+    if (tail.remainingBitsCount() == 393) {
+        rollbackAmount = tail.loadInt(257) as int257;
+        claimId = tail.loadUint(64) as uint64;
+        activeAttemptId = tail.loadUint(64) as uint64;
+        stage = tail.loadUint(8) as uint8;
+    } else {
+        assert (tail.remainingBitsCount() == 0 && tail.remainingRefsCount() == 0) throw 1240;
+    }
+    tail.assertEnd();
     return PendingTonPayout {
         kind: self.kind,
         beneficiary: self.beneficiary,
         tonOut: self.tonOut,
-        qsrAmount: tail.qsrAmount,
-        lpAmount: tail.lpAmount,
-        qsrSettled: tail.qsrSettled,
+        qsrAmount,
+        lpAmount,
+        qsrSettled,
+        rollbackAmount,
+        claimId,
+        activeAttemptId,
+        stage,
+    };
+}
+
+fun PendingQsrSwap.toWireCell(self): Cell<PendingQsrSwapWire> {
+    val tail = PendingQsrSwapTail {
+        qsrOut: self.qsrOut,
+        feeQsr: self.feeQsr,
+    }.toCell();
+    return PendingQsrSwapWire {
+        status: self.status,
+        swapId: self.swapId,
+        payoutId: self.payoutId,
+        beneficiary: self.beneficiary,
+        destination: self.destination,
+        tonIn: self.tonIn,
+        tail,
+    }.toCell();
+}
+
+fun PendingQsrSwapWire.toPendingQsrSwap(self): PendingQsrSwap {
+    val tail = self.tail.load();
+    return PendingQsrSwap {
+        status: self.status,
+        swapId: self.swapId,
+        payoutId: self.payoutId,
+        beneficiary: self.beneficiary,
+        destination: self.destination,
+        tonIn: self.tonIn,
+        qsrOut: tail.qsrOut,
+        feeQsr: tail.feeQsr,
     };
 }
 
@@ -428,6 +540,47 @@ fun QuasarDeFiStorage.unpackFromSlice(mutate root: slice): QuasarDeFiStorage {
 
     var cell4 = cell3.loadRef().beginParse();
     val prevBuybackFee = cell4.loadCoins();
+    var tonClaimsHeld: coins = 0;
+    var pendingQsrSwap = PendingQsrSwap {
+        status: 0,
+        swapId: 0,
+        payoutId: 0,
+        beneficiary: owner,
+        destination: owner,
+        tonIn: 0,
+        qsrOut: 0,
+        feeQsr: 0,
+    };
+    if (cell4.remainingRefsCount() == 1) {
+        var recovery = cell4.loadRef().beginParse();
+        assert (recovery.loadUint(8) == 1) throw 1241;
+        tonClaimsHeld = recovery.loadCoins();
+        var swapWire = recovery.loadRef().beginParse();
+        val swapStatus = swapWire.loadUint(8) as uint8;
+        val swapId = swapWire.loadUint(64) as uint64;
+        val payoutId = swapWire.loadUint(64) as uint64;
+        val swapBeneficiary = swapWire.loadAddress();
+        val swapDestination = swapWire.loadAddress();
+        val tonIn = swapWire.loadCoins();
+        var swapTail = swapWire.loadRef().beginParse();
+        val qsrOut = swapTail.loadCoins();
+        val feeQsr = swapTail.loadCoins();
+        swapTail.assertEnd();
+        swapWire.assertEnd();
+        pendingQsrSwap = PendingQsrSwap {
+            status: swapStatus,
+            swapId,
+            payoutId,
+            beneficiary: swapBeneficiary,
+            destination: swapDestination,
+            tonIn,
+            qsrOut,
+            feeQsr,
+        };
+        recovery.assertEnd();
+    } else {
+        assert (cell4.remainingRefsCount() == 0) throw 1242;
+    }
     cell4.assertEnd();
     cell3.assertEnd();
     cell2.assertEnd();
@@ -480,12 +633,20 @@ fun QuasarDeFiStorage.unpackFromSlice(mutate root: slice): QuasarDeFiStorage {
         prevBuybackQueryId,
         prevBuybackTonOut,
         prevBuybackFee,
+        pendingQsrSwap,
+        tonClaimsHeld,
     };
 }
 
 fun QuasarDeFiStorage.packToBuilder(self, mutate root: builder) {
+    var recovery = beginCell();
+    recovery.storeUint(1, 8);
+    recovery.storeCoins(self.tonClaimsHeld);
+    recovery.storeRef(self.pendingQsrSwap.toWireCell());
+
     var cell4 = beginCell();
     cell4.storeCoins(self.prevBuybackFee);
+    cell4.storeRef(recovery.endCell());
 
     var cell3 = beginCell();
     cell3.storeUint(self.pendingMaxTradeAt, 32);
@@ -603,6 +764,17 @@ fun newQuasarDeFiStorage(owner: address, qsrMaster: address): QuasarDeFiStorage 
         prevBuybackQueryId: 0,
         prevBuybackTonOut: 0,
         prevBuybackFee: 0,
+        pendingQsrSwap: PendingQsrSwap {
+            status: 0,
+            swapId: 0,
+            payoutId: 0,
+            beneficiary: owner,
+            destination: owner,
+            tonIn: 0,
+            qsrOut: 0,
+            feeQsr: 0,
+        },
+        tonClaimsHeld: 0,
     };
 }
 
@@ -624,6 +796,9 @@ type AllowedMessageToQuasarDeFi =
     | CancelPoolOwner
     | SweepTon
     | RefundPendingQsr
+    | RetrySwapQsr
+    | ClaimSwapTonRefund
+    | ClaimTonPayout
     | TokenNotification
     | TokenExcesses
     | PayoutFailed
@@ -643,6 +818,8 @@ const DEFI_SCALE: int257 = 1000000000
 const QSR_BUYBACK_MARKER = 0x5f4a3b21
 const ZERO_ADDRESS: address = address("0:0000000000000000000000000000000000000000000000000000000000000000")
 const DAY_YEAR = 31536000
+const TON_CLAIM_CALL_MIN_VALUE: coins = 50000000
+const TON_CLAIM_FEE_RESERVE: coins = 10000000
 
 fun minimum(a: int257, b: int257): int257 {
     return a < b ? a : b;
@@ -698,6 +875,32 @@ fun tonPayoutOf(m: map<int257, Cell<PendingTonPayoutWire>>, id: int257): Pending
     return result.loadValue().load().toPendingTonPayout();
 }
 
+fun markTonPayoutClaimable(
+    mutate s: QuasarDeFiStorage,
+    id: uint64,
+    payout: PendingTonPayout,
+    amount: coins,
+) {
+    s
+        .pendingTonPayouts
+        .set(
+            id as int257,
+            PendingTonPayout {
+                kind: payout.kind,
+                beneficiary: payout.beneficiary,
+                tonOut: amount as int257,
+                qsrAmount: payout.qsrAmount,
+                lpAmount: payout.lpAmount,
+                qsrSettled: payout.qsrSettled,
+                rollbackAmount: payout.rollbackAmount,
+                claimId: payout.claimId,
+                activeAttemptId: 0,
+                stage: 1,
+            }.toWireCell(),
+        );
+    s.tonClaimsHeld += amount;
+}
+
 fun lock(mutate s: QuasarDeFiStorage) {
     assert (!s.locked) throw 1001;
     s.locked = true;
@@ -709,6 +912,10 @@ fun unlock(mutate s: QuasarDeFiStorage) {
 
 fun requireActive(s: QuasarDeFiStorage) {
     assert (!s.paused) throw 1002;
+}
+
+fun requireNoPendingQsrSwap(s: QuasarDeFiStorage) {
+    assert (s.pendingQsrSwap.status == 0) throw 1243;
 }
 
 fun requireDeadline(deadline: uint32) {
@@ -809,6 +1016,39 @@ fun unstakeLp(mutate s: QuasarDeFiStorage, user: address, amount: int257) {
     s.farmTotalStaked -= amount;
 }
 
+fun restoreFarmStake(mutate s: QuasarDeFiStorage, user: address, amount: int257) {
+    if (amount <= 0) {
+        return;
+    }
+    updateFarm(mutate s);
+    val old = farmInfoOf(s.farmStakes, user);
+    if (old == null) {
+        s
+            .farmStakes
+            .set(
+                user,
+                UserFarmInfo {
+                    staked: amount,
+                    debt: s.farmAccRewardPerShare,
+                    pending: 0,
+                }.toCell(),
+            );
+    } else {
+        val accrued = (old.staked * (s.farmAccRewardPerShare - old.debt)) / DEFI_SCALE;
+        s
+            .farmStakes
+            .set(
+                user,
+                UserFarmInfo {
+                    staked: old.staked + amount,
+                    debt: s.farmAccRewardPerShare,
+                    pending: old.pending + accrued,
+                }.toCell(),
+            );
+    }
+    s.farmTotalStaked += amount;
+}
+
 fun sendTonPayout(to: address, amount: coins, id: uint64) {
     val tonPayoutMessage = createMessage({
         bounce: BounceMode.Only256BitsOfBody,
@@ -860,6 +1100,74 @@ fun sendQsrPayout(
     qsrPayoutMessage.send(SEND_MODE_PAY_FEES_SEPARATELY);
 }
 
+fun failQsrPayout(
+    mutate s: QuasarDeFiStorage,
+    id: uint64,
+    amount: coins,
+    beneficiary: address,
+) {
+    val payout = payoutOf(s.pendingPayouts, id as int257);
+    assert (
+        payout != null && payout.amount == amount && payout.beneficiary == beneficiary
+    ) throw 1106;
+    s.pendingPayouts.delete(id as int257);
+    if (payout.kind == 1) {
+        s.qsrReserve += amount;
+        val removal = tonPayoutOf(s.pendingTonPayouts, id as int257);
+        assert (
+            removal != null && removal.kind == 1 && !removal.qsrSettled && removal.stage == 0 &&
+            removal.qsrAmount == amount &&
+            removal.beneficiary == payout.beneficiary &&
+            removal.activeAttemptId == id
+        ) throw 1107;
+        s.tonReserve += removal.tonOut;
+        s
+            .lpBalances
+            .set(
+                removal.beneficiary,
+                lpBalanceOf(s.lpBalances, removal.beneficiary) + removal.lpAmount,
+            );
+        s.lpTotalSupply += removal.lpAmount;
+        restoreFarmStake(mutate s, removal.beneficiary, removal.rollbackAmount);
+        s.pendingTonPayouts.delete(id as int257);
+    } else if (payout.kind == 4) {
+        val swap = s.pendingQsrSwap;
+        assert (
+            swap.status == 1 && swap.payoutId == id && swap.destination == payout.beneficiary &&
+            swap.qsrOut == amount
+        ) throw 1108;
+        s.qsrReserve += amount;
+        s.feeAccumulatedQsr -= swap.feeQsr;
+        s.pendingQsrSwap.status = 2;
+        s.pendingQsrSwap.payoutId = 0;
+    } else if (payout.kind == 2) {
+        s.farmRewardReserve += amount;
+        val farmer = farmInfoOf(s.farmStakes, payout.beneficiary);
+        if (farmer != null) {
+            s
+                .farmStakes
+                .set(
+                    payout.beneficiary,
+                    UserFarmInfo {
+                        staked: farmer.staked,
+                        debt: farmer.debt,
+                        pending: farmer.pending + amount,
+                    }.toCell(),
+                );
+        }
+    } else if (payout.kind == 3) {
+        val old = pendingInt(s.pendingQsrDeposits, payout.beneficiary);
+        var refunded: int257 = amount as int257;
+        if (old != null) {
+            refunded += old;
+        }
+        s.pendingQsrDeposits.set(payout.beneficiary, refunded);
+        s.pendingQsrDepositsAt.set(payout.beneficiary, blockchain.now());
+    } else {
+        assert (false) throw 1108;
+    }
+}
+
 fun emitLiquidityAdded(provider: address, tonAmount: int257, qsrAmount: int257, lpMinted: int257) {
     val event = createExternalLogMessage({
         dest: createAddressNone(),
@@ -908,6 +1216,7 @@ fun emitUnknownBuybackBounce(queryId: uint64) {
 }
 
 fun executeBuybackSwap(mutate s: QuasarDeFiStorage, qsrIn: coins, queryId: uint64) {
+    requireNoPendingQsrSwap(s);
     assert (qsrIn > 0) throw 1010;
     assert (s.tonReserve > 0) throw 1011;
     val qsrBefore = s.qsrReserve - qsrIn;
@@ -996,7 +1305,12 @@ fun onInternalMessage(in: InMessage) {
             s.pendingPayouts.delete(id as int257);
             if (payout.kind == 1) {
                 val remove = tonPayoutOf(s.pendingTonPayouts, id as int257);
-                assert (remove != null && remove.kind == 1 && !remove.qsrSettled) throw 1104;
+                assert (
+                    remove != null && remove.kind == 1 && !remove.qsrSettled && remove.stage == 0 &&
+                    remove.activeAttemptId == id &&
+                    remove.beneficiary == payout.beneficiary &&
+                    remove.qsrAmount == payout.amount
+                ) throw 1104;
                 if (remove.tonOut > 0) {
                     s
                         .pendingTonPayouts
@@ -1009,6 +1323,10 @@ fun onInternalMessage(in: InMessage) {
                                 qsrAmount: remove.qsrAmount,
                                 lpAmount: remove.lpAmount,
                                 qsrSettled: true,
+                                rollbackAmount: remove.rollbackAmount,
+                                claimId: remove.claimId,
+                                activeAttemptId: id,
+                                stage: 0,
                             }.toWireCell(),
                         );
                     s.save();
@@ -1017,6 +1335,22 @@ fun onInternalMessage(in: InMessage) {
                     s.pendingTonPayouts.delete(id as int257);
                     s.save();
                 }
+            } else if (payout.kind == 4) {
+                val swap = s.pendingQsrSwap;
+                assert (
+                    swap.status == 1 && swap.payoutId == id &&
+                    swap.destination == payout.beneficiary &&
+                    swap.qsrOut == payout.amount
+                ) throw 1109;
+                s.pendingQsrSwap.status = 0;
+                s.pendingQsrSwap.swapId = 0;
+                s.pendingQsrSwap.payoutId = 0;
+                s.pendingQsrSwap.beneficiary = s.owner;
+                s.pendingQsrSwap.destination = s.owner;
+                s.pendingQsrSwap.tonIn = 0;
+                s.pendingQsrSwap.qsrOut = 0;
+                s.pendingQsrSwap.feeQsr = 0;
+                s.save();
             } else {
                 s.save();
             }
@@ -1028,52 +1362,7 @@ fun onInternalMessage(in: InMessage) {
                 in.senderAddress ==
                 quasarWalletAddress(contract.getAddress(), s.qsrMaster, quasarWalletCompiledCode())
             ) throw 1105;
-            val payout = payoutOf(s.pendingPayouts, msg.queryId as int257);
-            assert (payout != null && payout.amount == msg.amount) throw 1106;
-            s.pendingPayouts.delete(msg.queryId as int257);
-            if (payout.kind == 1 || payout.kind == 4) {
-                s.qsrReserve += msg.amount;
-                if (payout.kind == 1) {
-                    val removal = tonPayoutOf(s.pendingTonPayouts, msg.queryId as int257);
-                    if (removal != null && removal.kind == 1) {
-                        assert (!removal.qsrSettled) throw 1107;
-                        s.tonReserve += removal.tonOut;
-                        s
-                            .lpBalances
-                            .set(
-                                removal.beneficiary,
-                                lpBalanceOf(s.lpBalances, removal.beneficiary) + removal.lpAmount,
-                            );
-                        s.lpTotalSupply += removal.lpAmount;
-                        s.pendingTonPayouts.delete(msg.queryId as int257);
-                    }
-                }
-            } else if (payout.kind == 2) {
-                s.farmRewardReserve += msg.amount;
-                val farmer = farmInfoOf(s.farmStakes, payout.beneficiary);
-                if (farmer != null) {
-                    s
-                        .farmStakes
-                        .set(
-                            payout.beneficiary,
-                            UserFarmInfo {
-                                staked: farmer.staked,
-                                debt: farmer.debt,
-                                pending: farmer.pending + msg.amount,
-                            }.toCell(),
-                        );
-                }
-            } else if (payout.kind == 3) {
-                val old = pendingInt(s.pendingQsrDeposits, payout.beneficiary);
-                var refunded: int257 = msg.amount as int257;
-                if (old != null) {
-                    refunded += old;
-                }
-                s.pendingQsrDeposits.set(payout.beneficiary, refunded);
-                s.pendingQsrDepositsAt.set(payout.beneficiary, blockchain.now());
-            } else {
-                assert (false) throw 1108;
-            }
+            failQsrPayout(mutate s, msg.queryId, msg.amount, msg.destination);
             s.save();
         }
 
@@ -1089,9 +1378,133 @@ fun onInternalMessage(in: InMessage) {
             sendQsrPayout(mutate s, in.senderAddress, pending as coins, 3, id);
         }
 
+        RetrySwapQsr => {
+            var s = QuasarDeFiStorage.load();
+            val swap = s.pendingQsrSwap;
+            assert (
+                swap.status == 2 && swap.swapId == msg.swapId &&
+                swap.beneficiary == in.senderAddress
+            ) throw 1244;
+            assert (!isZeroAddress(msg.destination) && swap.qsrOut > 0) throw 1245;
+            lock(mutate s);
+            val id = nextPayoutId(mutate s);
+            s.qsrReserve -= swap.qsrOut;
+            s.feeAccumulatedQsr += swap.feeQsr;
+            s.pendingQsrSwap.status = 1;
+            s.pendingQsrSwap.payoutId = id;
+            s.pendingQsrSwap.destination = msg.destination;
+            unlock(mutate s);
+            s.save();
+            sendQsrPayout(mutate s, msg.destination, swap.qsrOut, 4, id);
+        }
+
+        ClaimSwapTonRefund => {
+            var s = QuasarDeFiStorage.load();
+            val swap = s.pendingQsrSwap;
+            assert (
+                swap.status == 2 && swap.swapId == msg.swapId &&
+                swap.beneficiary == in.senderAddress
+            ) throw 1246;
+            assert (swap.tonIn > 0 && s.tonReserve >= swap.tonIn) throw 1247;
+            assert (tonPayoutOf(s.pendingTonPayouts, msg.swapId as int257) == null) throw 1248;
+            assert (in.valueCoins >= TON_CLAIM_CALL_MIN_VALUE) throw 1249;
+            assert (
+                contract.getOriginalBalance() + in.valueCoins >=
+                s.tonReserve + QUASAR_STORAGE_RESERVE + TON_CLAIM_FEE_RESERVE
+            ) throw 1250;
+            lock(mutate s);
+            s.tonReserve -= swap.tonIn;
+            s
+                .pendingTonPayouts
+                .set(
+                    msg.swapId as int257,
+                    PendingTonPayout {
+                        kind: 3,
+                        beneficiary: in.senderAddress,
+                        tonOut: swap.tonIn as int257,
+                        qsrAmount: 0,
+                        lpAmount: 0,
+                        qsrSettled: true,
+                        rollbackAmount: 0,
+                        claimId: msg.swapId,
+                        activeAttemptId: msg.swapId,
+                        stage: 0,
+                    }.toWireCell(),
+                );
+            s.pendingQsrSwap.status = 0;
+            s.pendingQsrSwap.swapId = 0;
+            s.pendingQsrSwap.payoutId = 0;
+            s.pendingQsrSwap.beneficiary = s.owner;
+            s.pendingQsrSwap.destination = s.owner;
+            s.pendingQsrSwap.tonIn = 0;
+            s.pendingQsrSwap.qsrOut = 0;
+            s.pendingQsrSwap.feeQsr = 0;
+            unlock(mutate s);
+            s.save();
+            sendTonPayout(in.senderAddress, swap.tonIn, msg.swapId);
+        }
+
+        ClaimTonPayout => {
+            var s = QuasarDeFiStorage.load();
+            val claim = tonPayoutOf(s.pendingTonPayouts, msg.claimId as int257);
+            assert (
+                claim != null && claim.stage == 1 && claim.activeAttemptId == 0 &&
+                claim.claimId == msg.claimId &&
+                claim.beneficiary == in.senderAddress
+            ) throw 1251;
+            assert (!isZeroAddress(msg.destination) && claim.tonOut > 0) throw 1252;
+            assert (s.tonClaimsHeld >= claim.tonOut) throw 1253;
+            assert (in.valueCoins >= TON_CLAIM_CALL_MIN_VALUE) throw 1254;
+            assert (
+                contract.getOriginalBalance() + in.valueCoins >=
+                s.tonReserve + s.tonClaimsHeld + QUASAR_STORAGE_RESERVE + TON_CLAIM_FEE_RESERVE
+            ) throw 1255;
+            lock(mutate s);
+            val id = nextPayoutId(mutate s);
+            s
+                .pendingTonPayouts
+                .set(
+                    msg.claimId as int257,
+                    PendingTonPayout {
+                        kind: claim.kind,
+                        beneficiary: claim.beneficiary,
+                        tonOut: claim.tonOut,
+                        qsrAmount: claim.qsrAmount,
+                        lpAmount: claim.lpAmount,
+                        qsrSettled: claim.qsrSettled,
+                        rollbackAmount: claim.rollbackAmount,
+                        claimId: claim.claimId,
+                        activeAttemptId: id,
+                        stage: 2,
+                    }.toWireCell(),
+                );
+            s
+                .pendingTonPayouts
+                .set(
+                    id as int257,
+                    PendingTonPayout {
+                        kind: 4,
+                        beneficiary: msg.destination,
+                        tonOut: claim.tonOut,
+                        qsrAmount: 0,
+                        lpAmount: 0,
+                        qsrSettled: true,
+                        rollbackAmount: 0,
+                        claimId: msg.claimId,
+                        activeAttemptId: id,
+                        stage: 0,
+                    }.toWireCell(),
+                );
+            s.tonClaimsHeld -= claim.tonOut;
+            unlock(mutate s);
+            s.save();
+            sendTonPayout(msg.destination, claim.tonOut as coins, id);
+        }
+
         AddLiquidity => {
             var s = QuasarDeFiStorage.load();
             requireActive(s);
+            requireNoPendingQsrSwap(s);
             lock(mutate s);
             requireDeadline(msg.deadline);
             assert (msg.tonAmount > 0 && msg.qsrAmount > 0) throw 1120;
@@ -1150,6 +1563,7 @@ fun onInternalMessage(in: InMessage) {
 
         RemoveLiquidity => {
             var s = QuasarDeFiStorage.load();
+            requireNoPendingQsrSwap(s);
             lock(mutate s);
             requireDeadline(msg.deadline);
             val current = lpBalanceOf(s.lpBalances, in.senderAddress);
@@ -1159,9 +1573,10 @@ fun onInternalMessage(in: InMessage) {
             assert (tonOut > 0 || qsrOut > 0) throw 1131;
             assert (tonOut >= msg.minTonOut && qsrOut >= msg.minQsrOut) throw 1132;
             updateFarm(mutate s);
+            var farmAmount: int257 = 0;
             val farmStake = farmInfoOf(s.farmStakes, in.senderAddress);
             if (farmStake != null && farmStake.staked > 0) {
-                val farmAmount = minimum(msg.lpAmount as int257, farmStake.staked);
+                farmAmount = minimum(msg.lpAmount as int257, farmStake.staked);
                 if (farmAmount > 0) {
                     unstakeLp(mutate s, in.senderAddress, farmAmount);
                 }
@@ -1183,6 +1598,10 @@ fun onInternalMessage(in: InMessage) {
                         qsrAmount: qsrOut,
                         lpAmount: msg.lpAmount as int257,
                         qsrSettled: false,
+                        rollbackAmount: farmAmount,
+                        claimId: id,
+                        activeAttemptId: id,
+                        stage: 0,
                     }.toWireCell(),
                 );
             unlock(mutate s);
@@ -1198,6 +1617,7 @@ fun onInternalMessage(in: InMessage) {
         SwapToTon => {
             var s = QuasarDeFiStorage.load();
             requireActive(s);
+            requireNoPendingQsrSwap(s);
             lock(mutate s);
             requireDeadline(msg.deadline);
             assert (msg.qsrAmount > 0 && s.qsrReserve > 0) throw 1140;
@@ -1227,6 +1647,10 @@ fun onInternalMessage(in: InMessage) {
                         qsrAmount: msg.qsrAmount as int257,
                         lpAmount: 0,
                         qsrSettled: false,
+                        rollbackAmount: fee as int257,
+                        claimId: id,
+                        activeAttemptId: id,
+                        stage: 0,
                     }.toWireCell(),
                 );
             unlock(mutate s);
@@ -1245,6 +1669,7 @@ fun onInternalMessage(in: InMessage) {
         SwapToQsr => {
             var s = QuasarDeFiStorage.load();
             requireActive(s);
+            requireNoPendingQsrSwap(s);
             lock(mutate s);
             requireDeadline(msg.deadline);
             assert (msg.tonAmount > 0 && s.tonReserve > 0) throw 1150;
@@ -1261,6 +1686,16 @@ fun onInternalMessage(in: InMessage) {
             s.qsrReserve -= qsrOut;
             s.feeAccumulatedQsr += fee;
             val id = nextPayoutId(mutate s);
+            s.pendingQsrSwap = PendingQsrSwap {
+                status: 1,
+                swapId: id,
+                payoutId: id,
+                beneficiary: in.senderAddress,
+                destination: in.senderAddress,
+                tonIn: msg.tonAmount,
+                qsrOut,
+                feeQsr: fee,
+            };
             unlock(mutate s);
             val excess = in.valueCoins - msg.tonAmount;
             s.save();
@@ -1420,7 +1855,7 @@ fun onInternalMessage(in: InMessage) {
             assert (msg.amount > 0) throw 1211;
             assert (
                 contract.getOriginalBalance() + in.valueCoins >=
-                s.tonReserve + msg.amount + QUASAR_STORAGE_RESERVE
+                s.tonReserve + s.tonClaimsHeld + msg.amount + QUASAR_STORAGE_RESERVE
             ) throw 1212;
             val sweep = createMessage({
                 bounce: BounceMode.NoBounce,
@@ -1505,39 +1940,55 @@ fun onBouncedMessage(in: InMessageBounced) {
         val queryId = body.loadUint(64) as uint64;
         val amount = body.loadCoins();
         val p = tonPayoutOf(s.pendingTonPayouts, queryId as int257);
-        assert (p != null && in.senderAddress == p.beneficiary && amount == p.tonOut) throw 1230;
-        s.pendingTonPayouts.delete(queryId as int257);
-        s.tonReserve += p.tonOut;
+        assert (
+            p != null && in.senderAddress == p.beneficiary && amount == p.tonOut && p.stage == 0 &&
+            p.activeAttemptId == queryId
+        ) throw 1230;
         if (p.kind == 1) {
-            if (p.qsrAmount == 0) {
-                s
-                    .lpBalances
-                    .set(
-                        p.beneficiary,
-                        lpBalanceOf(s.lpBalances, p.beneficiary) + p.lpAmount,
-                    );
-                s.lpTotalSupply += p.lpAmount;
-            } else {
+            if (p.qsrAmount > 0) {
                 assert (p.qsrSettled) throw 1231;
-                // QSR already settled. Only the TON reserve is restored.
             }
-        } else if (p.kind == 2) {
-            s.qsrReserve -= p.qsrAmount;
-            val deposit = pendingInt(s.pendingQsrDeposits, p.beneficiary);
-            var restoredDeposit: int257 = p.qsrAmount;
-            if (deposit != null) {
-                restoredDeposit += deposit;
-            }
-            s.pendingQsrDeposits.set(p.beneficiary, restoredDeposit);
-            s.pendingQsrDepositsAt.set(p.beneficiary, blockchain.now());
+            // LP burn and QSR settlement are final; the bounced TON amount is
+            // segregated as a claim instead of mutating reserves after later trades.
+            markTonPayoutClaimable(mutate s, queryId, p, in.valueCoins);
+        } else if (p.kind == 2 || p.kind == 3) {
+            // SwapToTon succeeded economically, or a failed QSR swap is being
+            // refunded. In either case only the TON returned by the bounce is owed.
+            markTonPayoutClaimable(mutate s, queryId, p, in.valueCoins);
+        } else if (p.kind == 4) {
+            val claim = tonPayoutOf(s.pendingTonPayouts, p.claimId as int257);
+            assert (
+                claim != null && claim.stage == 2 && claim.activeAttemptId == queryId &&
+                claim.claimId == p.claimId &&
+                claim.tonOut == p.tonOut
+            ) throw 1232;
+            markTonPayoutClaimable(mutate s, p.claimId, claim, in.valueCoins);
+            s.pendingTonPayouts.delete(queryId as int257);
         } else {
-            assert (false) throw 1232;
+            assert (false) throw 1233;
         }
         s.save();
         return;
     }
+    if (opcode == 0x51a5c3d1) {
+        // A bounce of PoolPayout means the pool wallet rejected the command
+        // before it could create its own recipient transfer. Only the pool
+        // wallet can produce this callback; its short body includes query ID
+        // and amount, but not the recipient address.
+        val queryId = body.loadUint(64) as uint64;
+        val amount = body.loadCoins();
+        assert (
+            in.senderAddress ==
+            quasarWalletAddress(contract.getAddress(), s.qsrMaster, quasarWalletCompiledCode())
+        ) throw 1235;
+        val payout = payoutOf(s.pendingPayouts, queryId as int257);
+        assert (payout != null && payout.amount == amount) throw 1236;
+        failQsrPayout(mutate s, queryId, amount, payout.beneficiary);
+        s.save();
+        return;
+    }
     if (opcode == 0x2c7e91a4) {
-        assert (in.senderAddress == s.qsrMaster) throw 1233;
+        assert (in.senderAddress == s.qsrMaster) throw 1234;
         val queryId = body.loadUint(64) as uint64;
         val tonAmount = body.loadCoins();
         if (
@@ -1582,6 +2033,28 @@ get fun pendingQsrDeposit(user: address): int {
 get fun pendingQsrDepositAt(user: address): int {
     val found = pendingInt(QuasarDeFiStorage.load().pendingQsrDepositsAt, user);
     return found == null ? 0 : found;
+}
+
+get fun tonPayoutClaim(claimId: uint64): TonPayoutClaimInfo {
+    val claim = tonPayoutOf(QuasarDeFiStorage.load().pendingTonPayouts, claimId as int257);
+    if (claim == null) {
+        return TonPayoutClaimInfo {
+            beneficiary: ZERO_ADDRESS,
+            amount: 0,
+            status: 0,
+            activeAttemptId: 0,
+        };
+    }
+    return TonPayoutClaimInfo {
+        beneficiary: claim.beneficiary,
+        amount: claim.tonOut,
+        status: claim.stage,
+        activeAttemptId: claim.activeAttemptId,
+    };
+}
+
+get fun tonClaimsHeld(): int {
+    return QuasarDeFiStorage.load().tonClaimsHeld as int257;
 }
 
 get fun poolInfo(): LpInfo {

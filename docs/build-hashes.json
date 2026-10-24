@@ -4,7 +4,7 @@
     "project": "Tolk/Acton",
     "acton": "1.2.1"
   },
-  "generatedAt": "2026-10-23T06:17:42.195Z",
+  "generatedAt": "2026-10-23T21:39:09.389Z",
   "note": "Hashes identify reproducible fresh-deployment Tolk artifacts. They do not establish state or address compatibility with legacy Tact deployments.",
   "artifacts": [
     {
@@ -13,7 +13,7 @@
     },
     {
       "file": "tolk/build/synchronized/abi/QuasarDeFi.json",
-      "sha256": "2885b332359a2c51c62a5c02364bfa294dc83303774cdb6bad5d1371c899c16a"
+      "sha256": "c956f645a34facccb3596841df5f4ad97ef535ee2efc9dddc298966bdf004633"
     },
     {
       "file": "tolk/build/synchronized/abi/QuasarMaster.json",
@@ -29,15 +29,15 @@
     },
     {
       "file": "tolk/build/synchronized/boc/QuasarDeFi.boc",
-      "sha256": "eb688cc25732f682ca5ed10e29586a93d9f876f4db1882e73f2eccb67034fbc0"
+      "sha256": "d81549366f19b910e7419dd23ec217295bbc054aaffb185397ee669c01ec5c7b"
     },
     {
       "file": "tolk/build/synchronized/boc/QuasarMaster.boc",
-      "sha256": "bc012bb675eeb2cdb7de635e2d74677390730fb4b007dfd41384b4ffd5da610a"
+      "sha256": "b4a58601118395bec0865ee8d57da1de97c43879aa92fd8b2d58e8a48b487317"
     },
     {
       "file": "tolk/build/synchronized/boc/QuasarWallet.boc",
-      "sha256": "e08ef86e24700183fa203947af5d1a34aacc4d10b47f0a5fc71e81932aa971ad"
+      "sha256": "85ce42e1b28fdd11fb12cbaf8abedbee8d19a4d37ea07c25b55802f2a3742090"
     }
   ]
 }

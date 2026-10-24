@@ -303,6 +303,32 @@
       }
     },
     {
+      "arguments": [],
+      "methodId": 114308,
+      "name": "tonClaimsHeld",
+      "returns": {
+        "optional": false,
+        "type": "int"
+      }
+    },
+    {
+      "arguments": [
+        {
+          "name": "claimId",
+          "type": {
+            "optional": false,
+            "type": "uint64"
+          }
+        }
+      ],
+      "methodId": 91962,
+      "name": "tonPayoutClaim",
+      "returns": {
+        "optional": false,
+        "type": "struct:TonPayoutClaimInfo"
+      }
+    },
+    {
       "arguments": [
         {
           "name": "user",
@@ -369,6 +395,39 @@
       "fields": [],
       "name": "ClaimFarmRewards",
       "opcode": "0x511327f0"
+    },
+    {
+      "fields": [
+        {
+          "name": "swapId",
+          "type": {
+            "optional": false,
+            "type": "uint64"
+          }
+        }
+      ],
+      "name": "ClaimSwapTonRefund",
+      "opcode": "0xda903644"
+    },
+    {
+      "fields": [
+        {
+          "name": "claimId",
+          "type": {
+            "optional": false,
+            "type": "uint64"
+          }
+        },
+        {
+          "name": "destination",
+          "type": {
+            "optional": false,
+            "type": "address"
+          }
+        }
+      ],
+      "name": "ClaimTonPayout",
+      "opcode": "0xc1e15710"
     },
     {
       "fields": [
@@ -479,6 +538,26 @@
       ],
       "name": "RemoveLiquidity",
       "opcode": "0x509b0d6a"
+    },
+    {
+      "fields": [
+        {
+          "name": "swapId",
+          "type": {
+            "optional": false,
+            "type": "uint64"
+          }
+        },
+        {
+          "name": "destination",
+          "type": {
+            "optional": false,
+            "type": "address"
+          }
+        }
+      ],
+      "name": "RetrySwapQsr",
+      "opcode": "0x04ee321c"
     },
     {
       "fields": [
@@ -842,6 +921,38 @@
           "type": {
             "optional": false,
             "type": "int257"
+          }
+        }
+      ]
+    },
+    "TonPayoutClaimInfo": {
+      "fields": [
+        {
+          "name": "beneficiary",
+          "type": {
+            "optional": false,
+            "type": "address"
+          }
+        },
+        {
+          "name": "amount",
+          "type": {
+            "optional": false,
+            "type": "int257"
+          }
+        },
+        {
+          "name": "status",
+          "type": {
+            "optional": false,
+            "type": "uint8"
+          }
+        },
+        {
+          "name": "activeAttemptId",
+          "type": {
+            "optional": false,
+            "type": "uint64"
           }
         }
       ]

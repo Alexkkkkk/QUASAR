@@ -41,6 +41,33 @@ ANY_ADDRESS_WIDENINGS = {
     ("Master", "ProvideWalletAddress", "ownerAddress"),
     ("Wallet", "ProvideWalletAddress", "ownerAddress"),
 }
+APPROVED_ADDITIONAL_MESSAGES = {
+    "DeFi": {
+        "RetrySwapQsr": (
+            0x04EE321C,
+            [("swapId", "uint64", False), ("destination", "address", False)],
+        ),
+        "ClaimSwapTonRefund": (
+            0xDA903644,
+            [("swapId", "uint64", False)],
+        ),
+        "ClaimTonPayout": (
+            0xC1E15710,
+            [("claimId", "uint64", False), ("destination", "address", False)],
+        ),
+    },
+}
+APPROVED_ADDITIONAL_GETTERS = {
+    "DeFi": {
+        "tonPayoutClaim": (
+            [("claimId", "uint64", False)],
+            "struct:tonpayoutclaiminfo",
+            False,
+            91962,
+        ),
+        "tonClaimsHeld": ([], "int", False, 114308),
+    },
+}
 CONSTANT_SOURCES = {
     "legacy": [
         ROOT / "docs/historical/tact-reference/contracts/quasar_common.tact",
@@ -220,11 +247,33 @@ def check_contract(label: str, old: dict[str, Any], new: dict[str, Any]) -> list
     new_msgs = {item["name"]: item for item in new.get("messages", [])}
     old_ci = {name.casefold(): name for name in old_msgs}
     new_ci = {name.casefold(): name for name in new_msgs}
+    approved_messages = APPROVED_ADDITIONAL_MESSAGES.get(label, {})
+    approved_message_ci = {name.casefold(): name for name in approved_messages}
 
     for key in sorted(old_ci.keys() - new_ci.keys()):
         errors.append(f"{label}: Tolk is missing incoming message {old_ci[key]}")
     for key in sorted(new_ci.keys() - old_ci.keys()):
-        errors.append(f"{label}: unexpected typed Tolk receiver {new_ci[key]}")
+        if key not in approved_message_ci:
+            errors.append(f"{label}: unexpected typed Tolk receiver {new_ci[key]}")
+    for key, name in approved_message_ci.items():
+        if key not in new_ci:
+            errors.append(f"{label}: approved additive receiver is missing: {name}")
+            continue
+        actual_name = new_ci[key]
+        message = new_msgs[actual_name]
+        expected_opcode, expected_fields = approved_messages[name]
+        actual_opcode = int(message["opcode"], 16)
+        if actual_opcode != expected_opcode:
+            errors.append(
+                f"{label}.{name}: approved additive opcode changed "
+                f"0x{expected_opcode:08x} != 0x{actual_opcode:08x}"
+            )
+        actual_fields = signature_fields(message.get("fields", []), legacy=False)
+        if actual_fields != expected_fields:
+            errors.append(
+                f"{label}.{name}: approved additive fields changed "
+                f"{expected_fields!r} != {actual_fields!r}"
+            )
 
     for key in sorted(old_ci.keys() & new_ci.keys()):
         old_name, new_name = old_ci[key], new_ci[key]
@@ -273,10 +322,40 @@ def check_contract(label: str, old: dict[str, Any], new: dict[str, Any]) -> list
 
     old_getters = {item["name"]: item for item in old.get("getters", [])}
     new_getters = {item["name"]: item for item in new.get("getters", [])}
+    approved_getters = APPROVED_ADDITIONAL_GETTERS.get(label, {})
     for name in sorted(old_getters.keys() - new_getters.keys()):
         errors.append(f"{label}: Tolk is missing getter {name}")
     for name in sorted(new_getters.keys() - old_getters.keys()):
-        errors.append(f"{label}: unexpected Tolk getter {name}")
+        if name not in approved_getters:
+            errors.append(f"{label}: unexpected Tolk getter {name}")
+    for name, expected in approved_getters.items():
+        if name not in new_getters:
+            errors.append(f"{label}: approved additive getter is missing: {name}")
+            continue
+        getter = new_getters[name]
+        expected_args, expected_return, expected_optional, expected_method_id = expected
+        if getter.get("methodId") != expected_method_id:
+            errors.append(
+                f"{label}.{name}: approved additive getter method ID changed "
+                f"{expected_method_id} != {getter.get('methodId')}"
+            )
+        actual_args = [
+            (arg["name"], canonical_type(arg["type"], False), optional(arg["type"]))
+            for arg in getter.get("arguments", [])
+        ]
+        if actual_args != expected_args:
+            errors.append(
+                f"{label}.{name}: approved additive getter arguments changed "
+                f"{expected_args!r} != {actual_args!r}"
+            )
+        actual_return = canonical_type(getter.get("returns", {}), False)
+        actual_optional = optional(getter.get("returns", {}))
+        if (actual_return, actual_optional) != (expected_return, expected_optional):
+            errors.append(
+                f"{label}.{name}: approved additive getter return changed "
+                f"({expected_return}, optional={expected_optional}) != "
+                f"({actual_return}, optional={actual_optional})"
+            )
     for name in sorted(old_getters.keys() & new_getters.keys()):
         old_getter, new_getter = old_getters[name], new_getters[name]
         if old_getter.get("methodId") != new_getter.get("methodId"):

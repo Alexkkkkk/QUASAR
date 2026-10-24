@@ -40,6 +40,7 @@ const REQUIRED_FILES = [
   ".github/workflows/dapp-ci.yml",
   ".github/workflows/autofix.yml",
   ".github/workflows/dependabot-remediation.yml",
+  ".github/workflows/ton-docs-sync.yml",
   ".github/workflows/issue-triage.yml",
   ".github/workflows/_learn.yml",
   ".github/workflows/_idle-agent.yml",

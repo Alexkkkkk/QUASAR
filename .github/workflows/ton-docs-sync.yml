@@ -1,0 +1,104 @@
+name: QUASAR TON and Acton documentation sync
+
+on:
+  schedule:
+    - cron: "23 4 * * *"
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "scripts/sync_ton_docs.py"
+      - "tests/test_sync_ton_docs.py"
+      - ".github/workflows/ton-docs-sync.yml"
+      - "docs/ton/**"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ton-docs-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    name: sync reviewed TON and Acton pages
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Check out the default branch without persisted credentials
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+
+      - name: Test deterministic TON docs snapshot validation
+        run: python3 -m unittest discover -s tests -p 'test_sync_ton_docs.py'
+
+      - name: Synchronize the reviewed official-source allowlist
+        run: python3 scripts/sync_ton_docs.py
+
+      - name: Verify the complete snapshot against official sources
+        run: python3 scripts/sync_ton_docs.py --check
+
+      - name: Resolve a workflow-triggering GitHub App token or PAT
+        id: auth
+        env:
+          APP_ID: ${{ secrets.QUASAR_APP_ID }}
+          APP_KEY: ${{ secrets.QUASAR_APP_KEY }}
+          AUTO_MERGE_TOKEN: ${{ secrets.AUTO_MERGE_TOKEN }}
+          OWNER: ${{ github.repository_owner }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          token=""
+          if [[ -n "${APP_ID:-}" && -n "${APP_KEY:-}" ]]; then
+            umask 077
+            app_pem="$RUNNER_TEMP/quasar-app.pem"
+            trap 'rm -f "$app_pem"' EXIT
+            printf '%s' "$APP_KEY" > "$app_pem"
+            b64url() { openssl base64 -A | tr '+/' '-_' | tr -d '='; }
+            now=$(date +%s)
+            header=$(printf '{"alg":"RS256","typ":"JWT"}' | b64url)
+            payload=$(printf '{"iat":%d,"exp":%d,"iss":"%s"}' "$((now-30))" "$((now+540))" "$APP_ID" | b64url)
+            signature=$(printf '%s' "$header.$payload" | openssl dgst -sha256 -sign "$app_pem" -binary | b64url)
+            jwt="$header.$payload.$signature"
+            if installation_id=$(curl -fsS -H "Authorization: Bearer $jwt" -H "Accept: application/vnd.github+json" https://api.github.com/app/installations 2>/dev/null | jq -r --arg owner "$OWNER" 'map(select(.account.login==$owner)) | .[0].id // empty') && [[ -n "$installation_id" ]]; then
+              repo_name="${REPO#*/}"
+              token_request=$(jq -cn --arg repo "$repo_name" '{repositories:[$repo],permissions:{contents:"write",pull_requests:"write"}}')
+              if minted=$(curl -fsS -X POST -H "Authorization: Bearer $jwt" -H "Accept: application/vnd.github+json" "https://api.github.com/app/installations/$installation_id/access_tokens" -d "$token_request" 2>/dev/null | jq -r '.token // empty') && [[ -n "$minted" ]]; then
+                token="$minted"
+              fi
+            fi
+            unset jwt signature payload header
+          fi
+          if [[ -z "$token" && -n "${AUTO_MERGE_TOKEN:-}" ]]; then
+            token="$AUTO_MERGE_TOKEN"
+          fi
+          if [[ -z "$token" ]]; then
+            echo "::error::Configure QUASAR_APP_ID/QUASAR_APP_KEY with contents:write and pull_requests:write, or AUTO_MERGE_TOKEN with equivalent access. GITHUB_TOKEN is intentionally not used because it does not trigger required PR workflows."
+            exit 1
+          fi
+          echo "::add-mask::$token"
+          printf 'token=%s\n' "$token" >> "$GITHUB_OUTPUT"
+          unset token
+
+      - name: Open or update the documentation draft pull request
+        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
+        with:
+          token: ${{ steps.auth.outputs.token }}
+          branch: automation/ton-docs-sync
+          base: ${{ github.event.repository.default_branch }}
+          add-paths: docs/ton/**
+          commit-message: "docs(ton): synchronize reviewed official corpus"
+          title: "docs(ton): synchronize reviewed TON and Acton pages"
+          body: |
+            Automated update of the repository's explicitly allowlisted official TON and Acton Markdown sources.
+
+            The sync and deterministic snapshot tests completed successfully. This workflow changes only `docs/ton/**`; it does not execute downloaded content, modify contract logic, publish artifacts, deploy, or submit on-chain transactions.
+
+            This is a draft pull request. The repository's normal required checks and auto-merge guard remain authoritative.
+          draft: true
+          delete-branch: true
