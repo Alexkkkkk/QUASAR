@@ -46,5 +46,5 @@ Issue #62 остаётся открытой: этот внутренний об�
 
 1. Разработать и проверить исправления двух High DeFi bounce/recovery defects; не менять financial state machine без regression-тестов и явного accounting design.
 2. Принять документированное решение по AI oracle privilege/trust boundary и timelock ≥72h recommendation; проверить signer custody и будущую deployment configuration.
-4. Расширить тесты storage state-layout migration, DeFi payout bounce interleavings и границ supply/fee arithmetic.
+3. Расширить тесты storage state-layout migration, DeFi payout bounce interleavings и границ supply/fee arithmetic.
 4. Оставить issue #62 открытой до независимого квалифицированного аудита, воспроизводимых artifact hashes и надлежащего testnet/deployment evidence. Не публиковать адреса, которых нет.
