@@ -385,18 +385,20 @@ testnet rehearsal остаются открытыми; deployment и реаль�
     намеренно не входят в adapter.
   - Документация: `docs/OFFCHAIN_INTEGRATIONS.md`.
 
-- [x] **T-15 Tact → Tolk migration/no-go decision.**
+- [x] **T-15 Tact → Tolk migration/cutover decision.**
   - Файл: `docs/TOLK_MIGRATION_DECISION.md`.
-  - Tact остаётся pinned compiler path до доказательства ABI/TL-B/storage/code
-    hash/gas/bounce эквивалентности; адреса и mainnet claims не меняются.
-- [~] **T-15a Acton toolchain для миграции Tolk.**
+  - Tolk/Acton является единственным активным compiler/source path; исторические
+    Tact sources сохраняются только как read-only parity baseline. Storage,
+    StateInit, code hash и адреса нового поколения не считаются in-place
+    совместимыми со старым deployment.
+- [x] **T-15a Acton toolchain для Tolk cutover.**
   - Файл: `tolk/README.md`, `tolk/Acton.toml`.
   - Установка для разработчика выполняется официальным инсталлятором:
     `curl -LsSf https://github.com/ton-blockchain/acton/releases/latest/download/acton-installer.sh | sh`.
     Проект дополнительно фиксирует Acton `1.2.1` для воспроизводимой проверки.
   - Acton используется для build/test/ABI/wrapper; deployment и on-chain
-    операции в рамках этой миграции запрещены. Пункт остаётся открытым до
-    прохождения полной Tolk-сборки и regression suite.
+    операции в рамках этой миграции запрещены. Полный pinned build/check/test
+    pipeline входит в обязательные CI gates.
 - [x] **T-16 Стабильный getter для резервов DeFi и удаление legacy wire-типа.**
   - Файл: `contracts/quasar_defi.tact`.
   - `get_reserve_snapshot` возвращает LP supply, TON/QSR reserves, fee
@@ -691,6 +693,6 @@ T-11/T-12 реализуют проверяемую часть P4. Реальн�
 
 ## T-24 — Acton scripting и атомарная синхронизация, PR #280
 
-Реализован отдельный pipeline `python3 scripts/sync_acton.py`: фиксированная версия Acton, свежий Tact baseline, сборка во временном проекте, сравнение message/getter ABI и wire-сериализации, генерация Tolk/TypeScript wrappers, Acton-тесты и локальные `main()`-сценарии. Полное поколение артефактов публикуется атомарно; offline `--check` обнаруживает изменения исходников и артефактов по SHA-256. Документация TON/Acton синхронизируется отдельно с manifest, блокировкой, retry и rollback. Избыточное расширение file permissions из CodeQL устранено.
+Реализован отдельный pipeline `python3 scripts/sync_acton.py`: фиксированная версия Acton, сборка Tolk-проекта во временном каталоге, сравнение message/getter ABI с архивным baseline и wire-сериализации, генерация Tolk/TypeScript wrappers, Acton-тесты и локальные `main()`-сценарии. Полное поколение артефактов публикуется атомарно; offline `--check` обнаруживает изменения исходников и артефактов по SHA-256. Документация TON/Acton синхронизируется отдельно с manifest, блокировкой, retry и rollback. Избыточное расширение file permissions из CodeQL устранено.
 
-Регрессии миграции охватывают storage cell overflow и основные локальные contract flows. Это tooling-инкремент, а не полная production-миграция. Корневые Tact-контракты и действующий dApp не переключены на новый bytecode; секреты, deployment и on-chain операции не использовались. Точные выполненные проверки и оставшиеся ограничения записываются в `docs/ACTON_SCRIPTING_2026-10-22.md`; независимый аудит и release gates остаются открытыми.
+Регрессии миграции охватывают storage cell overflow и основные локальные contract flows. Compiler/source cutover завершён: активные контракты и dApp ABI используют Tolk-generated artifacts; исторические Tact sources не входят в build или release artifacts. Секреты, deployment и on-chain операции не использовались. Точные выполненные проверки и оставшиеся release ограничения записываются в `docs/TOLK_ADAPTATION_2026-10-23.md`; независимый аудит и deployment gates остаются отдельными.
