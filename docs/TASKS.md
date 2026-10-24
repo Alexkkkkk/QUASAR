@@ -655,6 +655,11 @@ T-11/T-12 реализуют проверяемую часть P4. Реальн�
     [gas](https://ton-blockchain.github.io/acton/docs/testing/gas-profiling-with-snapshots),
     [Test UI](https://ton-blockchain.github.io/acton/docs/testing/test-ui/overview),
     [transaction traces](https://ton-blockchain.github.io/acton/docs/testing/reading-transaction-chains).
+  - Реализовано 2026-10-24 в PR #323: pinned fuzz defaults и DeFi
+    `estimateLpOut` property test (64 runs, seed `20261024`), LCOV coverage,
+    gas snapshot/baseline commands, saved trace command и generated TypeScript
+    wrapper gate. Остались fork-state rehearsal, broader contract properties и
+    mutation triage; они требуют отдельного operator-approved baseline.
 
 - [ ] **T-37 DApp использует compiler-generated typed QUASAR wrappers.**
   - Заменить вручную поддерживаемые QUASAR opcode/BOC construction и raw getter

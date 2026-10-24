@@ -39,6 +39,19 @@ output-sources = "build/synchronized/sources"
 [test]
 fail-fast = true
 
+[test.fuzz]
+runs = 64
+max-test-rejects = 256
+seed = 20261024
+
+[test.coverage]
+enabled = false
+format = "lcov"
+output-file = "build/synchronized/coverage/lcov.info"
+
+[wrappers.typescript]
+output-dir = "build/synchronized/wrappers-ts"
+
 [lint]
 max-warnings = 0
 exclude = ["build/synchronized/wrappers/*.tolk", "build/generations/**/wrappers/*.tolk"]
