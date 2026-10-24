@@ -332,6 +332,12 @@ struct PendingQsrSwapWire {
     tail: Cell<PendingQsrSwapTail>
 }
 
+struct DeferredBuyback {
+    active: bool
+    queryId: uint64
+    qsrAmount: coins
+}
+
 struct TonPayoutClaimInfo {
     beneficiary: address
     amount: int257
@@ -401,6 +407,7 @@ struct QuasarDeFiStorage {
     prevBuybackFee: coins
     pendingQsrSwap: PendingQsrSwap
     tonClaimsHeld: coins
+    deferredBuyback: DeferredBuyback
 }
 
 fun PendingTonPayout.toWireCell(self): Cell<PendingTonPayoutWire> {
@@ -541,6 +548,11 @@ fun QuasarDeFiStorage.unpackFromSlice(mutate root: slice): QuasarDeFiStorage {
     var cell4 = cell3.loadRef().beginParse();
     val prevBuybackFee = cell4.loadCoins();
     var tonClaimsHeld: coins = 0;
+    var deferredBuyback = DeferredBuyback {
+        active: false,
+        queryId: 0,
+        qsrAmount: 0,
+    };
     var pendingQsrSwap = PendingQsrSwap {
         status: 0,
         swapId: 0,
@@ -553,7 +565,8 @@ fun QuasarDeFiStorage.unpackFromSlice(mutate root: slice): QuasarDeFiStorage {
     };
     if (cell4.remainingRefsCount() == 1) {
         var recovery = cell4.loadRef().beginParse();
-        assert (recovery.loadUint(8) == 1) throw 1241;
+        val recoveryVersion = recovery.loadUint(8);
+        assert (recoveryVersion == 1 || recoveryVersion == 2) throw 1241;
         tonClaimsHeld = recovery.loadCoins();
         var swapWire = recovery.loadRef().beginParse();
         val swapStatus = swapWire.loadUint(8) as uint8;
@@ -577,6 +590,13 @@ fun QuasarDeFiStorage.unpackFromSlice(mutate root: slice): QuasarDeFiStorage {
             qsrOut,
             feeQsr,
         };
+        if (recoveryVersion == 2) {
+            deferredBuyback = DeferredBuyback {
+                active: recovery.loadBool(),
+                queryId: recovery.loadUint(64) as uint64,
+                qsrAmount: recovery.loadCoins(),
+            };
+        }
         recovery.assertEnd();
     } else {
         assert (cell4.remainingRefsCount() == 0) throw 1242;
@@ -635,14 +655,18 @@ fun QuasarDeFiStorage.unpackFromSlice(mutate root: slice): QuasarDeFiStorage {
         prevBuybackFee,
         pendingQsrSwap,
         tonClaimsHeld,
+        deferredBuyback,
     };
 }
 
 fun QuasarDeFiStorage.packToBuilder(self, mutate root: builder) {
     var recovery = beginCell();
-    recovery.storeUint(1, 8);
+    recovery.storeUint(2, 8);
     recovery.storeCoins(self.tonClaimsHeld);
     recovery.storeRef(self.pendingQsrSwap.toWireCell());
+    recovery.storeBool(self.deferredBuyback.active);
+    recovery.storeUint(self.deferredBuyback.queryId, 64);
+    recovery.storeCoins(self.deferredBuyback.qsrAmount);
 
     var cell4 = beginCell();
     cell4.storeCoins(self.prevBuybackFee);
@@ -775,6 +799,11 @@ fun newQuasarDeFiStorage(owner: address, qsrMaster: address): QuasarDeFiStorage 
             feeQsr: 0,
         },
         tonClaimsHeld: 0,
+        deferredBuyback: DeferredBuyback {
+            active: false,
+            queryId: 0,
+            qsrAmount: 0,
+        },
     };
 }
 
@@ -820,6 +849,10 @@ const ZERO_ADDRESS: address = address("0:000000000000000000000000000000000000000
 const DAY_YEAR = 31536000
 const TON_CLAIM_CALL_MIN_VALUE: coins = 50000000
 const TON_CLAIM_FEE_RESERVE: coins = 10000000
+// Retry attempts must never collide with stable payout/claim IDs allocated by
+// nextPayoutId. The high bit is internal and does not alter any public message
+// layout; bounced callbacks carry the exact uint64 attempt ID.
+const TON_ATTEMPT_ID_BASE: uint64 = 9223372036854775808
 
 fun minimum(a: int257, b: int257): int257 {
     return a < b ? a : b;
@@ -872,7 +905,15 @@ fun tonPayoutOf(m: map<int257, Cell<PendingTonPayoutWire>>, id: int257): Pending
     if (!result.isFound) {
         return null;
     }
-    return result.loadValue().load().toPendingTonPayout();
+    var payout = result.loadValue().load().toPendingTonPayout();
+    // Legacy cells predate claim/attempt metadata. The map key is the only
+    // authenticated identity available for an in-flight legacy payout, so
+    // normalize only stage-0 records and never invent a new claim ID.
+    if (payout.stage == 0 && payout.claimId == 0 && payout.activeAttemptId == 0) {
+        payout.claimId = id as uint64;
+        payout.activeAttemptId = id as uint64;
+    }
+    return payout;
 }
 
 fun markTonPayoutClaimable(
@@ -929,7 +970,7 @@ fun nextPayoutId(mutate s: QuasarDeFiStorage): uint64 {
 
 fun nextTonPayoutId(mutate s: QuasarDeFiStorage): uint64 {
     s.tonPayoutSeq = (s.tonPayoutSeq + 1) as uint64;
-    return s.tonPayoutSeq;
+    return TON_ATTEMPT_ID_BASE + s.tonPayoutSeq;
 }
 
 fun recordPriceObservation(mutate s: QuasarDeFiStorage) {
@@ -1257,6 +1298,32 @@ fun executeBuybackSwap(mutate s: QuasarDeFiStorage, qsrIn: coins, queryId: uint6
     buybackMessage.send(SEND_MODE_PAY_FEES_SEPARATELY);
 }
 
+fun processDeferredBuyback(mutate s: QuasarDeFiStorage) {
+    if (!s.deferredBuyback.active || s.pendingQsrSwap.status != 0) {
+        return;
+    }
+    val amount = s.deferredBuyback.qsrAmount;
+    val queryId = s.deferredBuyback.queryId;
+    if (amount <= 0 || s.qsrReserve <= amount || s.tonReserve <= 0) {
+        return;
+    }
+    if (amount * 10000 > (s.qsrReserve - amount) * s.maxTradeBps) {
+        return;
+    }
+    val grossTonOut = (amount * s.tonReserve) / s.qsrReserve;
+    // The executed buyback uses the integer gross output as its fee base.
+    // check-disable-next-line divide-before-multiply
+    val fee = (grossTonOut * s.feeBps) / 10000;
+    if (grossTonOut <= fee || grossTonOut - fee <= 0) {
+        return;
+    }
+    s.deferredBuyback.active = false;
+    s.deferredBuyback.queryId = 0;
+    s.deferredBuyback.qsrAmount = 0;
+    s.qsrReserve += amount;
+    executeBuybackSwap(mutate s, amount, queryId);
+}
+
 fun onInternalMessage(in: InMessage) {
     val msg = lazy AllowedMessageToQuasarDeFi.fromSlice(in.body);
     match (msg) {
@@ -1269,14 +1336,26 @@ fun onInternalMessage(in: InMessage) {
             assert (msg.amount > 0) throw 1101;
             assert (!isZeroAddress(msg.from)) throw 1102;
             if (msg.from == s.qsrMaster) {
-                s.qsrReserve += msg.amount;
-                if (
-                    msg.forwardPayload.remainingBitsCount() >= 32 &&
-                    msg.forwardPayload.preloadUint(32) == QSR_BUYBACK_MARKER
-                ) {
-                    executeBuybackSwap(mutate s, msg.amount, msg.queryId);
-                } else {
+                val isBuyback = msg.forwardPayload.remainingBitsCount() >= 32 &&
+                    msg.forwardPayload.preloadUint(32) == QSR_BUYBACK_MARKER;
+                if (isBuyback && s.pendingQsrSwap.status != 0) {
+                    if (s.deferredBuyback.active) {
+                        assert (
+                            s.deferredBuyback.queryId == msg.queryId &&
+                            s.deferredBuyback.qsrAmount == msg.amount
+                        ) throw 1240;
+                    }
+                    s.deferredBuyback.active = true;
+                    s.deferredBuyback.queryId = msg.queryId;
+                    s.deferredBuyback.qsrAmount = msg.amount;
                     s.save();
+                } else {
+                    s.qsrReserve += msg.amount;
+                    if (isBuyback) {
+                        executeBuybackSwap(mutate s, msg.amount, msg.queryId);
+                    } else {
+                        s.save();
+                    }
                 }
             } else {
                 val current = pendingInt(s.pendingQsrDeposits, msg.from);
@@ -1350,6 +1429,7 @@ fun onInternalMessage(in: InMessage) {
                 s.pendingQsrSwap.tonIn = 0;
                 s.pendingQsrSwap.qsrOut = 0;
                 s.pendingQsrSwap.feeQsr = 0;
+                processDeferredBuyback(mutate s);
                 s.save();
             } else {
                 s.save();
@@ -1440,6 +1520,7 @@ fun onInternalMessage(in: InMessage) {
             s.pendingQsrSwap.qsrOut = 0;
             s.pendingQsrSwap.feeQsr = 0;
             unlock(mutate s);
+            processDeferredBuyback(mutate s);
             s.save();
             sendTonPayout(in.senderAddress, swap.tonIn, msg.swapId);
         }
@@ -1460,7 +1541,9 @@ fun onInternalMessage(in: InMessage) {
                 s.tonReserve + s.tonClaimsHeld + QUASAR_STORAGE_RESERVE + TON_CLAIM_FEE_RESERVE
             ) throw 1255;
             lock(mutate s);
-            val id = nextPayoutId(mutate s);
+            // Stable claim IDs remain keyed by msg.claimId; only the outbound
+            // retry attempt uses the dedicated high-bit TON namespace.
+            val id = nextTonPayoutId(mutate s);
             s
                 .pendingTonPayouts
                 .set(
@@ -1940,10 +2023,14 @@ fun onBouncedMessage(in: InMessageBounced) {
         val queryId = body.loadUint(64) as uint64;
         val amount = body.loadCoins();
         val p = tonPayoutOf(s.pendingTonPayouts, queryId as int257);
-        assert (
-            p != null && in.senderAddress == p.beneficiary && amount == p.tonOut && p.stage == 0 &&
-            p.activeAttemptId == queryId
-        ) throw 1230;
+        assert (p != null && in.senderAddress == p.beneficiary) throw 1230;
+        if (p.stage != 0) {
+            // A repeated protocol bounce must not mint a second claim or alter
+            // held-balance accounting. Wrong amount remains a rejected callback.
+            assert (amount == p.tonOut) throw 1230;
+            return;
+        }
+        assert (amount == p.tonOut && p.activeAttemptId == queryId) throw 1230;
         if (p.kind == 1) {
             if (p.qsrAmount > 0) {
                 assert (p.qsrSettled) throw 1231;
