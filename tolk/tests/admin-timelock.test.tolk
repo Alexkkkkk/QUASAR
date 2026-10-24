@@ -59,6 +59,29 @@ get fun `test admin timelock: deploy reply covers funded reserve branch`() {
     val (timelock, admin, _, _) = setupTimelockWithValue(grams("1"));
     expect(timelock.getAdmin()).toEqual(admin.address);
     expect(timelock.getMinDelay()).toEqual(MIN_DELAY);
+    val secondDeploy = timelock.sendDeploy(
+        admin.address,
+        1,
+        { bounce: false, value: grams("1") },
+    );
+    expect(secondDeploy).toHaveSuccessfulTx<Deploy>({
+        from: admin.address,
+        to: timelock.address,
+    });
+}
+
+get fun `test admin timelock: unknown message is rejected`() {
+    val (timelock, admin, _, _) = setupTimelock();
+    val result = timelock.sendAny(
+        admin.address,
+        beginCell().storeUint(0xdeadbeef, 32).endCell(),
+        { bounce: false, value: grams("0.2") },
+    );
+    expect(result).toHaveFailedTx({
+        from: admin.address,
+        to: timelock.address,
+        exitCode: 130,
+    });
 }
 
 get fun `test admin timelock: authorized queue stores managed call`() {
@@ -126,6 +149,17 @@ get fun `test admin timelock: unauthorized queue cancel and propose are rejected
         from: outsider.address,
         to: timelock.address,
         exitCode: 45352,
+    });
+
+    val zeroAdminResult = timelock.sendProposeAdmin(
+        admin.address,
+        zeroAddress(),
+        { bounce: false, value: grams("0.2") },
+    );
+    expect(zeroAdminResult).toHaveFailedTx<ProposeAdmin>({
+        from: admin.address,
+        to: timelock.address,
+        exitCode: 29685,
     });
 }
 
