@@ -849,6 +849,10 @@ const ZERO_ADDRESS: address = address("0:000000000000000000000000000000000000000
 const DAY_YEAR = 31536000
 const TON_CLAIM_CALL_MIN_VALUE: coins = 50000000
 const TON_CLAIM_FEE_RESERVE: coins = 10000000
+// Retry attempts must never collide with stable payout/claim IDs allocated by
+// nextPayoutId. The high bit is internal and does not alter any public message
+// layout; bounced callbacks carry the exact uint64 attempt ID.
+const TON_ATTEMPT_ID_BASE: uint64 = 9223372036854775808
 
 fun minimum(a: int257, b: int257): int257 {
     return a < b ? a : b;
@@ -966,7 +970,7 @@ fun nextPayoutId(mutate s: QuasarDeFiStorage): uint64 {
 
 fun nextTonPayoutId(mutate s: QuasarDeFiStorage): uint64 {
     s.tonPayoutSeq = (s.tonPayoutSeq + 1) as uint64;
-    return s.tonPayoutSeq;
+    return TON_ATTEMPT_ID_BASE + s.tonPayoutSeq;
 }
 
 fun recordPriceObservation(mutate s: QuasarDeFiStorage) {
@@ -1537,7 +1541,9 @@ fun onInternalMessage(in: InMessage) {
                 s.tonReserve + s.tonClaimsHeld + QUASAR_STORAGE_RESERVE + TON_CLAIM_FEE_RESERVE
             ) throw 1255;
             lock(mutate s);
-            val id = nextPayoutId(mutate s);
+            // Stable claim IDs remain keyed by msg.claimId; only the outbound
+            // retry attempt uses the dedicated high-bit TON namespace.
+            val id = nextTonPayoutId(mutate s);
             s
                 .pendingTonPayouts
                 .set(
