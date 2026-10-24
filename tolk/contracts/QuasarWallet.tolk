@@ -169,6 +169,10 @@ fun onBouncedMessage(in: InMessageBounced) {
 }
 
 fun onInternalMessage(in: InMessage) {
+    // TON empty-body transfers are balance top-ups, not protocol messages.
+    if (in.body.isEmpty()) {
+        return;
+    }
     val message = lazy AllowedMessageToWallet.fromSlice(in.body);
 
     match (message) {

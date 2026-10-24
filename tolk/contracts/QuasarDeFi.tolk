@@ -1325,6 +1325,10 @@ fun processDeferredBuyback(mutate s: QuasarDeFiStorage) {
 }
 
 fun onInternalMessage(in: InMessage) {
+    // TON empty-body transfers are balance top-ups, not protocol messages.
+    if (in.body.isEmpty()) {
+        return;
+    }
     val msg = lazy AllowedMessageToQuasarDeFi.fromSlice(in.body);
     match (msg) {
         TokenNotification => {
