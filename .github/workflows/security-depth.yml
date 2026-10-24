@@ -1,0 +1,91 @@
+name: QUASAR security depth
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+  schedule:
+    - cron: '17 3 * * 1'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: security-depth-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  depth:
+    name: Tolk security depth
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Set up Acton
+        uses: ton-blockchain/setup-acton@0f9f436843d740466cae2d7411ff59072dde942e # v1.2.0
+        with:
+          working-directory: tolk
+
+      - name: Initialize Acton project
+        working-directory: tolk
+        run: acton init --stdlib-only
+
+      - name: Build and check Tolk sources
+        working-directory: tolk
+        run: |
+          acton fmt --check
+          acton build
+          acton check --output-format github
+
+      - name: Run reproducible fuzz suite
+        working-directory: tolk
+        run: acton test --fuzz-seed 20261024
+
+      - name: Enforce line and branch coverage floor
+        working-directory: tolk
+        run: |
+          mkdir -p build/synchronized/coverage/depth
+          acton test \
+            --coverage \
+            --coverage-format lcov \
+            --coverage-file build/synchronized/coverage/depth/lcov.info \
+            --coverage-minimum-percent 50
+
+      - name: Run critical mutation testing for Master
+        working-directory: tolk
+        run: |
+          set -o pipefail
+          mkdir -p "$RUNNER_TEMP/quasar-security"
+          acton test \
+            --mutate-contract QuasarMaster \
+            --mutate \
+            --mutation-levels critical \
+            --mutation-workers 2 \
+            --mutation-timeout 120 \
+            --mutation-minimum-percent 0 \
+            2>&1 | tee "$RUNNER_TEMP/quasar-security/mutation.log"
+
+      - name: Upload security-depth reports
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: quasar-security-depth-${{ github.run_id }}
+          if-no-files-found: warn
+          path: |
+            tolk/build/synchronized/coverage/depth/lcov.info
+            ${{ runner.temp }}/quasar-security/mutation.log
