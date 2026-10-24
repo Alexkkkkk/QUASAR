@@ -1,0 +1,25 @@
+[package]
+name = "quasar-ai-agent-wallet-example"
+description = "A local-only owner-managed AI agent wallet example"
+version = "0.1.0"
+license = "MIT"
+
+[toolchain]
+acton = "1.2.1"
+
+[contracts.AgentWallet]
+display-name = "AgentWallet"
+src = "contracts/AgentWallet.tolk"
+depends = []
+
+[test]
+[fmt]
+width = 100
+ignore = []
+
+[import-mappings]
+acton = ".acton"
+contracts = "contracts"
+gen = "gen"
+tests = "tests"
+wrappers = "wrappers"

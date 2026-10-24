@@ -60,7 +60,7 @@ class GroqIssueAgentTests(unittest.TestCase):
                 }
             }]
         })
-        with patch("scripts.groq_issue_agent.urlopen", return_value=response) as mocked_urlopen:
+        with patch("scripts.groq_issue_agent.open_url", return_value=response) as mocked_urlopen:
             answer = call_groq(
                 "test-key",
                 DEFAULT_API_URL,

@@ -23,7 +23,12 @@ import sys
 from pathlib import Path
 from typing import Any
 from urllib.error import HTTPError, URLError
-from urllib.request import Request, urlopen
+from urllib.request import Request
+
+try:
+    from scripts.url_safety import assert_https, open_url
+except ModuleNotFoundError:  # direct `python3 scripts/<name>.py` execution
+    from url_safety import assert_https, open_url
 
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
@@ -114,8 +119,8 @@ def call_groq(
         ],
         "max_completion_tokens": MAX_RESPONSE_TOKENS,
     }
-    request = Request(
-        api_url,
+    request = Request(  # noqa: S310 - URL is validated by assert_https
+        assert_https(api_url),
         data=json.dumps(payload).encode("utf-8"),
         headers={
             "Content-Type": "application/json",
@@ -125,7 +130,7 @@ def call_groq(
         method="POST",
     )
     try:
-        with urlopen(request, timeout=timeout_seconds) as response:
+        with open_url(request, timeout=timeout_seconds) as response:
             result = json.loads(response.read().decode("utf-8"))
     except HTTPError as error:
         raise AgentError(f"Groq API returned HTTP {error.code}") from error

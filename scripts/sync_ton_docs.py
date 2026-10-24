@@ -24,7 +24,18 @@ from dataclasses import dataclass
 from pathlib import Path
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlparse
-from urllib.request import HTTPRedirectHandler, Request, build_opener
+from urllib.request import (
+    HTTPErrorProcessor,
+    HTTPRedirectHandler,
+    HTTPSHandler,
+    OpenerDirector,
+    Request,
+)
+
+try:
+    from scripts.url_safety import assert_https
+except ModuleNotFoundError:  # direct `python3 scripts/<name>.py` execution
+    from url_safety import assert_https
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -116,7 +127,10 @@ class RejectRedirectHandler(HTTPRedirectHandler):
         )
 
 
-DOCS_OPENER = build_opener(RejectRedirectHandler())
+DOCS_OPENER = OpenerDirector()
+DOCS_OPENER.add_handler(HTTPSHandler())
+DOCS_OPENER.add_handler(RejectRedirectHandler())
+DOCS_OPENER.add_handler(HTTPErrorProcessor())
 
 
 def validate_source_url(url: str) -> None:
@@ -187,7 +201,7 @@ def _looks_like_markdown(markdown: str) -> bool:
 
 def _fetch_page_once(source_id: str, url: str) -> str:
     request = Request(
-        url,
+        assert_https(url),
         headers={
             "Accept": "text/markdown, text/plain;q=0.9",
             "User-Agent": "QUASAR-TON-Docs-Sync/1.1",
