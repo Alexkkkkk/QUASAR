@@ -107,7 +107,7 @@ jobs:
         run: npm run deployment:check
 
       - name: Publish build hashes
-        run: tsx scripts/build_hashes.ts --write
+        run: npx tsx scripts/build_hashes.ts --write
 
       - name: Type-check scripts and tests
         run: npx tsc --noEmit
