@@ -6,7 +6,7 @@ import "@wrappers/QuasarAdminTimelock.gen"
 
 const MIN_DELAY: uint32 = 86400
 
-fun setupTimelock(): (QuasarAdminTimelock, Treasury, Treasury, Treasury) {
+fun setupTimelockWithValue(value: coins): (QuasarAdminTimelock, Treasury, Treasury, Treasury) {
     val admin = testing.treasury("admin-timelock-admin");
     val master = testing.treasury("admin-timelock-master");
     val defi = testing.treasury("admin-timelock-defi");
@@ -19,7 +19,7 @@ fun setupTimelock(): (QuasarAdminTimelock, Treasury, Treasury, Treasury) {
         admin.address,
         createMessage({
             bounce: BounceMode.NoBounce,
-            value: grams("10"),
+            value,
             dest: { workchain: timelock.address.getWorkchain(), stateInit: timelock.stateInit! },
             body: Deploy { queryId: 0 },
         }),
@@ -37,6 +37,10 @@ fun setupTimelock(): (QuasarAdminTimelock, Treasury, Treasury, Treasury) {
     return (timelock, admin, master, defi);
 }
 
+fun setupTimelock(): (QuasarAdminTimelock, Treasury, Treasury, Treasury) {
+    return setupTimelockWithValue(grams("10"));
+}
+
 fun callBody(): cell {
     return beginCell().storeUint(0x12345678, 32).endCell();
 }
@@ -49,6 +53,35 @@ get fun `test admin timelock: deploy initializes the contract`() {
     expect(timelock.getPendingAdmin()).toEqual(zeroAddress());
     expect(timelock.getMinDelay()).toEqual(MIN_DELAY);
     expect(timelock.getLastQueuedCallId()).toEqual(0);
+}
+
+get fun `test admin timelock: deploy reply covers funded reserve branch`() {
+    val (timelock, admin, _, _) = setupTimelockWithValue(grams("1"));
+    expect(timelock.getAdmin()).toEqual(admin.address);
+    expect(timelock.getMinDelay()).toEqual(MIN_DELAY);
+    val secondDeploy = timelock.sendDeploy(
+        admin.address,
+        1,
+        { bounce: false, value: grams("1") },
+    );
+    expect(secondDeploy).toHaveSuccessfulTx<Deploy>({
+        from: admin.address,
+        to: timelock.address,
+    });
+}
+
+get fun `test admin timelock: unknown message is rejected`() {
+    val (timelock, admin, _, _) = setupTimelock();
+    val result = timelock.sendAny(
+        admin.address,
+        beginCell().storeUint(0xdeadbeef, 32).endCell(),
+        { bounce: false, value: grams("0.2") },
+    );
+    expect(result).toHaveFailedTx({
+        from: admin.address,
+        to: timelock.address,
+        exitCode: 130,
+    });
 }
 
 get fun `test admin timelock: authorized queue stores managed call`() {
@@ -116,6 +149,17 @@ get fun `test admin timelock: unauthorized queue cancel and propose are rejected
         from: outsider.address,
         to: timelock.address,
         exitCode: 45352,
+    });
+
+    val zeroAdminResult = timelock.sendProposeAdmin(
+        admin.address,
+        zeroAddress(),
+        { bounce: false, value: grams("0.2") },
+    );
+    expect(zeroAdminResult).toHaveFailedTx<ProposeAdmin>({
+        from: admin.address,
+        to: timelock.address,
+        exitCode: 29685,
     });
 }
 

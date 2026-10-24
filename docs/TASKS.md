@@ -622,6 +622,23 @@ T-11/T-12 реализуют проверяемую часть P4. Реальн�
     [build reference](https://ton-blockchain.github.io/acton/docs/building/reference),
     [scripting](https://ton-blockchain.github.io/acton/docs/scripting/blockchain-interaction).
 
+- [~] **T-40 Свести ветки и release-gates в единый Tolk task map.**
+  - `ai/300-acton-ton-completion` содержит contract/security/docs работу,
+    которая уже представлена в `main` через merged PR #309 и последующие Tolk
+    cutover PR #318/#319/#322; повторно вливать эту stale-ветку нельзя.
+  - `ai/swarm-sync` и draft PR #321 содержат старый набор тех же изменений и
+    конфликтуют с актуальным `main`; их уникальные темы сведены сюда в T-32,
+    T-35 и T-36, а не копируются вторым merge.
+  - `ai/deployment-preflight` и PR #323 — единственная актуальная отдельная
+    ветка: reproducible Tolk/Acton build, ABI/BOC hash gate, security/dApp
+    checks, AdminTimelock mutation regressions и testnet release checklist.
+  - `ai/300-tep74-forward-ton-funding` не имеет открытого PR; его TEP-74
+    funding/forward-payload work должен проходить через T-31/T-37 и не считается
+    частью deployment, пока ABI и offline traces не подтверждены.
+  - Приёмка консолидации: каждое изменение либо присутствует в `main`, либо
+    имеет ровно один source branch/PR; stale branches не вливаются повторно;
+    остаток записан в T-30/T-31/T-35/T-36 и проверяется pinned Acton 1.2.1.
+
 - [ ] **T-36 Углубить локальные Acton contract tests и зафиксировать quality baselines.**
   - Дополнить T-30/T-31: bounded fixed-seed fuzz/property tests для master
     maxSupply и DeFi `estimateLpOut` с явными boundary cases; persistent typed-map
