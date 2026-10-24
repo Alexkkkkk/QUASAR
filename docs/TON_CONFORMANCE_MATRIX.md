@@ -102,7 +102,9 @@ These are not missing Jetton features and must not be encoded into QuasarMaster 
 - API v2/v3, indexer reads, pagination and off-chain price adapters.
 - GitHub Pages deployment discovery and deployment.json generation.
 - Blueprint/SDK integration, reproducible deployment orchestration and testnet smoke operations.
-- Tolk migration, multisig signature aggregation and independent third-party audit.
+- multisig signature aggregation and independent third-party audit. Tolk
+  migration is complete for the active compiler/source path; archived Tact
+  parity evidence remains a compatibility gate, not an active implementation.
 - NFT/SBT contracts: they require separate ownership, metadata and lifecycle specifications.
 
 Tracking: [#74](https://github.com/Alexkkkkk/QUASAR/issues/74), [#77](https://github.com/Alexkkkkk/QUASAR/issues/77), [#62](https://github.com/Alexkkkkk/QUASAR/issues/62).
