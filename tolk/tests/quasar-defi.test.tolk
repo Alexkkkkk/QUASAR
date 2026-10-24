@@ -1,6 +1,7 @@
 import "@acton/emulation/network"
 import "@acton/emulation/testing"
 import "@acton/testing/expect"
+import "@acton/testing/fuzz"
 import "@contracts/QuasarCommon"
 import "@contracts/QuasarDeFi"
 import "@gen/QuasarWallet.code"
@@ -35,6 +36,26 @@ fun setupDeFi(): DeFiFixture {
         owner,
         qsrMaster,
     };
+}
+
+@test.fuzz(
+    {
+        runs: 64,
+        max_test_rejects: 256,
+        seed: 20261024,
+    },
+)
+get fun `test DeFi estimateLpOut is nonnegative and symmetric before liquidity`(
+    rawTonAmount: int,
+    rawQsrAmount: int,
+) {
+    val tonAmount = fuzz.bound(rawTonAmount, 0, 1_000_000_000);
+    val qsrAmount = fuzz.bound(rawQsrAmount, 0, 1_000_000_000);
+    val fixture = setupDeFi();
+    val forward = fixture.defi.estimateLpOut(tonAmount, qsrAmount);
+    val reverse = fixture.defi.estimateLpOut(qsrAmount, tonAmount);
+    expect(forward >= 0).toBeTrue();
+    expect(forward).toEqual(reverse);
 }
 
 fun addInitialLiquidity(fixture: DeFiFixture, provider: Treasury): void {
