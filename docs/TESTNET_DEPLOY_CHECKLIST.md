@@ -1,6 +1,6 @@
 # QUASAR Tolk testnet readiness checklist
 
-> **No deployment command is currently provided.** The active contracts are a
+> **No network deployment command is provided.** The active contracts are a
 > fresh Tolk generation with new StateInit, storage schemas, code hashes and
 > addresses. Do not reuse a legacy Tact deployment record, wallet address,
 > mnemonic or deployment script.
@@ -12,11 +12,15 @@ rehearsal. It neither authorizes a transaction nor supplies signing material.
 
 - [ ] A clean checkout has Node dependencies installed with `npm ci`.
 - [ ] Acton `1.2.1` is installed and `npm run acton:init` succeeds; it only refreshes the standard library and preserves `tolk/Acton.toml`.
+- [ ] `npm run deployment:preflight` succeeds on the exact release commit; it verifies the Tolk build, ABI, dApp ABI, reviewed hashes and generated wrappers without signing or broadcasting.
 - [ ] `npm run lint` succeeds.
 - [ ] `npm test` succeeds, including Acton emulation tests.
 - [ ] `npm run abi:verify` and `npm run abi:dapp` succeed.
 - [ ] `python3 scripts/sync_acton.py --check` verifies the published generation.
 - [ ] `npm run hashes:build` produces reviewed Tolk ABI/BoC hashes.
+- [ ] The exact Tolk sources have been reviewed for lazy parsing/mutation, nullable
+  values, union dispatch, bounce idempotency, replay/query-id separation and gas
+  reserves; `npm run deployment:preflight` rejects active `ton()` and `@pure` patterns.
 
 ## Required migration and deployment design
 
@@ -29,6 +33,8 @@ rehearsal. It neither authorizes a transaction nor supplies signing material.
   and includes replay protection, a claims window and independent reconciliation.
 - [ ] Testnet StateInit constructors, code hashes, getter decoders, send encoders
   and address derivation have been independently reviewed.
+- [ ] AI/oracle authority, owner transfer, emergency guardian and timelock paths
+  have an explicit governance decision; autonomy is not enabled by default.
 - [ ] A disposable testnet wallet and no real-fund credentials are used.
 
 ## Before publishing any address

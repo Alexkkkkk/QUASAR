@@ -19,6 +19,7 @@
     "website": "npx serve website",
     "security:check": "tsx scripts/security_check.ts",
     "deployment:check": "tsx scripts/check_deployment.ts",
+    "deployment:preflight": "npm run build && npm run security:check && npm run abi:verify && npm run abi:dapp && npm run deployment:check && python3 scripts/sync_acton.py --check && tsx scripts/deployment_preflight.ts",
     "tonconnect:smoke": "tsx scripts/check_tonconnect.ts",
     "hashes:build": "npm run build && tsx scripts/build_hashes.ts --write",
     "oracle:smoke": "tsx scripts/ai_oracle.ts",

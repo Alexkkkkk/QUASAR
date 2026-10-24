@@ -108,6 +108,7 @@ npm run test:tolk
 | `npm run abi:dapp` | Проверить интерфейс сайта относительно контрактного ABI. |
 | `npm run security:check` | Запустить локальные security-инварианты репозитория. Это не независимый аудит. |
 | `npm run deployment:check` | Проверить локальную конфигурацию deployment, если она существует. Отсутствие файла не означает, что контракт развёрнут. |
+| `npm run deployment:preflight` | Полностью проверить Tolk build, ABI, dApp ABI, reviewed hashes и wrappers перед отдельно утверждённым deployment; команда не подписывает и не отправляет транзакции. |
 | `npm run website` | Локально раздать статические файлы каталога `website/`. |
 
 Другие обязательные проверки перед изменениями перечислены в [`docs/CONTRIBUTING.md`](docs/CONTRIBUTING.md) и CI.
@@ -137,6 +138,7 @@ Snapshots в `docs/abi/` помогают заметить изменения в
 
 QUASAR — предзапусковой инженерный прототип. По состоянию репозитория отсутствуют официальные адреса Tolk-контрактов и tracked `website/deployment.json`; функциональный smoke-run в testnet и независимый аудит Tolk-поколения остаются отдельными release gates.
 
+Для подготовки конкретного release commit сначала выполните `npm run deployment:preflight`.
 До любого реального развёртывания нужны, как минимум:
 
 1. Проверка чистой и воспроизводимой сборки конкретного release commit, ABI, wrappers и code hashes.
