@@ -1,0 +1,50 @@
+# QUASAR — внутренний предварительный security review
+
+**Ревизия:** `baa441f` (ветка `ai/62-quasar-security-audit`, основана на `origin/main`).  
+**Проверка кода и тестов:** 2026-10-24.  
+**Статус:** внутренний обзор активной Tolk-реализации; не независимый third-party audit и не разрешение mainnet.
+
+> Исходное вложение содержит список гипотез и критериев, а не доказанные уязвимости. Ни один пункт не принимается за finding без проверки актуального кода и тестов. Этот документ не заявляет, что проект или «весь код» идеальны.
+
+## Executive summary
+
+В проверенных путях выявлены **4 остающихся review findings/risks**: два High по возврату средств и восстановлению состояния DeFi после bounce, один Medium по административным полномочиям единственного AI-oracle адреса и один Low по минимальному timelock относительно рекомендованных во вложении 72 часов. Первоначально обнаруженный High npm advisory устранён в этой ветке безопасными dependency overrides и перепроверен; последние два риска требуют явного решения по модели доверия/конфигурации, но не означают обход owner-проверки.
+
+Подтверждены положительные controls против fake Jetton sender, отказ от совпадающих pool/high-bit query IDs, owner/admin checks, storage slice bounds и несколько replay/bounce защит. После dependency remediation полный локальный тестовый набор проходит; `npm audit --audit-level=moderate` сообщает 0 vulnerabilities. Тесты не покрывают все bounce/interleaving/storage migration сценарии.
+
+Issue #62 остаётся открытой: этот внутренний обзор не заменяет независимый аудит и не публикует отсутствующие deployment addresses/build records. Реальный deployment в рабочей копии не опубликован.
+
+## Scope и метод
+
+Проверены активные контракты `QuasarMaster`, `QuasarWallet`, `QuasarDeFi`, `QuasarAdminTimelock`, соответствующие Acton/Tolk tests, связанные audit/readiness документы и полный текст GitHub issue #62. Исходный файл пользователя: `pasted_content.txt`.
+
+Выполнены на итоговом lockfile: `npm audit --audit-level=moderate`, `npm run lint`, `npm test` (включая Acton 1.2.1 compile/emulator suite), `npm run abi:verify`, `npm run abi:migration:check`, `npm run abi:dapp`, `npx tsc --noEmit`, `python3 scripts/sync_acton.py --check` и `git diff --check`. Результат: **0 npm vulnerabilities**, Acton/Tolk **39/39**, Node **131/131**, Python **70/70**; ABI/wrapper/migration/sync/TypeScript gates прошли. Ранее `npm run pins:check`, `npm run hub:audit` и `npm run deployment:check` также прошли; hub audit выдал предупреждения, deployment check подтвердил отсутствие `website/deployment.json`.
+
+На исходном lockfile `npm audit` выявил High advisory `GHSA-mrhx-c7xc-m3w5` (`zod <4.6.6`) через `@ton/ton@16.3.0`, а также Moderate advisories для `fast-uri <3.1.9`. В этой ветке добавлены npm overrides `zod: 4.6.7` и `fast-uri: ^3.1.9`; локальный `npm audit --audit-level=moderate` после изменений сообщил `found 0 vulnerabilities`. Zod 4 совместимость проверена полным успешным Acton/Node/Python набором на итоговом lockfile.
+
+Обзор не включает live bytecode/on-chain state, эксплуатационную custody ключей, все возможные значения/TVM traces, полный formal verification и независимую проверку. Исторические Tact findings не считаются доказательством поведения активной Tolk версии.
+
+## Проверенные findings и риски
+
+| ID / severity | Evidence | Риск / рекомендуемое действие |
+|---|---|---|
+| `DEFI-SWAP-QSR-PAYOUT-BOUNCE` — **High** | `tolk/contracts/QuasarDeFi.tolk:1245-1275` учитывает входной TON и fee, уменьшает QSR reserve на payout amount и отправляет QSR; pending swap/refund entitlement не сохраняется. `PayoutFailed` (`:1025-1078`) возвращает QSR reserve для payout kind 4, но не возвращает входной TON или fee. Этот случай отслеживается в `docs/TASKS.md` T-28. | При bounce QSR пользователь не получает QSR, а TON остаётся учтённым в резерве без установленного user refund/claim пути; fee accounting также остаётся применённым. Спроектировать settlement state machine с trader/input/output/fee/attempt ID и единственным retry/refund путём; проверять повторные/stale callbacks, sweep и reserve invariants. `tolk/tests/quasar-defi.test.tolk:157-194` покрывает отказ до исполнения swap, но не bounce после успешного расчёта. |
+| `DEFI-LIQUIDITY-PAYOUT-BOUNCE-ROLLBACK` — **High** | `RemoveLiquidity` сначала снимает farm stake (`tolk/contracts/QuasarDeFi.tolk:1161-1167`), затем уменьшает LP/reserves и сохраняет payout (`:1169-1194`). В `PayoutFailed` восстановление LP/reserve (`:1031-1049`) не восстанавливает farm stake. После успешного QSR leg TON leg обрабатывается отдельно (`:984-1023`); bounced TON handler `:1496-1523` возвращает reserve, но не сохраняет доступный beneficiary retry/claim entitlement. Это связано с `docs/TASKS.md` T-29. | При QSR-leg bounce восстановленные LP могут оказаться unstaked. При TON-leg bounce после QSR settlement резерв восстанавливается, но доступный механизм повторной выплаты TON не подтверждён. Сохранить farm accounting при rollback и явный retry/claim entitlement; добавить эмуляционные тесты обеих legs, replay, неверного/stale callback, повторного bounce и балансовых инвариантов. |
+| `AI-ORACLE-SINGLE-ADDRESS-AUTHORITY` — **Medium (trust-boundary risk)** | `requireAi` принимает только `sender == s.ai.aiOracle && s.ai.aiEnabled` (`tolk/contracts/QuasarMaster.tolk:1371-1373`). Legacy команды, включая `AiSetTreasuryDirect` (`:2711-2730`), `AiSetBuybackDirect` (`:2732-2768`), `AiToggleMinting` (`:2769-2791`) и `AiRotateOracle` (`:2793-2815`), используют эту адресную authority. Отдельный signed route проверяет одну установленную Ed25519 public key (`:3324-3347`). Владелец задаёт trust boundary; автоматического 2-of-3 требования issue #62 не содержит. | Компрометация намеренно доверенного oracle key/address даёт предусмотренные кодом AI powers; treasury destination можно менять, а в `aiFullAutonomy` разрешена ротация oracle. Это не выявленный обход owner-only маршрута, но существенная одноадресная operational authority. Явно подтвердить допустимость модели, ограничить/вывести legacy receivers при необходимости и добавить тесты каждого чувствительного AI действия, ротации/revocation и взаимодействия с `aiFullAutonomy`. Не хранить ключи вместе с приложением. |
+| `TIMELOCK-BELOW-72H-RECOMMENDATION` — **Low (policy/configuration gap)** | Активный `QuasarAdminTimelock` принимает `minDelay >= 86400` секунд (24 ч): `tolk/contracts/QuasarAdminTimelock.tolk:126-152`; runbook подтверждает 24h+ (`docs/MULTISIG_HANDOFF_RUNBOOK.md:17-19,63`). Вложение пользователя рекомендует ≥72 ч. Текущая проверка допускает 24–72 ч, а deployment configuration не опубликована. В просмотренных timelock/master файлах set-code action не найден; allow-list целей — master и ненулевой DeFi. | 24h — фактический кодовый минимум, но он ниже рекомендации из вложения; не TON-стандарт и не самостоятельное доказательство уязвимости. До deployment принять и документировать требуемую задержку и мультисиг-конфигурацию; если требование именно ≥72h, закрепить его в контрактном guard и тестах, а deployed getter/config проверить отдельно. Не заявлять наличие proxy upgrade: проверенные пути `ProposeWalletCode`/Apply wallet code отклоняются (`QuasarMaster.tolk:2087-2093,2629-2633`). |
+
+### Проверенные controls без finding
+
+- **Fake Jetton:** wallet/master/DeFi сверяют sender с canonical derived wallet. Например, `QuasarDeFi.tolk:954-960`; профильный forged-notification rejection и authenticated deposit — `tolk/tests/quasar-defi.test.tolk:129-155`. Тест прошёл в полном Acton suite.
+- **Wallet query ID collision:** первоначальный draft ошибочно счёл T-27 непокрытым. `tolk/tests/wallet-regression.test.tolk:188-252` проверяет оба порядка pool payout/high-bit user transfer и требует отказ от коллизии; тест прошёл. Поэтому collision не включён в findings.
+- **Timelock/admin:** auth/target/callId/cancel/permissionless-after-delay/admin-transfer tests находятся в `tolk/tests/admin-timelock.test.tolk:81-353` и прошли. Это не означает 72h minimum: кодовый минимум 24h.
+- **Storage/lazy:** парсеры проверяют окончания срезов и типизированные границы; например wallet layout в `tolk/contracts/QuasarCommon.tolk:174-241`, DeFi layout в `QuasarDeFi.tolk:374-555`, Master layout в `QuasarMaster.tolk:498-551,1095-1120`. Обнаруженные тесты round-trip ограничены records/wire prefixes; полный state-layout upgrade migration coverage не доказан.
+- **AI mint/supply:** issue #62 требует проверить, что `aiFullAutonomy` не открывает unlimited mint. Подтвержденный тест `tolk/tests/quasar-master.test.tolk:145-190` проверяет owner mint, tx cap и то, что `ToggleMinting` меняет mintability, но не trading. В рамках этого review не найдено доказательства, что сам AI route может произвольно mint; отдельная проверка всех предельных сценариев supply и фактического deployment не выполнена.
+- **Issue #62:** полный текст требует независимый audit, build hashes/addresses, CI publication, arithmetic/risk review и проверку spending/AI autonomy; он **не требует 2-of-3 AI quorum**. Исторические `docs/SECURITY_AUDIT.md`, `docs/AUDIT_STATUS.md`, `docs/MAINNET_READINESS_CHECKLIST.md` не заменяют независимый аудит текущего активного кода.
+
+## Prioritized follow-up
+
+1. Разработать и проверить исправления двух High DeFi bounce/recovery defects; не менять financial state machine без regression-тестов и явного accounting design.
+2. Принять документированное решение по AI oracle privilege/trust boundary и timelock ≥72h recommendation; проверить signer custody и будущую deployment configuration.
+3. Расширить тесты storage state-layout migration, DeFi payout bounce interleavings и границ supply/fee arithmetic.
+4. Оставить issue #62 открытой до независимого квалифицированного аудита, воспроизводимых artifact hashes и надлежащего testnet/deployment evidence. Не публиковать адреса, которых нет.
