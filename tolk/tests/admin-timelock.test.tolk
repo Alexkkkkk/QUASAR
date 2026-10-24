@@ -6,7 +6,7 @@ import "@wrappers/QuasarAdminTimelock.gen"
 
 const MIN_DELAY: uint32 = 86400
 
-fun setupTimelock(): (QuasarAdminTimelock, Treasury, Treasury, Treasury) {
+fun setupTimelockWithValue(value: coins): (QuasarAdminTimelock, Treasury, Treasury, Treasury) {
     val admin = testing.treasury("admin-timelock-admin");
     val master = testing.treasury("admin-timelock-master");
     val defi = testing.treasury("admin-timelock-defi");
@@ -19,7 +19,7 @@ fun setupTimelock(): (QuasarAdminTimelock, Treasury, Treasury, Treasury) {
         admin.address,
         createMessage({
             bounce: BounceMode.NoBounce,
-            value: grams("10"),
+            value,
             dest: { workchain: timelock.address.getWorkchain(), stateInit: timelock.stateInit! },
             body: Deploy { queryId: 0 },
         }),
@@ -37,6 +37,10 @@ fun setupTimelock(): (QuasarAdminTimelock, Treasury, Treasury, Treasury) {
     return (timelock, admin, master, defi);
 }
 
+fun setupTimelock(): (QuasarAdminTimelock, Treasury, Treasury, Treasury) {
+    return setupTimelockWithValue(grams("10"));
+}
+
 fun callBody(): cell {
     return beginCell().storeUint(0x12345678, 32).endCell();
 }
@@ -49,6 +53,12 @@ get fun `test admin timelock: deploy initializes the contract`() {
     expect(timelock.getPendingAdmin()).toEqual(zeroAddress());
     expect(timelock.getMinDelay()).toEqual(MIN_DELAY);
     expect(timelock.getLastQueuedCallId()).toEqual(0);
+}
+
+get fun `test admin timelock: deploy reply covers funded reserve branch`() {
+    val (timelock, admin, _, _) = setupTimelockWithValue(grams("1"));
+    expect(timelock.getAdmin()).toEqual(admin.address);
+    expect(timelock.getMinDelay()).toEqual(MIN_DELAY);
 }
 
 get fun `test admin timelock: authorized queue stores managed call`() {
