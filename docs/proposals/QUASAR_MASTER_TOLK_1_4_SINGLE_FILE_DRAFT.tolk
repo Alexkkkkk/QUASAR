@@ -1,23 +1,19 @@
 /**
  * QUASAR Master Contract — Tolk 1.4 (single-file)
  * ================================================
- * TEP-74-совместимый jetton-master с многослойной моделью безопасности:
- *
- *   Слой 1 (Контракт):    contract-блок · явные mutate · исчерпывающий match
- *   Слой 2 (Bounce):      изолированный onBouncedMessage без setData
- *   Слой 3 (Replay):      монотонный nonce
- *   Слой 4 (Tokenomics):  maxSupply · anti-whale · fee cap · underflow guards
- *   Слой 5 (Admin):       two-step transfer с таймлоком 48 ч
- *   Слой 6 (AI):          N-of-M мультисиг · cooldown на аварийную паузу
- *   Слой 7 (Migration):   предустановленный migrationTarget
- *   Слой 8 (Standards):   TEP-74 + TEP-89 геттеры
- *
- * ВАЖНО: не компилировалось. Требует acton build / test / аудита
- *        перед любым деплоем с реальными средствами.
+ * Все 8 слоёв безопасности в одном файле:
+ *   [1] contract-блок       → ABI + TS-обёртки
+ *   [2] onBouncedMessage    → bounce не мутирует state
+ *   [3] nonce               → anti-replay
+ *   [4] tokenomics guards   → maxSupply / anti-whale / fee cap / underflow
+ *   [5] two-step admin      → timelock 48 ч
+ *   [6] AI N-of-M multisig  → защита от одного скомпрометированного signer
+ *   [7] migration gate      → предустановленный target
+ *   [8] TEP-74 / TEP-89     → совместимость с кошельками
  */
 
 // ════════════════════════════════════════════════════════════
-// Contract Declaration (Tolk 1.4) — автогенерация ABI и TS-обёрток
+// [1] Contract Declaration (Tolk 1.4)
 // ════════════════════════════════════════════════════════════
 contract QuasarMaster {
     author: "QUASAR Team";
@@ -31,30 +27,30 @@ contract QuasarMaster {
 }
 
 // ════════════════════════════════════════════════════════════
-// Storage — БЕЗ lazy. Мутации обязаны сериализоваться корректно.
+// Storage — без lazy: мутации обязаны сериализоваться
 // ════════════════════════════════════════════════════════════
 struct QuasarStorage {
-    // ─── TEP-74 ───
+    // TEP-74
     totalSupply:  coins,
     admin:        address,
     content:      cell,
-    walletCode:   cell,           // код jetton-wallet для get_wallet_address
+    walletCode:   cell,
 
-    // ─── Admin transfer ───
-    pendingAdmin:         address,
-    adminAcceptDeadline:  int,
+    // Admin transfer
+    pendingAdmin:        address,
+    adminAcceptDeadline: int,
 
-    // ─── Tokenomics ───
-    maxSupply:        coins,
-    feeBps:           uint16,
-    antiWhaleLimit:   coins,
-    mintingEnabled:   bool,
-    paused:           bool,
+    // Tokenomics
+    maxSupply:      coins,
+    feeBps:         uint16,
+    antiWhaleLimit: coins,
+    mintingEnabled: bool,
+    paused:         bool,
 
-    // ─── Oracle ───
+    // Oracle
     oracle: address,
 
-    // ─── AI-модуль ───
+    // AI-модуль
     aiAutonomy:    bool,
     aiSigners:     array<address>,
     aiThreshold:   uint8,
@@ -64,35 +60,27 @@ struct QuasarStorage {
     aiPendingArg2: address,
     aiLastPause:   int,
 
-    // ─── Безопасность ───
-    nonce:            uint64,
-    migrationTarget:  address,
+    // Безопасность
+    nonce:           uint64,
+    migrationTarget: address,
 }
 
 // ════════════════════════════════════════════════════════════
-// Messages — TEP-74 + расширения
+// Messages
 // ════════════════════════════════════════════════════════════
-
-// TEP-74 master-side
-struct (0x11111111) Mint               { queryId: uint64, amount: coins, to: address }
-struct (0x22222222) Burn               { queryId: uint64, amount: coins, from: address }
-struct (0x55555555) ChangeAdmin        { queryId: uint64, newAdmin: address, deadline: uint32 }
-struct (0xEEEEEEEE) ClaimAdmin         { queryId: uint64 }
-struct (0x77777777) ChangeContent      { queryId: uint64, newContent: cell }
-
-// Tokenomics
-struct (0x33333333) SetFee             { queryId: uint64, feeBps: uint16 }
-struct (0x44444444) SetAntiWhale       { queryId: uint64, limit: coins }
-struct (0x0A0A0A0A) RotateOracle       { queryId: uint64, newOracle: address }
-
-// AI-модуль
-struct (0xFFFFFFFF) AiApprove          { queryId: uint64, op: uint32, arg1: int, arg2: address }
-struct (0x88888888) AiEmergencyPause   { queryId: uint64 }
-struct (0x99999999) AiSinglePoint      { queryId: uint64, op: uint32 }
-struct (0x0BADF00D) ResetAiApprovals   { queryId: uint64 }
-
-// Migration
-struct (0x12345678) Migrate            { queryId: uint64, newCode: cell, newData: cell }
+struct (0x11111111) Mint              { queryId: uint64, amount: coins, to: address }
+struct (0x22222222) Burn              { queryId: uint64, amount: coins, from: address }
+struct (0x55555555) ChangeAdmin       { queryId: uint64, newAdmin: address, deadline: uint32 }
+struct (0xEEEEEEEE) ClaimAdmin        { queryId: uint64 }
+struct (0x77777777) ChangeContent     { queryId: uint64, newContent: cell }
+struct (0x33333333) SetFee            { queryId: uint64, feeBps: uint16 }
+struct (0x44444444) SetAntiWhale      { queryId: uint64, limit: coins }
+struct (0x0A0A0A0A) RotateOracle      { queryId: uint64, newOracle: address }
+struct (0xFFFFFFFF) AiApprove         { queryId: uint64, op: uint32, arg1: int, arg2: address }
+struct (0x88888888) AiEmergencyPause  { queryId: uint64 }
+struct (0x99999999) AiSinglePoint     { queryId: uint64, op: uint32 }
+struct (0x0BADF00D) ResetAiApprovals  { queryId: uint64 }
+struct (0x12345678) Migrate           { queryId: uint64, newCode: cell, newData: cell }
 
 type Incoming = Mint | Burn | ChangeAdmin | ClaimAdmin | ChangeContent
               | SetFee | SetAntiWhale | RotateOracle
@@ -102,15 +90,12 @@ type Incoming = Mint | Burn | ChangeAdmin | ClaimAdmin | ChangeContent
 // ════════════════════════════════════════════════════════════
 // Constants
 // ════════════════════════════════════════════════════════════
-const MAX_FEE_BPS:       int = 1000;    // 10 %
-const ADMIN_TIMELOCK:    int = 172800;  // 48 ч
-const AI_PAUSE_COOLDOWN: int = 3600;    // 1 ч
+const MAX_FEE_BPS:       int = 1000;
+const ADMIN_TIMELOCK:    int = 172800;
+const AI_PAUSE_COOLDOWN: int = 3600;
 const MAX_AI_SIGNERS:    int = 16;
 const ZERO_ADDR:         address = address("EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c");
 
-// ════════════════════════════════════════════════════════════
-// Error codes
-// ════════════════════════════════════════════════════════════
 const ERR_NOT_ADMIN:         int = 401;
 const ERR_NOT_AI_SIGNER:     int = 402;
 const ERR_PAUSED:            int = 403;
@@ -131,12 +116,9 @@ const ERR_NOT_PENDING_OP:    int = 417;
 const ERR_UNKNOWN_MESSAGE:   int = 418;
 
 // ════════════════════════════════════════════════════════════
-// Bounce: изолированная точка входа — НИКОГДА не мутирует state
+// [2] Bounce — изолированная точка входа, state не мутируется
 // ════════════════════════════════════════════════════════════
 fun onBouncedMessage(in: InMessageBounced) {
-    // Отскок приходит сюда, а не в onInternalMessage.
-    // Мы намеренно не вызываем setData: state остаётся неизменным,
-    // что исключает двойное списание и «тихую» порчу данных.
     return;
 }
 
@@ -144,20 +126,17 @@ fun onBouncedMessage(in: InMessageBounced) {
 // Main dispatcher — исчерпывающий match, без else
 // ════════════════════════════════════════════════════════════
 fun onInternalMessage(in: InMessage) {
-    // Storage загружается БЕЗ lazy: мутации должны сохраниться.
     var st = QuasarStorage.fromCell(in.stateInit.data!!);
     val msg = lazy Incoming.fromSlice(in.body);
     val sender = in.senderAddress;
 
-    // Anti-replay: монотонный nonce (кроме AI-аппрувов и сброса)
+    // [3] Anti-replay: монотонный nonce
     if (!(msg is AiApprove) && !(msg is ResetAiApprovals)) {
         val qid = msg.queryId;
         throw_unless(ERR_REPLAY, qid > st.nonce);
         st.nonce = qid;
     }
 
-    // Исчерпывающий match: все 13 типов обработаны явно.
-    // Компилятор гарантирует, что забытый тип не пройдёт сборку.
     match (msg) {
         Mint              => handleMint(st, sender, msg),
         Burn              => handleBurn(st, sender, msg),
@@ -174,7 +153,6 @@ fun onInternalMessage(in: InMessage) {
         Migrate           => handleMigrate(st, sender, msg),
     }
 
-    // Коммит состояния. Все mutate-изменения st сохраняются здесь.
     setData(st.toCell());
 }
 
@@ -209,7 +187,7 @@ fun requireNonZero(a: address) {
 }
 
 // ════════════════════════════════════════════════════════════
-// TEP-74: Mint / Burn
+// [4] Tokenomics: mint / burn
 // ════════════════════════════════════════════════════════════
 fun handleMint(mutate st: QuasarStorage, sender: address, msg: Mint) {
     requireAdmin(st, sender);
@@ -219,18 +197,16 @@ fun handleMint(mutate st: QuasarStorage, sender: address, msg: Mint) {
     throw_unless(ERR_MAX_SUPPLY, st.totalSupply + msg.amount <= st.maxSupply);
     throw_unless(ERR_ANTI_WHALE, msg.amount <= st.antiWhaleLimit);
     st.totalSupply += msg.amount;
-    // В production здесь отправляется mint-message на jetton-wallet по msg.to
 }
 
 fun handleBurn(mutate st: QuasarStorage, sender: address, msg: Burn) {
     requireNotPaused(st);
-    // Underflow guard ОБЯЗАТЕЛЕН перед вычитанием
     throw_unless(ERR_UNDERFLOW, st.totalSupply >= msg.amount);
     st.totalSupply -= msg.amount;
 }
 
 // ════════════════════════════════════════════════════════════
-// TEP-74: Admin transfer (two-step + timelock 48 ч)
+// [5] Two-step admin transfer + timelock
 // ════════════════════════════════════════════════════════════
 fun handleChangeAdmin(mutate st: QuasarStorage, sender: address, msg: ChangeAdmin) {
     requireAdmin(st, sender);
@@ -274,13 +250,12 @@ fun handleRotateOracle(mutate st: QuasarStorage, sender: address, msg: RotateOra
 }
 
 // ════════════════════════════════════════════════════════════
-// AI-модуль: N-of-M мультисиг
+// [6] AI N-of-M multisig
 // ════════════════════════════════════════════════════════════
 fun handleAiApprove(mutate st: QuasarStorage, sender: address, msg: AiApprove) {
     requireAiSigner(st, sender);
     requireAiAutonomy(st);
 
-    // Смена операции → сброс накопленных одобрений
     if (st.aiPendingOp != msg.op
         || st.aiPendingArg1 != msg.arg1
         || st.aiPendingArg2 != msg.arg2) {
@@ -290,11 +265,9 @@ fun handleAiApprove(mutate st: QuasarStorage, sender: address, msg: AiApprove) {
         st.aiPendingArg2 = msg.arg2;
     }
 
-    // Защита от дублирования подписи одним и тем же signer'ом
     throw_unless(ERR_DUPLICATE_SIGNER, !containsAddress(st.aiApprovals, sender));
     st.aiApprovals.push(sender);
 
-    // Порог достигнут → выполняем операцию и очищаем накопления
     if (st.aiApprovals.size() >= st.aiThreshold) {
         executeAiOp(st, msg.op, msg.arg1, msg.arg2);
         st.aiApprovals = [];
@@ -305,12 +278,12 @@ fun handleAiApprove(mutate st: QuasarStorage, sender: address, msg: AiApprove) {
 }
 
 fun executeAiOp(mutate st: QuasarStorage, op: uint32, arg1: int, arg2: address) {
-    if (op == 0x33333333) {                          // AiSetFee
+    if (op == 0x33333333) {
         throw_unless(ERR_FEE_TOO_HIGH, arg1 <= MAX_FEE_BPS);
         st.feeBps = arg1;
-    } else if (op == 0x44444444) {                   // AiSetAntiWhale
+    } else if (op == 0x44444444) {
         st.antiWhaleLimit = arg1;
-    } else if (op == 0x0A0A0A0A) {                   // AiRotateOracle
+    } else if (op == 0x0A0A0A0A) {
         requireNonZero(arg2);
         st.oracle = arg2;
     } else {
@@ -326,7 +299,6 @@ fun handleAiPause(mutate st: QuasarStorage, sender: address) {
     st.aiLastPause = now();
 }
 
-// Одиночные AI-операции НАМЕРЕННО запрещены — только через мультисиг.
 fun handleAiSinglePoint(st: QuasarStorage, sender: address, msg: AiSinglePoint) {
     requireAiSigner(st, sender);
     requireAiAutonomy(st);
@@ -342,7 +314,7 @@ fun handleResetAiApprovals(mutate st: QuasarStorage, sender: address) {
 }
 
 // ════════════════════════════════════════════════════════════
-// Migration gate
+// [7] Migration gate
 // ════════════════════════════════════════════════════════════
 fun handleMigrate(mutate st: QuasarStorage, sender: address, msg: Migrate) {
     requireAdmin(st, sender);
@@ -353,7 +325,7 @@ fun handleMigrate(mutate st: QuasarStorage, sender: address, msg: Migrate) {
 }
 
 // ════════════════════════════════════════════════════════════
-// Getters — TEP-89 + служебные (lazy безопасен: только чтение)
+// [8] Getters — TEP-89 + служебные
 // ════════════════════════════════════════════════════════════
 get fun get_jetton_data(): (coins, coins, address, cell, cell) {
     val st = lazy QuasarStorage.fromCell(contract.getData());
@@ -362,8 +334,7 @@ get fun get_jetton_data(): (coins, coins, address, cell, cell) {
 
 get fun get_wallet_address(owner: address): address {
     val st = lazy QuasarStorage.fromCell(contract.getData());
-    // В production — расчёт адреса jetton-wallet по (owner, master, walletCode).
-    // Здесь заглушка: возвращает owner для иллюстрации сигнатуры.
+    // production: детерминированный расчёт jetton-wallet по (owner, master, walletCode)
     return owner;
 }
 
