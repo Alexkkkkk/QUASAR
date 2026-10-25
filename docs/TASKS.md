@@ -57,17 +57,18 @@
     [TEP-74](https://github.com/ton-blockchain/TEPs/blob/master/text/0074-jettons-standard.md),
     [TON Jetton API](https://docs.ton.org/contracts/standard/tokens/jettons/api).
 
-- [ ] **T-24 `InternalTransfer` bounce может повторно зачислить уже принятую fee.**
+- [x] **T-24 `InternalTransfer` bounce может повторно зачислить уже принятую fee.**
   - Файл: `tolk/contracts/QuasarWallet.tolk:75-151`; tests:
     `tolk/tests/wallet-jetton.test.tolk`.
   - Проблема: master `FeeTransfer` и recipient `InternalTransfer` независимы.
     Когда fee принят master, а recipient leg затем bounced до `TransferConfirmed`,
     sender wallet возвращает principal **и fee**, хотя fee остаётся учтена master;
     баланс wallet liabilities становится зависимым от порядка сообщений.
-  - Исправление/приёмка: сохранять однократное восстановление principal и вести
-    fee/confirmation lifecycle через оба порядка `FeeTransfer` / recipient bounce /
-    `TransferConfirmed`; проверить sender balance, wallet/master fee ledger и
-    pending storage после каждой permutations. Источники:
+  - Исправлено/проверено: bounce восстанавливает только principal; добавлены
+    Acton regressions для обоих порядков `FeeTransfer` / recipient bounce /
+    `TransferConfirmed`, с assertion sender balance и Master reserve до/после
+    принятия fee и confirmation. Bounce отправляется от адреса derived recipient
+    wallet. Источники:
     [TON internal messages](https://docs.ton.org/foundations/messages/internal),
     [Acton/Tolk test runner](https://ton-blockchain.github.io/acton/docs/testing/overview).
 
@@ -159,7 +160,7 @@
     [Tolk message sending](https://docs.ton.org/tolk/features/message-sending),
     [bounce handling](https://docs.ton.org/tolk/features/message-handling).
 
-- [ ] **T-30 Закрыть post-bounce test coverage gaps по master, DeFi и timelock.**
+- [~] **T-30 Закрыть post-bounce test coverage gaps по master, DeFi и timelock.**
   - Master: реальный master mint→burn/supply update, spoofed/invalid BurnNotification,
     maxSupply boundary, полные поля `get_jetton_data`, delayed/cancelled/unauthorized
     owner transfer; файлы `tolk/tests/quasar-master.test.tolk` и
@@ -168,21 +169,32 @@
     bounce/excess ledger recovery для swap, removal, farm reward/refund и buyback;
     farming accrual/config/stake/claim/emergency cases;
     файл `tolk/tests/quasar-defi.test.tolk`.
-  - AdminTimelock: trace подтверждает target/body/value, bounced managed target и
-    недостаток средств сохраняют корректную retry/cancelability;
+  - Master bounce hardening: unknown/replayed IDs больше не увеличивают reserve;
+    известные reserve/custody payouts восстанавливаются однократно; amount и
+    derived sender wallet сверяются; buyback bounce восстанавливает reserve и
+    buyback pool только для совпавшего pending ID. Acton tests добавлены.
+  - AdminTimelock: trace подтверждает target/body/value и bounced message на
+    uninitialized configured managed target; операция one-shot и удаляется до
+    отправки. Для retry администратор обязан создать новую запись с новым
+    монотонным ID и пройти delay заново; новая запись cancellable. Автоматический
+    retry с тем же ID не реализован из-за отсутствия generic success/bounce
+    correlation для произвольного body. Полная positive DeFi/farm и Master
+    behavior-матрица всё ещё не закрыта.
     файл `tolk/tests/admin-timelock.test.tolk`.
   - Для каждого пункта добавить точные assertions по всем данным и отказам,
     вызывая active Acton native test suite, не симуляторный placeholder.
     Источники: [Acton testing](https://ton-blockchain.github.io/acton/docs/testing/overview),
     [trace reading](https://ton-blockchain.github.io/acton/docs/testing/reading-transaction-chains).
 
-- [ ] **T-31 TEP-74/Tolk serialization boundary tests.**
+- [~] **T-31 TEP-74/Tolk serialization boundary tests.**
   - Файлы: `tolk/contracts/QuasarCommon.tolk`,
     `tolk/contracts/QuasarMasterRecords.tolk`,
     `tolk/tests/common-wire.test.tolk`, `tolk/tests/master-records.test.tolk`.
-  - Зафиксировать `Either` selector + inline/ref forms `forwardPayload`; high-bit
-    `query_id` boundary; snake strings spanning refs; malformed/truncated nested
-    refs/trailing bits; assert **every** unpacked `EventFeeDistributed` field.
+  - Уже проверены `Either` selector + inline/ref forms `forwardPayload`, maximum
+    `uint64` high-bit `query_id`, четыре payload refs, а также `EventFeeDistributed`
+    field round-trip и truncated/trailing data rejection. Остаются snake strings
+    spanning refs, malformed nested-ref matrix и исчерпывающая проверка **каждого**
+    поля `EventFeeDistributed`. Источники:
     Источники: [TEP-74](https://github.com/ton-blockchain/TEPs/blob/master/text/0074-jettons-standard.md),
     [TON cells](https://docs.ton.org/foundations/serialization/cells),
     [Tolk serialization](https://docs.ton.org/tolk/types/overall-serialization).

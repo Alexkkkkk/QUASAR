@@ -139,6 +139,28 @@ fun defiPoolWalletAddress(fixture: DeFiFixture): address {
     return poolWallet.calculateAddress();
 }
 
+// This constructs a bounced dispatch vector for handler tests; sender provenance
+// is supplied separately by net.send and is not validated by the emulator.
+fun bouncedDeFiCallback(
+    defi: QuasarDeFi,
+    originalBody: cell,
+    value: coins,
+): OutMessage {
+    var original = originalBody.beginParse();
+    var bouncedBody = beginCell().storeUint(0xffffffff, 32);
+    if (original.remainingBitsCount() > 224) {
+        bouncedBody.storeSlice(original.loadBits(224));
+    } else {
+        bouncedBody.storeSlice(original);
+    }
+    return createMessage({
+        bounce: BounceMode.NoBounce,
+        value,
+        dest: defi.address,
+        body: bouncedBody.endCell(),
+    }).bounced();
+}
+
 fun depositQsrToDeFi(
     fixture: DeFiFixture,
     beneficiary: Treasury,
@@ -760,4 +782,308 @@ get fun `test quasar defi: bounced TON payout is claimable and retry destination
     });
     expect(fixture.defi.tonPayoutClaim(1).status).toEqual(2);
     expect(fixture.defi.tonClaimsHeld()).toEqual(0);
+}
+
+get fun `test quasar defi: forged TON payout bounce from an unrelated sender preserves claim and reserves`() {
+    val fixture = setupDeFi();
+    val provider = testing.treasury("quasar-defi-forged-ton-bounce-provider");
+    val outsider = testing.treasury("quasar-defi-forged-ton-bounce-outsider");
+    addInitialLiquidity(fixture, provider);
+    val qsrIn = grams("1");
+    depositQsrToDeFi(fixture, provider, qsrIn, 1201);
+    val quote = fixture.defi.estimateSwapToTon(qsrIn as int);
+    val cursor = testing.createTraceIterationCursor(
+        provider.address,
+        createMessage({
+            bounce: BounceMode.NoBounce,
+            value: grams("0.1"),
+            dest: fixture.defi.address,
+            body: SwapToTon {
+                qsrAmount: qsrIn,
+                minTonOut: 0,
+                deadline: (testing.getNow() + 3600) as uint32,
+            },
+        }),
+    );
+    val root = cursor.executeN(1);
+    expect(root).toHaveSuccessfulTx<SwapToTon>({ to: fixture.defi.address });
+    cursor.close();
+
+    val beforePool = fixture.defi.poolInfo();
+    val beforeClaim = fixture.defi.tonPayoutClaim(1);
+    val beforeHeld = fixture.defi.tonClaimsHeld();
+    val forged = bouncedDeFiCallback(
+        fixture.defi,
+        TonPayout {
+            queryId: 1,
+            amount: quote.tonOut as coins,
+        }.toCell(),
+        quote.tonOut as coins,
+    );
+    val rejected = net.send(outsider.address, forged);
+
+    expect(rejected).toHaveFailedTx({
+        from: outsider.address,
+        to: fixture.defi.address,
+        bounced: true,
+        exitCode: 1230,
+    });
+    expect(fixture.defi.poolInfo()).toEqual(beforePool);
+    expect(fixture.defi.tonPayoutClaim(1)).toEqual(beforeClaim);
+    expect(fixture.defi.tonClaimsHeld()).toEqual(beforeHeld);
+}
+
+get fun `test quasar defi: forged PoolPayout bounce from an unrelated sender preserves pending settlement`() {
+    val fixture = setupDeFi();
+    val provider = testing.treasury("quasar-defi-forged-pool-bounce-provider");
+    val outsider = testing.treasury("quasar-defi-forged-pool-bounce-outsider");
+    addInitialLiquidity(fixture, provider);
+    val tonIn = grams("0.1");
+    val quote = fixture.defi.estimateSwapToQsr(tonIn as int);
+    val cursor = testing.createTraceIterationCursor(
+        provider.address,
+        createMessage({
+            bounce: BounceMode.NoBounce,
+            value: tonIn,
+            dest: fixture.defi.address,
+            body: SwapToQsr {
+                tonAmount: tonIn,
+                minQsrOut: 0,
+                deadline: (testing.getNow() + 3600) as uint32,
+            },
+        }),
+    );
+    val root = cursor.executeN(1);
+    expect(root).toHaveSuccessfulTx<SwapToQsr>({ to: fixture.defi.address });
+    cursor.close();
+
+    val beforePool = fixture.defi.poolInfo();
+    val beforeFee = fixture.defi.feeAccumulatedQsr();
+    val beforeClaim = fixture.defi.tonPayoutClaim(1);
+    val beforeHeld = fixture.defi.tonClaimsHeld();
+    val forged = bouncedDeFiCallback(
+        fixture.defi,
+        PoolPayout {
+            queryId: 1,
+            amount: quote.qsrOut as coins,
+            destination: provider.address,
+            responseDestination: fixture.defi.address,
+        }.toCell(),
+        grams("0.02"),
+    );
+    val rejected = net.send(outsider.address, forged);
+
+    expect(rejected).toHaveFailedTx({
+        from: outsider.address,
+        to: fixture.defi.address,
+        bounced: true,
+        exitCode: 1235,
+    });
+    expect(fixture.defi.poolInfo()).toEqual(beforePool);
+    expect(fixture.defi.feeAccumulatedQsr()).toEqual(beforeFee);
+    expect(fixture.defi.tonPayoutClaim(1)).toEqual(beforeClaim);
+    expect(fixture.defi.tonClaimsHeld()).toEqual(beforeHeld);
+
+    val blocked = fixture
+        .defi
+        .sendSwapToQsr(
+            provider.address,
+            tonIn,
+            0,
+            (testing.getNow() + 3600) as uint32,
+            { bounce: false, value: tonIn },
+        );
+    expect(blocked).toHaveFailedTx<SwapToQsr>({ to: fixture.defi.address, exitCode: 1243 });
+}
+
+get fun `test quasar defi: truncated TON payout bounce payloads preserve claim and reserves`() {
+    val fixture = setupDeFi();
+    val provider = testing.treasury("quasar-defi-truncated-ton-bounce-provider");
+    addInitialLiquidity(fixture, provider);
+    val qsrIn = grams("1");
+    depositQsrToDeFi(fixture, provider, qsrIn, 1202);
+    val cursor = testing.createTraceIterationCursor(
+        provider.address,
+        createMessage({
+            bounce: BounceMode.NoBounce,
+            value: grams("0.1"),
+            dest: fixture.defi.address,
+            body: SwapToTon {
+                qsrAmount: qsrIn,
+                minTonOut: 0,
+                deadline: (testing.getNow() + 3600) as uint32,
+            },
+        }),
+    );
+    val root = cursor.executeN(1);
+    expect(root).toHaveSuccessfulTx<SwapToTon>({ to: fixture.defi.address });
+    cursor.close();
+
+    val beforePool = fixture.defi.poolInfo();
+    val beforeClaim = fixture.defi.tonPayoutClaim(1);
+    val beforeHeld = fixture.defi.tonClaimsHeld();
+    val noOpcode = bouncedDeFiCallback(fixture.defi, beginCell().endCell(), grams("0.02"));
+    val partialOpcode = bouncedDeFiCallback(
+        fixture.defi,
+        beginCell().storeUint(0x746f, 16).endCell(),
+        grams("0.02"),
+    );
+    val partialQuery = bouncedDeFiCallback(
+        fixture.defi,
+        beginCell().storeUint(0x746f6e70, 32).storeUint(1, 32).endCell(),
+        grams("0.02"),
+    );
+    val partialCoins = bouncedDeFiCallback(
+        fixture.defi,
+        beginCell().storeUint(0x746f6e70, 32).storeUint(1, 64).storeUint(1, 3).endCell(),
+        grams("0.02"),
+    );
+
+    val noOpcodeResult = net.send(provider.address, noOpcode);
+    expect(noOpcodeResult).toHaveFailedTx({
+        from: provider.address,
+        to: fixture.defi.address,
+        bounced: true,
+        exitCode: 9,
+    });
+    expect(fixture.defi.poolInfo()).toEqual(beforePool);
+    expect(fixture.defi.tonPayoutClaim(1)).toEqual(beforeClaim);
+    expect(fixture.defi.tonClaimsHeld()).toEqual(beforeHeld);
+
+    val partialOpcodeResult = net.send(provider.address, partialOpcode);
+    expect(partialOpcodeResult).toHaveFailedTx({
+        from: provider.address,
+        to: fixture.defi.address,
+        bounced: true,
+        exitCode: 9,
+    });
+    expect(fixture.defi.poolInfo()).toEqual(beforePool);
+    expect(fixture.defi.tonPayoutClaim(1)).toEqual(beforeClaim);
+    expect(fixture.defi.tonClaimsHeld()).toEqual(beforeHeld);
+
+    val partialQueryResult = net.send(provider.address, partialQuery);
+    expect(partialQueryResult).toHaveFailedTx({
+        from: provider.address,
+        to: fixture.defi.address,
+        bounced: true,
+        exitCode: 9,
+    });
+    expect(fixture.defi.poolInfo()).toEqual(beforePool);
+    expect(fixture.defi.tonPayoutClaim(1)).toEqual(beforeClaim);
+    expect(fixture.defi.tonClaimsHeld()).toEqual(beforeHeld);
+
+    val partialCoinsResult = net.send(provider.address, partialCoins);
+    expect(partialCoinsResult).toHaveFailedTx({
+        from: provider.address,
+        to: fixture.defi.address,
+        bounced: true,
+        exitCode: 9,
+    });
+    expect(fixture.defi.poolInfo()).toEqual(beforePool);
+    expect(fixture.defi.tonPayoutClaim(1)).toEqual(beforeClaim);
+    expect(fixture.defi.tonClaimsHeld()).toEqual(beforeHeld);
+}
+
+get fun `test quasar defi: truncated PoolPayout bounce payloads preserve pending settlement and claims`() {
+    val fixture = setupDeFi();
+    val provider = testing.treasury("quasar-defi-truncated-pool-bounce-provider");
+    addInitialLiquidity(fixture, provider);
+    val tonIn = grams("0.1");
+    val cursor = testing.createTraceIterationCursor(
+        provider.address,
+        createMessage({
+            bounce: BounceMode.NoBounce,
+            value: tonIn,
+            dest: fixture.defi.address,
+            body: SwapToQsr {
+                tonAmount: tonIn,
+                minQsrOut: 0,
+                deadline: (testing.getNow() + 3600) as uint32,
+            },
+        }),
+    );
+    val root = cursor.executeN(1);
+    expect(root).toHaveSuccessfulTx<SwapToQsr>({ to: fixture.defi.address });
+    cursor.close();
+
+    val beforePool = fixture.defi.poolInfo();
+    val beforeFee = fixture.defi.feeAccumulatedQsr();
+    val beforeClaim = fixture.defi.tonPayoutClaim(1);
+    val beforeHeld = fixture.defi.tonClaimsHeld();
+    val walletAddress = defiPoolWalletAddress(fixture);
+    val noOpcode = bouncedDeFiCallback(fixture.defi, beginCell().endCell(), grams("0.02"));
+    val partialOpcode = bouncedDeFiCallback(
+        fixture.defi,
+        beginCell().storeUint(0x51a5, 16).endCell(),
+        grams("0.02"),
+    );
+    val partialQuery = bouncedDeFiCallback(
+        fixture.defi,
+        beginCell().storeUint(0x51a5c3d1, 32).storeUint(1, 32).endCell(),
+        grams("0.02"),
+    );
+    val partialCoins = bouncedDeFiCallback(
+        fixture.defi,
+        beginCell().storeUint(0x51a5c3d1, 32).storeUint(1, 64).storeUint(1, 3).endCell(),
+        grams("0.02"),
+    );
+
+    val noOpcodeResult = net.send(walletAddress, noOpcode);
+    expect(noOpcodeResult).toHaveFailedTx({
+        from: walletAddress,
+        to: fixture.defi.address,
+        bounced: true,
+        exitCode: 9,
+    });
+    expect(fixture.defi.poolInfo()).toEqual(beforePool);
+    expect(fixture.defi.feeAccumulatedQsr()).toEqual(beforeFee);
+    expect(fixture.defi.tonPayoutClaim(1)).toEqual(beforeClaim);
+    expect(fixture.defi.tonClaimsHeld()).toEqual(beforeHeld);
+
+    val partialOpcodeResult = net.send(walletAddress, partialOpcode);
+    expect(partialOpcodeResult).toHaveFailedTx({
+        from: walletAddress,
+        to: fixture.defi.address,
+        bounced: true,
+        exitCode: 9,
+    });
+    expect(fixture.defi.poolInfo()).toEqual(beforePool);
+    expect(fixture.defi.feeAccumulatedQsr()).toEqual(beforeFee);
+    expect(fixture.defi.tonPayoutClaim(1)).toEqual(beforeClaim);
+    expect(fixture.defi.tonClaimsHeld()).toEqual(beforeHeld);
+
+    val partialQueryResult = net.send(walletAddress, partialQuery);
+    expect(partialQueryResult).toHaveFailedTx({
+        from: walletAddress,
+        to: fixture.defi.address,
+        bounced: true,
+        exitCode: 9,
+    });
+    expect(fixture.defi.poolInfo()).toEqual(beforePool);
+    expect(fixture.defi.feeAccumulatedQsr()).toEqual(beforeFee);
+    expect(fixture.defi.tonPayoutClaim(1)).toEqual(beforeClaim);
+    expect(fixture.defi.tonClaimsHeld()).toEqual(beforeHeld);
+
+    val partialCoinsResult = net.send(walletAddress, partialCoins);
+    expect(partialCoinsResult).toHaveFailedTx({
+        from: walletAddress,
+        to: fixture.defi.address,
+        bounced: true,
+        exitCode: 9,
+    });
+    expect(fixture.defi.poolInfo()).toEqual(beforePool);
+    expect(fixture.defi.feeAccumulatedQsr()).toEqual(beforeFee);
+    expect(fixture.defi.tonPayoutClaim(1)).toEqual(beforeClaim);
+    expect(fixture.defi.tonClaimsHeld()).toEqual(beforeHeld);
+
+    val stillPending = fixture
+        .defi
+        .sendSwapToQsr(
+            provider.address,
+            tonIn,
+            0,
+            (testing.getNow() + 3600) as uint32,
+            { bounce: false, value: tonIn },
+        );
+    expect(stillPending).toHaveFailedTx<SwapToQsr>({ to: fixture.defi.address, exitCode: 1243 });
 }
