@@ -1,0 +1,15 @@
+[package]
+name = "quasar"
+version = "1.1.0"
+
+[contracts]
+QuasarMaster = { path = "contracts/QuasarMaster.tolk" }
+
+[test]
+include = ["tests/**/*.test.tolk"]
+coverage-minimum-percent = 95
+mutation = true
+reporter = ["console", "junit", "sarif"]
+
+[test.mutation]
+diff = "origin/main"
