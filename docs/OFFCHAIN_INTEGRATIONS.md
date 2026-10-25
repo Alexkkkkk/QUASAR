@@ -86,12 +86,15 @@ for await (const page of indexed.iterateJettonTransfers(
 
 ## Deployment and TON Connect
 
-`deploy_all.ts` and `deploy_defi.ts` generate `build/deployment.json` and
-`website/deployment.json`. The latter is ignored by git so an address cannot
-silently become a production claim. Run `npm run deployment:check` with
-`DEPLOYMENT_FILE=website/deployment.json` before publishing it to Pages.
+The active Tolk generation intentionally has no deployment, signing or
+broadcast script. `website/deployment.json` is ignored by Git, absent by
+default, and keeps wallet controls disabled until a separately approved,
+reviewed testnet rehearsal has produced a record. Before an authorized static
+publication of such a record, run `npm run deployment:check` with
+`DEPLOYMENT_FILE=website/deployment.json`; this validation does not authorize
+or perform any network operation.
 
-After Pages has deployed, run:
+After a separately authorized Pages publication, run:
 
 ```bash
 npm run tonconnect:smoke
