@@ -266,6 +266,7 @@ npm run deployment:preflight
 - [`docs/SECURITY_AUDIT.md`](docs/SECURITY_AUDIT.md) — security audit notes;
 - [`docs/TON_CONFORMANCE_MATRIX.md`](docs/TON_CONFORMANCE_MATRIX.md) — TON standards и conformance checks;
 - [`docs/MAINNET_READINESS_CHECKLIST.md`](docs/MAINNET_READINESS_CHECKLIST.md) — release/mainnet checklist;
+- [`docs/MIGRATION_SNAPSHOT_TOOL.md`](docs/MIGRATION_SNAPSHOT_TOOL.md) — fail-closed snapshot hash, reconciliation и Merkle-root tooling;
 - [`docs/TESTNET_DEPLOY_CHECKLIST.md`](docs/TESTNET_DEPLOY_CHECKLIST.md) — testnet rehearsal checklist;
 - [`docs/TESTNET_SMOKE_RUNBOOK.md`](docs/TESTNET_SMOKE_RUNBOOK.md) — testnet smoke runbook;
 - [`docs/MULTISIG_HANDOFF_RUNBOOK.md`](docs/MULTISIG_HANDOFF_RUNBOOK.md) — multisig handoff procedures;

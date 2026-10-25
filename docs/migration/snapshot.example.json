@@ -1,0 +1,22 @@
+{
+  "network": "testnet",
+  "oldMaster": "<old-master-address>",
+  "snapshotBlock": "<finalized-block-id>",
+  "snapshotTimestamp": "2026-10-25T00:00:00Z",
+  "records": [
+    {
+      "id": "holder:<stable-record-id>",
+      "assetClass": "qsr",
+      "beneficiary": "<internal-address>",
+      "amount": "1000000",
+      "status": "eligible",
+      "source": "<transaction-or-getter-reference>",
+      "metadata": {
+        "oldWallet": "<old-wallet-address>"
+      }
+    }
+  ],
+  "declaredTotals": {
+    "qsr": "1000000"
+  }
+}
