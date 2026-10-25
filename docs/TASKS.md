@@ -160,41 +160,43 @@
     [Tolk message sending](https://docs.ton.org/tolk/features/message-sending),
     [bounce handling](https://docs.ton.org/tolk/features/message-handling).
 
-- [~] **T-30 Закрыть post-bounce test coverage gaps по master, DeFi и timelock.**
-  - Master: реальный master mint→burn/supply update, spoofed/invalid BurnNotification,
-    maxSupply boundary, полные поля `get_jetton_data`, delayed/cancelled/unauthorized
-    owner transfer; файлы `tolk/tests/quasar-master.test.tolk` и
+- [x] **T-30 Закрыть post-bounce test coverage gaps по Master, DeFi и timelock.**
+  - Master: реальные mint→burn/supply update, spoofed/invalid `BurnNotification`,
+    точная граница `maxSupply`, все поля `get_jetton_data`, delayed/cancelled/
+    unauthorized owner transfer; suites в `tolk/tests/quasar-master.test.tolk` и
     `tolk/tests/master-mint-bounce.test.tolk`.
-  - DeFi: positive swap both directions, balanced liquidity add/remove and limits;
-    bounce/excess ledger recovery для swap, removal, farm reward/refund и buyback;
-    farming accrual/config/stake/claim/emergency cases;
-    файл `tolk/tests/quasar-defi.test.tolk`.
-  - Master bounce hardening: unknown/replayed IDs больше не увеличивают reserve;
-    известные reserve/custody payouts восстанавливаются однократно; amount и
-    derived sender wallet сверяются; buyback bounce восстанавливает reserve и
-    buyback pool только для совпавшего pending ID. Acton tests добавлены.
-  - AdminTimelock: trace подтверждает target/body/value и bounced message на
-    uninitialized configured managed target; операция one-shot и удаляется до
-    отправки. Для retry администратор обязан создать новую запись с новым
-    монотонным ID и пройти delay заново; новая запись cancellable. Автоматический
-    retry с тем же ID не реализован из-за отсутствия generic success/bounce
-    correlation для произвольного body. Полная positive DeFi/farm и Master
-    behavior-матрица всё ещё не закрыта.
-    файл `tolk/tests/admin-timelock.test.tolk`.
-  - Для каждого пункта добавить точные assertions по всем данным и отказам,
-    вызывая active Acton native test suite, не симуляторный placeholder.
+  - DeFi: обычные swap в обе стороны, proportional liquidity add/remove и лимиты;
+    bounce/replay/retry покрытия для QSR payout, TON refund и removal payout,
+    pending-QSR refund, farm reward и BuybackTon; farm config/accrual/stake/claim/
+    emergency сценарии в `tolk/tests/quasar-defi.test.tolk`.
+  - Farm reward bounce accounting: при восстановлении user pending сумма больше
+    не зачисляется повторно в `farmRewardReserve`, уже уменьшенный при accrual;
+    regression покрывает повторный failure, retry, полученную сумму и неизменность
+    reserve. `QuasarDeFi` bytecode hash/address изменились; ABI и storage layout нет.
+  - Master bounce tests сверяют pending ID, amount и derived sender wallet и
+    подтверждают exactly-once restoration. AdminTimelock trace подтверждает
+    target/body/value и bounce на uninitialized managed target; вызов one-shot и
+    удаляется до отправки. Recovery требует новой записи с монотонно возрастающим
+    ID и повторного delay; новую запись можно отменить. Same-ID auto-retry не
+    реализован без generic success/bounce correlation для произвольного body.
+  - Проверка на Acton 1.2.1: `acton fmt --check` и полный `acton test` — 93/93
+    теста в 8 файлах. Эмуляторные bounce traces не подтверждают live-network
+    поведение и не заменяют независимый аудит или adversarial deployed testing.
     Источники: [Acton testing](https://ton-blockchain.github.io/acton/docs/testing/overview),
     [trace reading](https://ton-blockchain.github.io/acton/docs/testing/reading-transaction-chains).
 
-- [~] **T-31 TEP-74/Tolk serialization boundary tests.**
+- [x] **T-31 TEP-74/Tolk serialization boundary tests.**
   - Файлы: `tolk/contracts/QuasarCommon.tolk`,
     `tolk/contracts/QuasarMasterRecords.tolk`,
     `tolk/tests/common-wire.test.tolk`, `tolk/tests/master-records.test.tolk`.
   - Уже проверены `Either` selector + inline/ref forms `forwardPayload`, maximum
     `uint64` high-bit `query_id`, четыре payload refs, а также `EventFeeDistributed`
-    field round-trip и truncated/trailing data rejection. Остаются snake strings
-    spanning refs, malformed nested-ref matrix и исчерпывающая проверка **каждого**
-    поля `EventFeeDistributed`. Источники:
+    wire-layout round-trip. `AiActionLog.actionType` и `reason` теперь проверены
+    как 128-byte snake strings через nested refs; malformed `EventFeeDistributed`
+    tail matrix проверяет отсутствующий root ref, короткий fee tail, пустой defi
+    tail и trailing bits в обоих nested tails. Существующий round-trip проверяет
+    каждое из семи полей `EventFeeDistributed`; существующие truncated nested-ref
+    и trailing-root cases сохранены. Targeted Acton suite: 12/12.
     Источники: [TEP-74](https://github.com/ton-blockchain/TEPs/blob/master/text/0074-jettons-standard.md),
     [TON cells](https://docs.ton.org/foundations/serialization/cells),
     [Tolk serialization](https://docs.ton.org/tolk/types/overall-serialization).

@@ -180,13 +180,36 @@ accepted Master reserve remains unchanged, and the bounce is sourced from the
 derived recipient wallet address. These are emulator tests using constructed
 bounce bodies, not proof of live network behavior.
 
+The DeFi farm accounting regression configures emissions, accrues and stakes
+rewards, then exercises a bounced reward payout, replay rejection, successful
+retry and emergency withdrawal. A failed reward payout restores the farmer's
+pending claim without crediting `farmRewardReserve` again, because accrual already
+reduced that reserve. Additional traces cover a bounced pending-QSR refund, a
+bounced TON refund after failed QSR settlement, a bounced TON leg after successful
+liquidity removal, and a correlated `BuybackTon` bounce; they assert the relevant
+claim, reserve, LP or fee state and retry destination.
+
 The timelock regression sends an actual queued execute message to an uninitialized
 address configured as the managed target and observes the TON bounce. Because the
 generic queued call is deleted before sending and arbitrary target messages have no
 universal success acknowledgement, the operation is one-shot: recovery requires
 an administrator to queue a fresh monotonically increasing ID and wait through
 the delay again. The new entry can be cancelled. Same-ID automatic retry is not
-claimed; the broader Master/DeFi coverage item remains open in `docs/TASKS.md`.
+claimed. T-30's active Master, DeFi and timelock suites pass together: Acton 1.2.1
+`acton fmt --check` and `acton test` report 93/93 tests in eight files.
+
+The DeFi bounce-handler change modifies the fresh-deployment code hash and derived
+address; `docs/build-hashes.json` is regenerated. Public ABI and storage layout are
+unchanged. No deployment, live transaction, or address publication was performed.
+These constructed-bounce emulator tests are local conformance evidence only; they
+do not establish live-network behavior or replace an independent audit.
+
+The active TEP-74/Tolk wire suite also checks 128-byte `AiActionLog.actionType`
+and `reason` snake strings across cell references, plus malformed
+`EventFeeDistributed` root/fee/defi tails (missing or truncated refs and trailing
+bits). Its wire round-trip asserts all seven event fields individually. These
+Acton-native tests are tracked under T-31 in `docs/TASKS.md`; they validate local
+serialization behavior and do not substitute for a full protocol audit.
 
 ## Canonical Acton/Tolk interface gate (2026-10-23)
 
