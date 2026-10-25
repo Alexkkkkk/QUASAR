@@ -35,6 +35,8 @@
     "oracle:sign": "tsx scripts/ai_oracle.ts sign",
     "ton:docs:sync": "python3 scripts/sync_ton_docs.py",
     "ton:docs:check": "python3 scripts/sync_ton_docs.py --check",
+    "migration:snapshot": "tsx scripts/migration_snapshot.ts",
+    "migration:test": "node --import tsx --test tests/migration_snapshot.test.ts",
     "ai:agent:test": "python3 -m unittest discover -s tests -p 'test_*.py'",
     "pins:sync": "tsx scripts/sync_action_pins.ts",
     "pins:check": "tsx scripts/sync_action_pins.ts --check"
