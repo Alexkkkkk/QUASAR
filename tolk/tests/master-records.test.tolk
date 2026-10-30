@@ -1,3 +1,4 @@
+import "@stdlib/strings"
 import "@acton/testing/expect"
 import "@contracts/QuasarMasterRecords"
 
@@ -7,6 +8,14 @@ fun recordsTestOwner(): address {
 
 fun recordsTestPeer(): address {
     return address("-1:2222222222222222222222222222222222222222222222222222222222222222");
+}
+
+fun longRecordString(character: string): string {
+    var value = StringBuilder.create();
+    repeat (127) {
+        value.append(character);
+    }
+    return value.append(character).build();
 }
 
 get fun `test master records: wide storage records round trip through bounded map leaves`() {
@@ -108,6 +117,33 @@ get fun `test master records: wide storage records round trip through bounded ma
     expect(decodedPayout.d3).toEqual(payout.d3);
 }
 
+get fun `test master records: long action strings round trip across snake refs`() {
+    val actionType = longRecordString("a");
+    val reason = longRecordString("z");
+    val action = AiActionLog {
+        actionId: 7,
+        timestamp: 8,
+        actionType,
+        oldValue: 9,
+        newValue: 10,
+        reason,
+        executed: true,
+        vetoed: false,
+        overridden: false,
+    };
+    var actions: map<int257, AiActionLog> = [];
+    actions.set(7, action);
+    val result = actions.get(7);
+    expect(result.isFound).toEqual(true);
+    val decoded = result.loadValue();
+    expect(decoded.actionType.depth()).toEqual(127);
+    expect(decoded.actionType.calculateLength()).toEqual(128);
+    expect(decoded.actionType.equalTo(actionType)).toEqual(true);
+    expect(decoded.reason.depth()).toEqual(127);
+    expect(decoded.reason.calculateLength()).toEqual(128);
+    expect(decoded.reason.equalTo(reason)).toEqual(true);
+}
+
 get fun `test master records: EventFeeDistributed keeps manual Tact root and tail layout`() {
     val event = EventFeeDistributed {
         totalFee: 101,
@@ -135,7 +171,135 @@ get fun `test master records: EventFeeDistributed keeps manual Tact root and tai
 
     val decoded = EventFeeDistributed.fromCell(event.toCell());
     expect(decoded.totalFee).toEqual(event.totalFee);
+    expect(decoded.burn).toEqual(event.burn);
+    expect(decoded.buyback).toEqual(event.buyback);
+    expect(decoded.staking).toEqual(event.staking);
+    expect(decoded.referral).toEqual(event.referral);
+    expect(decoded.treasury).toEqual(event.treasury);
     expect(decoded.defiPool).toEqual(event.defiPool);
+}
+
+get fun `test master records: EventFeeDistributed rejects a truncated nested ref tail`() {
+    val shortFeeTail = beginCell()
+        .storeInt(101, 257)
+        .storeInt(202, 257)
+        .storeInt(303, 257)
+        .endCell();
+    val truncated = beginCell()
+        .storeUint(0xa8f1237b, 32)
+        .storeInt(1, 257)
+        .storeInt(2, 257)
+        .storeInt(3, 257)
+        .storeRef(shortFeeTail)
+        .endCell();
+
+    expectToEndWithExitCode(9);
+    val _ = EventFeeDistributed.fromCell(truncated);
+}
+
+get fun `test master records: EventFeeDistributed rejects trailing root bits`() {
+    val defiTail = beginCell().storeInt(707, 257).endCell();
+    val feeTail = beginCell()
+        .storeInt(404, 257)
+        .storeInt(505, 257)
+        .storeInt(606, 257)
+        .storeRef(defiTail)
+        .endCell();
+    val trailing = beginCell()
+        .storeUint(0xa8f1237b, 32)
+        .storeInt(101, 257)
+        .storeInt(202, 257)
+        .storeInt(303, 257)
+        .storeRef(feeTail)
+        .storeBool(true)
+        .endCell();
+
+    expectToEndWithExitCode(9);
+    val _ = EventFeeDistributed.fromCell(trailing);
+}
+
+get fun `test master records: EventFeeDistributed rejects missing root tail`() {
+    val missingTail = beginCell()
+        .storeUint(0xa8f1237b, 32)
+        .storeInt(101, 257)
+        .storeInt(202, 257)
+        .storeInt(303, 257)
+        .endCell();
+
+    expectToEndWithExitCode(9);
+    val _ = EventFeeDistributed.fromCell(missingTail);
+}
+
+get fun `test master records: EventFeeDistributed rejects truncated fee scalar tail`() {
+    val shortFeeTail = beginCell().storeInt(404, 257).storeInt(505, 257).endCell();
+    val truncated = beginCell()
+        .storeUint(0xa8f1237b, 32)
+        .storeInt(101, 257)
+        .storeInt(202, 257)
+        .storeInt(303, 257)
+        .storeRef(shortFeeTail)
+        .endCell();
+
+    expectToEndWithExitCode(9);
+    val _ = EventFeeDistributed.fromCell(truncated);
+}
+
+get fun `test master records: EventFeeDistributed rejects empty defi tail`() {
+    val feeTail = beginCell()
+        .storeInt(404, 257)
+        .storeInt(505, 257)
+        .storeInt(606, 257)
+        .storeRef(beginCell().endCell())
+        .endCell();
+    val truncated = beginCell()
+        .storeUint(0xa8f1237b, 32)
+        .storeInt(101, 257)
+        .storeInt(202, 257)
+        .storeInt(303, 257)
+        .storeRef(feeTail)
+        .endCell();
+
+    expectToEndWithExitCode(9);
+    val _ = EventFeeDistributed.fromCell(truncated);
+}
+
+get fun `test master records: EventFeeDistributed rejects trailing fee tail bits`() {
+    val feeTail = beginCell()
+        .storeInt(404, 257)
+        .storeInt(505, 257)
+        .storeInt(606, 257)
+        .storeRef(beginCell().storeInt(707, 257).endCell())
+        .storeBool(true)
+        .endCell();
+    val malformed = beginCell()
+        .storeUint(0xa8f1237b, 32)
+        .storeInt(101, 257)
+        .storeInt(202, 257)
+        .storeInt(303, 257)
+        .storeRef(feeTail)
+        .endCell();
+
+    expectToEndWithExitCode(9);
+    val _ = EventFeeDistributed.fromCell(malformed);
+}
+
+get fun `test master records: EventFeeDistributed rejects trailing defi tail bits`() {
+    val feeTail = beginCell()
+        .storeInt(404, 257)
+        .storeInt(505, 257)
+        .storeInt(606, 257)
+        .storeRef(beginCell().storeInt(707, 257).storeBool(true).endCell())
+        .endCell();
+    val malformed = beginCell()
+        .storeUint(0xa8f1237b, 32)
+        .storeInt(101, 257)
+        .storeInt(202, 257)
+        .storeInt(303, 257)
+        .storeRef(feeTail)
+        .endCell();
+
+    expectToEndWithExitCode(9);
+    val _ = EventFeeDistributed.fromCell(malformed);
 }
 
 get fun `test master records: EventAiVeto keeps manual Tact root and tail layout`() {
