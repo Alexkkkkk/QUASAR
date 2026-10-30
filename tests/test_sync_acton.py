@@ -30,6 +30,8 @@ def project(root: Path) -> Path:
     (root / "docs" / "abi").mkdir(parents=True)
     (root / "node_modules").mkdir()
     (root / "tolk" / "Acton.toml").write_text('[toolchain]\nacton = "1.2.1"\n')
+    (root / "tolk" / ".acton").mkdir()
+    (root / "tolk" / ".acton" / "stdlib.tolk").write_text("fixture standard library\n")
     (root / "package-lock.json").write_text('{}\n')
     for filename in ("acton_abi.py", "acton_typescript.mjs", "check_acton_wrappers.ts", "sync_acton.py"):
         (root / "scripts" / filename).write_text("fixture\n")
@@ -83,6 +85,33 @@ class SyncActonTest(unittest.TestCase):
         source.write_text("changed\n")
         with self.assertRaisesRegex(ValueError, "sources or ABI snapshots changed"):
             sync.check(self.root)
+
+    def test_added_changed_and_removed_acton_inputs_invalidate_generation(self) -> None:
+        self.publish()
+        stdlib = self.root / "tolk" / ".acton" / "stdlib.tolk"
+        original = stdlib.read_text()
+
+        added = stdlib.parent / "added.tolk"
+        added.write_text("new standard-library input\n")
+        with self.assertRaisesRegex(ValueError, "sources or ABI snapshots changed"):
+            sync.check(self.root)
+        added.unlink()
+
+        stdlib.write_text("changed standard-library input\n")
+        with self.assertRaisesRegex(ValueError, "sources or ABI snapshots changed"):
+            sync.check(self.root)
+        stdlib.write_text(original)
+
+        stdlib.unlink()
+        with self.assertRaisesRegex(ValueError, "sources or ABI snapshots changed"):
+            sync.check(self.root)
+
+    def test_acton_input_symlinks_are_rejected(self) -> None:
+        stdlib = self.root / "tolk" / ".acton" / "stdlib.tolk"
+        stdlib.unlink()
+        stdlib.symlink_to(self.root / "outside.tolk")
+        with self.assertRaisesRegex(ValueError, "must not be a symbolic link"):
+            sync.source_hashes(self.root)
 
     def test_changed_codec_lockfile_or_snapshot_invalidates_generation(self) -> None:
         self.publish()
