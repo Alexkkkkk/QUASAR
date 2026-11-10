@@ -1182,7 +1182,8 @@ fun failQsrPayout(
         s.pendingQsrSwap.status = 2;
         s.pendingQsrSwap.payoutId = 0;
     } else if (payout.kind == 2) {
-        s.farmRewardReserve += amount;
+        // Accrual already debited the farm reserve; keep the bounced amount as
+        // the farmer's pending liability without crediting the reserve twice.
         val farmer = farmInfoOf(s.farmStakes, payout.beneficiary);
         if (farmer != null) {
             s

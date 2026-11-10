@@ -3429,14 +3429,36 @@ fun onBouncedMessage(in: InMessageBounced) {
         if (queryId == MINT_QUERY_ID) {
             assert (s.core.totalSupply >= amount) throw 1300;
             s.core.totalSupply -= amount;
-        } else {
-            restorePayout(mutate s, queryId);
+        } else if (s.core.buybackSwapPending > 0 && queryId == s.core.buybackSwapQueryId) {
+            val expectedWallet = quasarWalletAddress(
+                s.core.buybackSwapDefiAddress,
+                contract.getAddress(),
+                quasarWalletCompiledCode(),
+            );
+            assert (
+                in.senderAddress == expectedWallet && amount == s.core.buybackSwapPending
+            ) throw 1301;
             s.core.reserveBalance += amount;
-            if (s.core.buybackSwapPending > 0 && queryId == s.core.buybackSwapQueryId) {
-                s.core.buybackPool += s.core.buybackSwapPending;
-                s.core.buybackSwapPending = 0;
-                s.core.buybackSwapQueryId = 0;
-                s.core.buybackSwapDefiAddress = ZERO_ADDRESS;
+            s.core.buybackPool += s.core.buybackSwapPending;
+            s.core.buybackSwapPending = 0;
+            s.core.buybackSwapQueryId = 0;
+            s.core.buybackSwapDefiAddress = ZERO_ADDRESS;
+        } else {
+            var payoutId = queryId;
+            if (queryId >= MASTER_TRANSFER_QUERY_PREFIX) {
+                payoutId = (queryId - MASTER_TRANSFER_QUERY_PREFIX) as uint64;
+            }
+            val payout = payoutOf(s.gov.pendingMasterPayouts, payoutId as int257);
+            if (payout != null) {
+                val expectedWallet = quasarWalletAddress(
+                    payout.beneficiary,
+                    contract.getAddress(),
+                    quasarWalletCompiledCode(),
+                );
+                assert (in.senderAddress == expectedWallet && amount == payout.amount) throw 1301;
+                if (restorePayout(mutate s, queryId)) {
+                    s.core.reserveBalance += amount;
+                }
             }
         }
         s.save();
@@ -3445,8 +3467,22 @@ fun onBouncedMessage(in: InMessageBounced) {
     if (opcode == 0x51a5c3d1) {
         val queryId = body.loadUint(64) as uint64;
         val amount = body.loadCoins();
-        if (restorePayout(mutate s, queryId)) {
-            s.core.custodyBalance += amount;
+        val masterWallet = quasarWalletAddress(
+            contract.getAddress(),
+            contract.getAddress(),
+            quasarWalletCompiledCode(),
+        );
+        assert (in.senderAddress == masterWallet) throw 1301;
+        var payoutId = queryId;
+        if (queryId >= MASTER_TRANSFER_QUERY_PREFIX) {
+            payoutId = (queryId - MASTER_TRANSFER_QUERY_PREFIX) as uint64;
+        }
+        val payout = payoutOf(s.gov.pendingMasterPayouts, payoutId as int257);
+        if (payout != null) {
+            assert (amount == payout.amount) throw 1301;
+            if (restorePayout(mutate s, queryId)) {
+                s.core.custodyBalance += amount;
+            }
         }
         s.save();
         return;

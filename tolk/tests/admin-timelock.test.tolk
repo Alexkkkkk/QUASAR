@@ -273,7 +273,7 @@ get fun `test admin timelock: execution is delayed, permissionless, and deletes 
         admin.address,
         1,
         master.address,
-        0,
+        grams("0.1"),
         callBody(),
         { bounce: false, value: grams("0.2") },
     );
@@ -307,7 +307,150 @@ get fun `test admin timelock: execution is delayed, permissionless, and deletes 
         from: outsider.address,
         to: timelock.address,
     });
+    expect(ready).toHaveSuccessfulTx({
+        from: timelock.address,
+        to: master.address,
+        value: grams("0.1"),
+        body: callBody(),
+    });
     expect(timelock.getPendingCall(1)).toBeNull();
+}
+
+get fun `test admin timelock: insufficient execution funds leave call cancellable`() {
+    val (timelock, admin, master, _) = setupTimelockWithValue(grams("1"));
+    val queueResult = timelock.sendQueueAdminCall(
+        admin.address,
+        1,
+        master.address,
+        grams("10"),
+        callBody(),
+        { bounce: false, value: grams("0.2") },
+    );
+    expect(queueResult).toHaveSuccessfulTx<QueueAdminCall>({ to: timelock.address });
+
+    val pending = timelock.getPendingCall(1);
+    expect(pending).toBeNotNull();
+    if (pending == null) {
+        return;
+    }
+    testing.setNow(pending.executeAt as uint32);
+    val beforeState = testing.getAccountState(timelock.address);
+    expect(beforeState).toBeNotNull();
+    if (beforeState == null) {
+        return;
+    }
+    val balanceBeforeExecute = beforeState.storage.balance.grams;
+    expect(balanceBeforeExecute).toBeGreater(grams("0.05"));
+    expect(balanceBeforeExecute + grams("0.2")).toBeLess(grams("10"));
+
+    val underfunded = timelock.sendExecuteAdminCall(
+        admin.address,
+        1,
+        { bounce: false, value: grams("0.2") },
+    );
+    expect(underfunded).toHaveTx<ExecuteAdminCall>({
+        from: admin.address,
+        to: timelock.address,
+        actionExitCode: 37,
+    });
+    expect(timelock.getPendingCall(1)).toBeNotNull();
+    val afterFailureState = testing.getAccountState(timelock.address);
+    expect(afterFailureState).toBeNotNull();
+    if (afterFailureState == null) {
+        return;
+    }
+    expect(afterFailureState.storage.balance.grams).toBeGreater(grams("0.05"));
+
+    val cancelled = timelock.sendCancelAdminCall(
+        admin.address,
+        1,
+        { bounce: false, value: grams("0.2") },
+    );
+    expect(cancelled).toHaveSuccessfulTx<CancelAdminCall>({ to: timelock.address });
+    expect(timelock.getPendingCall(1)).toBeNull();
+    val afterCancelState = testing.getAccountState(timelock.address);
+    expect(afterCancelState).toBeNotNull();
+    if (afterCancelState == null) {
+        return;
+    }
+    expect(afterCancelState.storage.balance.grams).toBeGreater(grams("0.05"));
+}
+
+get fun `test admin timelock: bounced managed call is one-shot and can be safely requeued or cancelled`() {
+    val admin = testing.treasury("admin-timelock-bounce-admin");
+    val defi = testing.treasury("admin-timelock-bounce-defi");
+    // The target is configured as the managed master but intentionally has no
+    // deployed account/code, so TON must bounce the execute message.
+    val master = address("0:7777777777777777777777777777777777777777777777777777777777777777");
+    val timelock = QuasarAdminTimelock.fromStorage(
+        newQuasarAdminTimelockStorage(admin.address, master, defi.address, MIN_DELAY),
+    );
+    val timelockDeployment = net.send(
+        admin.address,
+        createMessage({
+            bounce: BounceMode.NoBounce,
+            value: grams("10"),
+            dest: { workchain: timelock.address.getWorkchain(), stateInit: timelock.stateInit! },
+            body: Deploy { queryId: 0 },
+        }),
+    );
+    expect(timelockDeployment).toHaveSuccessfulDeploy({ to: timelock.address });
+
+    val queued = timelock.sendQueueAdminCall(
+        admin.address,
+        1,
+        master,
+        grams("0.1"),
+        callBody(),
+        { bounce: false, value: grams("0.2") },
+    );
+    expect(queued).toHaveSuccessfulTx<QueueAdminCall>({ to: timelock.address });
+    val original = timelock.getPendingCall(1);
+    expect(original).toBeNotNull();
+    if (original == null) {
+        return;
+    }
+    testing.setNow(original.executeAt as uint32);
+
+    val failedTargetExecution = timelock.sendExecuteAdminCall(
+        admin.address,
+        1,
+        { bounce: false, value: grams("0.2") },
+    );
+    expect(failedTargetExecution).toHaveSuccessfulTx<ExecuteAdminCall>({
+        from: admin.address,
+        to: timelock.address,
+    });
+    expect(failedTargetExecution).toHaveTx({
+        from: master,
+        to: timelock.address,
+        bounced: true,
+    });
+    expect(timelock.getPendingCall(1)).toBeNull();
+
+    // A failed one-shot call is not silently retried with the same ID. Admin
+    // explicitly re-queues under a fresh monotonic ID and may cancel that call.
+    val requeued = timelock.sendQueueAdminCall(
+        admin.address,
+        2,
+        master,
+        grams("0.1"),
+        callBody(),
+        { bounce: false, value: grams("0.2") },
+    );
+    expect(requeued).toHaveSuccessfulTx<QueueAdminCall>({ to: timelock.address });
+    val retry = timelock.getPendingCall(2);
+    expect(retry).toBeNotNull();
+    if (retry != null) {
+        expect(retry.executeAt).toEqual((testing.getNow() + MIN_DELAY) as int);
+    }
+    val cancelled = timelock.sendCancelAdminCall(
+        admin.address,
+        2,
+        { bounce: false, value: grams("0.2") },
+    );
+    expect(cancelled).toHaveSuccessfulTx<CancelAdminCall>({ to: timelock.address });
+    expect(timelock.getPendingCall(2)).toBeNull();
 }
 
 get fun `test admin timelock: admin can cancel a call and cancellation is authorized`() {

@@ -44,6 +44,74 @@ get fun `test common wire: TEP-74 nullable response destination serializes addr_
     expect(decoded.destination).toEqual(destination);
 }
 
+get fun `test common wire: TEP-74 forwardPayload preserves inline Either selector and content`() {
+    val destination = testOwner();
+    val inlinePayload = beginCell()
+        .storeBool(false)
+        .storeUint(0x5aa5, 16)
+        .storeRef(beginCell().storeUint(0xcafe, 16).endCell())
+        .endCell()
+        .beginParse();
+    val transfer = TokenTransfer {
+        queryId: 91,
+        amount: 123,
+        destination,
+        responseDestination: null,
+        customPayload: null,
+        forwardTonAmount: 1,
+        forwardPayload: inlinePayload,
+    };
+
+    val decoded = TokenTransfer.fromCell(transfer.toCell());
+    var payload = decoded.forwardPayload;
+    expect(payload.loadBool()).toEqual(false);
+    expect(payload.loadUint(16)).toEqual(0x5aa5);
+    var inlineRef = payload.loadRef().beginParse();
+    expect(inlineRef.loadUint(16)).toEqual(0xcafe);
+    inlineRef.assertEnd();
+    payload.assertEnd();
+}
+
+get fun `test common wire: TEP-74 forwardPayload preserves referenced Either selector`() {
+    val destination = testOwner();
+    val referencedPayload = beginCell().storeUint(0xdecafbad, 32).endCell();
+    val refPayload = beginCell().storeBool(true).storeRef(referencedPayload).endCell().beginParse();
+    val transfer = TokenTransfer {
+        queryId: 92,
+        amount: 456,
+        destination,
+        responseDestination: null,
+        customPayload: null,
+        forwardTonAmount: 2,
+        forwardPayload: refPayload,
+    };
+
+    val decoded = TokenTransfer.fromCell(transfer.toCell());
+    var payload = decoded.forwardPayload;
+    expect(payload.loadBool()).toEqual(true);
+    var payloadRef = payload.loadRef().beginParse();
+    expect(payloadRef.loadUint(32)).toEqual(0xdecafbad);
+    payloadRef.assertEnd();
+    payload.assertEnd();
+}
+
+get fun `test common wire: TEP-74 query_id preserves the maximum uint64 high-bit boundary`() {
+    val queryId: uint64 = 0xffffffffffffffff;
+    val transfer = TokenTransfer {
+        queryId,
+        amount: 1,
+        destination: testOwner(),
+        responseDestination: null,
+        customPayload: null,
+        forwardTonAmount: 0,
+        forwardPayload: createEmptySlice(),
+    };
+    var wire = transfer.toCell().beginParse();
+    expect(wire.loadUint(32)).toEqual(0x0f8a7ea5);
+    expect(wire.loadUint(64)).toEqual(0xffffffffffffffff);
+    expect(TokenTransfer.fromCell(transfer.toCell()).queryId).toEqual(queryId);
+}
+
 get fun `test common wire: TEP-89 take wallet supports addr_none and Maybe ref`() {
     val owner = testMaster();
     val none = TakeWalletAddress {

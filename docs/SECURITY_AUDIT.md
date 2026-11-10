@@ -55,6 +55,41 @@ This document is an engineering review, not a formal third-party audit or a prom
 
 ---
 
+## Tolk bounce accounting regression work (2026-10-25)
+
+On the active Tolk path, an unrecognized or replayed Master `InternalTransfer`
+bounce previously increased `reserveBalance` even when `restorePayout` found no
+matching pending payout. The callback now credits reserve only after a correlated
+reserve payout has been restored, or after the active buyback query ID, expected
+DeFi wallet, and amount match. `PoolPayout` bounce handling authenticates the
+Master-owned wallet before restoring custody; known payout amount/sender checks
+and exactly-once behavior have Acton regression coverage. No storage-layout or
+public ABI change is intended, but rebuilt Master bytecode and derived addresses
+change.
+
+The T-24 wallet accounting regression now covers both orders of accepted fee,
+recipient-leg bounce, and `TransferConfirmed`. Tests assert that only principal
+returns to the sender wallet and that Master reserve accounting is not credited a
+second time. The bounce source is the derived recipient wallet address. These
+constructed-bounce emulator tests do not establish network provenance or replace
+live adversarial sandbox testing.
+
+An Acton timelock trace confirms that a call to an uninitialized configured
+managed target bounces after the queued record has been deleted. Since generic
+arbitrary call bodies have no universal completion acknowledgement, this flow is
+one-shot: recovery requires a fresh, monotonically increasing queue ID and a new
+delay. Same-ID automatic retry is not implemented or claimed. Broader Master and
+DeFi behavioral coverage was still tracked at this initial snapshot; the expanded
+Master/DeFi/timelock coverage is now closed under T-30 in `docs/TASKS.md`.
+
+The initial modified Acton suites passed 61/61 tests in six files; after the T-30
+expansion, the complete Acton 1.2.1 suite passed 93/93 tests in eight files. This
+is local emulator evidence only. The change has not been independently audited or
+deployed; PR #336 is a public draft. The project remains pre-testnet and unsuitable
+for significant funds.
+
+---
+
 ## Independent-audit remediation (issue #44 — commit af83516)
 
 An independent engineering audit (issue #44) returned **NO-GO** for real-funds
@@ -75,3 +110,15 @@ Regression coverage: `tests/audit_h02_m01_l01.test.ts`,
 The audit's remaining pre-launch gates are unchanged and still open: live
 testnet smoke and adversarial bounce tests must be executed against a
 disposable deployment before any real-funds launch.
+
+
+## DeFi farm reward bounce accounting (2026-10-25; draft PR #336)
+
+The active Tolk DeFi bounce path now preserves the farmer's recoverable pending
+reward without crediting the farm reserve a second time after accrual. Acton
+regressions cover reward accrual, the failed payout callback, replay rejection,
+retry settlement, reserve invariance and emergency withdrawal. The DeFi code hash
+and fresh-deployment address change; the ABI and storage layout do not. The
+corresponding build-hash manifest was regenerated. No deployment or live-network
+test was performed. This is a focused code/test review, not an independent audit;
+QUASAR remains pre-testnet and should not be used with significant funds.
