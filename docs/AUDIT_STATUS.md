@@ -69,12 +69,12 @@ evidence that those definitions are absent from the repository.
 
 The merged diff and regression tests were checked against F-33–F-38. **None of these six findings is closed by #102.** #102 addresses adjacent buyback callback/refund handling, RemoveLiquidity settlement, initial LP quoting, and emergency-pause/trading synchronization; those changes do not resolve the findings above. F-35 and F-38 have nearby code changes, but the proposal-id replay path and the reserve-cap/comment mismatch remain.
 
-## Still intentionally open
+## Remaining release gates and tracker state
 
-- **Issue #62** is open again (reopened 2026-10-07) until an external audit report
-  exists and real deployment addresses are published. It had been closed as
-  `completed`, which contradicted this document and the issue's own conditions;
-  the tracker and this file are now aligned.
+- **Issue #62** is shown as `CLOSED` in GitHub as checked on 2026-10-25. That
+  tracker state is not a release approval: an independent audit report and
+  canonical deployment addresses are still absent, so the corresponding
+  mainnet gates remain open in this document and in the release checklists.
 - **Issue #139** tracked the contract hardening of F-34/F-35/F-36/F-38; PR #140
   merged on 2026-10-08, so those four rows are `fixed`. The statement about
   pre-#102 addresses was historical: later contract changes in PRs #140, #170,

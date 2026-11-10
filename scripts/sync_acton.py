@@ -32,6 +32,30 @@ def digest(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def acton_input_hashes(root: Path) -> dict[str, str]:
+    """Hash the untracked Acton stdlib copied into every staged build.
+
+    ``acton init --stdlib-only`` materializes this directory locally.  It is not
+    a Git input, but it is copied into the isolated build and is therefore part
+    of the tested generation.  Reject links rather than following an unreviewed
+    path outside the project.
+    """
+    stdlib = root / "tolk" / ".acton"
+    state = "tolk/.acton/.quasar-stdlib-state"
+    if stdlib.is_symlink() or (stdlib.exists() and not stdlib.is_dir()):
+        raise ValueError("tolk/.acton must be a real directory when present")
+    if not stdlib.exists():
+        return {state: hashlib.sha256(b"absent\n").hexdigest()}
+
+    hashes = {state: hashlib.sha256(b"present\n").hexdigest()}
+    for path in sorted(stdlib.rglob("*")):
+        if path.is_symlink():
+            raise ValueError(f"Acton build input must not be a symbolic link: {path.relative_to(root)}")
+        if path.is_file():
+            hashes[path.relative_to(root).as_posix()] = digest(path)
+    return hashes
+
+
 def source_hashes(root: Path) -> dict[str, str]:
     paths = [
         root / "tolk" / "Acton.toml",
@@ -44,7 +68,9 @@ def source_hashes(root: Path) -> dict[str, str]:
     for directory in ("contracts", "tests", "scripts"):
         paths.extend(sorted((root / "tolk" / directory).rglob("*.tolk")))
     paths.extend(sorted((root / "docs" / "abi").glob("quasar-*.json")))
-    return {path.relative_to(root).as_posix(): digest(path) for path in sorted(paths)}
+    hashes = {path.relative_to(root).as_posix(): digest(path) for path in sorted(paths)}
+    hashes.update(acton_input_hashes(root))
+    return dict(sorted(hashes.items()))
 
 
 def artifact_hashes(directory: Path) -> dict[str, str]:

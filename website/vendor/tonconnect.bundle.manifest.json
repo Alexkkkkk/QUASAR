@@ -1,0 +1,26 @@
+{
+  "bundle": {
+    "path": "website/vendor/tonconnect.bundle.js",
+    "sha256": "fc3996d42912dbf8d16741ba3c9b2ee0736a961b1cd7e14a82b6123cd1d7266c"
+  },
+  "dependencies": {
+    "@ton/core": "0.63.1"
+  },
+  "generator": {
+    "arguments": [
+      "--bundle",
+      "--format=esm",
+      "--platform=browser",
+      "--target=es2022",
+      "--minify",
+      "--legal-comments=none"
+    ],
+    "name": "esbuild",
+    "version": "0.25.12"
+  },
+  "schemaVersion": 1,
+  "source": {
+    "path": "website/tonconnect.js",
+    "sha256": "555ea0da48afe8438df621c815d0e41af35866f78a8907630e5760fc2fea70be"
+  }
+}
