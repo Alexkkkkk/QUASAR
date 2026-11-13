@@ -12,7 +12,7 @@
     "@mui/material": "^5.8.2",
     "@tonconnect/sdk": "3.0.6",
     "@tonconnect/ui-react": "^2.0.11",
-    "bignumber.js": "^9.1.0",
+    "bignumber.js": "^11.1.5",
     "buffer": "^6.0.3",
     "notistack": "^2.0.5",
     "qrcode.react": "^3.0.2",
